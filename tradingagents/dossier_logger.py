@@ -87,14 +87,14 @@ class DeepDossierLogger:
             vel = inst.get("velocity", {})
 
             md_lines.append(f"### 🔹 Instrument: {sym}")
-            md_lines.append(f"- **Live Execution**: Ask `{tech.get('rsi', 50.0):.1f} RSI` | Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`")
+            md_lines.append(f"- **Live Execution**: Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`")
             md_lines.append(f"- **ADR(20) Expansion**: Range `${adr.get('today_range')}/${adr.get('adr_20')}` (`{adr.get('pct_used')}% used`) [{adr.get('capacity_status')}]")
             md_lines.append(f"- **Multi-Timeframe Alignment**: H1 (`{mtf.get('h1_trend')}`) | M15 (`{mtf.get('m15_trend')}`) | M5 (`{mtf.get('m5_trend')}`) $\\rightarrow$ **{mtf.get('alignment')}**")
             md_lines.append(f"- **Order Blocks & Pivots**: Daily PP `{ob.get('pivot_point')}` (S1: `{ob.get('support_s1')}`, R1: `{ob.get('resistance_r1')}`) | Demand: `{ob.get('demand_zone')}` | Supply: `{ob.get('supply_zone')}`")
             md_lines.append(f"- **Technical Agent Internal Reasoning**: {tech.get('thesis', 'N/A')}")
             md_lines.append(f"- **COT / Fundamental Agent Internal Reasoning**: COT Percentile `{fund.get('cot_percentile', 50.0):.1f}%` | {fund.get('thesis', 'N/A')}")
             md_lines.append(f"- **Macro / News Agent Internal Reasoning**: DXY `{macro.get('dxy', 101.4)}`, VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
-            md_lines.append(f"- **Bull vs. Bear Debate Agent Internal Reasoning**: Consensus Score `{debate.get('consensus_score', 5.0)}/10` | Conviction `{debate.get('conviction', 'LOW')}` | Retail Trap Warning: `{'YES' if debate.get('retail_trap_warning') else 'NO'}`")
+            md_lines.append(f"- **Bull vs. Bear Debate Agent Internal Reasoning**: Consensus Score `{debate.get('consensus_score', 5.0)}/10` | Conviction `{debate.get('conviction', 'LOW')}` | Institutional Risk Warning: `{'YES' if debate.get('institutional_risk_warning') else 'NO'}`")
             md_lines.append(f"- **Risk Officer Agent Decision**: Approved: `{risk.get('approved')}` | Recommended Max Lot Size: `{risk.get('max_volume_lots', 0.10)} lots` | Rationale: `{risk.get('reason')}`")
             md_lines.append("")
 

@@ -11,10 +11,11 @@ OpenCode CIO, you are mandated to execute **quick, fixed $20 to $30 USD micro-pr
 - Standard scalp volume: **0.10 lots**.
 - Fixed profit target: **+$20.00 to +$30.00 USD** per trade (e.g. +2.0 to +3.0 points on XAUUSD, +0.20 to +0.30 on XAGUSD).
 
-### 2. High-Confluence Micro-Entry Signals
-- **RSI Oversold/Overbought**: Look for M5/M15 RSI reaching oversold (<38) for BUY or overbought (>65) for SELL.
+### 2. High-Confluence Micro-Entry Signals (Pure Institutional Telemetry)
+- **4-Timeframe Structural Alignment**: Verify M5, M15, H1, and H4 structural alignment (`4TF_STRONG_BULLISH_CONFLUENCE` for BUY or `4TF_STRONG_BEARISH_CONFLUENCE` for SELL). Zero reliance on lagging derivative indicators.
+- **Session Liquidity Sweeps**: Look for institutional stop-run reversals after Asian High/Low or Yesterday High/Low sweeps (`ASIAN_LOW_SWEPT` for BUY reversal or `ASIAN_HIGH_SWEPT` for SELL reversal).
 - **Spread Safety Latch**: ONLY execute when live spread is `NORMAL` (<= 45 pts). DO NOT enter trades during `HIGH_SPIKE` spread windows.
-- **Order Block Alignment**: Enter near Daily Pivot ($PP$), Demand Zone, or Support ($S_1$) levels.
+- **Order Block Alignment**: Enter near M5/M15 Demand/Supply Order Blocks or Daily Pivots ($PP, S_1, R_1$).
 
 ### 3. Rapid Risk & Exit Management
 - **Immediate Lock-In**: Set Take-Profit ($TP$) at **+$20 to +$30 USD profit price**.

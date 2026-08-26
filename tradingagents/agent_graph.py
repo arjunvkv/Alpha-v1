@@ -3,7 +3,7 @@
 Adapted from TauricResearch/TradingAgents for Granger 7-Layer & Alpha Framework.
 Features:
 - Technical, Fundamental/COT, Macro/News, and Sentiment Analysts
-- Bull vs. Bear Researcher Debate (Bear armed with RETAIL_TRAP_RULES.md)
+- Bull vs. Bear Researcher Debate (Pure Institutional Order Flow & Macro Risk Audit)
 - Risk Officer (Account Heat + memory/__init__.py mistake log prevention)
 - Trader Agent (Structural order parameters R:R >= 2:1)
 """
@@ -146,7 +146,7 @@ class BullBearDebater:
             "consensus_score": consensus_score,
             "bull_points": bull_points,
             "bear_points": bear_points,
-            "retail_trap_warning": len(bear_points) > 0,
+            "institutional_risk_warning": len(bear_points) > 0,
             "conviction": "HIGH" if consensus_score >= 8.0 else "MEDIUM" if consensus_score >= 6.0 else "LOW"
         }
 

@@ -1438,17 +1438,15 @@ Distance: {zone.get('zone', {}).get('distance_pct', '?')}%
 Read: C:/Trading/data/all_layers_snapshot.json
 Or pull fresh: cd C:/Trading/Granger && python -c "import asyncio; from core.orchestrator import get_orchestrator; print(asyncio.run(get_orchestrator().collect_all_layers()))"
 
-## RULES — RETAIL TRAP-AWARE (MANDATORY)
-Read: C:/Trading/Alpha/daemon/RETAIL_TRAP_RULES.md for the full trap catalog and entry criteria.
+## INSTITUTIONAL MASTER MANDATES
+Read: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md for strict institutional execution mandates.
 
-### TRAP SCAN (Do this FIRST, before any entry consideration)
-Zone proximity = WARNING, not opportunity. Before ANY trade idea:
-- TRAP 1: Is price near a "known" level (BB, SMA, round #) with no institutional confirmation? → RESISTANCE BOUNCE TRAP
-- TRAP 2: Did price just poke above a level for the first time? → BREAKOUT CHASE TRAP (needs daily close + volume + retest)
-- TRAP 3: Are all "confirming" indicators price-derived (RSI + BB + MACD)? → INDICATOR CONFLUENCE TRAP (they're ONE source, not three)
-- TRAP 4: Is there news within 30min or a recent >1% spike? → NEWS SPIKE CHASE TRAP
-- TRAP 5: Is the only "level" a round number ($4500, $4600)? → ROUND NUMBER CLUSTER TRAP
-- TRAP 6: Is the market in a strong trend (>10% in <30d) being faded? → MOMENTUM FADE TRAP
+### INSTITUTIONAL ORDER FLOW AUDIT
+Before ANY trade idea:
+- Verify 4-Timeframe Confluence (H4 / H1 / M15 / M5).
+- Audit Session Liquidity Sweeps (Asian High/Low & Yesterday High/Low stop-runs).
+- Check M5/M15 Institutional Order Blocks (Demand/Supply zones).
+- Verify News Shield (no high-impact releases within 15 minutes).
 
 IF ANY TRAP PATTERN DETECTED → PAUSE & CONFIRM (Part 1B): genuine trap (manipulation/false signal) → WAIT; real signal (institutionally supported) → proceed through 7-gate with extra scrutiny; inconclusive → WAIT. Write trap_flags tagging each as CONFIRMED_GENUINE / REAL_SIGNAL / TRAP_INCONCLUSIVE.
 

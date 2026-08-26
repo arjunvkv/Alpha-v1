@@ -5,12 +5,12 @@ Autonomous 24/7 Multi-Agent Quantitative Trading Desk & OpenCode CIO Brain Integ
 ## 🚀 Features
 
 - **5-Agent Local LLM Desk**:
-  - `TechnicalAnalyst`: M15 RSI, MACD, and Ask/Bid tick posture.
+  - `TechnicalAnalyst`: Pure Market Structure, 4-TF Confluence (H4/H1/M15/M5), and Order Flow Velocity.
   - `MultiTimeframeAnalyst`: H1, M15, M5 trend alignment matrix.
   - `OrderBlockEngine`: Daily Pivots ($PP, S_1, R_1$), Supply & Demand Order Block zones.
   - `COT/FundamentalAnalyst`: CFTC Managed Money positioning percentiles.
-  - `Macro/NewsAnalyst` & `NewsShield`: DXY, VIX, RSS news & 30-min high-impact news freeze guard.
-  - `BullBearDebater`: Bull vs Bear debate, RETAIL_TRAP_RULES audit, and conviction scoring ($0.0 - 10.0$).
+  - `Macro/NewsAnalyst` & `NewsShield`: DXY, VIX, RSS news & 15-min high-impact news freeze guard.
+  - `BullBearDebater`: Bull vs Bear debate, Institutional Risk audit, and conviction scoring ($0.0 - 10.0$).
   - `RiskOfficer`: Max 6.0% account heat limit, dynamic lot sizing, and past mistake memory audit.
 
 - **Resilient OpenCode CIO Communication Engine**:

@@ -54,17 +54,16 @@ Monthly Drawdown Limit: -10%
 Terminal: {mt5_connected} (True/False)
 Server: {server}
 
-## RETAIL TRAP RULES — READ BEFORE EVERY DECISION
-Full rules: C:/Trading/Alpha/daemon/RETAIL_TRAP_RULES.md
-Mandatory trap scan before ANY decision. Traps override all indicators.
+## INSTITUTIONAL MANDATES — READ BEFORE EVERY DECISION
+Master Mandates Manual: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md
 
 ## YOUR TASK
-0. **TRAP SCAN FIRST**: Read C:/Trading/Alpha/daemon/RETAIL_TRAP_RULES.md and run the trap detection checklist (Part 1). If ANY trap is flagged → WAIT regardless of indicator alignment. List which traps fired in your reasoning.
-1. Read the zone level and understand WHY it matters (structural? moving average? liquidity?)
-2. **STRUCTURE CONFIRMATION**: Has price DONE something at the level, or just APPROACHED? (Proximity alone is NOT a trigger to trade — it's a warning to be careful.)
+0. **INSTITUTIONAL MARKET STRUCTURE SCAN**: Verify 4-Timeframe Confluence (H4/H1/M15/M5), Session Liquidity Sweeps, and Demand/Supply Order Blocks.
+1. Read the zone level and understand WHY it matters (institutional order block? liquidity sweep?)
+2. **STRUCTURE CONFIRMATION**: Has price swept liquidity or reached a valid M5/M15 demand/supply zone?
 3. Pull or read the full Granger 7-layer snapshot
 4. **INSTITUTIONAL CHECK**: Does COT/ETF flow data support this direction? (Required for ENTER)
-5. **MULTI-SOURCE CONFLUENCE**: Count independent source categories aligned (need 3+). Price-derived indicators (RSI, BB, MACD) count as ONE source.
+5. **MULTI-SOURCE CONFLUENCE**: Count independent institutional source categories aligned. Zero reliance on lagging derivative indicators (RSI, BB, MACD).
 6. Analyze: Is the Granger thesis still valid AT THIS PRICE?
 7. Check: Is there news in the next 30 minutes that could invalidate?
 8. Check: Is DXY reversing? (real-time via L3 or MT5 DXY tick)
