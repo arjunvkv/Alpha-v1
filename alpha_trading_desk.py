@@ -621,7 +621,7 @@ class ConsolidatedTradingDaemon:
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
                         f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
-                        f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. Call mcp_alpha_update_position for BE/exit or mcp_alpha_execute_trade for new setups."
+                        f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE ANTIGRAVITY BRAIN (PROXIMA) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                     )
                     log_opencode_said(scheduled_prompt)
                 else:
@@ -646,7 +646,7 @@ class ConsolidatedTradingDaemon:
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
                         f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
-                        f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. When a high-probability setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
+                        f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE ANTIGRAVITY BRAIN (PROXIMA) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                     )
                     log_opencode_said(idle_prompt)
                 else:
