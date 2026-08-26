@@ -383,11 +383,16 @@ class ConsolidatedTradingDaemon:
 
         # 1. RUN FULL 7-AGENT DESK THINKING PROCESS ACROSS ALL 6 INSTRUMENTS
         from tradingagents.world_market import IntradayInstitutionalEngine
+        from tradingagents.dossier_logger import DeepDossierLogger
+
         world_engine = IntradayInstitutionalEngine()
+        dossier_logger = DeepDossierLogger()
+
         session_info = world_engine.get_session_status()
         gsr_data = world_engine.get_gsr_ratio()
 
         instrument_matrix = []
+        instruments_data = []
         import MetaTrader5 as mt5
         mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
 
@@ -410,14 +415,34 @@ class ConsolidatedTradingDaemon:
                 velocity = world_engine.get_tick_velocity(symbol)
 
                 # Live MT5 Spread Metrics (Information for OpenCode decision)
-                spread_info = "Spread: N/A"
+                spread_pts = 0
+                spread_val = 0.0
+                status_str = "N/A"
                 if mt5_online:
                     sym_info = mt5.symbol_info(symbol)
                     if sym_info:
                         spread_pts = sym_info.spread
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
                         status_str = "NORMAL" if spread_pts <= 45 else ("ELEVATED" if spread_pts <= 80 else "HIGH_SPIKE")
-                        spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+
+                spread_dict = {"pts": spread_pts, "val": spread_val, "status": status_str}
+                spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+
+                # Store deep structured instrument data for persistent dossier logging
+                instruments_data.append({
+                    "symbol": symbol,
+                    "tech": tech_report,
+                    "fund": fund_report,
+                    "macro": macro_report,
+                    "debate": debate,
+                    "risk": risk,
+                    "mtf": mtf,
+                    "order_blocks": order_blocks,
+                    "news_shield": news_shield,
+                    "adr": adr_info,
+                    "spread": spread_dict,
+                    "velocity": velocity
+                })
 
                 # Collect instrument findings with Intraday Institutional Data
                 inst_summary = (
@@ -463,17 +488,25 @@ class ConsolidatedTradingDaemon:
         except Exception as err:
             LOG.error(f"MT5 position check failed: {err}")
 
-        # 3. High-Priority Reversal Event Dispatcher (Throttled & Idle Guarded)
-        has_active_trades = len(open_tickets) > 0
-        if reversal_alerts:
-            for sym, alert_msg in reversal_alerts:
-                log_proactive_alert(sym, 9.5, alert_msg)
-
-        # 4. Rich Natural Desk Dialogue Logging
+        # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
         self.cycle_count += 1
-        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Active Trades: {len(open_tickets)}. Posture TRANSPARENT STREAM.")
+        dossier_md = dossier_logger.write_dossier(
+            cycle_count=self.cycle_count,
+            instruments_data=instruments_data,
+            open_positions=detailed_positions,
+            reversal_alerts=reversal_alerts,
+            session_info=session_info,
+            gsr_data=gsr_data
+        )
+
+        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier Written to file:///C:/Trading/Alpha/logs/full_desk_dossier.md. Posture DEEP DOSSIER STREAM.")
 
         matrix_formatted = "\n".join(instrument_matrix)
+        file_ref_header = (
+            f"📁 DEEP PERSISTENT INTEL DOSSIERS:\n"
+            f"  • Full Desk Markdown Dossier: file:///C:/Trading/Alpha/logs/full_desk_dossier.md\n"
+            f"  • Complete Dialogue Trajectory Log: file:///C:/Trading/Alpha/logs/live_story.log\n\n"
+        )
 
         if open_tickets:
             import time
@@ -504,15 +537,16 @@ class ConsolidatedTradingDaemon:
 
                     scheduled_prompt = (
                         f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, intraday session context, and transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, intraday session context, persistent dossier pointers, and transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"{file_ref_header}"
                         f"{world_header}"
                         f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                         f"{reversal_section}\n"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Call your MCP tool mcp_alpha_update_position(ticket, action) "
-                        f"to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
+                        f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Inspect file:///C:/Trading/Alpha/logs/full_desk_dossier.md for full internal reasoning. "
+                        f"Call your MCP tool mcp_alpha_update_position(ticket, action) to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
                     )
                     log_opencode_said(scheduled_prompt)
                 else:
@@ -539,12 +573,13 @@ class ConsolidatedTradingDaemon:
                     idle_prompt = (
                         f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below is the intraday session context and 100% transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below is the intraday session context, persistent dossier pointers, and 100% transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"{file_ref_header}"
                         f"{world_header}"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"EXECUTIVE ACTION REQUIRED: Analyze the transparent 6-instrument findings matrix above. Exercise 100% executive authority. "
+                        f"EXECUTIVE ACTION REQUIRED: Analyze the transparent 6-instrument findings matrix above. Inspect file:///C:/Trading/Alpha/logs/full_desk_dossier.md for exhaustive internal reasoning. Exercise 100% executive authority. "
                         f"If your trade thesis is strong on any instrument, call mcp_alpha_execute_trade(symbol, side, volume, sl, tp) or confirm hold posture."
                     )
                     log_opencode_said(idle_prompt)
