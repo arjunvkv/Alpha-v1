@@ -108,21 +108,9 @@ def log_local_llm_monitoring(msg: str): log_story("Local LLM Desk", f"[Monitorin
 def log_proactive_alert(sym: str, score: float, headline: str): log_story("Local LLM Desk", f'[Proactive Discovery] "{headline}"')
 
 def is_opencode_idle(session_id: str = OPENCODE_SESSION_ID) -> bool:
-    """Query OpenCode server GET session API to verify if OpenCode is 100% idle before sending prompt."""
+    """Check if OpenCode Alpha v3 session is ready to receive alerts. Always defaults to True to guarantee reliable 3-min and startup dispatch."""
     try:
         import urllib.request
-        try:
-            res_sess = urllib.request.urlopen("http://localhost:4096/session", timeout=2)
-            if res_sess.status == 200:
-                s_list = json.loads(res_sess.read().decode("utf-8"))
-                if s_list:
-                    sorted_s = sorted(s_list, key=lambda x: x.get('time', {}).get('updated', 0), reverse=True)
-                    target_sid = sorted_s[0].get('id')
-                    if target_sid:
-                        session_id = target_sid
-        except Exception:
-            pass
-
         url = f"http://localhost:4096/session/{session_id}/message"
         req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
         resp = urllib.request.urlopen(req, timeout=2)
@@ -134,14 +122,13 @@ def is_opencode_idle(session_id: str = OPENCODE_SESSION_ID) -> bool:
                 role = info.get("role", "")
                 created_ts = info.get("time", {}).get("created", 0) / 1000.0
                 now_ts = datetime.now().timestamp()
-                if now_ts - created_ts > 45.0:
+                # If last msg was user sent over 120s ago, or assistant replied, it is ready
+                if role.lower() != "user" or (now_ts - created_ts > 120.0):
                     return True
-                if role.lower() == "user":
-                    return False
-        return True
-    except Exception:
-        return True
-        return True
+                return False
+    except Exception as err:
+        LOG.debug(f"is_opencode_idle query error: {err}")
+    return True
 
 # ----------------------------------------------------------------------
 # 2. Stateful Discovery Latch Module
