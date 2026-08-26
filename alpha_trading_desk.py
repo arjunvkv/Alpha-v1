@@ -486,11 +486,11 @@ class ConsolidatedTradingDaemon:
 
                 # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF & RRR
                 inst_summary = (
-                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
+                    f"• {symbol}: {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
                     f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) "
-                    f"| 4TF Confluence: {tech_report.get('tf_confluence', 'MIXED_TIMEFRAMES')} "
+                    f"| 4TF Structural Confluence: {tech_report.get('tf_confluence', 'MIXED_TIMEFRAMES')} "
                     f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
-                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
+                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Risk Vol: {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)

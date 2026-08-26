@@ -29,21 +29,7 @@ LOG = logging.getLogger("alpha.tradingagents.graph")
 
 class TechnicalAnalyst:
     def analyze(self, symbol: str, tech_data: Dict[str, Any]) -> Dict[str, Any]:
-        indicators = tech_data.get("indicators", {})
-        rsi = indicators.get("rsi_14", 50.0)
-        macd = indicators.get("macd", {})
-        bollinger = indicators.get("bollinger", {})
-
-        is_oversold = rsi < 40
-        is_overbought = rsi > 70
-        macd_bullish = macd.get("hist", 0) > 0
-
-        score = 5.0
-        if is_oversold: score += 2.5
-        if macd_bullish: score += 1.5
-        if is_overbought: score -= 2.5
-
-        # Multi-timeframe 4TF (H4 / H1 / M15 / M5) alignment
+        # Multi-timeframe 4TF (H4 / H1 / M15 / M5) structural alignment
         h4_bias = tech_data.get("h4_bias", "NEUTRAL")
         h1_bias = tech_data.get("h1_bias", "NEUTRAL")
         m15_bias = tech_data.get("m15_bias", "NEUTRAL")
@@ -53,24 +39,29 @@ class TechnicalAnalyst:
         bull_count = sum(1 for b in tf_list if "BULL" in str(b).upper())
         bear_count = sum(1 for b in tf_list if "BEAR" in str(b).upper())
 
+        score = 5.0
         tf_confluence = "MIXED_TIMEFRAMES"
         if bull_count >= 3:
             tf_confluence = "4TF_STRONG_BULLISH_CONFLUENCE"
-            score += 1.5
+            score += 3.0
         elif bear_count >= 3:
             tf_confluence = "4TF_STRONG_BEARISH_CONFLUENCE"
-            score -= 1.5
+            score -= 3.0
+
+        # Liquidity Sweep Interaction Bonus/Penalty
+        sweep_flag = tech_data.get("liquidity_sweep", {}).get("flag", "NORMAL_RANGE")
+        if "LOW_SWEPT" in sweep_flag:
+            score += 1.5  # Bullish liquidity grab reversal potential
+        elif "HIGH_SWEPT" in sweep_flag:
+            score -= 1.5  # Bearish liquidity grab reversal potential
 
         return {
             "agent": "TechnicalAnalyst",
             "symbol": symbol,
             "score": round(score, 1),
-            "rsi": rsi,
-            "bollinger_upper": bollinger.get("upper", 0),
-            "bollinger_lower": bollinger.get("lower", 0),
             "h4_bias": h4_bias,
             "tf_confluence": tf_confluence,
-            "thesis": f"RSI at {rsi:.1f}, MACD hist {macd.get('hist', 0):.2f}. 4TF Alignment: H4({h4_bias}) H1({h1_bias}) M15({m15_bias}) M5({m5_bias}) -> {tf_confluence}."
+            "thesis": f"Pure Market Structure & Order Flow. 4TF Alignment: H4({h4_bias}) H1({h1_bias}) M15({m15_bias}) M5({m5_bias}) -> {tf_confluence}."
         }
 
 class FundamentalAnalyst:
@@ -134,16 +125,14 @@ class BullBearDebater:
     def debate(self, symbol: str, tech: dict, fund: dict, macro: dict, sent: dict) -> Dict[str, Any]:
         # Bull thesis
         bull_points = []
-        if tech["score"] >= 6.0: bull_points.append("Technical indicators show strong momentum")
+        if tech["score"] >= 6.0: bull_points.append("4TF Market Structure shows strong institutional alignment")
         if fund["score"] >= 6.0: bull_points.append("Institutional COT positioning is net long")
         if macro["score"] >= 6.0: bull_points.append("Weak DXY provides macro tailwind")
 
-        # Bear thesis - Checks RETAIL_TRAP_RULES.md
+        # Bear thesis - Pure Institutional Liquidity & Crowded Risk Checks
         bear_points = []
         if fund["cot_managed_money_percentile"] > 88.0:
-            bear_points.append("RETAIL TRAP: Managed money percentile > 88% represents extreme crowded long risk")
-        if tech["rsi"] > 72.0:
-            bear_points.append("RETAIL TRAP: RSI overbought above 72; high risk of liquidity sweep reversal")
+            bear_points.append("INSTITUTIONAL RISK: Managed money percentile > 88% represents extreme crowded long risk")
         if macro["dxy"] > 104.0:
             bear_points.append("Strong Dollar headwind opposes bullish commodity thesis")
 
