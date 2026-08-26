@@ -55,36 +55,40 @@ def post_to_opencode_session(speaker: str, message: str):
 
     def _send():
         try:
+            import socket
             import urllib.request
+
+            # Always target the confirmed active Alpha v3 session — hardcoded for reliability
             target_sid = OPENCODE_SESSION_ID
 
-            try:
-                res_sess = urllib.request.urlopen("http://localhost:4096/session", timeout=2)
-                if res_sess.status == 200:
-                    s_list = json.loads(res_sess.read().decode("utf-8"))
-                    alpha_v3 = [s for s in s_list if "Alpha v3" in str(s.get("title", ""))]
-                    if alpha_v3:
-                        sorted_s = sorted(alpha_v3, key=lambda x: x.get("time", {}).get("updated", 0), reverse=True)
-                        target_sid = sorted_s[0].get("id")
-            except Exception:
-                pass
-
-            payload = {
-                "role": "user",
+            payload = json.dumps({
                 "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
-            }
+            }).encode("utf-8")
 
+            path = f"/session/{target_sid}/message"
+            http_req = (
+                f"POST {path} HTTP/1.1\r\n"
+                f"Host: localhost:4096\r\n"
+                f"Content-Type: application/json\r\n"
+                f"Content-Length: {len(payload)}\r\n"
+                f"Connection: close\r\n"
+                f"\r\n"
+            ).encode("utf-8") + payload
+
+            # Fire-and-forget: connect, send, read first response line, disconnect
             try:
-                url = f"http://localhost:4096/session/{target_sid}/message"
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"}
-                )
-                resp = urllib.request.urlopen(req, timeout=120)
-                LOG.info(f"Successfully posted prompt to active Alpha v3 session {target_sid}: status {resp.status}")
+                sock = socket.create_connection(("localhost", 4096), timeout=5)
+                sock.sendall(http_req)
+                sock.settimeout(2)
+                try:
+                    first_line = sock.recv(64).decode("utf-8", errors="ignore")
+                    LOG.info(f"Fired prompt to Alpha v3 session {target_sid}: {first_line.strip()}")
+                except Exception:
+                    LOG.info(f"Fired prompt to Alpha v3 session {target_sid} (no response read)")
+                sock.close()
             except Exception as err:
-                LOG.error(f"HTTP Post to OpenCode session {target_sid} error: {err}")
+                LOG.error(f"Socket fire-and-forget to {target_sid} failed: {err}")
+
         except Exception as err:
             LOG.error(f"Post payload creation failed: {err}")
 
@@ -627,6 +631,15 @@ class ConsolidatedTradingDaemon:
     async def start_loop(self):
         self.is_running = True
         LOG.info("Consolidated Trading Daemon started with Dual-State High-Sensitivity Execution.")
+        # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
+        post_to_opencode_session(
+            "OpenCode (CIO)",
+            f"🚀 ALPHA TRADING DESK DAEMON ONLINE\n"
+            f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
+            f"Status: READ-ONLY Scanner & Dossier Streamer ACTIVE\n"
+            f"Schedule: Startup briefing firing in ~40s after first full 6-instrument scan completes.\n"
+            f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
+        )
         while self.is_running:
             try:
                 has_active_trades = await self.run_cycle()
