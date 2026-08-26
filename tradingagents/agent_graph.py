@@ -43,6 +43,24 @@ class TechnicalAnalyst:
         if macd_bullish: score += 1.5
         if is_overbought: score -= 2.5
 
+        # Multi-timeframe 4TF (H4 / H1 / M15 / M5) alignment
+        h4_bias = tech_data.get("h4_bias", "NEUTRAL")
+        h1_bias = tech_data.get("h1_bias", "NEUTRAL")
+        m15_bias = tech_data.get("m15_bias", "NEUTRAL")
+        m5_bias = tech_data.get("m5_bias", "NEUTRAL")
+
+        tf_list = [h4_bias, h1_bias, m15_bias, m5_bias]
+        bull_count = sum(1 for b in tf_list if "BULL" in str(b).upper())
+        bear_count = sum(1 for b in tf_list if "BEAR" in str(b).upper())
+
+        tf_confluence = "MIXED_TIMEFRAMES"
+        if bull_count >= 3:
+            tf_confluence = "4TF_STRONG_BULLISH_CONFLUENCE"
+            score += 1.5
+        elif bear_count >= 3:
+            tf_confluence = "4TF_STRONG_BEARISH_CONFLUENCE"
+            score -= 1.5
+
         return {
             "agent": "TechnicalAnalyst",
             "symbol": symbol,
@@ -50,7 +68,9 @@ class TechnicalAnalyst:
             "rsi": rsi,
             "bollinger_upper": bollinger.get("upper", 0),
             "bollinger_lower": bollinger.get("lower", 0),
-            "thesis": f"RSI at {rsi:.1f}, MACD hist {macd.get('hist', 0):.2f}. Technical posture {'BULLISH' if score >= 6.5 else 'BEARISH' if score <= 4.0 else 'NEUTRAL'}."
+            "h4_bias": h4_bias,
+            "tf_confluence": tf_confluence,
+            "thesis": f"RSI at {rsi:.1f}, MACD hist {macd.get('hist', 0):.2f}. 4TF Alignment: H4({h4_bias}) H1({h1_bias}) M15({m15_bias}) M5({m5_bias}) -> {tf_confluence}."
         }
 
 class FundamentalAnalyst:

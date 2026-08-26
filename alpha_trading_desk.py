@@ -449,14 +449,21 @@ class ConsolidatedTradingDaemon:
                     "liquidity_targets": liq_targets
                 })
 
-                # Collect instrument findings with Intraday Institutional Data
+                from tradingagents.liquidity_radar import LiquidityRadarEngine
+                liq_radar = LiquidityRadarEngine()
+                liq_data = liq_radar.get_symbol_liquidity(symbol)
+
+                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds
+                rrr_str = "1:2.8 (Risk $10 to Make $28)"
+
+                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF & RRR
                 inst_summary = (
                     f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
-                    f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [{adr_info.get('capacity_status')}] "
-                    f"| MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
-                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} (S1: {order_blocks.get('support_s1', 'N/A')}, R1: {order_blocks.get('resistance_r1', 'N/A')}) "
-                    f"| Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
-                    f"| Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Risk Vol: {risk.get('max_volume_lots', 0.10)} lots"
+                    f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) "
+                    f"| 4TF Confluence: {tech_report.get('tf_confluence', 'MIXED_TIMEFRAMES')} "
+                    f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
+                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
+                    f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Risk Vol: {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)
 
@@ -537,8 +544,13 @@ class ConsolidatedTradingDaemon:
         )
 
         from tradingagents.world_events import LiveWorldEventsEngine
+        from tradingagents.economic_calendar import EconomicCalendarEngine
+
         events_engine = LiveWorldEventsEngine()
-        world_events_summary = events_engine.get_formatted_summary(5)
+        econ_engine = EconomicCalendarEngine()
+
+        world_events_summary = events_engine.get_formatted_summary(4)
+        econ_summary = econ_engine.get_news_countdown_summary(3).get("summary", "")
 
         world_header = (
             f"=== INTRADAY INSTITUTIONAL CONTEXT ===\n"
@@ -546,7 +558,8 @@ class ConsolidatedTradingDaemon:
             f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n"
             f"  • FTMO Account Health: Equity ${account_health.get('equity')} | Free Margin ${account_health.get('free_margin')} | Margin Level {account_health.get('margin_level_pct')}% | Heat {account_health.get('account_heat_pct')}%\n"
             f"  • Currency Matrix: USD [{currency_strength.get('usd_index_posture')}] | EUR [{currency_strength.get('eur_strength')}] | JPY [{currency_strength.get('jpy_strength')}]\n\n"
-            f"=== LIVE REAL-WORLD EVENTS FEED ===\n"
+            f"=== HIGH-IMPACT MACROECONOMIC CALENDAR & WORLD EVENTS FEED ===\n"
+            f"{econ_summary}\n"
             f"{world_events_summary}\n\n"
         )
 

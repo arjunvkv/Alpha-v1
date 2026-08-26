@@ -36,3 +36,11 @@ To prevent token bloat, use your read tools to inspect targeted line ranges in p
 ## 🛡️ SECTION 4: SYSTEM OPERATING MANDATES
 1. **100% Executive Authority**: The daemon pre-filters nothing and picks no conviction for you. All 7-agent raw findings are delivered transparently for your executive decision.
 2. **Zero Prompt Fragmentation**: All active positions, drawdown alerts, intraday session context, and 7-agent raw findings are consolidated into this single 2-minute dossier.
+
+---
+
+## 🏛️ SECTION 5: INSTITUTIONAL 5M-4H HOLDING HORIZON MANDATES
+1. **4-Timeframe Confluence (H4 / H1 / M15 / M5)**: Before entering a 5m to 4h hold trade, verify that at least 3 of 4 timeframes align in the same structural direction (`4TF_STRONG_BULLISH_CONFLUENCE` or `4TF_STRONG_BEARISH_CONFLUENCE`).
+2. **Liquidity Sweep Trap Protocol**: If `Liquidity Sweep` flags `ASIAN_HIGH_SWEPT` or `YEST_HIGH_SWEPT`, do NOT buy at the top (Bull Trap risk). Look for liquidity grab reversals. If `ASIAN_LOW_SWEPT` or `YEST_LOW_SWEPT` is flagged, do NOT sell at the bottom (Bear Trap risk).
+3. **High-Impact News Blackout Window**: Do NOT open new micro-scalp positions within 15 minutes before or 15 minutes after high-impact macroeconomic releases (CPI, NFP, FOMC rate decisions).
+4. **Minimum 1:2 Risk-Reward Ratio (RRR)**: Ensure every entry setup has a structural Risk-to-Reward Ratio of at least 1:2.0 (e.g. risking $10 to make $28).
