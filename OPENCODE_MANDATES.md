@@ -61,3 +61,4 @@ OpenCode CIO is strictly forbidden from repeating the following documented root-
 5. **Wins Must Be Bigger Than Losses Rule**: ALWAYS set Take Profit ($TP$) at **+$25.00 to +$35.00 USD (+2.50 to +$3.50 points)** so that EVERY WIN IS 2.5x TO 3.5x BIGGER THAN EVERY LOSS!
 6. **-$10 Max Risk Capping Rule**: NEVER allow Stop Loss ($SL$) to exceed **1.00 point (-$10.00 USD)**. Loss size MUST NEVER exceed win size under any circumstances!
 7. **No Dead Range Mid-Zone Over-Trading Rule**: NEVER place trades in the dead middle consolidation zone ($4,596 - $4,602). ONLY BUY at extreme bottom sweeps ($4,588 - $4,592) or SELL at extreme supply wicks ($4,612+). Maximum 3 trades per session!
+8. **Strict M5 Trend Alignment Rule**: NEVER enter a BUY order while Gold is in an active M5 downward liquidation trend. When price breaks lower demand levels, ONLY execute SELL orders on minor pullbacks to capture trend momentum!
