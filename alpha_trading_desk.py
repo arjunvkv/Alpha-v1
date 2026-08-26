@@ -528,10 +528,10 @@ class ConsolidatedTradingDaemon:
         tot_lns = dossier_res.get("total_lines", 80)
 
         file_ref_header = (
-            f"=== MANDATORY SYSTEM DIRECTIVES ===\n"
-            f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATE: Audit master directives & execution rules)\n"
-            f"  • $20-$30 Micro-Profit Strategy: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
-            f"  • Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Audit lessons before trading)\n"
+            f"=== MANDATORY SYSTEM DIRECTIVES (MANDATE) ===\n"
+            f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & line range rules)\n"
+            f"  • Micro-Profit Scalping Strategy: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
+            f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md\n"
             f"  • Full Desk Markdown Dossier ({tot_lns} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
         )
