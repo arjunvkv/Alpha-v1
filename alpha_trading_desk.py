@@ -466,48 +466,39 @@ class ConsolidatedTradingDaemon:
         if open_tickets:
             import time
             now_ts = time.time()
-            elapsed_reversal = now_ts - self.last_reversal_dispatch_time
+            elapsed = now_ts - self.last_dispatch_time
+            is_startup = (self.cycle_count == 1)
 
-            # 1. EMERGENCY REVERSAL ALERT (THROTTLED TO 180s MIN GAP & STRICT IDLE)
-            if reversal_alerts and elapsed_reversal >= 180.0:
+            if is_startup or elapsed >= 120.0:
                 if is_opencode_idle():
-                    self.last_reversal_dispatch_time = now_ts
-                    action_prompt = (
-                        f"EMERGENCY CIO DECISION REQUIRED: {reversal_alerts[0][1]}.\n"
-                        f"OpenCode CIO, evaluate immediately and call mcp_alpha_update_position(ticket, 'FULL_EXIT') "
-                        f"or adjust parameters now to protect account capital."
+                    self.last_dispatch_time = now_ts
+                    is_10min_reminder = (now_ts % 600 < 30)
+                    cycle_label = "Daemon Startup Initial Review" if is_startup else ("10-Min Master Directive" if is_10min_reminder else "2-Min Cycle")
+                    ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
+                    
+                    pos_details_formatted = "\n  • ".join(detailed_positions)
+
+                    # Consolidated Drawdown & Reversal Alerts Section
+                    reversal_section = ""
+                    if reversal_alerts:
+                        alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
+                        reversal_section = f"\n⚠️ HIGH-PRIORITY DRAWDOWN & REVERSAL ALERTS:\n  ⚠️ {alerts_text}\n"
+
+                    scheduled_prompt = (
+                        f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, and transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics). "
+                        f"The daemon does not block trades or pre-filter setups. Factor position metrics and spread data into your analysis, formulate your trade thesis, and execute position management or new orders when your thesis is strong.\n\n"
+                        f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
+                        f"{reversal_section}\n"
+                        f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                        f"{matrix_formatted}\n"
+                        f"===========================================================\n"
+                        f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Call your MCP tool mcp_alpha_update_position(ticket, action) "
+                        f"to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
                     )
-                    log_opencode_said(action_prompt)
+                    log_opencode_said(scheduled_prompt)
                 else:
-                    log_story("Desk Lead Agent", "Emergency Drawdown Alert detected! OpenCode is currently BUSY reasoning. Holding alert until OpenCode becomes IDLE.")
-
-            # 2. IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 2-MINUTE DISPATCH (elapsed >= 120s and is_idle)
-            else:
-                elapsed = now_ts - self.last_dispatch_time
-                is_startup = (self.cycle_count == 1)
-                if is_startup or elapsed >= 120.0:
-                    if is_opencode_idle():
-                        self.last_dispatch_time = now_ts
-                        is_10min_reminder = (now_ts % 600 < 30)
-                        cycle_label = "Daemon Startup Initial Review" if is_startup else ("10-Min Master Directive" if is_10min_reminder else "2-Min Cycle")
-                        ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
-                        
-                        pos_details_formatted = "\n  • ".join(detailed_positions)
-
-                        scheduled_prompt = (
-                            f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                            f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics). "
-                            f"The daemon does not block trades or pre-filter setups. Factor spread metrics into your entry analysis, formulate your trade thesis, and execute trade management or new position orders when your thesis is strong.\n\n"
-                            f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n\n"
-                            f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                            f"{matrix_formatted}\n"
-                            f"===========================================================\n"
-                            f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Call your MCP tool mcp_alpha_update_position(ticket, action) "
-                            f"to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
-                        )
-                        log_opencode_said(scheduled_prompt)
-                    else:
-                        log_story("Desk Lead Agent", f"2-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
+                    log_story("Desk Lead Agent", f"2-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
 
         else:
             # IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 2-MINUTE DISPATCH (elapsed >= 120s and is_idle)
