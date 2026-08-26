@@ -1,26 +1,27 @@
-# MANDATORY EXECUTIVE STRATEGY: $15 - $20 MICRO-PROFIT SWEET SPOT SCALPING
+# MANDATORY EXECUTIVE STRATEGY: SYMMETRIC POSITIVE RRR MICRO-SCALPING
 
 ## 🎯 MANDATORY CORE OBJECTIVE
-OpenCode CIO, you are mandated to execute **quick, fixed $15 to $20 USD micro-profit trades** whenever high-probability intraday setups present themselves across any of the 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
+OpenCode CIO, you are mandated to execute **quick, symmetric $12 to $15 USD positive RRR micro-profit trades** (Risk $12 to Make $12–$15) whenever high-probability winning setups present themselves across any of the 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
 
 ---
 
 ## ⚡ MANDATORY ENTRY & EXECUTION RULES
 
-### 1. Position Sizing & Sweet Spot Target
+### 1. Position Sizing & Symmetric Risk-Reward
 - Standard scalp volume: **0.10 lots**.
-- Fixed profit target: **+$15.00 USD Sweet Spot Target** per trade (e.g. +1.50 points on XAUUSD, +0.15 on XAGUSD). This hits 100% realized Take Profit cash before price encounters demand/supply zone bounces!
+- Fixed profit target ($TP$): **+$12.00 to +$15.00 USD** (+1.20 to +1.50 points on XAUUSD).
+- Fixed stop loss ($SL$): **-$12.00 USD Max Risk** (1.20 points on XAUUSD).
+- **Symmetric Risk Balance**: Risk is strictly capped at **-$12.00 USD max**, ensuring losses NEVER exceed wins!
 
-### 2. High-Confluence Micro-Entry Signals (Pure Institutional Telemetry)
-- **4-Timeframe Structural Alignment**: Verify M5, M15, H1, and H4 structural alignment (`4TF_STRONG_BULLISH_CONFLUENCE` for BUY or `4TF_STRONG_BEARISH_CONFLUENCE` for SELL). Zero reliance on lagging derivative indicators.
-- **Session Liquidity Sweeps**: Look for institutional stop-run reversals after Asian High/Low or Yesterday High/Low sweeps (`ASIAN_LOW_SWEPT` for BUY reversal or `ASIAN_HIGH_SWEPT` for SELL reversal).
-- **Spread Safety Latch**: ONLY execute when live spread is `NORMAL` (<= 45 pts). DO NOT enter trades during `HIGH_SPIKE` spread windows.
-- **Order Block Alignment**: Enter near M5/M15 Demand/Supply Order Blocks or Daily Pivots ($PP, S_1, R_1$).
+### 2. Proven Reproducible Winning Setups (`WINNING_TRADES_BUCKET`)
+- **Setup 1 (Bullish Reversal Sweep)**: BUY Gold at Asian Low Demand Support ($4,596 - $4,600) targeting +1.20 points (`TP = entry + 1.20`).
+- **Setup 2 (Bearish Liquidation Pullback)**: SELL Gold on M15/M5 Bearish Pullbacks targeting -1.20 points (`TP = entry - 1.20`).
+- **Setup 3 (Resistance Breakout)**: BUY Gold on 3-TF Bullish Breakouts above M5 Resistance targeting +1.20 points (`TP = entry + 1.20`).
 
 ### 3. Rapid Risk & Exit Management
-- **Immediate Lock-In**: Set Take-Profit ($TP$) directly at **+$15.00 USD profit price** (`entry - 1.50` for SELL, `entry + 1.50` for BUY on Gold).
-- **No Premature BE Ratchet**: Let the trade run cleanly to $TP$ without setting Break-Even ratchets that cut momentum bursts short.
-- **Micro Holding Time**: Typical holding horizon is **1 to 5 minutes**. Do not linger in stagnant trades.
+- **Immediate Lock-In**: Set Take-Profit ($TP$) directly at **+$12.00 USD profit price** (`entry - 1.20` for SELL, `entry + 1.20` for BUY on Gold).
+- **60-Second Time-Based Stop**: If a micro-scalp does not hit $TP$ within 60 seconds, **exit immediately at market**, capping stagnant drawdowns at -$3.00 to -$5.00 USD!
+- **Zero Loss Inflation**: Stop Loss ($SL$) is hard-capped at **1.20 points (-$12.00 USD)**.
 
 ---
 
