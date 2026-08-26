@@ -390,6 +390,9 @@ class ConsolidatedTradingDaemon:
 
         session_info = world_engine.get_session_status()
         gsr_data = world_engine.get_gsr_ratio()
+        account_health = world_engine.get_account_health()
+        currency_strength = world_engine.get_currency_strength()
+        real_yields = world_engine.get_real_yields()
 
         instrument_matrix = []
         instruments_data = []
@@ -413,6 +416,7 @@ class ConsolidatedTradingDaemon:
                 adr_info = world_engine.get_adr_metrics(symbol)
                 anchors = world_engine.get_session_anchors(symbol)
                 velocity = world_engine.get_tick_velocity(symbol)
+                liq_targets = world_engine.get_liquidity_targets(symbol)
 
                 # Live MT5 Spread Metrics (Information for OpenCode decision)
                 spread_pts = 0
@@ -441,7 +445,8 @@ class ConsolidatedTradingDaemon:
                     "news_shield": news_shield,
                     "adr": adr_info,
                     "spread": spread_dict,
-                    "velocity": velocity
+                    "velocity": velocity,
+                    "liquidity_targets": liq_targets
                 })
 
                 # Collect instrument findings with Intraday Institutional Data
@@ -488,6 +493,8 @@ class ConsolidatedTradingDaemon:
         except Exception as err:
             LOG.error(f"MT5 position check failed: {err}")
 
+        has_active_trades = len(open_tickets) > 0
+
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
         self.cycle_count += 1
         dossier_md = dossier_logger.write_dossier(
@@ -496,7 +503,10 @@ class ConsolidatedTradingDaemon:
             open_positions=detailed_positions,
             reversal_alerts=reversal_alerts,
             session_info=session_info,
-            gsr_data=gsr_data
+            gsr_data=gsr_data,
+            account_health=account_health,
+            currency_strength=currency_strength,
+            real_yields=real_yields
         )
 
         log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier Written to file:///C:/Trading/Alpha/logs/full_desk_dossier.md. Posture DEEP DOSSIER STREAM.")
@@ -506,6 +516,14 @@ class ConsolidatedTradingDaemon:
             f"📁 DEEP PERSISTENT INTEL DOSSIERS:\n"
             f"  • Full Desk Markdown Dossier: file:///C:/Trading/Alpha/logs/full_desk_dossier.md\n"
             f"  • Complete Dialogue Trajectory Log: file:///C:/Trading/Alpha/logs/live_story.log\n\n"
+        )
+
+        world_header = (
+            f"⚡ INTRADAY INSTITUTIONAL CONTEXT (5m - 4h Horizons):\n"
+            f"  • Session Clock: {session_info.get('session')} ({session_info.get('description')} | {session_info.get('utc_time')})\n"
+            f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n"
+            f"  • FTMO Account Health: Equity ${account_health.get('equity')} | Free Margin ${account_health.get('free_margin')} | Margin Level {account_health.get('margin_level_pct')}% | Heat {account_health.get('account_heat_pct')}%\n"
+            f"  • Currency Matrix: USD [{currency_strength.get('usd_index_posture')}] | EUR [{currency_strength.get('eur_strength')}] | JPY [{currency_strength.get('jpy_strength')}]\n\n"
         )
 
         if open_tickets:

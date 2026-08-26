@@ -17,11 +17,15 @@ class DeepDossierLogger:
     def __init__(self):
         os.makedirs(DOSSIER_DIR, exist_ok=True)
 
-    def write_dossier(self, cycle_count: int, instruments_data: list, open_positions: list, reversal_alerts: list, session_info: dict, gsr_data: dict) -> str:
+    def write_dossier(self, cycle_count: int, instruments_data: list, open_positions: list, reversal_alerts: list, session_info: dict, gsr_data: dict, account_health: dict = None, currency_strength: dict = None, real_yields: dict = None) -> str:
         """
         Writes persistent JSON and Markdown dossiers to disk and returns the full markdown string.
         """
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        account_health = account_health or {}
+        currency_strength = currency_strength or {}
+        real_yields = real_yields or {}
 
         # 1. JSON Dossier Output
         json_payload = {
@@ -29,6 +33,9 @@ class DeepDossierLogger:
             "cycle_count": cycle_count,
             "session_info": session_info,
             "gsr_data": gsr_data,
+            "account_health": account_health,
+            "currency_strength": currency_strength,
+            "real_yields": real_yields,
             "open_positions_count": len(open_positions),
             "open_positions": open_positions,
             "reversal_alerts": [a[1] for a in reversal_alerts] if reversal_alerts else [],
@@ -46,7 +53,10 @@ class DeepDossierLogger:
         md_lines.append(f"# Deep Institutional Trading Desk Dossier")
         md_lines.append(f"**Timestamp**: `{now_str}` | **Scan Cycle**: `{cycle_count}`")
         md_lines.append(f"**Session Clock**: `{session_info.get('session')}` ({session_info.get('description')} | `{session_info.get('utc_time')}`)")
-        md_lines.append(f"**Intermarket Gold/Silver Ratio (GSR)**: `{gsr_data.get('gsr')}` [{gsr_data.get('status')}]\n")
+        md_lines.append(f"**Intermarket GSR Ratio**: `{gsr_data.get('gsr')}` [{gsr_data.get('status')}]")
+        md_lines.append(f"**US Real Yield Matrix**: Fed Rate `{real_yields.get('fed_funds_rate')}` | US10Y `{real_yields.get('us10y_nominal_yield')}` | `{real_yields.get('us_real_yield_posture')}`")
+        md_lines.append(f"**Currency Strength Matrix**: USD `{currency_strength.get('usd_index_posture')}` | EUR `{currency_strength.get('eur_strength')}` | GBP `{currency_strength.get('gbp_strength')}` | JPY `{currency_strength.get('jpy_strength')}`")
+        md_lines.append(f"**FTMO Account Health**: Balance `${account_health.get('balance')}` | Equity `${account_health.get('equity')}` | Free Margin `${account_health.get('free_margin')}` | Margin Level `{account_health.get('margin_level_pct')}%` | Floating PnL `${account_health.get('floating_pnl')}` | Account Heat `{account_health.get('account_heat_pct')}%`\n")
 
         if open_positions:
             md_lines.append(f"## 📊 Active FTMO MT5 Positions ({len(open_positions)})")
