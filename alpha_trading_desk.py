@@ -481,8 +481,8 @@ class ConsolidatedTradingDaemon:
                 liq_radar = LiquidityRadarEngine()
                 liq_data = liq_radar.get_symbol_liquidity(symbol)
 
-                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds
-                rrr_str = "1:2.8 (Risk $10 to Make $28)"
+                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
+                rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
 
                 # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF & RRR
                 inst_summary = (

@@ -1,15 +1,15 @@
-# MANDATORY EXECUTIVE STRATEGY: $20 - $30 MICRO-PROFIT SCALPING
+# MANDATORY EXECUTIVE STRATEGY: $15 - $20 MICRO-PROFIT SWEET SPOT SCALPING
 
 ## 🎯 MANDATORY CORE OBJECTIVE
-OpenCode CIO, you are mandated to execute **quick, fixed $20 to $30 USD micro-profit trades** whenever high-probability intraday setups present themselves across any of the 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
+OpenCode CIO, you are mandated to execute **quick, fixed $15 to $20 USD micro-profit trades** whenever high-probability intraday setups present themselves across any of the 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
 
 ---
 
 ## ⚡ MANDATORY ENTRY & EXECUTION RULES
 
-### 1. Position Sizing
+### 1. Position Sizing & Sweet Spot Target
 - Standard scalp volume: **0.10 lots**.
-- Fixed profit target: **+$20.00 to +$30.00 USD** per trade (e.g. +2.0 to +3.0 points on XAUUSD, +0.20 to +0.30 on XAGUSD).
+- Fixed profit target: **+$15.00 USD Sweet Spot Target** per trade (e.g. +1.50 points on XAUUSD, +0.15 on XAGUSD). This hits 100% realized Take Profit cash before price encounters demand/supply zone bounces!
 
 ### 2. High-Confluence Micro-Entry Signals (Pure Institutional Telemetry)
 - **4-Timeframe Structural Alignment**: Verify M5, M15, H1, and H4 structural alignment (`4TF_STRONG_BULLISH_CONFLUENCE` for BUY or `4TF_STRONG_BEARISH_CONFLUENCE` for SELL). Zero reliance on lagging derivative indicators.
@@ -18,9 +18,9 @@ OpenCode CIO, you are mandated to execute **quick, fixed $20 to $30 USD micro-pr
 - **Order Block Alignment**: Enter near M5/M15 Demand/Supply Order Blocks or Daily Pivots ($PP, S_1, R_1$).
 
 ### 3. Rapid Risk & Exit Management
-- **Immediate Lock-In**: Set Take-Profit ($TP$) at **+$20 to +$30 USD profit price**.
-- **Trail SL to Break-Even**: Move Stop-Loss to entry ($BE$) as soon as position reaches +$10.00 USD profit.
-- **Micro Holding Time**: Typical holding horizon is **2 minutes to 1 hour**. Do not linger in stagnant or reversing trades.
+- **Immediate Lock-In**: Set Take-Profit ($TP$) directly at **+$15.00 USD profit price** (`entry - 1.50` for SELL, `entry + 1.50` for BUY on Gold).
+- **No Premature BE Ratchet**: Let the trade run cleanly to $TP$ without setting Break-Even ratchets that cut momentum bursts short.
+- **Micro Holding Time**: Typical holding horizon is **1 to 5 minutes**. Do not linger in stagnant trades.
 
 ---
 
