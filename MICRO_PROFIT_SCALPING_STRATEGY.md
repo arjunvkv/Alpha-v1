@@ -1,27 +1,27 @@
-# MANDATORY EXECUTIVE STRATEGY: SYMMETRIC POSITIVE RRR MICRO-SCALPING
+# MANDATORY EXECUTIVE STRATEGY: ASYMMETRIC HIGH RRR SCALPING (WINS > LOSSES)
 
 ## 🎯 MANDATORY CORE OBJECTIVE
-OpenCode CIO, you are mandated to execute **quick, symmetric $12 to $15 USD positive RRR micro-profit trades** (Risk $12 to Make $12–$15) whenever high-probability winning setups present themselves across any of the 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
+OpenCode CIO, you are mandated to execute trades where **WINS ARE STRICTLY 2.5x TO 3.5x BIGGER THAN LOSSES** (Risk $10 to Make $25–$35 USD) across all 6 scanned instruments (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash).
 
 ---
 
 ## ⚡ MANDATORY ENTRY & EXECUTION RULES
 
-### 1. Position Sizing & Symmetric Risk-Reward
+### 1. Position Sizing & Asymmetric High RRR
 - Standard scalp volume: **0.10 lots**.
-- Fixed profit target ($TP$): **+$12.00 to +$15.00 USD** (+1.20 to +1.50 points on XAUUSD).
-- Fixed stop loss ($SL$): **-$12.00 USD Max Risk** (1.20 points on XAUUSD).
-- **Symmetric Risk Balance**: Risk is strictly capped at **-$12.00 USD max**, ensuring losses NEVER exceed wins!
+- Fixed Take Profit ($TP$): **+$25.00 to +$35.00 USD** (+2.50 to +3.50 points on XAUUSD).
+- Fixed Stop Loss ($SL$): **-$10.00 USD Hard Capped Risk** (1.00 point on XAUUSD).
+- **Asymmetric Risk Balance**: EVERY WIN IS 2.5x TO 3.5x BIGGER THAN EVERY LOSS!
 
 ### 2. Proven Reproducible Winning Setups (`WINNING_TRADES_BUCKET`)
-- **Setup 1 (Bullish Reversal Sweep)**: BUY Gold at Asian Low Demand Support ($4,596 - $4,600) targeting +1.20 points (`TP = entry + 1.20`).
-- **Setup 2 (Bearish Liquidation Pullback)**: SELL Gold on M15/M5 Bearish Pullbacks targeting -1.20 points (`TP = entry - 1.20`).
-- **Setup 3 (Resistance Breakout)**: BUY Gold on 3-TF Bullish Breakouts above M5 Resistance targeting +1.20 points (`TP = entry + 1.20`).
+- **Setup 1 (Bullish Reversal Sweep)**: BUY Gold at Asian Low Demand Support ($4,595 - $4,599) targeting +2.50 points (`TP = entry + 2.50`, `SL = entry - 1.00`).
+- **Setup 2 (Bearish Liquidation Pullback)**: SELL Gold on M15/M5 Bearish Pullbacks targeting -2.50 points (`TP = entry - 2.50`, `SL = entry + 1.00`).
+- **Setup 3 (Resistance Breakout)**: BUY Gold on 3-TF Bullish Breakouts above M5 Resistance targeting +2.50 points (`TP = entry + 2.50`, `SL = entry - 1.00`).
 
 ### 3. Rapid Risk & Exit Management
-- **Immediate Lock-In**: Set Take-Profit ($TP$) directly at **+$12.00 USD profit price** (`entry - 1.20` for SELL, `entry + 1.20` for BUY on Gold).
-- **60-Second Time-Based Stop**: If a micro-scalp does not hit $TP$ within 60 seconds, **exit immediately at market**, capping stagnant drawdowns at -$3.00 to -$5.00 USD!
-- **Zero Loss Inflation**: Stop Loss ($SL$) is hard-capped at **1.20 points (-$12.00 USD)**.
+- **Immediate Lock-In**: Set Take-Profit ($TP$) directly at **+$25.00 USD profit price** (`entry + 2.50` for BUY, `entry - 2.50` for SELL on Gold).
+- **Strict SL Safety Latch**: Stop Loss ($SL$) is hard-capped at **1.00 point (-$10.00 USD)**.
+- **Micro Holding Time**: 1 to 3 minutes horizon.
 
 ---
 
