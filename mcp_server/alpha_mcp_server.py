@@ -32,6 +32,9 @@ from logs.story_logger import log_opencode_said, log_local_llm_replied, log_stor
 from tradingagents.read_logger import DossierReadLogger
 read_logger = DossierReadLogger()
 
+from tradingagents.world_events import LiveWorldEventsEngine
+world_events_engine = LiveWorldEventsEngine()
+
 # DIRECT ALL LOGGING AND PRINTS EXCLUSIVELY TO STDERR FOR MCP PROTOCOL SAFETY
 logging.basicConfig(
     stream=sys.stderr,
@@ -374,6 +377,23 @@ def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
         })
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
+
+@mcp.tool()
+def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
+    """
+    Fetch full live real-world events, macro news, central bank headlines, and geopolitical updates.
+    Category filters: ALL, CENTRAL_BANKS_FED, COMMODITIES_ENERGY, GEOPOLITICAL_GLOBAL, MACRO_ECONOMIC_INDICATORS.
+    """
+    read_logger.log_dossier_read("OpenCode CIO (MCP World Events)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested live world events (Category filter: {category})")
+    events = world_events_engine.fetch_live_events(force_refresh=True)
+    if category.upper() != "ALL":
+        events = [e for e in events if e.get("category") == category.upper()]
+    return json.dumps({
+        "status": "SUCCESS",
+        "total_events": len(events),
+        "category_filter": category.upper(),
+        "events": events
+    }, indent=2)
 
 if __name__ == "__main__":
     _init_mt5()

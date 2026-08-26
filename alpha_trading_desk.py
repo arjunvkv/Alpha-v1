@@ -536,12 +536,18 @@ class ConsolidatedTradingDaemon:
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
         )
 
+        from tradingagents.world_events import LiveWorldEventsEngine
+        events_engine = LiveWorldEventsEngine()
+        world_events_summary = events_engine.get_formatted_summary(5)
+
         world_header = (
             f"=== INTRADAY INSTITUTIONAL CONTEXT ===\n"
             f"  • Session Clock: {session_info.get('session')} ({session_info.get('description')} | {session_info.get('utc_time')})\n"
             f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n"
             f"  • FTMO Account Health: Equity ${account_health.get('equity')} | Free Margin ${account_health.get('free_margin')} | Margin Level {account_health.get('margin_level_pct')}% | Heat {account_health.get('account_heat_pct')}%\n"
             f"  • Currency Matrix: USD [{currency_strength.get('usd_index_posture')}] | EUR [{currency_strength.get('eur_strength')}] | JPY [{currency_strength.get('jpy_strength')}]\n\n"
+            f"=== LIVE REAL-WORLD EVENTS FEED ===\n"
+            f"{world_events_summary}\n\n"
         )
 
         if open_tickets:
