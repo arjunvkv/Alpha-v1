@@ -383,6 +383,9 @@ class ConsolidatedTradingDaemon:
 
         # 1. RUN FULL 7-AGENT DESK THINKING PROCESS ACROSS ALL 6 INSTRUMENTS
         instrument_matrix = []
+        import MetaTrader5 as mt5
+        mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+
         for symbol in self.instruments:
             try:
                 desk_res = await self.desk.run_analysis_cycle(symbol)
@@ -396,9 +399,19 @@ class ConsolidatedTradingDaemon:
                 order_blocks = desk_res.get("order_blocks", {})
                 news_shield = desk_res.get("news_shield", {})
 
+                # Live MT5 Spread Metrics (Information for OpenCode decision)
+                spread_info = "Spread: N/A"
+                if mt5_online:
+                    sym_info = mt5.symbol_info(symbol)
+                    if sym_info:
+                        spread_pts = sym_info.spread
+                        spread_val = round((sym_info.ask - sym_info.bid), 3)
+                        status_str = "NORMAL" if spread_pts <= 45 else ("ELEVATED" if spread_pts <= 80 else "HIGH_SPIKE")
+                        spread_info = f"Live Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+
                 # Collect instrument findings
                 inst_summary = (
-                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
+                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | {spread_info} | MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} (S1: {order_blocks.get('support_s1', 'N/A')}, R1: {order_blocks.get('resistance_r1', 'N/A')}) "
                     f"| Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| COT Score: {fund_report.get('cot_percentile', 50.0):.1f}% | Bull/Bear Consensus: {debate.get('consensus_score', 5.0)}/10 | Risk Rec Vol: {risk.get('max_volume_lots', 0.10)} lots"
@@ -407,7 +420,7 @@ class ConsolidatedTradingDaemon:
 
                 # Log Local LLM Agents' natural thinking dialogue into live_story.log & stdout for primary metals/oil
                 if symbol in ("XAUUSD", "XAGUSD"):
-                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')}")
+                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {spread_info}")
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}")
@@ -420,9 +433,7 @@ class ConsolidatedTradingDaemon:
         detailed_positions = []
         reversal_alerts = []
         try:
-            import MetaTrader5 as mt5
-            initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
-            if initialized:
+            if mt5_online:
                 pos_list = mt5.positions_get()
                 if pos_list:
                     for p in pos_list:
@@ -472,8 +483,6 @@ class ConsolidatedTradingDaemon:
 
             # 2. IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 2-MINUTE DISPATCH (elapsed >= 120s and is_idle)
             else:
-                import time
-                now_ts = time.time()
                 elapsed = now_ts - self.last_dispatch_time
                 is_startup = (self.cycle_count == 1)
                 if is_startup or elapsed >= 120.0:
@@ -487,8 +496,8 @@ class ConsolidatedTradingDaemon:
 
                         scheduled_prompt = (
                             f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                            f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments. "
-                            f"Analyze the findings, formulate your own trade thesis, and execute trade management or new position orders when your thesis is strong.\n\n"
+                            f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics). "
+                            f"The daemon does not block trades or pre-filter setups. Factor spread metrics into your entry analysis, formulate your trade thesis, and execute trade management or new position orders when your thesis is strong.\n\n"
                             f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n\n"
                             f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                             f"{matrix_formatted}\n"
@@ -515,8 +524,8 @@ class ConsolidatedTradingDaemon:
                     idle_prompt = (
                         f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (Gold, Silver, Platinum, Palladium, Copper, Oil). "
-                        f"The daemon does not pre-filter or pick trades for you. Analyze the full multi-instrument findings below, formulate your own trade thesis, and place trades via mcp_alpha_execute_trade when your thesis is strong.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics in points & status). "
+                        f"The daemon does not block trades or pre-filter setups. Factor live spread costs into your analysis, formulate your own trade thesis, and place trades via mcp_alpha_execute_trade when your thesis is strong.\n\n"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
