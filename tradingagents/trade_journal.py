@@ -90,6 +90,7 @@ class TradeJournalMemory:
         lines = []
         lines.append("# Persistent Self-Study Trade Memory Journal")
         lines.append("This persistent memory store records all closed trades, root cause lessons, and self-correction rules to prevent repeating mistakes.\n")
+        lines.append("> ⚠️ **5-HIT REPEAT THRESHOLD MANDATE**: OpenCode CIO must NOT enforce or act on a self-correction rule or lesson from these buckets UNLESS the exact same pattern/lesson has been observed and repeated 5 or more times (>= 5 hits) from real live trade executions ('hit and learn'). Single or low-frequency occurrences (< 5 hits) are exploratory data, NOT mandatory system constraints.\n")
 
         lines.append("## 🏆 WINNING_TRADES_BUCKET (What Worked Well)")
         for item in data.get("winning_trades", []):
