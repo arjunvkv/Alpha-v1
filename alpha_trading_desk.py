@@ -49,20 +49,27 @@ LOG = logging.getLogger("alpha.trading_desk")
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
-    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST IF OPENCODE IS IDLE."""
-    # 1. ALWAYS LOG COMMUNICATION INTENT TO FILE & STDOUT LOGS REGARDLESS OF CONNECTION STATE
+    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST to active OpenCode session."""
     log_story(speaker, message)
-    LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message}\n===================================\n")
-
-    # 2. ASYNCHRONOUS BACKGROUND HTTP POST ONLY IF OPENCODE IS IDLE
-    if not is_opencode_idle(OPENCODE_SESSION_ID):
-        LOG.info(f"OpenCode session {OPENCODE_SESSION_ID} is currently BUSY (Reasoning/Executing). Holding HTTP POST payload.")
-        return
+    LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message[:200]}...\n===================================\n")
 
     def _send():
         try:
             import urllib.request
             target_sessions = ["ses_fc27fa9d7ffe2Lh84kWRvexzhZ", "ses_fc28140eaffeFGt54CBqh24cNi"]
+            try:
+                res_sess = urllib.request.urlopen("http://localhost:4096/session", timeout=2)
+                if res_sess.status == 200:
+                    s_list = json.loads(res_sess.read().decode("utf-8"))
+                    if s_list:
+                        sorted_s = sorted(s_list, key=lambda x: x.get('time', {}).get('updated', 0), reverse=True)
+                        for s in sorted_s[:3]:
+                            sid = s.get('id')
+                            if sid and sid not in target_sessions:
+                                target_sessions.insert(0, sid)
+            except Exception:
+                pass
+
             payload = {
                 "role": "user",
                 "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
@@ -72,13 +79,20 @@ def post_to_opencode_session(speaker: str, message: str):
                 if not sid:
                     continue
                 try:
+                    # Auto-abort any stuck turn from prior restarts before posting
+                    try:
+                        abort_req = urllib.request.Request(f"http://localhost:4096/session/{sid}/abort", method="POST")
+                        urllib.request.urlopen(abort_req, timeout=1)
+                    except Exception:
+                        pass
+
                     url = f"http://localhost:4096/session/{sid}/message"
                     req = urllib.request.Request(
                         url,
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    resp = urllib.request.urlopen(req, timeout=120)
+                    resp = urllib.request.urlopen(req, timeout=5)
                     LOG.info(f"Successfully posted prompt to OpenCode session {sid}: status {resp.status}")
                 except Exception as err:
                     LOG.debug(f"HTTP Post to OpenCode session {sid} offline/unreachable: {err}")
@@ -112,22 +126,36 @@ def is_opencode_idle(session_id: str = OPENCODE_SESSION_ID) -> bool:
     """Query OpenCode server GET session API to verify if OpenCode is 100% idle before sending prompt."""
     try:
         import urllib.request
-        url = f"http://localhost:4096/session/{session_id}"
+        try:
+            res_sess = urllib.request.urlopen("http://localhost:4096/session", timeout=2)
+            if res_sess.status == 200:
+                s_list = json.loads(res_sess.read().decode("utf-8"))
+                if s_list:
+                    sorted_s = sorted(s_list, key=lambda x: x.get('time', {}).get('updated', 0), reverse=True)
+                    target_sid = sorted_s[0].get('id')
+                    if target_sid:
+                        session_id = target_sid
+        except Exception:
+            pass
+
+        url = f"http://localhost:4096/session/{session_id}/message"
         req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
         resp = urllib.request.urlopen(req, timeout=2)
         if resp.status == 200:
-            data = json.loads(resp.read().decode("utf-8"))
-            status = data.get("status") or data.get("state") or ""
-            if str(status).lower() in ("thinking", "executing_tool", "generating", "busy"):
-                return False
-            messages = data.get("messages") or data.get("history") or []
+            messages = json.loads(resp.read().decode("utf-8"))
             if messages:
                 last_msg = messages[-1]
-                last_role = last_msg.get("role") or ""
-                if last_role.lower() == "user":
+                info = last_msg.get("info", {})
+                role = info.get("role", "")
+                created_ts = info.get("time", {}).get("created", 0) / 1000.0
+                now_ts = datetime.now().timestamp()
+                if now_ts - created_ts > 45.0:
+                    return True
+                if role.lower() == "user":
                     return False
         return True
     except Exception:
+        return True
         return True
 
 # ----------------------------------------------------------------------
@@ -596,7 +624,6 @@ class ConsolidatedTradingDaemon:
                         f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. Call mcp_alpha_update_position for BE/exit or mcp_alpha_execute_trade for new setups."
                     )
                     log_opencode_said(scheduled_prompt)
-                    post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
                 else:
                     log_story("Desk Lead Agent", f"2-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
 
@@ -622,7 +649,6 @@ class ConsolidatedTradingDaemon:
                         f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. When a high-probability setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
                     )
                     log_opencode_said(idle_prompt)
-                    post_to_opencode_session("OpenCode (CIO)", idle_prompt)
                 else:
                     log_story("Desk Lead Agent", f"Idle Market Review is DUE, but OpenCode is currently BUSY reasoning. Holding briefing until OpenCode returns to IDLE.")
 
