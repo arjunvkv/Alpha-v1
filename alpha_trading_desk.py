@@ -497,10 +497,13 @@ class ConsolidatedTradingDaemon:
 
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
         from tradingagents.read_logger import DossierReadLogger
+        from tradingagents.trade_journal import TradeJournalMemory
+        
         read_logger = DossierReadLogger()
+        trade_journal = TradeJournalMemory()
 
         self.cycle_count += 1
-        dossier_md = dossier_logger.write_dossier(
+        dossier_res = dossier_logger.write_dossier(
             cycle_count=self.cycle_count,
             instruments_data=instruments_data,
             open_positions=detailed_positions,
@@ -517,11 +520,23 @@ class ConsolidatedTradingDaemon:
         log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
 
         matrix_formatted = "\n".join(instrument_matrix)
+        
+        # Token-Efficient Line Range Pointers & Strategy References
+        hdr_rng = dossier_res.get("header_range", "L1-L12")
+        pos_rng = dossier_res.get("positions_range", "L1-L25")
+        fnd_rng = dossier_res.get("findings_range", "L26-L80")
+        tot_lns = dossier_res.get("total_lines", 80)
+
         file_ref_header = (
-            f"📁 DEEP PERSISTENT INTEL DOSSIERS & MANDATORY AUDIT LOGS:\n"
-            f"  • Full Desk Markdown Dossier: file:///C:/Trading/Alpha/logs/full_desk_dossier.md\n"
-            f"  • Mandatory Read Audit Log: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n"
-            f"  • Complete Dialogue Trajectory Log: file:///C:/Trading/Alpha/logs/live_story.log\n\n"
+            f"🎯 MANDATORY EXECUTION STRATEGY MANUAL:\n"
+            f"  • $20-$30 Micro-Profit Strategy Mandate: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
+            f"  • Persistent Self-Study Trade Journal: file:///C:/Trading/Alpha/logs/trade_journal_memory.md\n\n"
+            f"📁 TOKEN-EFFICIENT DOSSIER LINE POINTERS ({tot_lns} Total Lines):\n"
+            f"  • Session Header & Real Yields ({hdr_rng}): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{hdr_rng}\n"
+            f"  • Active Positions & Drawdown ({pos_rng}): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{pos_rng}\n"
+            f"  • Exhaustive 7-Agent Findings ({fnd_rng}): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
+            f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n"
+            f"  • Trajectory Story Log: file:///C:/Trading/Alpha/logs/live_story.log\n\n"
         )
 
         world_header = (
@@ -543,7 +558,7 @@ class ConsolidatedTradingDaemon:
                     self.last_dispatch_time = now_ts
                     is_10min_reminder = (now_ts % 600 < 30)
                     cycle_label = "Daemon Startup Initial Review" if is_startup else ("10-Min Master Directive" if is_10min_reminder else "2-Min Cycle")
-                    ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
+                    ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md & OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & micro-scalp rules." if (is_startup or is_10min_reminder) else ""
                     
                     pos_details_formatted = "\n  • ".join(detailed_positions)
 
@@ -561,7 +576,7 @@ class ConsolidatedTradingDaemon:
 
                     scheduled_prompt = (
                         f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, intraday session context, persistent dossier pointers, and transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
                         f"{file_ref_header}"
                         f"{world_header}"
                         f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
@@ -569,8 +584,8 @@ class ConsolidatedTradingDaemon:
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Inspect file:///C:/Trading/Alpha/logs/full_desk_dossier.md for full internal reasoning. "
-                        f"Call your MCP tool mcp_alpha_update_position(ticket, action) to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
+                        f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for full internal reasoning. "
+                        f"Call your MCP tool mcp_alpha_update_position(ticket, action) to set Break-Even (+$10 profit) or Close positions at +$20-$30 profit target, or execute new micro-profit scalps via mcp_alpha_execute_trade."
                     )
                     log_opencode_said(scheduled_prompt)
                 else:
@@ -586,7 +601,7 @@ class ConsolidatedTradingDaemon:
                 if is_opencode_idle():
                     self.last_dispatch_time = now_ts
                     is_10min_reminder = (now_ts % 600 < 30)
-                    ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
+                    ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md & OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & micro-scalp rules." if (is_startup or is_10min_reminder) else ""
 
                     world_header = (
                         f"⚡ INTRADAY INSTITUTIONAL CONTEXT (5m - 4h Horizons):\n"
@@ -597,14 +612,14 @@ class ConsolidatedTradingDaemon:
                     idle_prompt = (
                         f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below is the intraday session context, persistent dossier pointers, and 100% transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute quick $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
                         f"{file_ref_header}"
                         f"{world_header}"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"EXECUTIVE ACTION REQUIRED: Analyze the transparent 6-instrument findings matrix above. Inspect file:///C:/Trading/Alpha/logs/full_desk_dossier.md for exhaustive internal reasoning. Exercise 100% executive authority. "
-                        f"If your trade thesis is strong on any instrument, call mcp_alpha_execute_trade(symbol, side, volume, sl, tp) or confirm hold posture."
+                        f"EXECUTIVE ACTION REQUIRED: Analyze the 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for exhaustive internal reasoning. Audit C:\\Trading\\Alpha\\logs\\trade_journal_memory.md for past lessons. "
+                        f"When a high-probability $20-$30 micro-scalp setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
                     )
                     log_opencode_said(idle_prompt)
                 else:

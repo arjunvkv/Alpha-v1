@@ -99,10 +99,22 @@ class DeepDossierLogger:
             md_lines.append("")
 
         full_md_content = "\n".join(md_lines)
+        line_count = len(md_lines)
         try:
             with open(MD_DOSSIER_PATH, "w", encoding="utf-8") as f:
                 f.write(full_md_content)
         except Exception as err:
             LOG.error(f"Failed to write MD dossier: {err}")
 
-        return full_md_content
+        # Compute line ranges for token-efficient line pointers
+        header_end = min(12, line_count)
+        positions_end = min(25, line_count)
+        findings_start = min(26, line_count)
+        
+        return {
+            "full_md": full_md_content,
+            "total_lines": line_count,
+            "header_range": f"L1-L{header_end}",
+            "positions_range": f"L1-L{positions_end}",
+            "findings_range": f"L{findings_start}-L{line_count}"
+        }
