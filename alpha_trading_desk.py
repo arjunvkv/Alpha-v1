@@ -49,12 +49,16 @@ LOG = logging.getLogger("alpha.trading_desk")
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
-    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST."""
+    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST IF OPENCODE IS IDLE."""
     # 1. ALWAYS LOG COMMUNICATION INTENT TO FILE & STDOUT LOGS REGARDLESS OF CONNECTION STATE
     log_story(speaker, message)
     LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message}\n===================================\n")
 
-    # 2. ASYNCHRONOUS BACKGROUND HTTP POST TO OPENCODE SESSION IF CONNECTED
+    # 2. ASYNCHRONOUS BACKGROUND HTTP POST ONLY IF OPENCODE IS IDLE
+    if not is_opencode_idle():
+        LOG.info(f"OpenCode session {OPENCODE_SESSION_ID} is currently BUSY (Reasoning/Executing). Holding HTTP POST payload.")
+        return
+
     def _send():
         try:
             import urllib.request
@@ -349,6 +353,7 @@ class ConsolidatedTradingDaemon:
         self.is_running = False
         self.cycle_count = 0
         self.last_dispatch_time = 0.0
+        self.last_reversal_dispatch_time = 0.0
 
     async def run_cycle(self):
         LOG.info(f"--- Starting Scan Cycle across {len(self.instruments)} instruments ---")
@@ -435,16 +440,11 @@ class ConsolidatedTradingDaemon:
         except Exception as err:
             LOG.error(f"MT5 position check failed: {err}")
 
-        # 3. High-Priority Reversal Event Dispatcher
+        # 3. High-Priority Reversal Event Dispatcher (Throttled & Idle Guarded)
         has_active_trades = len(open_tickets) > 0
         if reversal_alerts:
             for sym, alert_msg in reversal_alerts:
                 log_proactive_alert(sym, 9.5, alert_msg)
-                self.cio_evaluator.evaluate_discovery_event({
-                    "symbol": sym,
-                    "conviction_score": 9.5,
-                    "headline": alert_msg
-                })
 
         # 4. Rich Natural Desk Dialogue Logging
         self.cycle_count += 1
@@ -453,9 +453,14 @@ class ConsolidatedTradingDaemon:
         matrix_formatted = "\n".join(instrument_matrix)
 
         if open_tickets:
-            # 1. EMERGENCY REVERSAL ALERT (IMMEDIATE ACTION)
-            if reversal_alerts:
+            import time
+            now_ts = time.time()
+            elapsed_reversal = now_ts - self.last_reversal_dispatch_time
+
+            # 1. EMERGENCY REVERSAL ALERT (THROTTLED TO 180s MIN GAP & STRICT IDLE)
+            if reversal_alerts and elapsed_reversal >= 180.0:
                 if is_opencode_idle():
+                    self.last_reversal_dispatch_time = now_ts
                     action_prompt = (
                         f"EMERGENCY CIO DECISION REQUIRED: {reversal_alerts[0][1]}.\n"
                         f"OpenCode CIO, evaluate immediately and call mcp_alpha_update_position(ticket, 'FULL_EXIT') "
