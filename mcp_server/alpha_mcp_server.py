@@ -395,6 +395,24 @@ def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
         "events": events
     }, indent=2)
 
+@mcp.tool()
+def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str) -> str:
+    """
+    OpenCode records a live research setup pattern observation into RESEARCH_STUDY_PATTERNS_BUCKET.
+    Increments hit count automatically (count: 1, 2, 3...).
+    When count reaches 5 or more (count >= 5), OpenCode gains 100% high-conviction confidence for faster analysis!
+    """
+    from tradingagents.trade_journal import TradeJournalMemory
+    read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
+    journal = TradeJournalMemory()
+    res = journal.record_pattern_observation(symbol, pattern_name, observation)
+    return json.dumps({
+        "status": "RECORDED",
+        "symbol": symbol.upper(),
+        "pattern_name": pattern_name.upper(),
+        "observation": observation
+    }, indent=2)
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()

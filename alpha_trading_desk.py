@@ -538,7 +538,7 @@ class ConsolidatedTradingDaemon:
             f"=== MANDATORY SYSTEM DIRECTIVES (MANDATE) ===\n"
             f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & line range rules)\n"
             f"  • Micro-Profit Scalping Strategy: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
-            f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Enforce rules ONLY if repeated >= 5 times from real hit-and-learn!)\n"
+            f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Record live research patterns via mcp_alpha_record_pattern_observation; use count >= 5 patterns for FASTER ANALYSIS & CONFIDENT TRADES!)\n"
             f"  • Full Desk Markdown Dossier ({tot_lns} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
         )
@@ -592,8 +592,8 @@ class ConsolidatedTradingDaemon:
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate (Do NOT enforce any bucket rule unless repeated 5+ times from real hit-and-learn). "
-                        f"ALWAYS research the internet to validate new rules before adding them to memory buckets. Call mcp_alpha_update_position(ticket, action) for BE/exit or mcp_alpha_execute_trade for new micro-profit scalps."
+                        f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                        f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. Call mcp_alpha_update_position for BE/exit or mcp_alpha_execute_trade for new setups."
                     )
                     log_opencode_said(scheduled_prompt)
                 else:
@@ -617,8 +617,8 @@ class ConsolidatedTradingDaemon:
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate (Do NOT enforce any bucket rule unless repeated 5+ times from real hit-and-learn). "
-                        f"ALWAYS research the internet to validate new rules before adding them to memory buckets. When a high-probability $20-$30 micro-scalp setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
+                        f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                        f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. When a high-probability setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
                     )
                     log_opencode_said(idle_prompt)
                 else:

@@ -77,6 +77,43 @@ class TradeJournalMemory:
             LOG.error(f"Failed to record closed trade in journal: {err}")
             return {}
 
+    def record_pattern_observation(self, symbol: str, pattern_name: str, observation: str) -> dict:
+        """Records a research study observation / hypothetical setup pattern with incrementing hit count."""
+        try:
+            data = self.get_journal_data()
+            if "research_study_patterns" not in data:
+                data["research_study_patterns"] = []
+
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            matched = False
+
+            for item in data["research_study_patterns"]:
+                if item.get("pattern_name", "").upper() == pattern_name.upper() and item.get("symbol", "").upper() == symbol.upper():
+                    item["count"] = item.get("count", 1) + 1
+                    item["last_observed"] = now_str
+                    item["observation"] = observation
+                    matched = True
+                    break
+
+            if not matched:
+                data["research_study_patterns"].append({
+                    "symbol": symbol.upper(),
+                    "pattern_name": pattern_name.upper(),
+                    "count": 1,
+                    "observation": observation,
+                    "first_observed": now_str,
+                    "last_observed": now_str
+                })
+
+            with open(JSON_JOURNAL_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+
+            self._render_markdown(data)
+            return data
+        except Exception as err:
+            LOG.error(f"Failed to record pattern observation: {err}")
+            return {}
+
     def get_journal_data(self) -> dict:
         try:
             if os.path.exists(JSON_JOURNAL_PATH):
@@ -84,12 +121,12 @@ class TradeJournalMemory:
                     return json.load(f)
         except Exception as err:
             LOG.error(f"Failed to read trade journal json: {err}")
-        return {"winning_trades": [], "lessons_learned": [], "self_correction_rules": []}
+        return {"winning_trades": [], "lessons_learned": [], "self_correction_rules": [], "research_study_patterns": []}
 
     def _render_markdown(self, data: dict):
         lines = []
         lines.append("# Persistent Self-Study Trade Memory Journal")
-        lines.append("This persistent memory store records all closed trades, root cause lessons, and self-correction rules to prevent repeating mistakes.\n")
+        lines.append("This persistent memory store records all closed trades, root cause lessons, self-correction rules, and research study patterns.\n")
         lines.append("> ⚠️ **5-HIT REPEAT THRESHOLD MANDATE**: OpenCode CIO must NOT enforce or act on a self-correction rule or lesson from these buckets UNLESS the exact same pattern/lesson has been observed and repeated 5 or more times (>= 5 hits) from real live trade executions ('hit and learn'). Single or low-frequency occurrences (< 5 hits) are exploratory data, NOT mandatory system constraints.\n")
 
         lines.append("## 🏆 WINNING_TRADES_BUCKET (What Worked Well)")
@@ -100,6 +137,19 @@ class TradeJournalMemory:
         lines.append("## ⚠️ LESSONS_LEARNED_BUCKET (What Went Wrong)")
         for item in data.get("lessons_learned", []):
             lines.append(f"- **{item.get('symbol')} Ticket #{item.get('ticket')}** (PnL ${item.get('pnl'):.2f}): {item.get('lesson')}")
+        lines.append("")
+
+        lines.append("## 💡 RESEARCH_STUDY_PATTERNS_BUCKET (Self-Study & Recurring Setups)")
+        lines.append("Records observed market structure patterns, RSI momentum shifts, and hypothetical setup moves with hit counts (`count: N`).")
+        lines.append("When a pattern hit count reaches **5 or more (count >= 5)**, OpenCode must use it for **FASTER ANALYSIS & HIGH-CONFIDENCE IMMEDIATE TRADE PLACEMENT**!\n")
+
+        patterns = data.get("research_study_patterns", [])
+        if not patterns:
+            lines.append("- *No research study patterns recorded yet.*")
+        for pat in patterns:
+            cnt = pat.get("count", 1)
+            conf_label = "HIGH CONVICTION (>= 5 HITS)" if cnt >= 5 else f"EXPLORATORY (Count: {cnt})"
+            lines.append(f"- **[{pat.get('symbol')}] {pat.get('pattern_name')}** [{conf_label}]: {pat.get('observation')} (Last: {pat.get('last_observed')})")
         lines.append("")
 
         lines.append("## 🎯 SELF_CORRECTION_RULES_BUCKET (Mandatory Future Directives)")
