@@ -35,7 +35,7 @@ if str(TRADING_DIR) not in sys.path:
     sys.path.insert(0, str(TRADING_DIR))
 
 # Constants
-OPENCODE_SESSION_ID = "ses_fc28140eaffeFGt54CBqh24cNi"
+OPENCODE_SESSION_ID = "ses_fc27fa9d7ffe2Lh84kWRvexzhZ"
 OPENCODE_SESSION_TITLE = "Alpha v3"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
@@ -55,14 +55,14 @@ def post_to_opencode_session(speaker: str, message: str):
     LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message}\n===================================\n")
 
     # 2. ASYNCHRONOUS BACKGROUND HTTP POST ONLY IF OPENCODE IS IDLE
-    if not is_opencode_idle():
+    if not is_opencode_idle(OPENCODE_SESSION_ID):
         LOG.info(f"OpenCode session {OPENCODE_SESSION_ID} is currently BUSY (Reasoning/Executing). Holding HTTP POST payload.")
         return
 
     def _send():
         try:
             import urllib.request
-            target_sessions = [OPENCODE_SESSION_ID]
+            target_sessions = ["ses_fc27fa9d7ffe2Lh84kWRvexzhZ", "ses_fc28140eaffeFGt54CBqh24cNi"]
             payload = {
                 "role": "user",
                 "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
