@@ -528,9 +528,9 @@ class ConsolidatedTradingDaemon:
         tot_lns = dossier_res.get("total_lines", 80)
 
         file_ref_header = (
-            f"🎯 MANDATORY EXECUTION STRATEGY MANUAL:\n"
+            f"🎯 MANDATORY EXECUTION STRATEGY MANUAL & SELF-STUDY MEMORY BUCKETS:\n"
             f"  • $20-$30 Micro-Profit Strategy Mandate: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
-            f"  • Persistent Self-Study Trade Journal: file:///C:/Trading/Alpha/logs/trade_journal_memory.md\n\n"
+            f"  • MANDATORY Self-Study Trade Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Audit lessons & rules before trading!)\n\n"
             f"📁 TOKEN-EFFICIENT DOSSIER LINE POINTERS ({tot_lns} Total Lines):\n"
             f"  • Session Header & Real Yields ({hdr_rng}): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{hdr_rng}\n"
             f"  • Active Positions & Drawdown ({pos_rng}): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{pos_rng}\n"
@@ -576,7 +576,8 @@ class ConsolidatedTradingDaemon:
 
                     scheduled_prompt = (
                         f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. "
+                        f"It is a STRICT MANDATE to consult file:///C:/Trading/Alpha/logs/trade_journal_memory.md self-study buckets to avoid past mistakes before trading. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
                         f"{file_ref_header}"
                         f"{world_header}"
                         f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
@@ -612,13 +613,14 @@ class ConsolidatedTradingDaemon:
                     idle_prompt = (
                         f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute quick $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are mandated to execute quick $20-$30 USD micro-profit scalps per C:\\Trading\\Alpha\\MICRO_PROFIT_SCALPING_STRATEGY.md. "
+                        f"It is a STRICT MANDATE to consult file:///C:/Trading/Alpha/logs/trade_journal_memory.md self-study buckets to avoid past mistakes before trading. Use token-efficient line pointers below to inspect dossier ranges without token bloat.\n\n"
                         f"{file_ref_header}"
                         f"{world_header}"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"EXECUTIVE ACTION REQUIRED: Analyze the 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for exhaustive internal reasoning. Audit C:\\Trading\\Alpha\\logs\\trade_journal_memory.md for past lessons. "
+                        f"EXECUTIVE ACTION REQUIRED: Analyze the 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for exhaustive internal reasoning. Audit C:\\Trading\\Alpha\\logs\\trade_journal_memory.md AS A MANDATE. "
                         f"When a high-probability $20-$30 micro-scalp setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
                     )
                     log_opencode_said(idle_prompt)
