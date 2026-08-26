@@ -64,25 +64,18 @@ def post_to_opencode_session(speaker: str, message: str):
             }
 
             try:
-                # Auto-abort any stuck turn from prior restarts before posting
-                try:
-                    abort_req = urllib.request.Request(f"http://localhost:4096/session/{target_sid}/abort", method="POST")
-                    urllib.request.urlopen(abort_req, timeout=1)
-                except Exception:
-                    pass
-
                 url = f"http://localhost:4096/session/{target_sid}/message"
                 req = urllib.request.Request(
                     url,
                     data=json.dumps(payload).encode("utf-8"),
                     headers={"Content-Type": "application/json"}
                 )
-                resp = urllib.request.urlopen(req, timeout=5)
+                resp = urllib.request.urlopen(req, timeout=120)
                 LOG.info(f"Successfully posted prompt to SINGLE OpenCode session {target_sid}: status {resp.status}")
             except Exception as err:
-                LOG.debug(f"HTTP Post to OpenCode session {target_sid} offline/unreachable: {err}")
+                LOG.error(f"HTTP Post to OpenCode session {target_sid} error: {err}")
         except Exception as err:
-            LOG.debug(f"Post payload creation failed: {err}")
+            LOG.error(f"Post payload creation failed: {err}")
 
     import threading
     threading.Thread(target=_send, daemon=True).start()
