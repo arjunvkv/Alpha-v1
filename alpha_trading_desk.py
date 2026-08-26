@@ -376,31 +376,39 @@ class ConsolidatedTradingDaemon:
                 top_symbol = symbol
                 headline = summary
 
-        # 1. RUN FULL LOCAL LLM MULTI-AGENT DESK THINKING PROCESS FOR TOP INSTRUMENT
-        mtf = {}
-        order_blocks = {}
-        news_shield = {}
-        try:
-            desk_res = await self.desk.run_analysis_cycle(top_symbol)
-            analysts = desk_res.get("analyst_reports", {})
-            tech_report = analysts.get("technical", {})
-            fund_report = analysts.get("fundamental", {})
-            macro_report = analysts.get("macro", {})
-            debate = desk_res.get("debate", {})
-            risk = desk_res.get("risk", {})
+        # 1. RUN FULL 7-AGENT DESK THINKING PROCESS ACROSS ALL 6 INSTRUMENTS
+        instrument_matrix = []
+        for symbol in self.instruments:
+            try:
+                desk_res = await self.desk.run_analysis_cycle(symbol)
+                analysts = desk_res.get("analyst_reports", {})
+                tech_report = analysts.get("technical", {})
+                fund_report = analysts.get("fundamental", {})
+                macro_report = analysts.get("macro", {})
+                debate = desk_res.get("debate", {})
+                risk = desk_res.get("risk", {})
+                mtf = desk_res.get("mtf", {})
+                order_blocks = desk_res.get("order_blocks", {})
+                news_shield = desk_res.get("news_shield", {})
 
-            mtf = desk_res.get("mtf", {})
-            order_blocks = desk_res.get("order_blocks", {})
-            news_shield = desk_res.get("news_shield", {})
+                # Collect instrument findings
+                inst_summary = (
+                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
+                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} (S1: {order_blocks.get('support_s1', 'N/A')}, R1: {order_blocks.get('resistance_r1', 'N/A')}) "
+                    f"| Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
+                    f"| COT Score: {fund_report.get('cot_percentile', 50.0):.1f}% | Bull/Bear Consensus: {debate.get('consensus_score', 5.0)}/10 | Risk Rec Vol: {risk.get('max_volume_lots', 0.10)} lots"
+                )
+                instrument_matrix.append(inst_summary)
 
-            # Log Local LLM Agents' natural thinking dialogue into live_story.log & stdout
-            log_story("Local LLM Technical Analyst", f"[{top_symbol}] {tech_report.get('thesis', '')}")
-            log_story("Local LLM COT/Fund Analyst", f"[{top_symbol}] {fund_report.get('thesis', '')}")
-            log_story("Local LLM Macro/News Analyst", f"[{top_symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
-            log_story("Local LLM Bull/Bear Debater", f"[{top_symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}")
-            log_story("Local LLM Risk Officer", f"[{top_symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
-        except Exception as err:
-            LOG.error(f"Local LLM Desk thinking process error: {err}")
+                # Log Local LLM Agents' natural thinking dialogue into live_story.log & stdout for primary metals/oil
+                if symbol in ("XAUUSD", "XAGUSD"):
+                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')}")
+                    log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
+                    log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
+                    log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}")
+                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
+            except Exception as err:
+                LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
 
         # 2. High-Sensitivity Active Position & Reversal Monitor
         open_tickets = []
@@ -439,16 +447,12 @@ class ConsolidatedTradingDaemon:
                 })
 
         # 4. Rich Natural Desk Dialogue Logging
-        avg_score = sum(scores) / len(scores) if scores else 0.0
         self.cycle_count += 1
+        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Active Trades: {len(open_tickets)}. Posture TRANSPARENT STREAM.")
 
-        # Natural Analyst Desk Dialogue Output
-        log_story("Technical Analyst", f"Technical Scan: Top instrument {top_symbol} Conviction {top_score:.1f}/10. Setup: {headline}")
-        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (Avg Score {avg_score:.1f}/10). Active Trades: {len(open_tickets)}. Posture STRONG.")
+        matrix_formatted = "\n".join(instrument_matrix)
 
         if open_tickets:
-            pos_summary = ", ".join(open_tickets[:4]) + (f" (+{len(open_tickets)-4} more)" if len(open_tickets) > 4 else "")
-
             # 1. EMERGENCY REVERSAL ALERT (IMMEDIATE ACTION)
             if reversal_alerts:
                 if is_opencode_idle():
@@ -475,24 +479,17 @@ class ConsolidatedTradingDaemon:
                         ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
                         
                         pos_details_formatted = "\n  • ".join(detailed_positions)
-                        tech_thesis = tech_report.get('thesis', f'Technical Scan Conviction {top_score}/10')
-                        cot_thesis = fund_report.get('thesis', 'COT positioning supportive')
-                        macro_thesis = macro_report.get('thesis', 'Macro posture favorable')
-                        debate_summary = f"Consensus Score: {debate.get('consensus_score', top_score)}/10 | Conviction: {debate.get('conviction', 'HIGH')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}"
-                        risk_summary = f"Trade Approved: {risk.get('approved', True)} | Recommended Volume: {risk.get('max_volume_lots', 0.10)} lots | Rationale: {risk.get('reason', 'Risk checks passed cleanly.')}"
 
                         scheduled_prompt = (
                             f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
+                            f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments. "
+                            f"Analyze the findings, formulate your own trade thesis, and execute trade management or new position orders when your thesis is strong.\n\n"
                             f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n\n"
-                            f"=== LOCAL LLM MULTI-AGENT THINKING & ANALYSIS DRAFT ===\n"
-                            f"• Technical Analyst: [{top_symbol}] {tech_thesis}\n"
-                            f"• COT/Fund Analyst: [{top_symbol}] {cot_thesis}\n"
-                            f"• Macro/News Analyst: [{top_symbol}] {macro_thesis}\n"
-                            f"• Bull/Bear Debater: [{top_symbol}] {debate_summary}\n"
-                            f"• Risk Officer: [{top_symbol}] {risk_summary}\n"
-                            f"=======================================================\n"
-                            f"ACTION REQUIRED: Review live position metrics & LLM desk thoughts above. Call your MCP tool mcp_alpha_update_position(ticket, action) "
-                            f"to set Break-Even, Trail Stop Loss, or Close positions if warranted, or confirm hold rationale."
+                            f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                            f"{matrix_formatted}\n"
+                            f"===========================================================\n"
+                            f"EXECUTIVE ACTION REQUIRED: Review live position metrics & multi-instrument raw findings above. Call your MCP tool mcp_alpha_update_position(ticket, action) "
+                            f"to set Break-Even, Trail Stop Loss, or Close positions if warranted, or execute new trades via mcp_alpha_execute_trade when your thesis is strong."
                         )
                         log_opencode_said(scheduled_prompt)
                     else:
@@ -509,31 +506,17 @@ class ConsolidatedTradingDaemon:
                     self.last_dispatch_time = now_ts
                     is_10min_reminder = (now_ts % 600 < 30)
                     ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
-                    
-                    tech_thesis = tech_report.get('thesis', f'Technical Scan Conviction {top_score}/10')
-                    cot_thesis = fund_report.get('thesis', 'COT positioning supportive')
-                    macro_thesis = f"{macro_report.get('thesis', 'Macro posture favorable')} | News Shield: {news_shield.get('status_text', 'CLEAR')}"
-                    mtf_summary = f"H1 ({mtf.get('h1_trend', 'NEUTRAL')}) | M15 ({mtf.get('m15_trend', 'NEUTRAL')}) | M5 ({mtf.get('m5_trend', 'NEUTRAL')}) -> Alignment: {mtf.get('alignment', 'MIXED')}"
-                    ob_summary = f"Daily PP: {order_blocks.get('pivot_point', 'N/A')} | Support S1: {order_blocks.get('support_s1', 'N/A')} | Resistance R1: {order_blocks.get('resistance_r1', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')}"
-                    debate_summary = f"Consensus Score: {debate.get('consensus_score', top_score)}/10 | Conviction: {debate.get('conviction', 'HIGH')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}"
-                    risk_summary = f"Trade Approved: {risk.get('approved', True)} | Recommended Volume: {risk.get('max_volume_lots', 0.10)} lots | Rationale: {risk.get('reason', 'Risk checks passed cleanly.')}"
 
                     idle_prompt = (
-                        f"OPENCODE CIO EXECUTIVE DESK BRIEFING ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
+                        f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"=== LOCAL LLM MULTI-AGENT INSTITUTIONAL ANALYSIS DRAFT ===\n"
-                        f"• Technical Analyst: [{top_symbol}] {tech_thesis}\n"
-                        f"• Multi-Timeframe Matrix: [{top_symbol}] {mtf_summary}\n"
-                        f"• Order Blocks & Pivots: [{top_symbol}] {ob_summary}\n"
-                        f"• COT/Fund Analyst: [{top_symbol}] {cot_thesis}\n"
-                        f"• Macro/News Analyst: [{top_symbol}] {macro_thesis}\n"
-                        f"• Bull/Bear Debater: [{top_symbol}] {debate_summary}\n"
-                        f"• Risk Officer: [{top_symbol}] {risk_summary}\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (Gold, Silver, Platinum, Palladium, Copper, Oil). "
+                        f"The daemon does not pre-filter or pick trades for you. Analyze the full multi-instrument findings below, formulate your own trade thesis, and place trades via mcp_alpha_execute_trade when your thesis is strong.\n\n"
+                        f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                        f"{matrix_formatted}\n"
                         f"===========================================================\n"
-                        f"TOP SETUP CONVICTION: {top_symbol} @ {top_score}/10 (Scanned 6 instruments, Avg Score {avg_score:.1f}/10).\n"
-                        f"EXECUTIVE ACTION REQUIRED: Review the institutional multi-agent analysis draft above. Exercise 100% executive authority. "
-                        f"If conviction aligns with your rules, call mcp_alpha_execute_trade(symbol='{top_symbol}', side='BUY', volume={risk.get('max_volume_lots', 0.10)}, sl=..., tp=...) "
-                        f"or confirm hold posture."
+                        f"EXECUTIVE ACTION REQUIRED: Analyze the transparent 6-instrument findings matrix above. Exercise 100% executive authority. "
+                        f"If your trade thesis is strong on any instrument, call mcp_alpha_execute_trade(symbol, side, volume, sl, tp) or confirm hold posture."
                     )
                     log_opencode_said(idle_prompt)
                 else:
