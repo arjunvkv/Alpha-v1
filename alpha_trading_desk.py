@@ -382,6 +382,11 @@ class ConsolidatedTradingDaemon:
                 headline = summary
 
         # 1. RUN FULL 7-AGENT DESK THINKING PROCESS ACROSS ALL 6 INSTRUMENTS
+        from tradingagents.world_market import IntradayInstitutionalEngine
+        world_engine = IntradayInstitutionalEngine()
+        session_info = world_engine.get_session_status()
+        gsr_data = world_engine.get_gsr_ratio()
+
         instrument_matrix = []
         import MetaTrader5 as mt5
         mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
@@ -399,6 +404,11 @@ class ConsolidatedTradingDaemon:
                 order_blocks = desk_res.get("order_blocks", {})
                 news_shield = desk_res.get("news_shield", {})
 
+                # Intraday Institutional Metrics for 5m - 4h Horizons
+                adr_info = world_engine.get_adr_metrics(symbol)
+                anchors = world_engine.get_session_anchors(symbol)
+                velocity = world_engine.get_tick_velocity(symbol)
+
                 # Live MT5 Spread Metrics (Information for OpenCode decision)
                 spread_info = "Spread: N/A"
                 if mt5_online:
@@ -407,20 +417,22 @@ class ConsolidatedTradingDaemon:
                         spread_pts = sym_info.spread
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
                         status_str = "NORMAL" if spread_pts <= 45 else ("ELEVATED" if spread_pts <= 80 else "HIGH_SPIKE")
-                        spread_info = f"Live Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+                        spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
 
-                # Collect instrument findings
+                # Collect instrument findings with Intraday Institutional Data
                 inst_summary = (
-                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | {spread_info} | MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
+                    f"• {symbol}: Ask {tech_report.get('rsi', 50.0):.1f} RSI | {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
+                    f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [{adr_info.get('capacity_status')}] "
+                    f"| MTF: H1({mtf.get('h1_trend', 'NEUTRAL')}) M15({mtf.get('m15_trend', 'NEUTRAL')}) M5({mtf.get('m5_trend', 'NEUTRAL')}) -> {mtf.get('alignment', 'MIXED')} "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} (S1: {order_blocks.get('support_s1', 'N/A')}, R1: {order_blocks.get('resistance_r1', 'N/A')}) "
-                    f"| Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
-                    f"| COT Score: {fund_report.get('cot_percentile', 50.0):.1f}% | Bull/Bear Consensus: {debate.get('consensus_score', 5.0)}/10 | Risk Rec Vol: {risk.get('max_volume_lots', 0.10)} lots"
+                    f"| Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
+                    f"| Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Risk Vol: {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)
 
                 # Log Local LLM Agents' natural thinking dialogue into live_story.log & stdout for primary metals/oil
                 if symbol in ("XAUUSD", "XAGUSD"):
-                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {spread_info}")
+                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {spread_info} | {velocity.get('ticks_per_min')} t/m")
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Retail Trap: {'WARNING' if debate.get('retail_trap_warning') else 'CLEAR'}")
@@ -484,10 +496,16 @@ class ConsolidatedTradingDaemon:
                         alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
                         reversal_section = f"\n⚠️ HIGH-PRIORITY DRAWDOWN & REVERSAL ALERTS:\n  ⚠️ {alerts_text}\n"
 
+                    world_header = (
+                        f"⚡ INTRADAY INSTITUTIONAL CONTEXT (5m - 4h Horizons):\n"
+                        f"  • Session Clock: {session_info.get('session')} ({session_info.get('description')} | {session_info.get('utc_time')})\n"
+                        f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n\n"
+                    )
+
                     scheduled_prompt = (
                         f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n{ref_text}\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, and transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics). "
-                        f"The daemon does not block trades or pre-filter setups. Factor position metrics and spread data into your analysis, formulate your trade thesis, and execute position management or new orders when your thesis is strong.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are active positions, drawdown metrics, intraday session context, and transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"{world_header}"
                         f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                         f"{reversal_section}\n"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
@@ -512,11 +530,17 @@ class ConsolidatedTradingDaemon:
                     is_10min_reminder = (now_ts % 600 < 30)
                     ref_text = "MASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules." if (is_startup or is_10min_reminder) else ""
 
+                    world_header = (
+                        f"⚡ INTRADAY INSTITUTIONAL CONTEXT (5m - 4h Horizons):\n"
+                        f"  • Session Clock: {session_info.get('session')} ({session_info.get('description')} | {session_info.get('utc_time')})\n"
+                        f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n\n"
+                    )
+
                     idle_prompt = (
                         f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Daemon Startup Initial Review' if is_startup else ('10-Min Master Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
                         f"{ref_text}\n\n"
-                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below are the 100% transparent 7-agent raw findings across all 6 scanned instruments (including live spread metrics in points & status). "
-                        f"The daemon does not block trades or pre-filter setups. Factor live spread costs into your analysis, formulate your own trade thesis, and place trades via mcp_alpha_execute_trade when your thesis is strong.\n\n"
+                        f"OPENCODE CIO EXECUTIVE ROLE DIRECTIVE: OpenCode CIO, you are the Sole Executive Trader. Below is the intraday session context and 100% transparent 7-agent raw findings across all 6 scanned instruments.\n\n"
+                        f"{world_header}"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                         f"{matrix_formatted}\n"
                         f"===========================================================\n"
