@@ -596,6 +596,7 @@ class ConsolidatedTradingDaemon:
                         f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. Call mcp_alpha_update_position for BE/exit or mcp_alpha_execute_trade for new setups."
                     )
                     log_opencode_said(scheduled_prompt)
+                    post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
                 else:
                     log_story("Desk Lead Agent", f"2-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
 
@@ -621,6 +622,7 @@ class ConsolidatedTradingDaemon:
                         f"Record setup observations via mcp_alpha_record_pattern_observation. Use high-count patterns (count >= 5) for Accelerated Analysis and confident trade placement. When a high-probability setup presents itself, execute immediately via mcp_alpha_execute_trade(symbol, side, 0.10, sl, tp)."
                     )
                     log_opencode_said(idle_prompt)
+                    post_to_opencode_session("OpenCode (CIO)", idle_prompt)
                 else:
                     log_story("Desk Lead Agent", f"Idle Market Review is DUE, but OpenCode is currently BUSY reasoning. Holding briefing until OpenCode returns to IDLE.")
 
