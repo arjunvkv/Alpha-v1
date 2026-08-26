@@ -570,59 +570,53 @@ class ConsolidatedTradingDaemon:
             is_startup = (self.cycle_count == 1)
 
             if is_startup or elapsed >= 180.0:
-                if is_opencode_idle():
-                    self.last_dispatch_time = now_ts
-                    is_10min_reminder = (now_ts % 600 < 30)
-                    cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Review")
-                    
-                    pos_details_formatted = "\n  • ".join(detailed_positions)
+                self.last_dispatch_time = now_ts
+                is_10min_reminder = (now_ts % 600 < 30)
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Review")
+                
+                pos_details_formatted = "\n  • ".join(detailed_positions)
 
-                    # Consolidated Drawdown & Reversal Alerts Section
-                    reversal_section = ""
-                    if reversal_alerts:
-                        alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
-                        reversal_section = f"\n⚠️ HIGH-PRIORITY DRAWDOWN & REVERSAL ALERTS:\n  ⚠️ {alerts_text}\n"
+                # Consolidated Drawdown & Reversal Alerts Section
+                reversal_section = ""
+                if reversal_alerts:
+                    alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
+                    reversal_section = f"\n⚠️ HIGH-PRIORITY DRAWDOWN & REVERSAL ALERTS:\n  ⚠️ {alerts_text}\n"
 
-                    scheduled_prompt = (
-                        f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n"
-                        f"{file_ref_header}"
-                        f"{world_header}"
-                        f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
-                        f"{reversal_section}\n"
-                        f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                        f"{matrix_formatted}\n"
-                        f"===========================================================\n"
-                        f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
-                        f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
-                    )
-                    log_opencode_said(scheduled_prompt)
-                else:
-                    log_story("Desk Lead Agent", f"3-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
+                scheduled_prompt = (
+                    f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n"
+                    f"{file_ref_header}"
+                    f"{world_header}"
+                    f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
+                    f"{reversal_section}\n"
+                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                    f"{matrix_formatted}\n"
+                    f"===========================================================\n"
+                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                    f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
+                )
+                log_opencode_said(scheduled_prompt)
 
         else:
-            # IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 3-MINUTE DISPATCH (elapsed >= 180s and is_idle)
+            # IMMEDIATE STARTUP DISPATCH (Cycle 1) & 3-MINUTE DISPATCH (elapsed >= 180s)
             import time
             now_ts = time.time()
             elapsed = now_ts - self.last_dispatch_time
             is_startup = (self.cycle_count == 1)
             if is_startup or elapsed >= 180.0:
-                if is_opencode_idle():
-                    self.last_dispatch_time = now_ts
-                    is_10min_reminder = (now_ts % 600 < 30)
+                self.last_dispatch_time = now_ts
+                is_10min_reminder = (now_ts % 600 < 30)
 
-                    idle_prompt = (
-                        f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Cycle')}):\n"
-                        f"{file_ref_header}"
-                        f"{world_header}"
-                        f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                        f"{matrix_formatted}\n"
-                        f"===========================================================\n"
-                        f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
-                        f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
-                    )
-                    log_opencode_said(idle_prompt)
-                else:
-                    log_story("Desk Lead Agent", f"Idle Market Review is DUE, but OpenCode is currently BUSY reasoning. Holding briefing until OpenCode returns to IDLE.")
+                idle_prompt = (
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Cycle')}):\n"
+                    f"{file_ref_header}"
+                    f"{world_header}"
+                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                    f"{matrix_formatted}\n"
+                    f"===========================================================\n"
+                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                    f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
+                )
+                log_opencode_said(idle_prompt)
 
         return has_active_trades
 
