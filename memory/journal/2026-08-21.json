@@ -1,0 +1,112 @@
+{
+  "date": "2026-08-21",
+  "session_type": "zone_approach_trigger_processing",
+  "account": {
+    "balance": 97578.36,
+    "positions": 0,
+    "heat_pct": 0,
+    "platform": "FTMO-Demo",
+    "mt5_connected": true
+  },
+  "triggers_received": [
+    {
+      "time": "16:13:12 UTC",
+      "price": 4613.89,
+      "zone": "BB_Upper",
+      "zone_price": 4608.07,
+      "distance_pct": 0.13
+    },
+    {
+      "time": "16:18:14 UTC",
+      "price": 4615.33,
+      "zone": "BB_Upper",
+      "zone_price": 4608.07,
+      "distance_pct": 0.16
+    },
+    {
+      "time": "16:23:15 UTC",
+      "price": 4614.24,
+      "zone": "BB_Upper",
+      "zone_price": 4608.07,
+      "distance_pct": 0.13
+    }
+  ],
+  "decision": "WAIT",
+  "traps_detected": [
+    "BREAKOUT_CHASE: price poked above BB_Upper for first time, no daily close, no volume, no retest",
+    "NEWS_SPIKE_CHASE: gold +3.45% 1d, +14.65% 20d, RSI 75.31 overbought, Mania Returns headlines",
+    "INDICATOR_CONFLUENCE: RSI+BB+MACD all price-derived = ONE source not three independent",
+    "RESISTANCE_BOUNCE: BB_Upper is price-derived technical level, not institutional"
+  ],
+  "entry_criteria": {
+    "trap_absence": "FAIL",
+    "institutional_alignment": "PASS (COT MM +137K, GLD +12.6B inflow, options extremely_bullish)",
+    "multi_source_confluence": "PASS (COT+ETF+Options = 3 independent)",
+    "structure_confirmation": "FAIL (no daily close above BB, no retest)",
+    "regime_alignment": "PARTIAL (DXY weakening supports gold, composite mixed, yields rising)",
+    "risk_reward": "FAIL (ATR14 .63 excessive at extension)",
+    "time_quality": "FAIL (session off, outside NY hours)"
+  },
+  "entry_criteria_score": "3/7",
+  "granger_snapshot": {
+    "timestamp": "2026-08-21T16:08:04 UTC",
+    "layers": 7,
+    "all_ok": true,
+    "gold": {
+      "price": 4672.2,
+      "rsi14": 75.31,
+      "bb_upper": 4658.77,
+      "bb_middle": 4280.58,
+      "sma200": 4498.91,
+      "atr14": 86.63,
+      "1d": "+3.45%",
+      "20d": "+14.65%",
+      "signal": "HOLD"
+    },
+    "cot_gold": {
+      "mm_net": 137662,
+      "strength": "strong_bullish",
+      "wow_change": 6896
+    },
+    "etf": {
+      "gld_inflow": "+12.6B monthly",
+      "slv_inflow": "+3.3B monthly"
+    },
+    "options": {
+      "signal": "extremely_bullish",
+      "gld_pc_ratio": 0.33
+    },
+    "macro": {
+      "composite": "mixed",
+      "dxy": 98.81,
+      "dxy_20d": "-2.66%",
+      "vix": 15.3,
+      "us10y": 4.73
+    },
+    "silver": {
+      "price": 69.61,
+      "rsi14": 67.94,
+      "20d": "+19.04%"
+    },
+    "aggregate": {
+      "market_bias": "bullish",
+      "bullish_count": 2,
+      "hold_count": 5
+    }
+  },
+  "next_conditions": [
+    "Daily close above BB_Upper 4608 (confirms breakout)",
+    "Pullback to SMA200 4499 or BB_Middle 4281 (better entry)",
+    "RSI cools below 70",
+    "DXY continues weakening",
+    "VIX stays below 18",
+    "Session moves to NY hours for better liquidity"
+  ],
+  "daemon_status": "healthy, 8 processes, consumed all action.json files, processed_actions.jsonl 43KB 39+ entries",
+  "session_work_completed": [
+    "Retail trap rules integration (RETAIL_TRAP_RULES.md 243 lines)",
+    "UnicodeEncodeError fix (9 open() calls with encoding utf-8)",
+    "Daemon restart on FTMO-Demo",
+    "Zone approach trigger processing with trap-aware analysis"
+  ]
+}
