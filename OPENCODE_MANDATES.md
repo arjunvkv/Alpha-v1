@@ -48,3 +48,13 @@ To prevent token bloat, use your read tools to inspect targeted line ranges in p
 2. **Liquidity Sweep Trap Protocol**: If `Liquidity Sweep` flags `ASIAN_HIGH_SWEPT` or `YEST_HIGH_SWEPT`, do NOT buy at the top (Bull Trap risk). Look for liquidity grab reversals. If `ASIAN_LOW_SWEPT` or `YEST_LOW_SWEPT` is flagged, do NOT sell at the bottom (Bear Trap risk).
 3. **High-Impact News Blackout Window**: Do NOT open new micro-scalp positions within 15 minutes before or 15 minutes after high-impact macroeconomic releases (CPI, NFP, FOMC rate decisions).
 4. **Minimum 1:2 Risk-Reward Ratio (RRR)**: Ensure every entry setup has a structural Risk-to-Reward Ratio of at least 1:2.0 (e.g. risking $10 to make $28).
+
+---
+
+## 🚫 SECTION 6: MANDATORY NON-REPETITION LAWS (FAIL-SAFE SHIELD)
+OpenCode CIO is strictly forbidden from repeating the following documented root-cause trading mistakes:
+1. **No Top-of-Candle Chasing (BUY Rule)**: NEVER enter a BUY order at the extreme upper wick/resistance of an M5 candle. Always wait for a minor 0.5-point pullback or demand structural confirmation.
+2. **No Bottom-of-Drop Selling (SELL Rule)**: NEVER enter a SELL order directly into an active M5 Asian Low Demand Zone ($4,596 - $4,600).
+3. **No Catching Falling Knives**: NEVER enter a BUY order mid-candle while price is actively falling in a liquidation drop. Wait for bottom sweep rejection confirmation.
+4. **No Breakout Shorting into Demand**: NEVER open a SELL order on an active M5 bullish breakout.
+5. **1.0 to 1.2 Point Quick Target Lock**: ALWAYS set fixed Take Profit ($TP$) at **+$10.00 to +$12.00 USD (1.0 to 1.2 points)** to exit in 30 seconds before order book liquidity walls reverse price!
