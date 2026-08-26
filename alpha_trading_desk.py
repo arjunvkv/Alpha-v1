@@ -49,53 +49,38 @@ LOG = logging.getLogger("alpha.trading_desk")
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
-    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST to active OpenCode session."""
+    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST to SINGLE active OpenCode session Alpha v3."""
     log_story(speaker, message)
     LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message[:200]}...\n===================================\n")
 
     def _send():
         try:
             import urllib.request
-            target_sessions = ["ses_fc27fa9d7ffe2Lh84kWRvexzhZ", "ses_fc28140eaffeFGt54CBqh24cNi"]
-            try:
-                res_sess = urllib.request.urlopen("http://localhost:4096/session", timeout=2)
-                if res_sess.status == 200:
-                    s_list = json.loads(res_sess.read().decode("utf-8"))
-                    if s_list:
-                        sorted_s = sorted(s_list, key=lambda x: x.get('time', {}).get('updated', 0), reverse=True)
-                        for s in sorted_s[:3]:
-                            sid = s.get('id')
-                            if sid and sid not in target_sessions:
-                                target_sessions.insert(0, sid)
-            except Exception:
-                pass
+            target_sid = OPENCODE_SESSION_ID
 
             payload = {
                 "role": "user",
                 "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
             }
 
-            for sid in target_sessions:
-                if not sid:
-                    continue
+            try:
+                # Auto-abort any stuck turn from prior restarts before posting
                 try:
-                    # Auto-abort any stuck turn from prior restarts before posting
-                    try:
-                        abort_req = urllib.request.Request(f"http://localhost:4096/session/{sid}/abort", method="POST")
-                        urllib.request.urlopen(abort_req, timeout=1)
-                    except Exception:
-                        pass
+                    abort_req = urllib.request.Request(f"http://localhost:4096/session/{target_sid}/abort", method="POST")
+                    urllib.request.urlopen(abort_req, timeout=1)
+                except Exception:
+                    pass
 
-                    url = f"http://localhost:4096/session/{sid}/message"
-                    req = urllib.request.Request(
-                        url,
-                        data=json.dumps(payload).encode("utf-8"),
-                        headers={"Content-Type": "application/json"}
-                    )
-                    resp = urllib.request.urlopen(req, timeout=5)
-                    LOG.info(f"Successfully posted prompt to OpenCode session {sid}: status {resp.status}")
-                except Exception as err:
-                    LOG.debug(f"HTTP Post to OpenCode session {sid} offline/unreachable: {err}")
+                url = f"http://localhost:4096/session/{target_sid}/message"
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                resp = urllib.request.urlopen(req, timeout=5)
+                LOG.info(f"Successfully posted prompt to SINGLE OpenCode session {target_sid}: status {resp.status}")
+            except Exception as err:
+                LOG.debug(f"HTTP Post to OpenCode session {target_sid} offline/unreachable: {err}")
         except Exception as err:
             LOG.debug(f"Post payload creation failed: {err}")
 
