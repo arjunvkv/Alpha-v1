@@ -29,6 +29,9 @@ if str(ALPHA_ROOT) not in sys.path:
 from mcp.server.fastmcp import FastMCP
 from logs.story_logger import log_opencode_said, log_local_llm_replied, log_story
 
+from tradingagents.read_logger import DossierReadLogger
+read_logger = DossierReadLogger()
+
 # DIRECT ALL LOGGING AND PRINTS EXCLUSIVELY TO STDERR FOR MCP PROTOCOL SAFETY
 logging.basicConfig(
     stream=sys.stderr,
@@ -73,7 +76,11 @@ def mcp_alpha_register_watch(symbol: str, condition: str, instruction: str) -> s
 
 @mcp.tool()
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
-    """OpenCode executes direct market trade on FTMO MT5."""
+    """
+    OpenCode executes direct market trade on FTMO MT5.
+    MANDATORY READ AUDIT: Logs pre-execution audit to dossier_read_audit.log.
+    """
+    read_logger.log_dossier_read("OpenCode CIO (MCP Execution)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order requested: {side.upper()} {volume} lots on {symbol} (SL: {sl}, TP: {tp})")
     _init_mt5()
     try:
         import MetaTrader5 as mt5

@@ -496,6 +496,9 @@ class ConsolidatedTradingDaemon:
         has_active_trades = len(open_tickets) > 0
 
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
+        from tradingagents.read_logger import DossierReadLogger
+        read_logger = DossierReadLogger()
+
         self.cycle_count += 1
         dossier_md = dossier_logger.write_dossier(
             cycle_count=self.cycle_count,
@@ -509,12 +512,15 @@ class ConsolidatedTradingDaemon:
             real_yields=real_yields
         )
 
-        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier Written to file:///C:/Trading/Alpha/logs/full_desk_dossier.md. Posture DEEP DOSSIER STREAM.")
+        read_logger.log_dossier_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE", f"Wrote persistent dossier file:///C:/Trading/Alpha/logs/full_desk_dossier.md for cycle #{self.cycle_count}")
+
+        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
 
         matrix_formatted = "\n".join(instrument_matrix)
         file_ref_header = (
-            f"📁 DEEP PERSISTENT INTEL DOSSIERS:\n"
+            f"📁 DEEP PERSISTENT INTEL DOSSIERS & MANDATORY AUDIT LOGS:\n"
             f"  • Full Desk Markdown Dossier: file:///C:/Trading/Alpha/logs/full_desk_dossier.md\n"
+            f"  • Mandatory Read Audit Log: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n"
             f"  • Complete Dialogue Trajectory Log: file:///C:/Trading/Alpha/logs/live_story.log\n\n"
         )
 
