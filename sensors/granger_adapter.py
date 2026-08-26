@@ -71,28 +71,10 @@ class GrangerAdapter:
             live_ask = getattr(tick, "ask", 0.0)
             live_bid = getattr(tick, "bid", 0.0)
             
-            rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M15, 0, 30)
-            rsi_val = 55.0
-            macd_hist = 0.5
-            if rates is not None and len(rates) >= 15:
-                closes = [r[4] for r in rates]
-                diffs = [closes[i] - closes[i-1] for i in range(1, len(closes))]
-                gains = [d for d in diffs if d > 0]
-                losses = [-d for d in diffs if d < 0]
-                avg_gain = (sum(gains) / 14.0) if gains else 0.001
-                avg_loss = (sum(losses) / 14.0) if losses else 0.001
-                rs = avg_gain / avg_loss
-                rsi_val = round(100.0 - (100.0 / (1.0 + rs)), 1)
-                macd_hist = round(closes[-1] - (sum(closes[-12:]) / 12.0), 2)
-            
             return {
                 "symbol": symbol,
                 "prices": {"current_price": live_ask, "bid": live_bid, "ask": live_ask},
-                "indicators": {
-                    "rsi_14": rsi_val,
-                    "macd": {"hist": macd_hist},
-                    "bollinger": {"upper": round(live_ask * 1.01, 2), "middle": live_ask, "lower": round(live_ask * 0.99, 2)}
-                }
+                "indicators": {}
             }
         except Exception:
             return {
