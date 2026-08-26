@@ -597,11 +597,11 @@ class ConsolidatedTradingDaemon:
             elapsed = now_ts - self.last_dispatch_time
             is_startup = (self.cycle_count == 1)
 
-            if is_startup or elapsed >= 120.0:
+            if is_startup or elapsed >= 180.0:
                 if is_opencode_idle():
                     self.last_dispatch_time = now_ts
                     is_10min_reminder = (now_ts % 600 < 30)
-                    cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "2-Min Review")
+                    cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Review")
                     
                     pos_details_formatted = "\n  • ".join(detailed_positions)
 
@@ -625,21 +625,21 @@ class ConsolidatedTradingDaemon:
                     )
                     log_opencode_said(scheduled_prompt)
                 else:
-                    log_story("Desk Lead Agent", f"2-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
+                    log_story("Desk Lead Agent", f"3-Min Position Review is DUE, but OpenCode is currently BUSY reasoning. Holding dossier until OpenCode returns to IDLE.")
 
         else:
-            # IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 2-MINUTE DISPATCH (elapsed >= 120s and is_idle)
+            # IMMEDIATE STARTUP DISPATCH (Cycle 1) & STRICT IDLE 3-MINUTE DISPATCH (elapsed >= 180s and is_idle)
             import time
             now_ts = time.time()
             elapsed = now_ts - self.last_dispatch_time
             is_startup = (self.cycle_count == 1)
-            if is_startup or elapsed >= 120.0:
+            if is_startup or elapsed >= 180.0:
                 if is_opencode_idle():
                     self.last_dispatch_time = now_ts
                     is_10min_reminder = (now_ts % 600 < 30)
 
                     idle_prompt = (
-                        f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Cycle')}):\n"
+                        f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Cycle')}):\n"
                         f"{file_ref_header}"
                         f"{world_header}"
                         f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"

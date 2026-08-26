@@ -37,7 +37,7 @@ To prevent token bloat, use your read tools to inspect targeted line ranges in p
 
 ## 🛡️ SECTION 4: SYSTEM OPERATING MANDATES
 1. **100% Executive Authority**: The daemon pre-filters nothing and picks no conviction for you. All 7-agent raw findings are delivered transparently for your executive decision.
-2. **Zero Prompt Fragmentation**: All active positions, drawdown alerts, intraday session context, and 7-agent raw findings are consolidated into this single 2-minute dossier.
+2. **Zero Prompt Fragmentation**: All active positions, drawdown alerts, intraday session context, and 7-agent raw findings are consolidated into this single 3-minute dossier.
 
 ---
 
