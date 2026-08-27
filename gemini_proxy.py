@@ -2,11 +2,26 @@ import urllib.request, json, os, sys, time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 SIGNATURE_CACHE = {}
-GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY", os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY", ""))
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+def get_api_keys():
+    google_k = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
+    groq_k = os.environ.get("GROQ_API_KEY") or ""
+    
+    # Check ~/.config/opencode/opencode.json fallback
+    if not google_k or not groq_k:
+        try:
+            cfg_path = os.path.expanduser("~/.config/opencode/opencode.json")
+            if os.path.exists(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    env_b = cfg.get("env", {})
+                    google_k = google_k or env_b.get("GEMINI_API_KEY") or env_b.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
+                    groq_k = groq_k or env_b.get("GROQ_API_KEY") or ""
+        except Exception:
+            pass
+    return google_k.strip(), groq_k.strip()
 
 def prune_messages(messages, max_recent=35):
     if len(messages) <= max_recent:
@@ -63,9 +78,12 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                             tc['extra_content'] = {'google': {'thought_signature': SIGNATURE_CACHE[cid]}}
 
             # Step 2: Determine Auth
+            google_key, groq_key = get_api_keys()
             auth_header = self.headers.get('Authorization')
             if not auth_header or auth_header.strip() in ['Bearer', 'Bearer null', 'Bearer undefined']:
-                auth_header = f"Bearer {GOOGLE_API_KEY}"
+                auth_header = f"Bearer {google_key}"
+            elif not auth_header.startswith("Bearer "):
+                auth_header = f"Bearer {auth_header.strip()}"
 
             is_stream = payload.get('stream', False)
             response = None
@@ -99,7 +117,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 groq_req = urllib.request.Request(
                     GROQ_URL,
                     data=json.dumps(groq_payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {GROQ_API_KEY}', 'User-Agent': 'Mozilla/5.0'}
+                    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {groq_key}', 'User-Agent': 'Mozilla/5.0'}
                 )
                 response = urllib.request.urlopen(groq_req, timeout=20)
                 used_groq = True
