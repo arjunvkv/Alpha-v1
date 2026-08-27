@@ -57,6 +57,42 @@ DRAWDOWN_CRITICAL_PCT = 7.0         # Critical threshold (no new positions)
 MAX_OPEN_POSITIONS = 5              # Maximum simultaneous positions
 
 # ============================================================
+# DAEMON V2 RUNTIME
+# ============================================================
+
+DAEMON_V2_POLL_INTERVAL_SECONDS = int(
+    os.environ.get("ALPHA_DAEMON_POLL_INTERVAL", "10")
+)
+DAEMON_V2_MIN_FREE_MARGIN_PCT = float(
+    os.environ.get("ALPHA_MIN_FREE_MARGIN_PCT", "20.0")
+)
+DAEMON_V2_TERMINAL_SILENCE_SECONDS = int(
+    os.environ.get("ALPHA_TERMINAL_SILENCE_SECONDS", "60")
+)
+DAEMON_V2_WATCH_SYMBOLS = tuple(
+    symbol.strip()
+    for symbol in os.environ.get(
+        "ALPHA_WATCH_SYMBOLS",
+        "XAUUSD,XAGUSD,XPTUSD,XPDUSD",
+    ).split(",")
+    if symbol.strip()
+)
+DAEMON_V2_GRANGER_SNAPSHOT_PATH = Path(
+    os.environ.get(
+        "ALPHA_GRANGER_SNAPSHOT_PATH",
+        r"C:\Trading\data\all_layers_snapshot.json",
+    )
+)
+DAEMON_V2_OPENCODE_CMD = os.environ.get(
+    "ALPHA_OPENCODE_CMD",
+    str(Path.home() / "AppData" / "Roaming" / "npm" / "opencode.cmd"),
+)
+DAEMON_V2_SESSION_ID_FALLBACK = os.environ.get(
+    "ALPHA_AI_SESSION_ID",
+    "",
+)
+
+# ============================================================
 # MONITOR SETTINGS
 # ============================================================
 

@@ -6,10 +6,9 @@ equity risk per trade, SL+TP mandatory.
 """
 
 from brain import executor
+from config import INSTRUMENTS, MAX_SINGLE_RISK_PCT
 
-RISK_PER_POINT_PER_LOT = 1.0   # USD per point per lot (metals baseline)
-MAX_RISK_PCT = 2.0             # hard ceiling: percent of equity per trade
-MIN_RR = 2.0                   # minimum reward:risk on entry orders
+MIN_RR = 2.0  # minimum reward:risk on entry orders
 
 
 def _num(value):
@@ -91,17 +90,30 @@ def validate_order_spec(spec, account, tick, point_sizes, is_entry=True):
     if not errors and sl is not None and tp is not None:
         risk_dist = abs(entry - sl)
 
-        point_size = _num((point_sizes or {}).get(symbol)) or 0.01
+        instrument = INSTRUMENTS.get(symbol)
+        if instrument is None:
+            errors.append("unknown_instrument %s" % symbol)
+            return False, errors, norm
+
+        point_size = (
+            _num((point_sizes or {}).get(symbol))
+            or _num(instrument.get("pip_size"))
+        )
+        risk_per_point = _num(instrument.get("pip_value_per_lot"))
+        if point_size is None or point_size <= 0 or risk_per_point is None:
+            errors.append("invalid_instrument_risk_spec %s" % symbol)
+            return False, errors, norm
+
         points = risk_dist / point_size
-        risk_usd = points * (volume or 0.0) * RISK_PER_POINT_PER_LOT
+        risk_usd = points * (volume or 0.0) * risk_per_point
         equity = _num((account or {}).get("equity")) or 0.0
         if equity <= 0:
             errors.append("no_equity_data")
         else:
             risk_pct = risk_usd / equity * 100.0
-            if risk_pct > MAX_RISK_PCT:
+            if risk_pct > MAX_SINGLE_RISK_PCT:
                 errors.append("risk_pct_too_high %.2f%% > %.2f%%"
-                              % (risk_pct, MAX_RISK_PCT))
+                              % (risk_pct, MAX_SINGLE_RISK_PCT))
     return not errors, errors, norm
 
 
