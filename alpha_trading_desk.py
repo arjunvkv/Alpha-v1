@@ -370,6 +370,7 @@ class ConsolidatedTradingDaemon:
         scores = []
         top_symbol = "XAUUSD"
         top_score = 0.0
+        headline = ""
 
         from mcp_server.alpha_mcp_server import mcp_alpha_get_symbol_conviction
         for symbol in self.instruments:
@@ -471,7 +472,7 @@ class ConsolidatedTradingDaemon:
                     f"| 4TF Structural Confluence: {tech_report.get('tf_confluence', 'MIXED_TIMEFRAMES')} "
                     f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
-                    f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Risk Vol: {risk.get('max_volume_lots', 0.10)} lots"
+                    f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)
 
@@ -484,6 +485,7 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
+                instrument_matrix.append(f"• {symbol}: DATA_UNAVAILABLE — analysis error (see alpha.log); excluded from this cycle's matrix.")
 
         # 2. High-Sensitivity Active Position & Reversal Monitor
         open_tickets = []
@@ -544,6 +546,8 @@ class ConsolidatedTradingDaemon:
         log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
 
         matrix_formatted = "\n".join(instrument_matrix)
+        top_pick_line = (f"HIGHEST GANGER 7-LAYER CONVICTION THIS CYCLE: {top_symbol} "
+                         f"(Score {top_score:.1f}/10)" + (f" — {headline}" if headline else ""))
         
         # Token-Efficient Line Range Pointers & Strategy References
         hdr_rng = dossier_res.get("header_range", "L1-L12")
@@ -551,6 +555,7 @@ class ConsolidatedTradingDaemon:
         fnd_rng = dossier_res.get("findings_range", "L26-L80")
         tot_lns = dossier_res.get("total_lines", 80)
 
+        gen_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         file_ref_header = (
             f"=== MANDATORY SYSTEM DIRECTIVES (MANDATE) ===\n"
             f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & line range rules)\n"
@@ -560,6 +565,7 @@ class ConsolidatedTradingDaemon:
             f"  • CIO Needs & Gaps Tracker (100% Resolved): file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Full Desk Markdown Dossier ({tot_lns} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
+            f"NOTE: The inline MULTI-INSTRUMENT MATRIX below is the AUTHORITATIVE snapshot for this cycle (generated {gen_ts}). The dossier file is supplementary and rewritten continuously; do not treat it as newer than this inline block.\n\n"
         )
 
         from tradingagents.world_events import LiveWorldEventsEngine
@@ -573,20 +579,21 @@ class ConsolidatedTradingDaemon:
 
         world_header = (
             f"=== INTRADAY INSTITUTIONAL CONTEXT ===\n"
+            f"  • Data Generated: {gen_ts}\n"
             f"  • Session Clock: {session_info.get('session')} ({session_info.get('description')} | {session_info.get('utc_time')})\n"
             f"  • Intermarket GSR Ratio: {gsr_data.get('gsr')} [{gsr_data.get('status')}]\n"
-            f"  • FTMO Account Health: Equity ${account_health.get('equity')} | Free Margin ${account_health.get('free_margin')} | Margin Level {account_health.get('margin_level_pct')}% | Heat {account_health.get('account_heat_pct')}%\n"
+            f"  • FTMO Account Health: Equity ${account_health.get('equity')} | Free Margin ${account_health.get('free_margin')} | Margin Level {account_health.get('margin_level_pct')}% | Margin Utilization {account_health.get('account_heat_pct')}% (margin-based, NOT stop-distance risk)\n"
             f"  • Currency Matrix: USD [{currency_strength.get('usd_index_posture')}] | EUR [{currency_strength.get('eur_strength')}] | JPY [{currency_strength.get('jpy_strength')}]\n\n"
             f"=== HIGH-IMPACT MACROECONOMIC CALENDAR & WORLD EVENTS FEED ===\n"
             f"{econ_summary}\n"
             f"{world_events_summary}\n\n"
         )
 
-        # ADAPTIVE DISPATCH CADENCE (1-Min Active Trade Pings | 3-Min Idle Scans)
+        # ADAPTIVE DISPATCH CADENCE (1-Min Active Trade Reviews | 2-Min Idle Scans)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
-        required_interval = 60.0 if open_tickets else 180.0
+        required_interval = 60.0 if open_tickets else 120.0
 
         ready_for_dispatch = False
         if is_startup:
@@ -610,7 +617,7 @@ class ConsolidatedTradingDaemon:
                 scheduled_prompt = (
                     f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n"
                     f"{file_ref_header}"
-                    f"{world_header}"
+                    f"{world_header}{top_pick_line}\n\n"
                     f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                     f"{reversal_section}\n"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
@@ -623,9 +630,9 @@ class ConsolidatedTradingDaemon:
 
             else:
                 idle_prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Scheduled Cycle')}):\n"
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Scheduled Cycle')}):\n"
                     f"{file_ref_header}"
-                    f"{world_header}"
+                    f"{world_header}{top_pick_line}\n\n"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
@@ -638,13 +645,13 @@ class ConsolidatedTradingDaemon:
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (1-min active trades, 3-min idle).")
+        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (1-min active trades, 2-min idle).")
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
             f"🚀 ALPHA TRADING DESK DAEMON ONLINE (ADAPTIVE CADENCE ACTIVE)\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: Adaptive Briefing Active (1-Min Active Trade Reviews | 3-Min Idle Scans) + 2s Tick Ingestion\n"
+            f"Status: Adaptive Briefing Active (1-Min Active Trade Reviews | 2-Min Idle Scans) + 2s Tick Ingestion\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
         await asyncio.sleep(2.0)

@@ -33,13 +33,13 @@ class IntradayInstitutionalEngine:
         now_utc = datetime.datetime.now(datetime.timezone.utc)
         hour = now_utc.hour
         
-        if 13 <= hour < 17:
-            session_name = "LONDON_NY_OVERLAP"
-            desc = "Peak Institutional Volume & Momentum Window"
-        elif 7 <= hour < 13:
+        if 7 <= hour < 13:
             session_name = "LONDON_SESSION"
             desc = "London Institutional Liquidity Window"
-        elif 13 <= hour < 21:
+        elif 13 <= hour < 17:
+            session_name = "LONDON_NY_OVERLAP"
+            desc = "Peak Institutional Volume & Momentum Window"
+        elif 17 <= hour < 21:
             session_name = "NEW_YORK_SESSION"
             desc = "US Institutional Session"
         else:
@@ -264,10 +264,15 @@ class IntradayInstitutionalEngine:
             return {"yesterday_high": "N/A", "yesterday_low": "N/A", "asian_high": "N/A", "asian_low": "N/A"}
 
     def get_real_yields(self) -> dict:
-        """US Real Interest Rate Benchmark & Real Yield Posture."""
+        """STATIC REFERENCE ESTIMATES — NOT live-fetched.
+
+        Labeled STATIC so the CIO never mistakes these for a live macro feed.
+        Replace with a real macro adapter (e.g. OpenBB/Yahoo) for live values.
+        """
         return {
-            "fed_funds_rate": "5.25% - 5.50%",
-            "us10y_nominal_yield": "3.82%",
-            "us_real_yield_posture": "POSITIVE_REAL_YIELD (3.82% Nominal - 2.6% Core CPI = +1.22% Real Yield)"
+            "note": "STATIC_REFERENCE_NOT_LIVE",
+            "fed_funds_rate": "5.25% - 5.50% (static ref)",
+            "us10y_nominal_yield": "3.82% (static ref)",
+            "us_real_yield_posture": "POSITIVE_REAL_YIELD (~+1.22% est., static ref)"
         }
 
