@@ -582,20 +582,30 @@ class ConsolidatedTradingDaemon:
             f"{world_events_summary}\n\n"
         )
 
-        if open_tickets:
-            import time
-            now_ts = time.time()
-            elapsed = now_ts - self.last_dispatch_time
-            is_startup = (self.cycle_count == 1)
+        # DYNAMIC COMPLETION HANDSHAKE (No 3-Min Fixed Wait, Adaptive 8s Grace Buffer)
+        now_ts = time.time()
+        is_startup = (self.cycle_count == 1)
+        elapsed_since_dispatch = now_ts - self.last_dispatch_time
 
-            if is_startup or elapsed >= 180.0:
-                self.last_dispatch_time = now_ts
-                is_10min_reminder = (now_ts % 600 < 30)
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Review")
-                
+        ready_for_dispatch = False
+        if is_startup:
+            ready_for_dispatch = True
+        elif is_opencode_idle(OPENCODE_SESSION_ID):
+            # Dynamic 8-second grace buffer after completion
+            if elapsed_since_dispatch >= 8.0:
+                ready_for_dispatch = True
+        elif elapsed_since_dispatch >= 60.0:
+            # Fallback heartbeat
+            ready_for_dispatch = True
+
+        if ready_for_dispatch:
+            self.last_dispatch_time = now_ts
+            is_10min_reminder = (now_ts % 600 < 30)
+
+            if open_tickets:
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "Dynamic Handshake Review")
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
-                # Consolidated Drawdown & Reversal Alerts Section
                 reversal_section = ""
                 if reversal_alerts:
                     alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
@@ -615,18 +625,9 @@ class ConsolidatedTradingDaemon:
                 )
                 log_opencode_said(scheduled_prompt)
 
-        else:
-            # IMMEDIATE STARTUP DISPATCH (Cycle 1) & 3-MINUTE DISPATCH (elapsed >= 180s)
-            import time
-            now_ts = time.time()
-            elapsed = now_ts - self.last_dispatch_time
-            is_startup = (self.cycle_count == 1)
-            if is_startup or elapsed >= 180.0:
-                self.last_dispatch_time = now_ts
-                is_10min_reminder = (now_ts % 600 < 30)
-
+            else:
                 idle_prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Cycle')}):\n"
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else 'Dynamic Handshake Cycle')}):\n"
                     f"{file_ref_header}"
                     f"{world_header}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
@@ -641,25 +642,23 @@ class ConsolidatedTradingDaemon:
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with Dual-State High-Sensitivity Execution.")
+        LOG.info("Consolidated Trading Daemon started with Dynamic Handshake Execution (No 3-Min Fixed Wait).")
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
-            f"🚀 ALPHA TRADING DESK DAEMON ONLINE\n"
+            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (DYNAMIC HANDSHAKE ACTIVE)\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: READ-ONLY Scanner & Dossier Streamer ACTIVE\n"
-            f"Schedule: Startup briefing firing in ~40s after first full 6-instrument scan completes.\n"
+            f"Status: Real-Time Dynamic Handshake Active (AI Complete -> 8s Grace Buffer -> 100% Fresh MT5 State)\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
         while self.is_running:
             try:
                 has_active_trades = await self.run_cycle()
-                # Fast 10s loop when trades are active; 25s loop when idle
-                sleep_secs = 10 if has_active_trades else 25
-                await asyncio.sleep(sleep_secs)
+                # Fast 2s sampling loop when checking market state
+                await asyncio.sleep(2.0)
             except Exception as err:
                 LOG.error(f"Error in cycle: {err}")
-                await asyncio.sleep(25)
+                await asyncio.sleep(5.0)
 
 # ----------------------------------------------------------------------
 # 7. CLI Commands Entry Point

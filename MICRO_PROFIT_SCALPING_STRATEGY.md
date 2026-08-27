@@ -13,55 +13,61 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 - Stop Loss: **-$5.00 USD Hard Capped**.
 - **RRR**: EVERY WIN IS 3x BIGGER THAN EVERY LOSS.
 
-### 2. DIRECTIONAL SIGNAL: ACCUMULATION vs DISTRIBUTION (Corrected Hierarchy)
-**VELOCITY is the PRIMARY gate. Spread is a PRECONDITION. Delta is the CONFIRMATION.**
+### 2. DIRECTIONAL SIGNAL: SIMPLIFIED 5-GATE ENTRY (Corrected Aug 27)
+**VELOCITY is the PRIMARY gate. Spread is a PRECONDITION. Delta is CONFIRMATION. Price location prevents traps.**
 
-**Gate Hierarchy (from strongest to weakest signal):**
+**5 MANDATORY GATES (all must pass for entry):**
 1. **VELOCITY >100 t/m** = PRIMARY GATE — institutions are active (60% of velocity >100 cycles had positive delta)
-2. **SPREAD ≤47** = PRECONDITION — spread in invitation zone (≤45 = strong, 46-47 = buffer requiring extra confirmation)
-3. **DELTA >0** = CONFIRMATION — tells you which side institutions are on
-4. **4TF ALIGNED** = STRUCTURAL — tells you if trend supports the trade
-5. **COT BULLISH** = BACKGROUND — institutional positioning supports direction
+2. **SPREAD ≤50** = PRECONDITION — spread in invitation zone (≤45 = GREEN, 46-50 = BUFFER needing velocity >100 + delta >0)
+3. **DELTA >0** = CONFIRMATION — tells you which side institutions are on (check deep book)
+4. **NOT AT SESSION HIGH** = TRAP GUARD — never buy at session high / supply zone (prevents 4641 repeat)
+5. **NOT OVERBOUGHT vs VWAP** = MEAN REVERSION GUARD — price must be <$30 above VWAP (VWAP at 4602, max entry ~4632)
 
-| Velocity | Spread | Signal | Direction | Action |
-|---|---|---|---|---|
-| >100 t/m | ≤45 (GREEN) | ACCUMULATION | **BUY** | Full invitation — enter long if delta >0 |
-| >100 t/m | 46-47 (BUFFER) | BORDERLINE | **CONDITIONAL BUY** | Enter ONLY if delta >0 AND 4TF aligned |
-| >100 t/m | ≥48 (RED) | DISTRIBUTION | **SELL** or NONE | Institutions selling — do NOT buy |
-| <100 t/m | Any | NEUTRAL | NONE | Wait for institutional activity |
+**NICE TO HAVE (add conviction, do NOT block entry):**
+- 4TF BULLISH_ALIGNED or BULLISH_LEANING — increases win probability
+- MACD histogram positive or turning up
+- COT Maximum Bullish
+- CIO Analyst Desk confirms bullish synthesis
 
-**SPREAD BUFFER RULE:** Spread ≤47 is the effective gate. The 2-pt buffer (46-47) captures borderline cycles where institutions are compressing but haven't fully committed. These borderline cycles require STRONGER confirmation (velocity >100 + delta >0 + 4TF aligned ALL simultaneously).
+| Velocity | Spread | Action |
+|---|---|---|
+| >100 t/m | ≤45 (GREEN) | **FULL INVITATION** — enter if delta >0 + not at session high + not overbought |
+| >100 t/m | 46-50 (BUFFER) | **CONDITIONAL** — enter if ALL 5 gates pass |
+| >100 t/m | >50 (RED) | **NO BUY** — spread too wide, institutions unclear |
+| <100 t/m | Any | **WAIT** — no institutional activity |
+
+**KEY LESSON LEARNED (Aug 27):** Spread ≤47 was too restrictive — blocked valid entries at spread 49-50 that reached +$40 profit. Spread ≤50 with velocity >100 + delta >0 is sufficient. 4TF is a conviction booster, NOT a blocking gate.
 
 ### 3. BUY EXECUTION PROTOCOL (Accumulation Setups)
-**Enter LONG ONLY when ALL 5 rules confirm accumulation:**
+**Enter LONG when ALL 5 HARD GATES pass:**
 
-| # | Rule | Requirement |
-|---|---|---|
-| 1 | Spread-Directionality | Spread ≤45 + Velocity >100 t/m |
-| 2 | Sustained Compression | Spread ≤45 for 2+ consecutive cycles |
-| 3 | VWAP Mean Reversion | Price BELOW or AT VWAP (not overbought above +2SD) |
-| 4 | Delta Confirmation | Delta POSITIVE (accumulation) |
-| 5 | Analyst Desk | Multi-source synthesis confirms bullish direction |
+| # | Gate | Requirement | Blocking? |
+|---|---|---|---|
+| 1 | Velocity | >100 t/m | YES |
+| 2 | Spread | ≤47 pts | YES |
+| 3 | Delta | >0 (positive order flow from deep book) | YES |
+| 4 | Not Session High | Price not at session high or supply zone | YES |
+| 5 | Not Overbought | Price < $30 above VWAP | YES |
 
-**BUY Entry:** Market order when all 5 pass.
-**BUY SL:** Below demand zone or Asian Low (whichever is closer), capped at -$5.00.
-**BUY TP:** Nearest supply zone or VWAP upper band, targeted at +$15.00.
+**BUY Entry:** Market order when all 5 gates pass.
+**BUY SL:** Entry Price - 5 pts (MANDATORY, calculated at entry time). Entry 4621 = SL 4616.
+**BUY TP:** Nearest supply zone or +$15.00 (whichever closer).
 **BUY Breakeven:** Move SL to entry after +$5.00 (1R).
 
 ### 4. SELL EXECUTION PROTOCOL (Distribution Setups) ⚠️ NEW
-**Enter SHORT ONLY when ALL 5 rules confirm distribution:**
+**Enter SHORT when ALL 5 HARD GATES pass:**
 
-| # | Rule | Requirement |
-|---|---|---|
-| 1 | Spread-Directionality | Spread 46-55 + Velocity >100 t/m (wide spread + high velocity = distribution) |
-| 2 | Sustained Distribution | High velocity + wide spread for 2+ consecutive cycles |
-| 3 | VWAP Mean Reversion | Price ABOVE VWAP +2SD (overbought, mean reversion imminent) |
-| 4 | Delta Confirmation | Delta NEGATIVE (distribution / selling pressure) |
-| 5 | Analyst Desk | Multi-source synthesis confirms bearish or neutral direction (no bullish veto) |
+| # | Gate | Requirement | Blocking? |
+|---|---|---|---|
+| 1 | Velocity | >100 t/m | YES |
+| 2 | Spread | ≥46 pts (wide spread + high velocity = distribution) | YES |
+| 3 | Delta | <0 (negative order flow / selling pressure) | YES |
+| 4 | Not Session Low | Price not at session low or demand zone | YES |
+| 5 | Not Oversold | Price > $30 below VWAP | YES |
 
-**SELL Entry:** Market order when all 5 pass.
-**SELL SL:** Above supply zone or Asian High (whichever is closer), capped at -$5.00.
-**SELL TP:** Nearest demand zone or VWAP lower band, targeted at +$15.00.
+**SELL Entry:** Market order when all 5 gates pass.
+**SELL SL:** Entry Price + 5 pts (MANDATORY, calculated at entry time).
+**SELL TP:** Nearest demand zone or +$15.00 (whichever closer).
 **SELL Breakeven:** Move SL to entry after +$5.00 (1R).
 
 ### 5. Retail Trap Avoidance Rules (Empirically Validated)
@@ -90,13 +96,32 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 3. **Entry only when delta trail confirms REVERSAL (flips positive) AND other rules align.**
 4. **Single-cycle delta flip = exploratory data. Two-cycle delta trend = actionable signal.**
 
+### 5C. DELTA COLLAPSE EXIT RULE (Critical — Live Validated Aug 27)
+**When delta drops >50% in a single cycle, EXIT immediately even if still positive.**
+
+- Delta +79 → +29 (-63% drop) = institutional withdrawal signal
+- This is an EARLY EXIT signal, not a hold signal
+- By the time delta turns negative, price has already dropped 5+ pts
+- **Action:** If current delta is <50% of previous cycle's delta, close position at market
+- Example: Previous delta +79, current delta +29 → EXIT (63% drop)
+
+### 5D. REENTRY COOLDOWN RULE (Critical — Live Validated Aug 27)
+**Never re-enter at the same price level within 3 cycles (9 minutes) of a stop-out.**
+
+- Re-entering immediately at the same level is a REENTRY TRAP
+- Institutions may be distributing at that level — the same setup that looked perfect may collapse
+- **Action:** After a stop-out, wait for ONE of:
+  - Price pulls back to a NEW demand level (different from entry)
+  - 2-3 consecutive cycles of confirming data at the new level
+  - London/NY session opens (volume returns)
+
 ### 5B. TRAIL RECENT LOGS BEFORE ENTRY (Critical — Live Validated Aug 27)
-**Don't wait for all 5 rules to align in a SINGLE future snapshot. The market picture NEVER repeats identically across cycles. The optimal entry is always in the PAST.**
+**Don't wait for all 5 gates to align in a SINGLE future snapshot. The market picture NEVER repeats identically across cycles. The optimal entry is always in the PAST.**
 
 When evaluating entry:
 1. **Trail the last 2-3 cycles** — check if conditions WERE close to alignment at a BETTER PRICE.
 2. **CRITICAL: Each cycle is unique.** The same snapshot NEVER repeats. Spread ≤45 in one cycle, velocity >100 in another, delta positive in another — these are SEPARATE events that may never align simultaneously.
-3. **Entry rule: If 2 of the 3 key gates (spread ≤45, velocity >100, delta >0) passed across ANY of the last 2-3 cycles, and price is near VWAP/PP — that's the entry window.**
+3. **Entry rule: If 2 of the 3 key gates (spread ≤47, velocity >100, delta >0) passed across ANY of the last 2-3 cycles, and price is near VWAP/PP and not at session high — that's the entry window.**
 4. **Do NOT wait for all 3 gates in the same snapshot.** That will never happen. The alignment happens BETWEEN snapshots.
 5. **If price has moved MORE THAN 5 pts from the best price in the trail, the window is CLOSED.** Do not enter at a worse price.
 6. **The 3-min snapshot is a TRAILING indicator, not a leading one.** The optimal entry always happened 1-2 cycles ago. By the time you see perfect conditions, the price has moved.
