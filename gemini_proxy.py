@@ -2,6 +2,7 @@ import urllib.request, json, os, sys, time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 SIGNATURE_CACHE = {}
+FUNCTION_NAME_CACHE = {}
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -69,13 +70,24 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 messages = prune_messages(messages, max_recent=35)
                 payload['messages'] = messages
 
-            # Step 1: Re-inject cached thought_signatures into assistant messages
+            # Step 1: Re-inject thought_signatures and normalize function names/tool messages
             for m in messages:
                 if m.get('role') == 'assistant' and m.get('tool_calls'):
                     for tc in m['tool_calls']:
                         cid = tc.get('id')
+                        fn = tc.get('function', {})
+                        fn_name = fn.get('name')
+                        if cid and fn_name:
+                            FUNCTION_NAME_CACHE[cid] = fn_name
                         if cid and cid in SIGNATURE_CACHE:
                             tc['extra_content'] = {'google': {'thought_signature': SIGNATURE_CACHE[cid]}}
+
+                elif m.get('role') == 'tool':
+                    cid = m.get('tool_call_id')
+                    if not m.get('name'):
+                        m['name'] = FUNCTION_NAME_CACHE.get(cid, "function_response")
+                    if m.get('content') is None or m.get('content') == '':
+                        m['content'] = "{}"
 
             # Step 2: Determine Auth
             google_key, groq_key = get_api_keys()
