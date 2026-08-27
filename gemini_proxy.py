@@ -87,40 +87,39 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
 
             is_stream = payload.get('stream', False)
             response = None
-            used_groq = False
+            last_error = None
+            max_retries = 6
+            retry_delay = 1.5
 
-            # Step 3: Attempt Google with fast retry
-            for attempt in range(2):
+            # Step 3: Pure Retries on the Exact Selected Google Model (No Fallbacks)
+            for attempt in range(max_retries):
                 req = urllib.request.Request(
                     GOOGLE_URL,
                     data=json.dumps(payload).encode('utf-8'),
                     headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': 'Mozilla/5.0'}
                 )
                 try:
-                    response = urllib.request.urlopen(req, timeout=15)
+                    response = urllib.request.urlopen(req, timeout=30)
                     if response:
                         break
                 except urllib.error.HTTPError as e:
+                    last_error = e
                     if e.code in [429, 503, 500]:
-                        print(f"[Gemini Proxy] Google returned {e.code} on attempt {attempt+1}. Backoff 1.0s...", file=sys.stderr)
-                        time.sleep(1.0)
+                        print(f"[Gemini Proxy Retry] Model '{payload.get('model')}' returned {e.code}. Retrying in {retry_delay:.1f}s (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
+                        time.sleep(retry_delay)
+                        retry_delay = min(retry_delay * 1.5, 6.0)
                     else:
-                        break
-                except Exception:
-                    time.sleep(1.0)
+                        raise e
+                except Exception as e:
+                    last_error = e
+                    time.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 1.5, 6.0)
 
-            # Step 4: If Google is quota exhausted (429/503), Instant Failover to Groq Cloud
             if not response:
-                print(f"[Gemini Proxy Failover] Google quota reached -> Instantly routing to Groq Cloud (Qwen 3.8 27B / 800 t/s)...", file=sys.stderr)
-                groq_payload = dict(payload)
-                groq_payload['model'] = 'qwen/qwen3.8-27b'
-                groq_req = urllib.request.Request(
-                    GROQ_URL,
-                    data=json.dumps(groq_payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {groq_key}', 'User-Agent': 'Mozilla/5.0'}
-                )
-                response = urllib.request.urlopen(groq_req, timeout=20)
-                used_groq = True
+                if isinstance(last_error, urllib.error.HTTPError):
+                    raise last_error
+                else:
+                    raise Exception(str(last_error))
 
             self.send_response(response.status)
             for k, v in response.getheaders():
@@ -132,7 +131,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 for line in response:
                     line_str = line.decode('utf-8', errors='ignore')
-                    if not used_groq and line_str.startswith('data: ') and not line_str.startswith('data: [DONE]'):
+                    if line_str.startswith('data: ') and not line_str.startswith('data: [DONE]'):
                         try:
                             chunk_data = json.loads(line_str[6:].strip())
                             choices = chunk_data.get('choices', [])
@@ -153,20 +152,19 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         break
             else:
                 res_data = response.read()
-                if not used_groq:
-                    try:
-                        res_json = json.loads(res_data.decode('utf-8'))
-                        choices = res_json.get('choices', [])
-                        if choices:
-                            msg = choices[0].get('message', {})
-                            tcs = msg.get('tool_calls', [])
-                            for tc in tcs:
-                                cid = tc.get('id')
-                                sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
-                                if cid and sig:
-                                    SIGNATURE_CACHE[cid] = sig
-                    except Exception:
-                        pass
+                try:
+                    res_json = json.loads(res_data.decode('utf-8'))
+                    choices = res_json.get('choices', [])
+                    if choices:
+                        msg = choices[0].get('message', {})
+                        tcs = msg.get('tool_calls', [])
+                        for tc in tcs:
+                            cid = tc.get('id')
+                            sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
+                            if cid and sig:
+                                SIGNATURE_CACHE[cid] = sig
+                except Exception:
+                    pass
                 self.send_header('Content-Length', str(len(res_data)))
                 self.end_headers()
                 try:
