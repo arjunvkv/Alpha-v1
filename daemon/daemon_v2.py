@@ -20,6 +20,17 @@ from daemon.ring_state import RingStateStore
 from daemon.rule_loader import load_rules
 from daemon.safety import check_safety
 from daemon.wake_prompt import default_banner, build_wake_prompt
+from config import (
+    DAEMON_V2_GRANGER_SNAPSHOT_PATH,
+    DAEMON_V2_MIN_FREE_MARGIN_PCT,
+    DAEMON_V2_OPENCODE_CMD,
+    DAEMON_V2_POLL_INTERVAL_SECONDS,
+    DAEMON_V2_SESSION_ID_FALLBACK,
+    DAEMON_V2_TERMINAL_SILENCE_SECONDS,
+    DAEMON_V2_WATCH_SYMBOLS,
+    INSTRUMENTS,
+    MAX_PORTFOLIO_HEAT_PCT,
+)
 
 LOG = logging.getLogger("alpha.daemon.v2")
 
@@ -131,9 +142,9 @@ V2_MODULES = [
 ]
 
 DEFAULT_SAFETY_CFG = {
-    "max_heat_pct": 6.0,
-    "min_free_margin_pct": 20.0,
-    "terminal_silence_sec": 60,
+    "max_heat_pct": MAX_PORTFOLIO_HEAT_PCT,
+    "min_free_margin_pct": DAEMON_V2_MIN_FREE_MARGIN_PCT,
+    "terminal_silence_sec": DAEMON_V2_TERMINAL_SILENCE_SECONDS,
 }
 
 
@@ -228,7 +239,7 @@ class Engine:
     """The v2 alarm bell."""
 
     def __init__(self, provider, clock=None, banner=None, data_dir=".",
-                 dry_run=True, poll_interval=10,
+                 dry_run=True, poll_interval=DAEMON_V2_POLL_INTERVAL_SECONDS,
                  safety_cfg=None, watch_symbols=None,
                  granger_snapshot_path="", point_sizes=None):
         self.provider = provider
@@ -384,7 +395,12 @@ class Engine:
         snapshot = getattr(self, "_snapshot_cache", None)
         if snapshot is None:
             snapshot = self._load_snapshot()
-        point_size = _num(self.point_sizes.get(symbol)) or 0.01
+        instrument = INSTRUMENTS.get(symbol) or {}
+        point_size = (
+            _num(self.point_sizes.get(symbol))
+            or _num(instrument.get("pip_size"))
+            or 0.01
+        )
         tick = (view or {}).get("tick") or {}
         return EvalContext(
             symbol=symbol,
@@ -583,7 +599,7 @@ def build_engine(cfg):
         banner=cfg.get("banner"),
         data_dir=data_dir,
         dry_run=bool(cfg.get("dry_run", True)),
-        poll_interval=int(cfg.get("poll_interval", 10)),
+        poll_interval=int(cfg.get("poll_interval", DAEMON_V2_POLL_INTERVAL_SECONDS)),
         safety_cfg=cfg.get("safety") or {},
         watch_symbols=cfg.get("watch_symbols") or [],
         granger_snapshot_path=cfg.get("granger_snapshot_path", ""),
@@ -608,7 +624,8 @@ def main():
                                                "").strip() == "1")
     parser.add_argument("--once", action="store_true",
                         help="run a single poll then exit")
-    parser.add_argument("--interval", type=int, default=10)
+    parser.add_argument("--interval", type=int,
+                        default=DAEMON_V2_POLL_INTERVAL_SECONDS)
     args = parser.parse_args()
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(
@@ -619,11 +636,14 @@ def main():
         "data_dir": args.data_dir,
         "dry_run": args.dry_run,
         "poll_interval": args.interval,
-        "watch_symbols": ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"],
-        "point_sizes": {"XAUUSD": 0.01, "XAGUSD": 0.001,
-                        "XPTUSD": 0.01, "XPDUSD": 0.01},
+        "watch_symbols": list(DAEMON_V2_WATCH_SYMBOLS),
+        "point_sizes": {
+            symbol: INSTRUMENTS[symbol]["pip_size"]
+            for symbol in DAEMON_V2_WATCH_SYMBOLS
+            if symbol in INSTRUMENTS
+        },
         # Real 7-layer Granger snapshot written by the orchestrator pull.
-        "granger_snapshot_path": r"C:\Trading\data\all_layers_snapshot.json",
+        "granger_snapshot_path": str(DAEMON_V2_GRANGER_SNAPSHOT_PATH),
         "rules_file": os.path.join(args.data_dir, "alert_rules.json"),
         "banner": waking_banner,
     }
