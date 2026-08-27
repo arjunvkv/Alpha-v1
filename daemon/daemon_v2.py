@@ -1,9 +1,9 @@
-"""Daemon v2 engine - dumb alarm bell + AI trader (DAEMON_V2_SPEC.md).
+"""Daemon v2 engine - observation transport + Agent decision execution.
 
-v2 inverts v1's architecture: this process NEVER trades on its own
-judgment. It evaluates generic conditions from an AI-authored alert file,
-rings once per rule with a full wake prompt, and executes whatever comes
-back through data/live/action.json under hard order validation.
+The daemon may observe conditions, ring the Agent, transport evidence, and
+validate action schema/broker executability. It MUST NOT turn observations,
+learning, patterns, scores, or historical evidence into a BUY/SELL/WAIT
+decision. Trading decisions originate exclusively from the Agent.
 """
 
 import json
@@ -170,8 +170,9 @@ def _provider_attr(provider, name, default):
 def consume_action_file(eng):
     """Consume data/live/action.json if present. Never raises.
 
-    WAIT / REJECT apply reset_rule_ids to rule latches (safety latches that
-    are still breaching are protected by Engine.apply_resets).
+    WAIT / REJECT are Agent-originated decisions and may reset requested
+    observation latches. Safety events are evidence/alerts and are not
+    transformed into a trading decision by the daemon.
     ORDER is routed through the engine router; fills land in
     filled_tickets. Every consumed action is archived to the processed
     JSONL and the action file is deleted.
