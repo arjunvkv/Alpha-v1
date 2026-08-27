@@ -513,9 +513,18 @@ class ConsolidatedTradingDaemon:
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
         from tradingagents.read_logger import DossierReadLogger
         from tradingagents.trade_journal import TradeJournalMemory
+        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
         
         read_logger = DossierReadLogger()
         trade_journal = TradeJournalMemory()
+        inst_engine = InstitutionalAnalyticsEngine()
+
+        # Update Institutional Deep Book & Filled Needs Files on every cycle
+        try:
+            inst_engine.write_institutional_deep_book_file()
+            inst_engine.update_needs_file_with_filled_status()
+        except Exception as err:
+            LOG.error(f"Institutional deep book generation error: {err}")
 
         self.cycle_count += 1
         dossier_res = dossier_logger.write_dossier(
@@ -547,6 +556,8 @@ class ConsolidatedTradingDaemon:
             f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & line range rules)\n"
             f"  • Micro-Profit Scalping Strategy: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
             f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Record live research patterns via mcp_alpha_record_pattern_observation; use count >= 5 patterns for FASTER ANALYSIS & CONFIDENT TRADES!)\n"
+            f"  • Institutional Deep Book (Order Flow, VWAP & Asian Ranges): file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
+            f"  • CIO Needs & Gaps Tracker (100% Resolved): file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Full Desk Markdown Dossier ({tot_lns} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
         )
