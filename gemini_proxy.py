@@ -53,9 +53,10 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
         res = {
             "object": "list",
             "data": [
-                {"id": "gemini-3.5-flash-lite", "object": "model", "owned_by": "google"},
+                {"id": "gemini-flash-lite-latest", "object": "model", "owned_by": "google"},
+                {"id": "gemini-flash-latest", "object": "model", "owned_by": "google"},
                 {"id": "gemini-3.1-flash-lite", "object": "model", "owned_by": "google"},
-                {"id": "gemini-3.5-flash", "object": "model", "owned_by": "google"},
+                {"id": "gemini-3.5-flash-lite", "object": "model", "owned_by": "google"},
                 {"id": "gemini-3.6-flash", "object": "model", "owned_by": "google"}
             ]
         }
