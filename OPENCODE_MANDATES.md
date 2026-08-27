@@ -116,9 +116,13 @@ OpenCode CIO is equipped with autonomous FastMCP tools for real-time market exec
   - *Description*: Fast search across all 100 pages for matching patterns, symbols, lessons, or keywords. Returns exact page numbers, line numbers, and file links.
   - *Usage Example*: `mcp_alpha_search_book(query="ASIAN_LOW_SWEPT", max_results=5)`
 
-- **`mcp_alpha_record_pattern_observation(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", observation="...")`**
-  - *Description*: Records a live setup into the active page with automatic pagination (rolls to Page N+1 when active page hits 50 entries) and increments hit count (`count: N`).
+- **`mcp_alpha_record_pattern_observation(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", observation="...", outcome=None, ticket=None, r_value=None)`**
+  - *Description*: Records a live setup into the active page with automatic pagination and auto-incrementing hit count. Observations are matched by a **normalized key** (timestamp/cycle numbers are stripped), so repeated setups accumulate instead of fragmenting.
   - *Usage Example*: `mcp_alpha_record_pattern_observation(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", observation="Price touched 4583.50 demand, delta +82, quick expansion.")`
+
+- **`mcp_alpha_record_pattern_outcome(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", outcome="+2.3R", ticket="5287", r_value=2.3)`**
+  - *Description*: Attaches an out-of-sample trade result to a recorded pattern so OpenCode can learn what actually works. Has NO execution effect.
+  - *Usage Example*: `mcp_alpha_record_pattern_outcome(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", outcome="WON +$26", ticket="5287", r_value=2.6)`
 
 - **`mcp_alpha_get_full_book()`**
   - *Description*: Compiles and retrieves the entire 100-page institutional pattern book.
