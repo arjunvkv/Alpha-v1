@@ -396,17 +396,37 @@ def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
     }, indent=2)
 
 @mcp.tool()
-def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str) -> str:
+def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str,
+                                         outcome: str = None, ticket: str = None,
+                                         r_value=None) -> str:
     """
-    OpenCode records a live research setup pattern observation into the 100-Page Pattern Book (100 lines/page).
-    Increments hit count automatically (count: 1, 2, 3...).
-    When active page fills to 100 entries, it automatically rolls over to Page N+1!
-    When count reaches 5 or more (count >= 5), OpenCode gains 100% high-conviction confidence for faster analysis!
+    OpenCode records a live research setup pattern observation into the 100-Page Pattern Book.
+    Hit count auto-increments when the SAME phenomenon is recorded again, matched by a
+    deterministic normalized key (cycle/timestamp suffixes do NOT fragment it).
+
+    NOTE: count >= 5 promotes a pattern to WATCHLIST/LEARNED for the AGENT to evaluate.
+    It is NOT an auto-execution gate. To make a pattern learnable, attach trade outcomes
+    via mcp_alpha_record_pattern_outcome (out-of-sample evidence). Optional outcome/ticket/
+    r_value attach a trade result at record time.
     """
     from tradingagents.pattern_book import PatternBookManager
     read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
     book = PatternBookManager()
-    res = book.record_pattern(symbol, pattern_name, observation)
+    res = book.record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value)
+    return json.dumps(res, indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: str,
+                                    ticket: str = None, r_value=None) -> str:
+    """
+    Attach a trade OUTCOME (e.g. '+2.3R', 'LOSS -1.0R', ticket id) to a recorded pattern so
+    the agent can learn out-of-sample whether the pattern is real. Has NO execution effect.
+    """
+    from tradingagents.pattern_book import PatternBookManager
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Attached outcome to pattern: [{symbol.upper()}] {pattern_name}")
+    book = PatternBookManager()
+    res = book.attach_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value)
     return json.dumps(res, indent=2)
 
 @mcp.tool()
