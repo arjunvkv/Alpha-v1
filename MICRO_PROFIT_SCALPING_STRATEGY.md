@@ -13,15 +13,19 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 - Stop Loss: **-$5.00 USD Hard Capped**.
 - **RRR**: EVERY WIN IS 3x BIGGER THAN EVERY LOSS.
 
-### 2. DIRECTIONAL SIGNAL: SIMPLIFIED 5-GATE ENTRY (Corrected Aug 27)
-**VELOCITY is the PRIMARY gate. Spread is a PRECONDITION. Delta is CONFIRMATION. Price location prevents traps.**
+### 2. DIRECTIONAL SIGNAL: SIMPLIFIED 5-GATE ENTRY (Corrected & Expanded Aug 27)
+**VELOCITY is the PRIMARY gate. Spread is a PRECONDITION. Delta is CONFIRMATION. Price location prevents traps. Auxiliary signals (Momentum expansion, Intermarket GSR regime shift) provide supplementary confirmation.**
 
 **5 MANDATORY GATES (all must pass for entry):**
 1. **VELOCITY >100 t/m** = PRIMARY GATE — institutions are active (60% of velocity >100 cycles had positive delta)
 2. **SPREAD ≤50** = PRECONDITION — spread in invitation zone (≤45 = GREEN, 46-50 = BUFFER needing velocity >100 + delta >0)
-3. **DELTA >0** = CONFIRMATION — tells you which side institutions are on (check deep book)
-4. **NOT AT SESSION HIGH** = TRAP GUARD — never buy at session high / supply zone (prevents 4641 repeat)
-5. **NOT OVERBOUGHT vs VWAP** = MEAN REVERSION GUARD — price must be <$30 above VWAP (VWAP at 4602, max entry ~4632)
+3. **DELTA >0 (or <0 for shorts)** = CONFIRMATION — tells you which side institutions are on (check deep book)
+4. **NOT AT SESSION EXTREME** = TRAP GUARD — never buy at session high / supply zone or sell at session low / demand zone
+5. **NOT OVERBOUGHT/OVERSOLD vs VWAP** = MEAN REVERSION GUARD — price must be <$30 above/below VWAP
+
+**AUXILIARY EXPERIMENTAL SIGNALS (Enhance conviction & trigger faster analysis when active):**
+- **Momentum Expansion Breakout:** MACD histogram > +10.0, RSI(14) > 45, and velocity > 100 t/m.
+- **Intermarket GSR Regime Shift:** Gold-Silver Ratio (GSR) breaking < 65.0 or > 80.0 boundaries.
 
 **NICE TO HAVE (add conviction, do NOT block entry):**
 - 4TF BULLISH_ALIGNED or BULLISH_LEANING — increases win probability

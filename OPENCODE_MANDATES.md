@@ -49,6 +49,7 @@ To prevent token bloat, use your read tools to inspect targeted line ranges in p
 2. **Liquidity Sweep Trap Protocol**: If `Liquidity Sweep` flags `ASIAN_HIGH_SWEPT` or `YEST_HIGH_SWEPT`, do NOT buy at the top (Bull Trap risk). Look for liquidity grab reversals. If `ASIAN_LOW_SWEPT` or `YEST_LOW_SWEPT` is flagged, do NOT sell at the bottom (Bear Trap risk).
 3. **High-Impact News Blackout Window**: Do NOT open new micro-scalp positions within 15 minutes before or 15 minutes after high-impact macroeconomic releases (CPI, NFP, FOMC rate decisions).
 4. **Minimum 1:2 Risk-Reward Ratio (RRR)**: Ensure every entry setup has a structural Risk-to-Reward Ratio of at least 1:2.0 (e.g. risking $10 to make $28).
+5. **Auxiliary Experimental Signal Integration**: Incorporate momentum expansion breakouts (MACD > +10, RSI > 45, Velocity > 100 t/m) and intermarket GSR regime shifts (GSR < 65 or > 80) as supplementary conviction gates alongside structural Supply/Demand and Pivot zones.
 
 ---
 

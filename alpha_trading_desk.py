@@ -582,15 +582,16 @@ class ConsolidatedTradingDaemon:
             f"{world_events_summary}\n\n"
         )
 
-        # 3-MINUTE DISPATCH CADENCE (180s interval + initial startup review + 10-min directive)
+        # ADAPTIVE DISPATCH CADENCE (2-Min Active Trade Pings | 3-Min Idle Scans)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
+        required_interval = 120.0 if open_tickets else 180.0
 
         ready_for_dispatch = False
         if is_startup:
             ready_for_dispatch = True
-        elif elapsed_since_dispatch >= 180.0:
+        elif elapsed_since_dispatch >= required_interval:
             ready_for_dispatch = True
 
         if ready_for_dispatch:
@@ -598,7 +599,7 @@ class ConsolidatedTradingDaemon:
             is_10min_reminder = (now_ts % 600 < 30)
 
             if open_tickets:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Scheduled Review")
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "2-Min Active Trade Review")
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
                 reversal_section = ""
@@ -637,13 +638,13 @@ class ConsolidatedTradingDaemon:
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with 3-Minute Scheduled Briefing Cadence.")
+        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (2-min active trades, 3-min idle).")
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
-            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (3-MINUTE CADENCE ACTIVE)\n"
+            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (ADAPTIVE CADENCE ACTIVE)\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: 3-Minute Periodic Scheduled Briefing Active + Continuous 2s Tick Ingestion\n"
+            f"Status: Adaptive Briefing Active (2-Min Active Trade Reviews | 3-Min Idle Scans) + 2s Tick Ingestion\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
         await asyncio.sleep(2.0)

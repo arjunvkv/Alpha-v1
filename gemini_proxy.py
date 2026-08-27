@@ -4,13 +4,11 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 SIGNATURE_CACHE = {}
 FUNCTION_NAME_CACHE = {}
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def get_api_keys():
     google_k = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
     groq_k = os.environ.get("GROQ_API_KEY") or ""
     
-    # Check ~/.config/opencode/opencode.json fallback
     if not google_k or not groq_k:
         try:
             cfg_path = os.path.expanduser("~/.config/opencode/opencode.json")
@@ -24,12 +22,17 @@ def get_api_keys():
             pass
     return google_k.strip(), groq_k.strip()
 
-def prune_messages(messages, max_recent=35):
+def prune_messages(messages, max_recent=40):
     if len(messages) <= max_recent:
         return messages
-    # Preserve initial system/setup instruction and keep the latest max_recent turns
+    
+    # Slice tail but ensure we don't start on an orphaned tool response
+    start_idx = max(0, len(messages) - max_recent)
+    while start_idx > 0 and messages[start_idx].get('role') == 'tool':
+        start_idx -= 1
+        
+    tail = messages[start_idx:]
     first_msg = messages[0] if messages[0].get('role') in ['system', 'user'] else None
-    tail = messages[-max_recent:]
     if first_msg and first_msg not in tail:
         return [first_msg] + tail
     return tail
@@ -52,7 +55,8 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             "data": [
                 {"id": "gemini-3.5-flash-lite", "object": "model", "owned_by": "google"},
                 {"id": "gemini-3.1-flash-lite", "object": "model", "owned_by": "google"},
-                {"id": "qwen/qwen3.8-27b", "object": "model", "owned_by": "groq"}
+                {"id": "gemini-3.5-flash", "object": "model", "owned_by": "google"},
+                {"id": "gemini-3.6-flash", "object": "model", "owned_by": "google"}
             ]
         }
         self.wfile.write(json.dumps(res).encode('utf-8'))
@@ -64,14 +68,27 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(body.decode('utf-8')) if body else {}
             
+            # Extract valid tool names from tools array
+            declared_tool_names = []
+            for t in payload.get('tools', []):
+                fn = t.get('function', {})
+                name = fn.get('name')
+                if name:
+                    declared_tool_names.append(name)
+            default_tool_name = declared_tool_names[0] if declared_tool_names else "mcp_alpha_get_account_status"
+
             # Step 0: Optimize context window (prune stale historical turns)
             messages = payload.get('messages', [])
             if messages:
-                messages = prune_messages(messages, max_recent=35)
+                messages = prune_messages(messages, max_recent=40)
                 payload['messages'] = messages
 
             # Step 1: Re-inject thought_signatures and normalize function names/tool messages
             for m in messages:
+                # Clean empty name on messages
+                if 'name' in m and not m['name']:
+                    del m['name']
+
                 if m.get('role') == 'assistant' and m.get('tool_calls'):
                     for tc in m['tool_calls']:
                         cid = tc.get('id')
@@ -84,13 +101,14 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
 
                 elif m.get('role') == 'tool':
                     cid = m.get('tool_call_id')
-                    if not m.get('name'):
-                        m['name'] = FUNCTION_NAME_CACHE.get(cid, "function_response")
+                    # Ensure name is ALWAYS valid and matching a declared tool
+                    if not m.get('name') or m['name'].strip() == "":
+                        m['name'] = FUNCTION_NAME_CACHE.get(cid, default_tool_name)
                     if m.get('content') is None or m.get('content') == '':
                         m['content'] = "{}"
 
             # Step 2: Determine Auth
-            google_key, groq_key = get_api_keys()
+            google_key, _ = get_api_keys()
             auth_header = self.headers.get('Authorization')
             if not auth_header or auth_header.strip() in ['Bearer', 'Bearer null', 'Bearer undefined']:
                 auth_header = f"Bearer {google_key}"
@@ -214,7 +232,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
 
 def run_proxy(port=4095):
     server = ThreadingHTTPServer(('127.0.0.1', port), GeminiProxyHandler)
-    print(f"[Gemini Proxy] High-Availability Dual-Cloud (Google + Groq Failover) Proxy running on http://127.0.0.1:{port}/v1")
+    print(f"[Gemini Proxy] Multithreaded Streaming Thought-Signature Proxy running on http://127.0.0.1:{port}/v1")
     server.serve_forever()
 
 if __name__ == '__main__':
