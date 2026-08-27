@@ -41,8 +41,8 @@ LOG = logging.getLogger("alpha.daemon.v2")
 # re-pointed without code edits; the constant below is the fallback.
 ALPHA_ROOT = Path(__file__).resolve().parent.parent
 SESSION_ID_FILE = ALPHA_ROOT / "data" / "live" / "session_id.txt"
-AI_SESSION_ID_FALLBACK = "ses_fd796f6e4ffevdglfweo12MmRC"  # active 2026-08-22
-OPENCODE_CMD = r"C:\Users\arjun\AppData\Roaming\npm\opencode.cmd"
+AI_SESSION_ID_FALLBACK = DAEMON_V2_SESSION_ID_FALLBACK
+OPENCODE_CMD = DAEMON_V2_OPENCODE_CMD
 
 
 def resolve_session_id():
