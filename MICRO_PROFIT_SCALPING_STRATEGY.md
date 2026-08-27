@@ -13,15 +13,24 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 - Stop Loss: **-$5.00 USD Hard Capped**.
 - **RRR**: EVERY WIN IS 3x BIGGER THAN EVERY LOSS.
 
-### 2. DIRECTIONAL SIGNAL: ACCUMULATION vs DISTRIBUTION
-**This is the CORE of the system. The spread-velocity combination tells you WHAT institutions are doing.**
+### 2. DIRECTIONAL SIGNAL: ACCUMULATION vs DISTRIBUTION (Corrected Hierarchy)
+**VELOCITY is the PRIMARY gate. Spread is a PRECONDITION. Delta is the CONFIRMATION.**
+
+**Gate Hierarchy (from strongest to weakest signal):**
+1. **VELOCITY >100 t/m** = PRIMARY GATE — institutions are active (60% of velocity >100 cycles had positive delta)
+2. **SPREAD ≤47** = PRECONDITION — spread in invitation zone (≤45 = strong, 46-47 = buffer requiring extra confirmation)
+3. **DELTA >0** = CONFIRMATION — tells you which side institutions are on
+4. **4TF ALIGNED** = STRUCTURAL — tells you if trend supports the trade
+5. **COT BULLISH** = BACKGROUND — institutional positioning supports direction
 
 | Velocity | Spread | Signal | Direction | Action |
 |---|---|---|---|---|
-| >100 t/m | ≤45 | ACCUMULATION | **BUY** | Institutions inviting retail — enter long |
-| >100 t/m | 46-55 | DISTRIBUTION | **SELL** | Institutions selling without retail — enter short |
-| >100 t/m | >55 | NO-GO | NONE | Too wide, no edge |
+| >100 t/m | ≤45 (GREEN) | ACCUMULATION | **BUY** | Full invitation — enter long if delta >0 |
+| >100 t/m | 46-47 (BUFFER) | BORDERLINE | **CONDITIONAL BUY** | Enter ONLY if delta >0 AND 4TF aligned |
+| >100 t/m | ≥48 (RED) | DISTRIBUTION | **SELL** or NONE | Institutions selling — do NOT buy |
 | <100 t/m | Any | NEUTRAL | NONE | Wait for institutional activity |
+
+**SPREAD BUFFER RULE:** Spread ≤47 is the effective gate. The 2-pt buffer (46-47) captures borderline cycles where institutions are compressing but haven't fully committed. These borderline cycles require STRONGER confirmation (velocity >100 + delta >0 + 4TF aligned ALL simultaneously).
 
 ### 3. BUY EXECUTION PROTOCOL (Accumulation Setups)
 **Enter LONG ONLY when ALL 5 rules confirm accumulation:**
@@ -64,6 +73,33 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 - **NEVER buy overbought (above VWAP +2SD)** — mean reversion risk
 - **NEVER sell oversold (below VWAP -2SD)** — mean reversion risk
 - **NEVER ignore delta** — delta is the DIRECTIONAL confirmation
+- **NEVER block on single 3-min snapshot** — a single data point is EXPLORATORY, not confirmation. When delta flips negative, TRAIL the next 1-2 cycles before confirming distribution vs reversal.
+- **NEVER set SL wider than 5 pts from entry** — calculated at entry time. Entry 4641 = SL 4636. Period.
+- **NEVER enter at session high/supply on first delta flip** — wait 1 cycle for confirmation or pullback.
+- **NEVER trust delta divergence alone** — strong delta (+103) can coexist with falling price. Delta is one of 5 rules, not a standalone signal. Institutions accumulate while price drops (absorption). The 5-rule system exists because individual signals mislead.
+
+### 5A. THREE-MINUTE DATA LAG RULE (Critical — Live Validated)
+**A single 3-min snapshot is NOT enough to confirm a pattern.** The daemon delivers data every 3 minutes. Institutions can distribute for 1-2 cycles then reverse. Single snapshots create FALSE NEGATIVES.
+
+**When delta flips negative (Rule 4 fails):**
+1. **DO NOT immediately HOLD forever.** Instead, activate DELTA TRAILING.
+2. **Trail delta over next 1-2 cycles:**
+   - If delta IMPROVES over 2+ consecutive cycles (e.g. -31 → -25 → -15) = distribution winding down → potential BUY entry when delta flips positive
+   - If delta WORSENS over 2+ consecutive cycles (e.g. -31 → -45 → -55) = distribution continuing → confirmed DO NOT BUY
+   - If delta STALLS (e.g. -31 → -25 → -25) = distribution pausing → HOLD, wait for direction
+3. **Entry only when delta trail confirms REVERSAL (flips positive) AND other rules align.**
+4. **Single-cycle delta flip = exploratory data. Two-cycle delta trend = actionable signal.**
+
+### 5B. TRAIL RECENT LOGS BEFORE ENTRY (Critical — Live Validated Aug 27)
+**Don't wait for all 5 rules to align in a SINGLE future snapshot. The market picture NEVER repeats identically across cycles. The optimal entry is always in the PAST.**
+
+When evaluating entry:
+1. **Trail the last 2-3 cycles** — check if conditions WERE close to alignment at a BETTER PRICE.
+2. **CRITICAL: Each cycle is unique.** The same snapshot NEVER repeats. Spread ≤45 in one cycle, velocity >100 in another, delta positive in another — these are SEPARATE events that may never align simultaneously.
+3. **Entry rule: If 2 of the 3 key gates (spread ≤45, velocity >100, delta >0) passed across ANY of the last 2-3 cycles, and price is near VWAP/PP — that's the entry window.**
+4. **Do NOT wait for all 3 gates in the same snapshot.** That will never happen. The alignment happens BETWEEN snapshots.
+5. **If price has moved MORE THAN 5 pts from the best price in the trail, the window is CLOSED.** Do not enter at a worse price.
+6. **The 3-min snapshot is a TRAILING indicator, not a leading one.** The optimal entry always happened 1-2 cycles ago. By the time you see perfect conditions, the price has moved.
 
 ### 6. Proven Reproducible Winning Setups (`WINNING_TRADES_BUCKET`)
 
@@ -78,10 +114,21 @@ OpenCode CIO, you are mandated to execute trades in BOTH DIRECTIONS based on ins
 
 ### 7. Rapid Risk & Exit Management
 - **Immediate Lock-In**: Set TP at **+$15.00 USD** or nearest zone (whichever is closer).
-- **Strict SL Safety Latch**: SL is hard-capped at **-$5.00 USD**.
+- **Strict SL Safety Latch**: SL is hard-capped at **-$5.00 USD** (5 pts for 0.10 lots).
+- **SL MUST BE CALCULATED AT ENTRY**: When placing the trade, SL = Entry Price - 5 pts (BUY) or Entry Price + 5 pts (SELL). NEVER set SL arbitrarily wide. If the entry is at 4641, SL = 4636. Period.
 - **Micro Holding Time**: 1 to 3 minutes horizon.
 - **Breakeven**: Move SL to breakeven after +$5.00 (1R) if institutional flow remains confirmed.
 - **Trail Optional**: If price moves 2x TP distance, trail SL to +$10 lock.
+
+### 7A. ENTRY TIMING AFTER DELTA FLIP (Critical — Live Validated Aug 27)
+**Do NOT enter immediately on first delta flip signal.** The delta flip from negative to positive is the CONFIRMATION, but entry timing matters:
+1. **When delta flips positive (e.g. -31 → +13):** This is the SIGNAL to prepare, not the entry trigger.
+2. **Wait 1 cycle** — let delta confirm it's not a single-cycle bounce. If delta continues positive next cycle (+13 → +27), ENTER with:
+   - SL = Entry Price - 5 pts (hard cap)
+   - TP = Nearest supply zone or +$15 (whichever closer)
+3. **If first flip is weak (< +10):** Wait for 2nd cycle confirmation. Weak flips can reverse.
+4. **If first flip is strong (> +20):** Can enter immediately with tighter SL.
+5. **NEVER enter at session highs** — if price is at supply zone + delta just flipped, wait for pullback to VWAP or PP for better entry.
 
 ---
 
