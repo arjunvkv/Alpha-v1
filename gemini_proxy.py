@@ -8,6 +8,16 @@ GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/compl
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+def prune_messages(messages, max_recent=35):
+    if len(messages) <= max_recent:
+        return messages
+    # Preserve initial system/setup instruction and keep the latest max_recent turns
+    first_msg = messages[0] if messages[0].get('role') in ['system', 'user'] else None
+    tail = messages[-max_recent:]
+    if first_msg and first_msg not in tail:
+        return [first_msg] + tail
+    return tail
+
 class GeminiProxyHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -38,8 +48,13 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(body.decode('utf-8')) if body else {}
             
-            # Step 1: Re-inject cached thought_signatures into assistant messages
+            # Step 0: Optimize context window (prune stale historical turns)
             messages = payload.get('messages', [])
+            if messages:
+                messages = prune_messages(messages, max_recent=35)
+                payload['messages'] = messages
+
+            # Step 1: Re-inject cached thought_signatures into assistant messages
             for m in messages:
                 if m.get('role') == 'assistant' and m.get('tool_calls'):
                     for tc in m['tool_calls']:
