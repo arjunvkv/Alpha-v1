@@ -582,11 +582,11 @@ class ConsolidatedTradingDaemon:
             f"{world_events_summary}\n\n"
         )
 
-        # ADAPTIVE DISPATCH CADENCE (2-Min Active Trade Pings | 3-Min Idle Scans)
+        # ADAPTIVE DISPATCH CADENCE (1-Min Active Trade Pings | 3-Min Idle Scans)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
-        required_interval = 120.0 if open_tickets else 180.0
+        required_interval = 60.0 if open_tickets else 180.0
 
         ready_for_dispatch = False
         if is_startup:
@@ -599,7 +599,7 @@ class ConsolidatedTradingDaemon:
             is_10min_reminder = (now_ts % 600 < 30)
 
             if open_tickets:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "2-Min Active Trade Review")
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "1-Min Active Trade Review")
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
                 reversal_section = ""
@@ -616,7 +616,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/pattern_book/book_index.md as a mandate. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
                 log_opencode_said(scheduled_prompt)
@@ -629,7 +629,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/trade_journal_memory.md as a mandate. "
+                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/pattern_book/book_index.md as a mandate. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
                 log_opencode_said(idle_prompt)
@@ -638,13 +638,13 @@ class ConsolidatedTradingDaemon:
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (2-min active trades, 3-min idle).")
+        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (1-min active trades, 3-min idle).")
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
             f"🚀 ALPHA TRADING DESK DAEMON ONLINE (ADAPTIVE CADENCE ACTIVE)\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: Adaptive Briefing Active (2-Min Active Trade Reviews | 3-Min Idle Scans) + 2s Tick Ingestion\n"
+            f"Status: Adaptive Briefing Active (1-Min Active Trade Reviews | 3-Min Idle Scans) + 2s Tick Ingestion\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
         await asyncio.sleep(2.0)

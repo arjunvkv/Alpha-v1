@@ -398,20 +398,63 @@ def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
 @mcp.tool()
 def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str) -> str:
     """
-    OpenCode records a live research setup pattern observation into RESEARCH_STUDY_PATTERNS_BUCKET.
+    OpenCode records a live research setup pattern observation into the 100-Page Pattern Book (100 lines/page).
     Increments hit count automatically (count: 1, 2, 3...).
+    When active page fills to 100 entries, it automatically rolls over to Page N+1!
     When count reaches 5 or more (count >= 5), OpenCode gains 100% high-conviction confidence for faster analysis!
     """
-    from tradingagents.trade_journal import TradeJournalMemory
+    from tradingagents.pattern_book import PatternBookManager
     read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
-    journal = TradeJournalMemory()
-    res = journal.record_pattern_observation(symbol, pattern_name, observation)
-    return json.dumps({
-        "status": "RECORDED",
-        "symbol": symbol.upper(),
-        "pattern_name": pattern_name.upper(),
-        "observation": observation
-    }, indent=2)
+    book = PatternBookManager()
+    res = book.record_pattern(symbol, pattern_name, observation)
+    return json.dumps(res, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_book_page(page_number: int = 1, book_name: str = "patterns") -> str:
+    """
+    Retrieve and read a specific page (Page 1 to 100) from the 100-Page Pattern Book.
+    Each page contains exactly up to 100 entries/lines to prevent prompt bloat.
+    """
+    from tradingagents.pattern_book import PatternBookManager
+    read_logger.log_dossier_read("OpenCode CIO (MCP Get Page)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Pattern Book Page {page_number}")
+    book = PatternBookManager()
+    res = book.get_page(page_number)
+    return json.dumps(res, indent=2)
+
+@mcp.tool()
+def mcp_alpha_search_book(query: str, book_name: str = "patterns", max_results: int = 10) -> str:
+    """
+    Search and find patterns, symbols, keywords, or trade setups across all 100 pages of the Pattern Book.
+    Returns exact page numbers, line numbers, and file links.
+    """
+    from tradingagents.pattern_book import PatternBookManager
+    read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for '{query}'")
+    book = PatternBookManager()
+    res = book.search_book(query, max_results=max_results)
+    return json.dumps(res, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_book_index(book_name: str = "patterns") -> str:
+    """
+    Retrieve the table of contents and stats for all pages in the 100-Page Pattern Book.
+    Shows total entries, active page, and page capacity fill percentages.
+    """
+    from tradingagents.pattern_book import PatternBookManager
+    read_logger.log_dossier_read("OpenCode CIO (MCP Book Index)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Pattern Book Index")
+    book = PatternBookManager()
+    res = book.get_book_index()
+    return json.dumps(res, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_full_book(book_name: str = "patterns") -> str:
+    """
+    Compile and retrieve the entire 100-page institutional pattern book content across all pages.
+    """
+    from tradingagents.pattern_book import PatternBookManager
+    read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Full Pattern Book")
+    book = PatternBookManager()
+    content = book.get_full_book()
+    return content
 
 if __name__ == "__main__":
     _init_mt5()
