@@ -11,15 +11,15 @@ BOOK_DIR = r"C:\Trading\Alpha\logs\pattern_book"
 BOOK_META_PATH = os.path.join(BOOK_DIR, "book_metadata.json")
 BOOK_INDEX_PATH = os.path.join(BOOK_DIR, "book_index.md")
 
-MAX_ENTRIES_PER_PAGE = 100
+MAX_ENTRIES_PER_PAGE = 50
 MAX_PAGES = 100
 
 class PatternBookManager:
     """
     100-Page Structured Institutional Memory Book:
-    - 100 pages maximum capacity (up to 10,000 entries).
-    - Exactly 100 entries / lines per page.
-    - Automatically rolls over to Page N+1 when current page reaches 100 entries.
+    - 100 pages maximum capacity (up to 5,000 entries).
+    - Exactly 50 entries / lines per page (~2,200 tokens).
+    - Automatically rolls over to Page N+1 when current page reaches 50 entries.
     - Provides fast search, page retrieval, index inspection, and full book compilation.
     """
     def __init__(self, book_dir: str = BOOK_DIR):

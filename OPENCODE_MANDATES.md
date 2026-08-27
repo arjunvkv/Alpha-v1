@@ -64,3 +64,60 @@ OpenCode CIO is strictly forbidden from repeating the following documented root-
 7. **No Dead Range Mid-Zone Over-Trading Rule**: NEVER place trades in the dead middle consolidation zone ($4,596 - $4,602). ONLY BUY at extreme bottom sweeps ($4,588 - $4,592) or SELL at extreme supply wicks ($4,612+). Execute whenever high-confluence setups occur!
 8. **Strict M5 Trend Alignment Rule**: NEVER enter a BUY order while Gold is in an active M5 downward liquidation trend. When price breaks lower demand levels, ONLY execute SELL orders on minor pullbacks to capture trend momentum!
 9. **Ban Fast Micro-Hopping Scalps Rule**: ABSOLUTELY NO FAST HOOPING SCALPS! Never place micro-hopping trades looking for quick noise ticks. Every trade MUST be a fully analyzed, high-confluence institutional setup targeting +$35.00 to +$60.00 USD!
+
+---
+
+## 🛠️ SECTION 7: OFFICIAL FASTMCP TOOLS REFERENCE (`alpha-daemon-mcp`)
+OpenCode CIO is equipped with autonomous FastMCP tools for real-time market execution, position management, and institutional memory navigation:
+
+### 1. Account & Execution Tools
+- **`mcp_alpha_get_account_status()`**
+  - *Description*: Retrieves live FTMO MT5 account balance, current equity, free margin, margin level, and a list of all active open tickets.
+  - *Usage Example*: `mcp_alpha_get_account_status()`
+
+- **`mcp_alpha_get_symbol_conviction(symbol="XAUUSD")`**
+  - *Description*: Queries the 7-Layer Granger analysis engine for live bid/ask, real MT5 indicators (RSI, MACD), COT institutional positioning, and multi-timeframe conviction score (0.0 to 10.0).
+  - *Usage Example*: `mcp_alpha_get_symbol_conviction(symbol="XAUUSD")`
+
+- **`mcp_alpha_execute_trade(symbol="XAUUSD", side="buy", volume=0.10, sl=4580.0, tp=4605.0)`**
+  - *Description*: Executes a live market order directly on FTMO MT5 with specified volume (default 0.10 lots), hard Stop Loss, and Take Profit.
+  - *Usage Example*: `mcp_alpha_execute_trade(symbol="XAUUSD", side="buy", volume=0.10, sl=4580.0, tp=4605.0)`
+
+- **`mcp_alpha_update_position(ticket=529434169, action="trail_sl", sl=4585.0, tp=4610.0)`**
+  - *Description*: Manages an open trade: modifies Stop Loss (for break-even lock or trailing stop) or force-closes an active position (`action="close"`).
+  - *Usage Example*: `mcp_alpha_update_position(ticket=529434169, action="trail_sl", sl=4585.0)`
+
+- **`mcp_alpha_register_watch(symbol="XAUUSD", condition="price touches 4580 demand", instruction="alert for buy entry")`**
+  - *Description*: Registers a dynamic smart watch with the local LLM desk to monitor price or order flow thresholds.
+  - *Usage Example*: `mcp_alpha_register_watch(symbol="XAUUSD", condition="spread <= 45 and delta > 0", instruction="notify immediately")`
+
+### 2. Multi-Source Intelligence & News Tools
+- **`mcp_alpha_query_analyst_desk(query="Is XAUUSD breaking out?", symbol="XAUUSD")`**
+  - *Description*: Queries the 7-Layer Analyst Desk (Technical, Fundamental, COT, Macro News, Global Eyes RSS) for a specific symbol.
+  - *Usage Example*: `mcp_alpha_query_analyst_desk(query="Evaluate liquidity sweep at 4583", symbol="XAUUSD")`
+
+- **`mcp_alpha_get_live_world_events(category="ALL")`**
+  - *Description*: Fetches live macroeconomic calendar releases, central bank commentary, energy headlines, and geopolitical breaking news.
+  - *Categories*: `ALL`, `CENTRAL_BANKS_FED`, `COMMODITIES_ENERGY`, `GEOPOLITICAL_GLOBAL`, `MACRO_ECONOMIC_INDICATORS`.
+  - *Usage Example*: `mcp_alpha_get_live_world_events(category="CENTRAL_BANKS_FED")`
+
+### 3. 100-Page Institutional Memory Book Tools (50 Entries/Page)
+- **`mcp_alpha_get_book_index()`**
+  - *Description*: Retrieves the complete table of contents for the 100-page memory book, active page number, and entry fill percentages.
+  - *Usage Example*: `mcp_alpha_get_book_index()`
+
+- **`mcp_alpha_get_book_page(page_number=1)`**
+  - *Description*: Reads any specific page (1 to 100) from the pattern book (~2,200 tokens per page) without bloating prompt context.
+  - *Usage Example*: `mcp_alpha_get_book_page(page_number=1)`
+
+- **`mcp_alpha_search_book(query="BEARTRAP", max_results=10)`**
+  - *Description*: Fast search across all 100 pages for matching patterns, symbols, lessons, or keywords. Returns exact page numbers, line numbers, and file links.
+  - *Usage Example*: `mcp_alpha_search_book(query="ASIAN_LOW_SWEPT", max_results=5)`
+
+- **`mcp_alpha_record_pattern_observation(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", observation="...")`**
+  - *Description*: Records a live setup into the active page with automatic pagination (rolls to Page N+1 when active page hits 50 entries) and increments hit count (`count: N`).
+  - *Usage Example*: `mcp_alpha_record_pattern_observation(symbol="XAUUSD", pattern_name="M5_DEMAND_BOUNCE", observation="Price touched 4583.50 demand, delta +82, quick expansion.")`
+
+- **`mcp_alpha_get_full_book()`**
+  - *Description*: Compiles and retrieves the entire 100-page institutional pattern book.
+  - *Usage Example*: `mcp_alpha_get_full_book()`
