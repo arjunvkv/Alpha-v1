@@ -646,6 +646,7 @@ class ConsolidatedTradingDaemon:
             f"Status: 3-Minute Periodic Scheduled Briefing Active + Continuous 2s Tick Ingestion\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
+        await asyncio.sleep(2.0)
         while self.is_running:
             try:
                 has_active_trades = await self.run_cycle()
