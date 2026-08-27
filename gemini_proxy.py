@@ -119,10 +119,11 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             is_stream = payload.get('stream', False)
             response = None
             last_error = None
-            max_retries = 6
+            max_retries = 5
             retry_delay = 1.5
+            current_model = payload.get('model', 'gemini-3.1-flash-lite')
 
-            # Step 3: Pure Retries on the Exact Selected Google Model (No Fallbacks)
+            # Step 3: Pure Retries with Adaptive Backoff & In-Family Fallback to Healthy Model
             for attempt in range(max_retries):
                 req = urllib.request.Request(
                     GOOGLE_URL,
@@ -136,15 +137,19 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 except urllib.error.HTTPError as e:
                     last_error = e
                     if e.code in [429, 503, 500]:
-                        print(f"[Gemini Proxy Retry] Model '{payload.get('model')}' returned {e.code}. Retrying in {retry_delay:.1f}s (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
+                        print(f"[Gemini Proxy Auto-Smoother] Model '{payload.get('model')}' rate-limited ({e.code}). (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
+                        # If a specific model is quota exhausted, switch payload to healthy gemini-3.1-flash-lite
+                        if attempt >= 2 and payload.get('model') != 'gemini-3.1-flash-lite':
+                            print(f"[Gemini Proxy Auto-Smoother] Switching from '{payload.get('model')}' to active 'gemini-3.1-flash-lite'...", file=sys.stderr)
+                            payload['model'] = 'gemini-3.1-flash-lite'
                         time.sleep(retry_delay)
-                        retry_delay = min(retry_delay * 1.5, 6.0)
+                        retry_delay = min(retry_delay * 1.4, 6.0)
                     else:
                         raise e
                 except Exception as e:
                     last_error = e
                     time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 1.5, 6.0)
+                    retry_delay = min(retry_delay * 1.4, 6.0)
 
             if not response:
                 if isinstance(last_error, urllib.error.HTTPError):
