@@ -24,3 +24,28 @@ Autonomous 24/7 Multi-Agent Quantitative Trading Desk & OpenCode CIO Brain Integ
 # Start 24/7 Background Trading Daemon
 python -u alpha_trading_desk.py run
 ```
+
+
+## Agent decision authority
+
+Alpha separates evidence from decisions.
+
+- The Agent is the only trading decision-maker: BUY, SELL, WAIT, HOLD,
+  CLOSE, REDUCE, REVERSE, timing, setup interpretation and conviction.
+- Memory, Pattern Book, repeatability, promotion, watchlists, scores and
+  historical outcomes are advisory evidence only.
+- The daemon may observe and wake the Agent, but may not convert evidence
+  into a trade-quality gate.
+- Execution validates malformed actions and physical/broker executability;
+  it must not silently replace an Agent ORDER with WAIT because of a learned
+  pattern, score, repeatability threshold, R:R threshold, or historical loss.
+- Novel setups are allowed. They are recorded as new evidence so the Agent
+  can learn from their eventual outcomes.
+
+Authority flow:
+
+`market → record → learn → evidence → Agent decision → execution`
+
+Never:
+
+`market → learn/gate → pass/fail → automatic no trade`

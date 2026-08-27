@@ -1,14 +1,14 @@
 """Order validation + routing (DAEMON_V2_SPEC.md sections 6-7).
 
 Every AI-authored ORDER action passes validate_order_spec before anything
-touches the broker. Hard limits: min RR 2.0 on entries, max 2 percent
-equity risk per trade, SL+TP mandatory.
+touches the broker. Validation checks malformed actions and execution facts;
+R:R and estimated account risk are preserved as Agent-visible evidence and
+are not used here as trade-quality gates.
 """
 
 from brain import executor
-from config import INSTRUMENTS, MAX_SINGLE_RISK_PCT
+from config import INSTRUMENTS
 
-MIN_RR = 2.0  # minimum reward:risk on entry orders
 
 
 def _num(value):
@@ -76,16 +76,9 @@ def validate_order_spec(spec, account, tick, point_sizes, is_entry=True):
     else:
         entry = (bid + ask) / 2.0
 
-    # Declared R:R gate - entries must carry an explicit numeric rr >= MIN_RR.
-    # The AI's stated reward:risk is authoritative, NOT a ratio implied by the
-    # live tick (the entry itself may be a limit far from tick mid, which
-    # flips an implied ratio either way). Monitor/exit specs are exempt.
+    # The Agent owns trade-quality decisions. R:R is preserved as evidence
+    # in the action spec but is never used here to replace ORDER with WAIT.
     norm["rr"] = spec.get("rr")
-    if is_entry:
-        rr_declared = _num(spec.get("rr"))
-        if rr_declared is None or rr_declared < MIN_RR:
-            errors.append("invalid_rr %s (entry requires numeric rr >= %s)"
-                          % (spec.get("rr"), MIN_RR))
 
     if not errors and sl is not None and tp is not None:
         risk_dist = abs(entry - sl)
@@ -106,14 +99,17 @@ def validate_order_spec(spec, account, tick, point_sizes, is_entry=True):
 
         points = risk_dist / point_size
         risk_usd = points * (volume or 0.0) * risk_per_point
+
+        # Risk is factual feedback, not an execution-quality gate. The Agent
+        # owns the decision to submit the order; the router only rejects
+        # malformed or physically unexecutable requests.
         equity = _num((account or {}).get("equity")) or 0.0
-        if equity <= 0:
-            errors.append("no_equity_data")
+        if equity > 0:
+            norm["estimated_risk_usd"] = risk_usd
+            norm["estimated_risk_pct"] = risk_usd / equity * 100.0
         else:
-            risk_pct = risk_usd / equity * 100.0
-            if risk_pct > MAX_SINGLE_RISK_PCT:
-                errors.append("risk_pct_too_high %.2f%% > %.2f%%"
-                              % (risk_pct, MAX_SINGLE_RISK_PCT))
+            norm["estimated_risk_usd"] = risk_usd
+            norm["estimated_risk_pct"] = None
     return not errors, errors, norm
 
 
