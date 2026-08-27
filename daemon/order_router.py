@@ -1,8 +1,9 @@
 """Order validation + routing (DAEMON_V2_SPEC.md sections 6-7).
 
 Every AI-authored ORDER action passes validate_order_spec before anything
-touches the broker. Hard limits: min RR 2.0 on entries, max 2 percent
-equity risk per trade, SL+TP mandatory.
+touches the broker. Validation checks malformed actions and execution facts;
+R:R and estimated account risk are preserved as Agent-visible evidence and
+are not used here as trade-quality gates.
 """
 
 from brain import executor
