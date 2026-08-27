@@ -582,7 +582,7 @@ class ConsolidatedTradingDaemon:
             f"{world_events_summary}\n\n"
         )
 
-        # DYNAMIC COMPLETION HANDSHAKE (No 3-Min Fixed Wait, Adaptive 8s Grace Buffer)
+        # 3-MINUTE DISPATCH CADENCE (180s interval + initial startup review + 10-min directive)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
@@ -590,12 +590,7 @@ class ConsolidatedTradingDaemon:
         ready_for_dispatch = False
         if is_startup:
             ready_for_dispatch = True
-        elif is_opencode_idle(OPENCODE_SESSION_ID):
-            # Dynamic 8-second grace buffer after completion
-            if elapsed_since_dispatch >= 8.0:
-                ready_for_dispatch = True
-        elif elapsed_since_dispatch >= 60.0:
-            # Fallback heartbeat
+        elif elapsed_since_dispatch >= 180.0:
             ready_for_dispatch = True
 
         if ready_for_dispatch:
@@ -603,7 +598,7 @@ class ConsolidatedTradingDaemon:
             is_10min_reminder = (now_ts % 600 < 30)
 
             if open_tickets:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "Dynamic Handshake Review")
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "3-Min Scheduled Review")
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
                 reversal_section = ""
@@ -627,7 +622,7 @@ class ConsolidatedTradingDaemon:
 
             else:
                 idle_prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else 'Dynamic Handshake Cycle')}):\n"
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '3-Min Scheduled Cycle')}):\n"
                     f"{file_ref_header}"
                     f"{world_header}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
@@ -642,13 +637,13 @@ class ConsolidatedTradingDaemon:
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with Dynamic Handshake Execution (No 3-Min Fixed Wait).")
+        LOG.info("Consolidated Trading Daemon started with 3-Minute Scheduled Briefing Cadence.")
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
-            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (DYNAMIC HANDSHAKE ACTIVE)\n"
+            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (3-MINUTE CADENCE ACTIVE)\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: Real-Time Dynamic Handshake Active (AI Complete -> 8s Grace Buffer -> 100% Fresh MT5 State)\n"
+            f"Status: 3-Minute Periodic Scheduled Briefing Active + Continuous 2s Tick Ingestion\n"
             f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
         )
         while self.is_running:
