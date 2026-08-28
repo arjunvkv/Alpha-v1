@@ -19,8 +19,8 @@ from logs.story_logger import log_opencode_said, log_local_llm_replied
 
 LOG = logging.getLogger("alpha.mcp.evaluator")
 
-OPENCODE_SESSION_ID = "ses_fc28140eaffeFGt54CBqh24cNi"
-OPENCODE_SESSION_TITLE = "Alpha v3"
+OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
+OPENCODE_SESSION_TITLE = "Alpha v4"
 
 class OpenCodeCIOEvaluator:
     def __init__(self):

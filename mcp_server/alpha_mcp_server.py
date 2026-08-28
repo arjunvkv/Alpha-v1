@@ -44,8 +44,8 @@ logging.basicConfig(
 LOG = logging.getLogger("alpha.mcp.server")
 
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
-OPENCODE_SESSION_ID = "ses_fc28140eaffeFGt54CBqh24cNi"
-OPENCODE_SESSION_TITLE = "Alpha v3"
+OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
+OPENCODE_SESSION_TITLE = "Alpha v4"
 
 # Initialize FastMCP Server
 mcp = FastMCP("alpha-daemon-mcp")
@@ -53,7 +53,7 @@ mcp = FastMCP("alpha-daemon-mcp")
 class AlphaMCPServer:
     def __init__(self):
         self.session_id = OPENCODE_SESSION_ID
-        self.session_title = "Alpha v3"
+        self.session_title = "Alpha v4"
         self.active_watches: List[Dict[str, Any]] = []
         self.unsolicited_insights: List[Dict[str, Any]] = []
         _init_mt5()

@@ -35,8 +35,8 @@ if str(TRADING_DIR) not in sys.path:
     sys.path.insert(0, str(TRADING_DIR))
 
 # Constants
-OPENCODE_SESSION_ID = "ses_fc28140eaffeFGt54CBqh24cNi"
-OPENCODE_SESSION_TITLE = "Alpha v3"
+OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
+OPENCODE_SESSION_TITLE = "Alpha v4"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
@@ -82,9 +82,9 @@ def post_to_opencode_session(speaker: str, message: str):
                 sock.settimeout(2)
                 try:
                     first_line = sock.recv(64).decode("utf-8", errors="ignore")
-                    LOG.info(f"Fired prompt to Alpha v3 session {target_sid}: {first_line.strip()}")
+                    LOG.info(f"Fired prompt to {OPENCODE_SESSION_TITLE} session {target_sid}: {first_line.strip()}")
                 except Exception:
-                    LOG.info(f"Fired prompt to Alpha v3 session {target_sid} (no response read)")
+                    LOG.info(f"Fired prompt to {OPENCODE_SESSION_TITLE} session {target_sid} (no response read)")
                 sock.close()
             except Exception as err:
                 LOG.error(f"Socket fire-and-forget to {target_sid} failed: {err}")
