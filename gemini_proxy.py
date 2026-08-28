@@ -5,38 +5,57 @@ SIGNATURE_CACHE = {}
 FUNCTION_NAME_CACHE = {}
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
-# Configured Gemini Keys Pool loaded dynamically from local storage
-def _load_gemini_keys():
-    cfg_file = os.path.expanduser("~/.config/opencode/gemini_keys.json")
-    if os.path.exists(cfg_file):
+# Configured Gemini Keys Pool with Zero-Restart Hot-Reloading
+KEYS_CONFIG_PATH = os.path.expanduser("~/.config/opencode/gemini_keys.json")
+_LAST_CFG_MTIME = 0
+GEMINI_KEYS = []
+ACTIVE_KEY_INDEX = 0
+
+def reload_gemini_keys_if_changed():
+    global GEMINI_KEYS, ACTIVE_KEY_INDEX, _LAST_CFG_MTIME
+    if os.path.exists(KEYS_CONFIG_PATH):
         try:
-            with open(cfg_file, "r", encoding="utf-8") as f:
-                d = json.load(f)
-                return d.get("keys", []), d.get("active_index", 0)
+            mtime = os.path.getmtime(KEYS_CONFIG_PATH)
+            if mtime != _LAST_CFG_MTIME or not GEMINI_KEYS:
+                with open(KEYS_CONFIG_PATH, "r", encoding="utf-8-sig") as f:
+                    d = json.load(f)
+                    GEMINI_KEYS = d.get("keys", [])
+                    ACTIVE_KEY_INDEX = d.get("active_index", 0)
+                    _LAST_CFG_MTIME = mtime
+                    if ACTIVE_KEY_INDEX >= len(GEMINI_KEYS):
+                        ACTIVE_KEY_INDEX = 0
         except Exception:
             pass
-    return [], 0
+    if not GEMINI_KEYS:
+        env_k = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
+        if env_k:
+            GEMINI_KEYS = [env_k.strip()]
+            ACTIVE_KEY_INDEX = 0
 
-_keys_list, _init_idx = _load_gemini_keys()
-GEMINI_KEYS = _keys_list if _keys_list else [os.environ.get("GEMINI_API_KEY", "")]
-ACTIVE_KEY_INDEX = _init_idx if _init_idx < len(GEMINI_KEYS) else 0
+def save_gemini_keys_state():
+    global GEMINI_KEYS, ACTIVE_KEY_INDEX, _LAST_CFG_MTIME
+    try:
+        data = {"keys": GEMINI_KEYS, "active_index": ACTIVE_KEY_INDEX}
+        with open(KEYS_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        _LAST_CFG_MTIME = os.path.getmtime(KEYS_CONFIG_PATH)
+    except Exception:
+        pass
 
 def get_active_gemini_key():
-    global ACTIVE_KEY_INDEX, GEMINI_KEYS
-    if not GEMINI_KEYS:
-        _k, _i = _load_gemini_keys()
-        GEMINI_KEYS = _k
-        ACTIVE_KEY_INDEX = _i
+    reload_gemini_keys_if_changed()
     return GEMINI_KEYS[ACTIVE_KEY_INDEX] if GEMINI_KEYS else ""
 
 def rotate_default_gemini_key():
     global ACTIVE_KEY_INDEX, GEMINI_KEYS
+    reload_gemini_keys_if_changed()
     if not GEMINI_KEYS:
         return ""
     old_idx = ACTIVE_KEY_INDEX
     ACTIVE_KEY_INDEX = (ACTIVE_KEY_INDEX + 1) % len(GEMINI_KEYS)
+    save_gemini_keys_state()
     new_key = GEMINI_KEYS[ACTIVE_KEY_INDEX]
-    print(f"\n⚡ [Gemini Proxy Key-Rotator] Key #{old_idx} hit 3 rate-limits! Permanently promoted Key #{ACTIVE_KEY_INDEX} ({new_key[:14]}...) as NEW DEFAULT for all future requests.\n", file=sys.stderr)
+    print(f"\n⚡ [Gemini Proxy Zero-Restart Rotator] Key #{old_idx} hit rate-limits. Seamlessly swapped to Key #{ACTIVE_KEY_INDEX} ({new_key[:14]}...) without restarting OpenCode!\n", file=sys.stderr)
     return new_key
 
 def get_api_keys():
