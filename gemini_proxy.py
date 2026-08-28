@@ -197,7 +197,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         m['content'] = "{}"
 
             # Step 2: Determine Auth
-            google_key, _ = get_api_keys()
+            google_key, groq_key = get_api_keys()
             auth_header = self.headers.get('Authorization')
             if not auth_header or auth_header.strip() in ['Bearer', 'Bearer null', 'Bearer undefined']:
                 auth_header = f"Bearer {google_key}"
@@ -207,11 +207,10 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             is_stream = payload.get('stream', False)
             response = None
             last_error = None
-            max_retries = 5
+            max_retries = 4
             retry_delay = 1.5
-            current_model = payload.get('model', 'gemini-3.1-flash-lite')
 
-            # Step 3: Pure Retries with Adaptive Backoff & In-Family Fallback to Healthy Model
+            # Step 3: Try Google AI Studio Frontier Models First
             for attempt in range(max_retries):
                 req = urllib.request.Request(
                     GOOGLE_URL,
@@ -219,25 +218,52 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': 'Mozilla/5.0'}
                 )
                 try:
-                    response = urllib.request.urlopen(req, timeout=30)
+                    response = urllib.request.urlopen(req, timeout=25)
                     if response:
                         break
                 except urllib.error.HTTPError as e:
                     last_error = e
                     if e.code in [429, 503, 500]:
-                        print(f"[Gemini Proxy Auto-Smoother] Model '{payload.get('model')}' rate-limited ({e.code}). (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
-                        # If a specific model is quota exhausted, switch payload to healthy gemini-3.1-flash-lite
-                        if attempt >= 2 and payload.get('model') != 'gemini-3.1-flash-lite':
-                            print(f"[Gemini Proxy Auto-Smoother] Switching from '{payload.get('model')}' to active 'gemini-3.1-flash-lite'...", file=sys.stderr)
-                            payload['model'] = 'gemini-3.1-flash-lite'
+                        print(f"[Gemini Proxy Auto-Smoother] Google model '{payload.get('model')}' returned {e.code}. Retrying ({attempt+1}/{max_retries})...", file=sys.stderr)
                         time.sleep(retry_delay)
-                        retry_delay = min(retry_delay * 1.4, 6.0)
+                        retry_delay = min(retry_delay * 1.5, 5.0)
                     else:
-                        raise e
+                        break
                 except Exception as e:
                     last_error = e
+                    print(f"[Gemini Proxy Network Handler] Retrying on network/DNS hiccup: {e}...", file=sys.stderr)
                     time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 1.4, 6.0)
+                    retry_delay = min(retry_delay * 1.5, 5.0)
+
+            # Step 4: Seamless Groq LPU Failover Bridge (Prevents 'Gemini is way too hot right now')
+            if not response and groq_key:
+                print(f"[Gemini Proxy Failover] Google quota exhausted. Seamlessly bridging via Groq LPU (qwen/qwen3.8-27b)...", file=sys.stderr)
+                groq_payload = dict(payload)
+                groq_payload['model'] = 'qwen/qwen3.8-27b'
+                # Clean Google-specific fields for Groq compatibility
+                clean_msgs = []
+                for m in groq_payload.get('messages', []):
+                    cm = dict(m)
+                    if cm.get('role') == 'assistant' and cm.get('tool_calls'):
+                        clean_tcs = []
+                        for tc in cm['tool_calls']:
+                            ctc = dict(tc)
+                            if 'extra_content' in ctc:
+                                del ctc['extra_content']
+                            clean_tcs.append(ctc)
+                        cm['tool_calls'] = clean_tcs
+                    clean_msgs.append(cm)
+                groq_payload['messages'] = clean_msgs
+
+                req_groq = urllib.request.Request(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    data=json.dumps(groq_payload).encode('utf-8'),
+                    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {groq_key}', 'User-Agent': 'Mozilla/5.0'}
+                )
+                try:
+                    response = urllib.request.urlopen(req_groq, timeout=30)
+                except Exception as groq_err:
+                    print(f"[Gemini Proxy Groq Failover Error] {groq_err}", file=sys.stderr)
 
             if not response:
                 if isinstance(last_error, urllib.error.HTTPError):
