@@ -5,21 +5,43 @@ SIGNATURE_CACHE = {}
 FUNCTION_NAME_CACHE = {}
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
-def get_api_keys():
-    google_k = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
-    groq_k = os.environ.get("GROQ_API_KEY") or ""
-    
-    if not google_k or not groq_k:
+# Configured Gemini Keys Pool loaded dynamically from local storage
+def _load_gemini_keys():
+    cfg_file = os.path.expanduser("~/.config/opencode/gemini_keys.json")
+    if os.path.exists(cfg_file):
         try:
-            cfg_path = os.path.expanduser("~/.config/opencode/opencode.json")
-            if os.path.exists(cfg_path):
-                with open(cfg_path, "r", encoding="utf-8") as f:
-                    cfg = json.load(f)
-                    env_b = cfg.get("env", {})
-                    google_k = google_k or env_b.get("GEMINI_API_KEY") or env_b.get("GOOGLE_GENERATIVE_AI_API_KEY") or ""
-                    groq_k = groq_k or env_b.get("GROQ_API_KEY") or ""
+            with open(cfg_file, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                return d.get("keys", []), d.get("active_index", 0)
         except Exception:
             pass
+    return [], 0
+
+_keys_list, _init_idx = _load_gemini_keys()
+GEMINI_KEYS = _keys_list if _keys_list else [os.environ.get("GEMINI_API_KEY", "")]
+ACTIVE_KEY_INDEX = _init_idx if _init_idx < len(GEMINI_KEYS) else 0
+
+def get_active_gemini_key():
+    global ACTIVE_KEY_INDEX, GEMINI_KEYS
+    if not GEMINI_KEYS:
+        _k, _i = _load_gemini_keys()
+        GEMINI_KEYS = _k
+        ACTIVE_KEY_INDEX = _i
+    return GEMINI_KEYS[ACTIVE_KEY_INDEX] if GEMINI_KEYS else ""
+
+def rotate_default_gemini_key():
+    global ACTIVE_KEY_INDEX, GEMINI_KEYS
+    if not GEMINI_KEYS:
+        return ""
+    old_idx = ACTIVE_KEY_INDEX
+    ACTIVE_KEY_INDEX = (ACTIVE_KEY_INDEX + 1) % len(GEMINI_KEYS)
+    new_key = GEMINI_KEYS[ACTIVE_KEY_INDEX]
+    print(f"\n⚡ [Gemini Proxy Key-Rotator] Key #{old_idx} hit 3 rate-limits! Permanently promoted Key #{ACTIVE_KEY_INDEX} ({new_key[:14]}...) as NEW DEFAULT for all future requests.\n", file=sys.stderr)
+    return new_key
+
+def get_api_keys():
+    google_k = get_active_gemini_key()
+    groq_k = os.environ.get("GROQ_API_KEY") or ""
     return google_k.strip(), groq_k.strip()
 
 def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe=60000):
@@ -209,153 +231,55 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         m['content'] = "{}"
 
             # Step 2: Determine Auth
-            google_key, groq_key = get_api_keys()
-            auth_header = self.headers.get('Authorization')
-            if not auth_header or auth_header.strip() in ['Bearer', 'Bearer null', 'Bearer undefined']:
-                auth_header = f"Bearer {google_key}"
-            elif not auth_header.startswith("Bearer "):
-                auth_header = f"Bearer {auth_header.strip()}"
-
+            auth_header = f"Bearer {get_active_gemini_key()}"
             is_stream = payload.get('stream', False)
             response = None
             last_error = None
-            max_retries = 3
+            max_retries = 6
             retry_delay = 1.0
+            consecutive_429 = 0
 
-            # Step 3: Try Google AI Studio Frontier Models First
+            # Step 3: Pure Google Gemini Execution with 3-Strike Permanent Key Promotion
             for attempt in range(max_retries):
+                current_key = get_active_gemini_key()
+                auth_header = f"Bearer {current_key}"
+                
                 req = urllib.request.Request(
                     GOOGLE_URL,
                     data=json.dumps(payload).encode('utf-8'),
                     headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': 'Mozilla/5.0'}
                 )
                 try:
-                    response = urllib.request.urlopen(req, timeout=20)
+                    response = urllib.request.urlopen(req, timeout=30)
                     if response:
                         break
                 except urllib.error.HTTPError as e:
                     last_error = e
                     if e.code in [429, 503, 500]:
-                        print(f"[Gemini Proxy Auto-Smoother] Google returned {e.code}. Retrying ({attempt+1}/{max_retries})...", file=sys.stderr)
-                        time.sleep(retry_delay)
-                        retry_delay = min(retry_delay * 1.5, 4.0)
+                        consecutive_429 += 1
+                        print(f"[Gemini Proxy Pure-Retry] Key #{ACTIVE_KEY_INDEX} ({current_key[:12]}...) rate-limited ({e.code}). Attempt {attempt+1}/{max_retries}...", file=sys.stderr)
+                        
+                        # 3-Strike Rule: If current default key rate limits 3 times, promote next key as permanent default!
+                        if consecutive_429 >= 3:
+                            new_k = rotate_default_gemini_key()
+                            consecutive_429 = 0
+                            retry_delay = 0.5  # Immediately try new default key
+                        else:
+                            time.sleep(retry_delay)
+                            retry_delay = min(retry_delay * 1.5, 6.0)
                     else:
-                        break
+                        raise e
                 except Exception as e:
                     last_error = e
+                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in {retry_delay:.1f}s...", file=sys.stderr)
                     time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 1.5, 4.0)
-
-            # Step 4: Bulletproof Groq LPU Bridge (Guarantees zero 429 'too hot' errors)
-            if not response and groq_key:
-                print(f"[Gemini Proxy Failover] Google quota busy. Bridging via Groq LPU (qwen/qwen3.8-27b)...", file=sys.stderr)
-                groq_payload = dict(payload)
-                groq_payload['model'] = 'qwen/qwen3.8-27b'
-                
-                # Keep Groq messages strictly under 20KB
-                g_msgs = groq_payload.get('messages', [])
-                if len(g_msgs) > 6:
-                    g_msgs = [g_msgs[0]] + g_msgs[-4:]
-                
-                clean_msgs = []
-                for m in g_msgs:
-                    cm = dict(m)
-                    c = cm.get('content')
-                    if isinstance(c, str) and len(c) > 2500 and cm.get('role') != 'system':
-                        cm['content'] = c[:1800] + "\n...[TRUNCATED FOR SPEED]...\n" + c[-700:]
-                    if cm.get('role') == 'assistant' and cm.get('tool_calls'):
-                        clean_tcs = []
-                        for tc in cm['tool_calls']:
-                            ctc = dict(tc)
-                            if 'extra_content' in ctc:
-                                del ctc['extra_content']
-                            clean_tcs.append(ctc)
-                        cm['tool_calls'] = clean_tcs
-                    clean_msgs.append(cm)
-                groq_payload['messages'] = clean_msgs
-
-                # Trim oversized tool schema definitions for Groq payload (< 15KB)
-                raw_tools = groq_payload.get('tools', [])
-                if raw_tools:
-                    lean_tools = []
-                    for t in raw_tools:
-                        fn = t.get('function', {})
-                        lean_fn = {
-                            'name': fn.get('name', ''),
-                            'description': (fn.get('description') or '')[:150],
-                            'parameters': fn.get('parameters', {'type': 'object', 'properties': {}})
-                        }
-                        lean_tools.append({'type': 'function', 'function': lean_fn})
-                    groq_payload['tools'] = lean_tools
-
-                req_groq = urllib.request.Request(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    data=json.dumps(groq_payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {groq_key}', 'User-Agent': 'Mozilla/5.0'}
-                )
-                try:
-                    response = urllib.request.urlopen(req_groq, timeout=25)
-                except Exception as groq_err:
-                    print(f"[Gemini Proxy Groq Failover Error] {groq_err}", file=sys.stderr)
+                    retry_delay = min(retry_delay * 1.5, 6.0)
 
             if not response:
-                # Ultimate fallback: return clean syntactically valid SSE stream or JSON to prevent UI freeze
-                print("[Gemini Proxy Safety Shield] Generating synthetic status reply to prevent UI freeze.", file=sys.stderr)
-                content_text = "Live position review processed. All risk guards and MT5 parameters verified."
-                
-                if is_stream:
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
-                    self.send_header('Cache-Control', 'no-cache')
-                    self.send_header('Connection', 'keep-alive')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    
-                    chunk1 = json.dumps({
-                        "id": "chatcmpl-fallback",
-                        "object": "chat.completion.chunk",
-                        "created": int(time.time()),
-                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
-                        "choices": [{"index": 0, "delta": {"role": "assistant", "content": content_text}, "finish_reason": None}]
-                    })
-                    chunk2 = json.dumps({
-                        "id": "chatcmpl-fallback",
-                        "object": "chat.completion.chunk",
-                        "created": int(time.time()),
-                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
-                        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]
-                    })
-                    try:
-                        self.wfile.write(f"data: {chunk1}\n\n".encode('utf-8'))
-                        self.wfile.write(f"data: {chunk2}\n\n".encode('utf-8'))
-                        self.wfile.write(b"data: [DONE]\n\n")
-                        self.wfile.flush()
-                    except (ConnectionResetError, BrokenPipeError):
-                        pass
-                    return
+                if isinstance(last_error, urllib.error.HTTPError):
+                    raise last_error
                 else:
-                    fallback_reply = {
-                        "id": "chatcmpl-fallback",
-                        "object": "chat.completion",
-                        "created": int(time.time()),
-                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
-                        "choices": [{
-                            "index": 0,
-                            "message": {
-                                "role": "assistant",
-                                "content": content_text
-                            },
-                            "finish_reason": "stop"
-                        }]
-                    }
-                    fallback_bytes = json.dumps(fallback_reply).encode('utf-8')
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Content-Length', str(len(fallback_bytes)))
-                    self.end_headers()
-                    self.wfile.write(fallback_bytes)
-                    return
+                    raise Exception(str(last_error))
 
             self.send_response(response.status)
             for k, v in response.getheaders():
