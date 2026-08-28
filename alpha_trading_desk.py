@@ -42,6 +42,49 @@ STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
 
+# ----------------------------------------------------------------------
+# PER-INSTRUMENT SPREAD NORMAL/ELEVATED THRESHOLDS (points)
+# ----------------------------------------------------------------------
+# Each instrument has a structurally different normal bid-ask baseline AND a
+# different $ cost per point. A single universal "<=45 pts" gate wrongly blocks
+# instruments whose normal spread is legitimately wider (notably USOIL.cash, which
+# has a tiny $-cost/pt so a wider point-spread is still economically viable).
+#
+# The NORMAL bound is the per-instrument tradable ceiling. Oil gets a generous
+# BUFFER above its 25-60 pt normal baseline so the gate never blocks it at a
+# spread whose dollar cost is still a tiny fraction of the target.
+#
+# Source: GCTSI Q2-2026 spread report + live FTMO broker calibration
+#   XAUUSD: 10-30 normal  -> ceiling 45 (tight scalp vehicle)
+#   XAGUSD: 20-60 normal  -> ceiling 70
+#   XPTUSD: 30-80 normal  -> ceiling 150 (structurally wide)
+#   XPDUSD: 40-120 normal -> ceiling 200 (widest normal)
+#   XCUUSD: 15-40 normal  -> ceiling 80
+#   USOIL:  25-60 normal  -> ceiling 100 (BUFFERED - NOT blocked by global gate)
+SPREAD_NORMAL_THRESHOLDS = {
+    "XAUUSD": 45,
+    "XAGUSD": 70,
+    "XPTUSD": 150,
+    "XPDUSD": 200,
+    "XCUUSD": 80,
+    "USOIL.cash": 100,
+}
+# Elevated is 2x the instrument normal ceiling (beyond that = HIGH_SPIKE).
+SPREAD_ELEVATED_FACTOR = 2.0
+
+
+def spread_classification(symbol: str, spread_pts: float) -> str:
+    """Classify a spread as NORMAL / ELEVATED / HIGH_SPIKE using the per-symbol
+    buffered ceiling. Falls back to the legacy 45-80 global scale for unknown symbols."""
+    floor = SPREAD_NORMAL_THRESHOLDS.get(symbol, 45)
+    elevated = floor * SPREAD_ELEVATED_FACTOR
+    if spread_pts <= floor:
+        return "NORMAL"
+    elif spread_pts <= elevated:
+        return "ELEVATED"
+    else:
+        return "HIGH_SPIKE"
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.trading_desk")
 
@@ -436,7 +479,7 @@ class ConsolidatedTradingDaemon:
                     if sym_info:
                         spread_pts = sym_info.spread
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
-                        status_str = "NORMAL" if spread_pts <= 45 else ("ELEVATED" if spread_pts <= 80 else "HIGH_SPIKE")
+                        status_str = spread_classification(symbol, spread_pts)
 
                 spread_dict = {"pts": spread_pts, "val": spread_val, "status": status_str}
                 spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"

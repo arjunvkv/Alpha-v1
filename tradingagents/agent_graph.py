@@ -220,6 +220,12 @@ class TradingAgentsDesk:
         ob_data = self.order_blocks.calculate_levels(symbol)
         news_status = self.news_shield.evaluate_news_freeze()
 
+        # Inject live 4TF trends into tech_data for TechnicalAnalyst
+        tech_data["h4_bias"] = mtf_data.get("h4_trend", "NEUTRAL")
+        tech_data["h1_bias"] = mtf_data.get("h1_trend", "NEUTRAL")
+        tech_data["m15_bias"] = mtf_data.get("m15_trend", "NEUTRAL")
+        tech_data["m5_bias"] = mtf_data.get("m5_trend", "NEUTRAL")
+
         # 2. Run Analyst Team
         tech_report = self.tech_analyst.analyze(symbol, tech_data)
         fund_report = self.fund_analyst.analyze(symbol, cot_data)
@@ -231,8 +237,8 @@ class TradingAgentsDesk:
         tech_report["order_blocks"] = ob_data
         macro_report["news_shield"] = news_status
 
-        # Update Technical Thesis with MTF & Pivots
-        mtf_str = f"MTF Alignment: H1 ({mtf_data['h1_trend']}) | M15 ({mtf_data['m15_trend']}) | M5 ({mtf_data['m5_trend']}) -> {mtf_data['alignment']}"
+        # Update Technical Thesis with Full 4TF Confluence & Pivots
+        mtf_str = f"4TF Alignment: {mtf_data['formatted_4tf']} (H4 RSI:{mtf_data['h4_rsi']} | H1 RSI:{mtf_data['h1_rsi']} | M15 RSI:{mtf_data['m15_rsi']} | M5 RSI:{mtf_data['m5_rsi']})"
         ob_str = f"Pivots: PP {ob_data['pivot_point']} | Demand: {ob_data['demand_zone']} | Supply: {ob_data['supply_zone']}"
         tech_report["thesis"] = f"{tech_report.get('thesis', '')} | {mtf_str} | {ob_str}"
 

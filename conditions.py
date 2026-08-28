@@ -188,7 +188,23 @@ def _eval_indicator_state(cond: Dict[str, Any], ctx: EvalContext) -> EvalResult:
 # --- Spread & Time Evaluators ---
 
 def _eval_spread_below(cond: Dict[str, Any], ctx: EvalContext) -> EvalResult:
-    max_pts = _num(cond.get("max_spread_points", 50.0))
+    """Spread-below gate using a per-symbol NORMAL ceiling so oil (or any
+    structurally-wider instrument) is never blocked by a universal tight default."""
+    # Per-instrument NORMAL ceiling (pts). XAUUSD keeps its original 50-pt watch
+    # default (unchanged). Oil gets a wide buffered ceiling so the gate never
+    # blocks it at a spread whose $-cost vs target is still tiny.
+    _SPREAD_CEILINGS = {
+        "XAUUSD": 50,
+        "XAGUSD": 70,
+        "XPTUSD": 150,
+        "XPDUSD": 200,
+        "XCUUSD": 80,
+        "USOIL.cash": 100,
+    }
+    # Explicit condition max wins; otherwise fall back to per-symbol ceiling.
+    max_pts = _num(cond.get("max_spread_points"))
+    if max_pts is None:
+        max_pts = _SPREAD_CEILINGS.get(str(ctx.symbol), 50)
     bid = _num(ctx.tick.get("bid"))
     ask = _num(ctx.tick.get("ask"))
     if bid is None or ask is None or ctx.point_size <= 0:
