@@ -508,11 +508,11 @@ class ConsolidatedTradingDaemon:
                 # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
                 rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
 
-                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF & RRR
+                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, Full 4-TF & RRR
                 inst_summary = (
                     f"• {symbol}: {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
                     f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) "
-                    f"| 4TF Structural Confluence: {tech_report.get('tf_confluence', 'MIXED_TIMEFRAMES')} "
+                    f"| 4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}] "
                     f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
@@ -561,13 +561,14 @@ class ConsolidatedTradingDaemon:
         from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
         
         read_logger = DossierReadLogger()
-        trade_journal = TradeJournalMemory()
+        journal_memory = TradeJournalMemory()
         inst_engine = InstitutionalAnalyticsEngine()
 
         # Update Institutional Deep Book & Filled Needs Files on every cycle
         try:
-            inst_engine.write_institutional_deep_book_file()
-            inst_engine.update_needs_file_with_filled_status()
+            journal_memory.write_journal_memory()
+            inst_engine.write_institutional_deep_book(self.instruments)
+            read_logger.log_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE")
         except Exception as err:
             LOG.error(f"Institutional deep book generation error: {err}")
 
@@ -586,17 +587,29 @@ class ConsolidatedTradingDaemon:
 
         read_logger.log_dossier_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE", f"Wrote persistent dossier file:///C:/Trading/Alpha/logs/full_desk_dossier.md for cycle #{self.cycle_count}")
 
-        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned (XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
+        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned ({', '.join(self.instruments)}). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
+
+        # 4. Construct Full 4TF Institutional Alignment Reveal Block
+        tf_reveal_lines = []
+        for item in instruments_data:
+            s = item.get("symbol", "")
+            m = item.get("mtf", {})
+            tf_line = (
+                f"  • {s}: H4: {m.get('h4_trend', 'NEUTRAL')} (RSI {m.get('h4_rsi', 50.0)}, EMA20 {m.get('h4_ema20', 0.0)}) | "
+                f"H1: {m.get('h1_trend', 'NEUTRAL')} (RSI {m.get('h1_rsi', 50.0)}, EMA20 {m.get('h1_ema20', 0.0)}) | "
+                f"M15: {m.get('m15_trend', 'NEUTRAL')} (RSI {m.get('m15_rsi', 50.0)}, EMA20 {m.get('m15_ema20', 0.0)}) | "
+                f"M5: {m.get('m5_trend', 'NEUTRAL')} (RSI {m.get('m5_rsi', 50.0)}, EMA20 {m.get('m5_ema20', 0.0)}) -> {m.get('alignment', 'MIXED_TIMEFRAMES')}"
+            )
+            tf_reveal_lines.append(tf_line)
+        full_4tf_reveal_block = "=== FULL PER-TIMEFRAME (4TF) INSTITUTIONAL ALIGNMENT REVEAL ===\n" + "\n".join(tf_reveal_lines) + "\n\n"
 
         matrix_formatted = "\n".join(instrument_matrix)
         top_pick_line = (f"HIGHEST GANGER 7-LAYER CONVICTION THIS CYCLE: {top_symbol} "
                          f"(Score {top_score:.1f}/10)" + (f" — {headline}" if headline else ""))
         
         # Token-Efficient Line Range Pointers & Strategy References
-        hdr_rng = dossier_res.get("header_range", "L1-L12")
-        pos_rng = dossier_res.get("positions_range", "L1-L25")
-        fnd_rng = dossier_res.get("findings_range", "L26-L80")
-        tot_lns = dossier_res.get("total_lines", 80)
+        dossier_line_count = dossier_res.get("total_lines", 80) if isinstance(dossier_res, dict) else 80
+        fnd_rng = dossier_res.get("findings_range", "L26-L80") if isinstance(dossier_res, dict) else "L26-L80"
 
         gen_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         file_ref_header = (
@@ -606,7 +619,7 @@ class ConsolidatedTradingDaemon:
             f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Record live research patterns via mcp_alpha_record_pattern_observation; use count >= 5 patterns for FASTER ANALYSIS & CONFIDENT TRADES!)\n"
             f"  • Institutional Deep Book (Order Flow, VWAP & Asian Ranges): file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
             f"  • CIO Needs & Gaps Tracker (100% Resolved): file:///C:/Trading/Alpha/logs/needs.md\n"
-            f"  • Full Desk Markdown Dossier ({tot_lns} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
+            f"  • Full Desk Markdown Dossier ({dossier_line_count} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
             f"NOTE: The inline MULTI-INSTRUMENT MATRIX below is the AUTHORITATIVE snapshot for this cycle (generated {gen_ts}). The dossier file is supplementary and rewritten continuously; do not treat it as newer than this inline block.\n\n"
         )
@@ -663,6 +676,7 @@ class ConsolidatedTradingDaemon:
                     f"{world_header}{top_pick_line}\n\n"
                     f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                     f"{reversal_section}\n"
+                    f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
@@ -676,6 +690,7 @@ class ConsolidatedTradingDaemon:
                     f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Scheduled Cycle')}):\n"
                     f"{file_ref_header}"
                     f"{world_header}{top_pick_line}\n\n"
+                    f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
