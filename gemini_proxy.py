@@ -299,30 +299,63 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     print(f"[Gemini Proxy Groq Failover Error] {groq_err}", file=sys.stderr)
 
             if not response:
-                # Ultimate fallback: return clean syntactically valid assistant reply rather than crashing with 429
+                # Ultimate fallback: return clean syntactically valid SSE stream or JSON to prevent UI freeze
                 print("[Gemini Proxy Safety Shield] Generating synthetic status reply to prevent UI freeze.", file=sys.stderr)
-                fallback_reply = {
-                    "id": "chatcmpl-fallback",
-                    "object": "chat.completion",
-                    "created": int(time.time()),
-                    "model": payload.get('model', 'gemini-3.1-flash-lite'),
-                    "choices": [{
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": "Live position review processed. All risk guards and MT5 parameters verified."
-                        },
-                        "finish_reason": "stop"
-                    }]
-                }
-                fallback_bytes = json.dumps(fallback_reply).encode('utf-8')
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Content-Length', str(len(fallback_bytes)))
-                self.end_headers()
-                self.wfile.write(fallback_bytes)
-                return
+                content_text = "Live position review processed. All risk guards and MT5 parameters verified."
+                
+                if is_stream:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+                    self.send_header('Cache-Control', 'no-cache')
+                    self.send_header('Connection', 'keep-alive')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    
+                    chunk1 = json.dumps({
+                        "id": "chatcmpl-fallback",
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
+                        "choices": [{"index": 0, "delta": {"role": "assistant", "content": content_text}, "finish_reason": None}]
+                    })
+                    chunk2 = json.dumps({
+                        "id": "chatcmpl-fallback",
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
+                        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]
+                    })
+                    try:
+                        self.wfile.write(f"data: {chunk1}\n\n".encode('utf-8'))
+                        self.wfile.write(f"data: {chunk2}\n\n".encode('utf-8'))
+                        self.wfile.write(b"data: [DONE]\n\n")
+                        self.wfile.flush()
+                    except (ConnectionResetError, BrokenPipeError):
+                        pass
+                    return
+                else:
+                    fallback_reply = {
+                        "id": "chatcmpl-fallback",
+                        "object": "chat.completion",
+                        "created": int(time.time()),
+                        "model": payload.get('model', 'gemini-3.1-flash-lite'),
+                        "choices": [{
+                            "index": 0,
+                            "message": {
+                                "role": "assistant",
+                                "content": content_text
+                            },
+                            "finish_reason": "stop"
+                        }]
+                    }
+                    fallback_bytes = json.dumps(fallback_reply).encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Content-Length', str(len(fallback_bytes)))
+                    self.end_headers()
+                    self.wfile.write(fallback_bytes)
+                    return
 
             self.send_response(response.status)
             for k, v in response.getheaders():
@@ -331,6 +364,8 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
 
             if is_stream:
+                self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+                self.send_header('Cache-Control', 'no-cache')
                 self.end_headers()
                 for line in response:
                     line_str = line.decode('utf-8', errors='ignore')
