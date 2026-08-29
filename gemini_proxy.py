@@ -229,7 +229,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             # Step 0: Intelligent Auto-Compress Mechanism
             messages = payload.get('messages', [])
             if messages:
-                messages = compress_and_optimize_context(messages, max_messages_safe=12, max_chars_safe=40000)
+                messages = compress_and_optimize_context(messages, min_turns_to_compress=12, max_chars_safe=80000)
                 payload['messages'] = messages
 
             # Step 1: Re-inject thought_signatures and normalize function names/tool messages
