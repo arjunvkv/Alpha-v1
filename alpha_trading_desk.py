@@ -528,8 +528,18 @@ class ConsolidatedTradingDaemon:
                 fvg_line = fvg_engine.get_fvg_summary_line(symbol)
                 fvg_data = fvg_engine.get_symbol_fvg_matrix(symbol)
 
-                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
-                rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
+                # Autonomous Librarian & Proxima Precedent Research
+                lib_payload = {}
+                try:
+                    lib_payload = self.librarian.run_librarian_cycle({
+                        "symbol": symbol,
+                        "fvg_type": "M5_BEAR_FVG" if "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG",
+                        "sweep_status": liq_data.get("sweep_status", "IN_RANGE"),
+                        "h4_bias": mtf.get("h4_trend", "NEUTRAL"),
+                        "m5_bias": mtf.get("m5_trend", "NEUTRAL")
+                    })
+                except Exception as l_err:
+                    LOG.debug(f"Librarian cycle for {symbol} skipped: {l_err}")
 
                 # Store deep structured instrument data for persistent dossier logging
                 instruments_data.append({
@@ -546,7 +556,8 @@ class ConsolidatedTradingDaemon:
                     "spread": spread_dict,
                     "velocity": velocity,
                     "liquidity_targets": liq_targets,
-                    "fvg": fvg_data
+                    "fvg": fvg_data,
+                    "librarian": lib_payload
                 })
 
                 # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG & RRR

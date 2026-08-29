@@ -103,6 +103,15 @@ class DeepDossierLogger:
             m5_bias = mtf.get("m5_trend", "NEUTRAL")
             alignment_label = mtf.get("alignment") or tech.get("tf_confluence", "MIXED_TIMEFRAMES")
 
+            lib = inst.get("librarian", {})
+            top4 = lib.get("top_4_precedents", [])
+            top1 = top4[0] if top4 else {}
+            lib_name = top1.get("name", "N/A")
+            lib_wr = top1.get("win_rate", "0/0 (N/A) [ESTIMATED_PRIOR]")
+            lib_prov = top1.get("evidence_provenance", "ESTIMATED")
+            lib_trigger = top1.get("execution_trigger", "N/A")
+            lib_score = top1.get("score", 0.0)
+
             md_lines.append(f"### 🔹 Instrument: {sym}")
             md_lines.append(f"- **Live Execution**: Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`")
             md_lines.append(f"- **ADR(20) Expansion**: Range `${adr.get('today_range')}/${adr.get('adr_20')}` (`{adr.get('pct_used')}% used`) [{adr.get('capacity_status')}]")
@@ -112,6 +121,7 @@ class DeepDossierLogger:
             md_lines.append(f"- **COT / Fundamental Agent Internal Reasoning**: COT Percentile `{cot_pct:.1f}%` | {fund.get('thesis', 'N/A')}")
             md_lines.append(f"- **Macro / News Agent Internal Reasoning**: DXY `{macro.get('dxy', 101.4)}`, VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
             md_lines.append(f"- **Bull vs. Bear Debate Agent Internal Reasoning**: Debater LLM Consensus `{debate.get('consensus_score', 5.0)}/10` | Conviction `{debate.get('conviction', 'LOW')}` | Institutional Risk Warning: `{'YES' if debate.get('institutional_risk_warning') else 'NO'}`")
+            md_lines.append(f"- **Autonomous Librarian & Proxima Precedent**: Top Precedent: `{lib_name}` (Score: `{lib_score}/10` | Win Rate: `{lib_wr}` [{lib_prov}]) | Trigger: {lib_trigger}")
             md_lines.append(f"- **Risk Officer Agent Decision**: Approved: `{risk.get('approved')}` | Recommended Max Lot Size: `{risk.get('max_volume_lots', 0.10)} lots` | Rationale: `{risk.get('reason')}`")
             md_lines.append("")
 
