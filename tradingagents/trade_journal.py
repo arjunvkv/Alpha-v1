@@ -41,6 +41,11 @@ class TradeJournalMemory:
             except Exception as err:
                 LOG.error(f"Failed to initialize trade journal: {err}")
 
+    def write_journal_memory(self):
+        """Ensures the markdown trade journal file is fresh and rendered on disk."""
+        data = self.get_journal_data()
+        self._render_markdown(data)
+
     def record_closed_trade(self, ticket: int, symbol: str, side: str, pnl: float, entry_price: float, exit_price: float, reason: str = "") -> dict:
         """Records a closed trade, updates memory buckets, and re-renders markdown."""
         try:
