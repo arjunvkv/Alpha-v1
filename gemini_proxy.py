@@ -340,6 +340,9 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
                 self.send_header('Cache-Control', 'no-cache')
                 self.end_headers()
+                accumulated_content = []
+                accumulated_reasoning = []
+                accumulated_tool_calls = {}
                 for line in response:
                     line_str = line.decode('utf-8', errors='ignore')
                     if line_str.startswith('data: ') and not line_str.startswith('data: [DONE]'):
@@ -348,12 +351,28 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                             choices = chunk_data.get('choices', [])
                             if choices:
                                 delta = choices[0].get('delta', {})
+                                if delta.get('content'):
+                                    accumulated_content.append(delta['content'])
+                                if delta.get('reasoning') or delta.get('thought'):
+                                    accumulated_reasoning.append(delta.get('reasoning') or delta.get('thought'))
                                 tcs = delta.get('tool_calls', [])
                                 for tc in tcs:
-                                    cid = tc.get('id')
+                                    idx = tc.get('index', 0)
+                                    if idx not in accumulated_tool_calls:
+                                        accumulated_tool_calls[idx] = {'id': '', 'name': '', 'arguments': '', 'thought_signature': ''}
+                                    if tc.get('id'):
+                                        accumulated_tool_calls[idx]['id'] = tc['id']
+                                    fn = tc.get('function', {})
+                                    if fn.get('name'):
+                                        accumulated_tool_calls[idx]['name'] = fn['name']
+                                    if fn.get('arguments'):
+                                        accumulated_tool_calls[idx]['arguments'] += fn['arguments']
                                     sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
-                                    if cid and sig:
-                                        SIGNATURE_CACHE[cid] = sig
+                                    if sig:
+                                        accumulated_tool_calls[idx]['thought_signature'] = sig
+                                        cid = tc.get('id') or accumulated_tool_calls[idx]['id']
+                                        if cid:
+                                            SIGNATURE_CACHE[cid] = sig
                         except Exception:
                             pass
                     try:
@@ -361,6 +380,16 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         self.wfile.flush()
                     except (ConnectionResetError, BrokenPipeError):
                         break
+
+                elapsed_ms = round((time.time() - start_t) * 1000, 1)
+                record_proxy_event("outbound_stream_complete", {
+                    "status": response.status,
+                    "latency_ms": elapsed_ms,
+                    "model": payload.get('model', 'gemini-3.5-flash-lite'),
+                    "thought_reasoning": "".join(accumulated_reasoning) if accumulated_reasoning else None,
+                    "content": "".join(accumulated_content) if accumulated_content else None,
+                    "tool_calls": list(accumulated_tool_calls.values()) if accumulated_tool_calls else []
+                })
             else:
                 res_data = response.read()
                 try:
@@ -380,8 +409,10 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                             "status": response.status,
                             "latency_ms": elapsed_ms,
                             "role": msg.get("role"),
+                            "thought_reasoning": msg.get("reasoning") or msg.get("thought"),
                             "content": msg.get("content"),
-                            "tool_calls": tcs
+                            "tool_calls": tcs,
+                            "raw_response": res_json
                         })
                 except Exception as e:
                     pass
