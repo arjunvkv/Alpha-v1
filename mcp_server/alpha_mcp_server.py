@@ -11,6 +11,7 @@ import sys
 import os
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -50,6 +51,7 @@ _fund_analyst = FundamentalAnalyst()
 _inst_engine = InstitutionalAnalyticsEngine()
 _mtf_analyst = MultiTimeframeAnalyst()
 _librarian_agent = AutonomousLibrarianAgent()
+_active_watches: Dict[str, Dict[str, Any]] = {}
 
 class AlphaMCPServer:
     def __init__(self):
@@ -141,33 +143,47 @@ def mcp_alpha_learning_review(
 @mcp.tool()
 def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "") -> str:
     """OpenCode assigns a dynamic smart watch to the local desk and registers active thesis with the Librarian."""
-    sym = symbol.upper()
+    sym = _normalize_symbol(symbol)
     desc = condition or instruction or reason or f"Watching {sym} @ {target_price}"
     log_opencode_said(f"Watch {sym}: {desc}")
     log_local_llm_replied(f"Understood CIO! Registered dynamic watch for {sym}: {desc}.")
     
-    # Save to discovery state for Librarian ingestion
+    watch_payload = {
+        "symbol": sym,
+        "condition": desc,
+        "instruction": instruction,
+        "target_price": target_price,
+        "direction": direction,
+        "reason": reason,
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+    _active_watches[sym] = watch_payload
+
+    # Save to discovery state for Librarian ingestion and persistent desk reload
     try:
-        from pathlib import Path
-        state_path = Path(r"C:\Trading\Alpha\data\live\discovery_state.json")
+        state_path = ALPHA_ROOT / "data" / "live" / "discovery_state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
         state_data = {}
         if state_path.exists():
             try:
-                with open(state_path, "r", encoding="utf-8") as f:
+                with open(state_path, "r", encoding="utf-8-sig") as f:
                     state_data = json.load(f)
-            except Exception:
+            except Exception as read_err:
+                LOG.warning(f"Could not read existing discovery_state.json: {read_err}")
                 state_data = {}
-        state_data["active_watch"] = {
-            "symbol": sym,
-            "condition": desc,
-            "target_price": target_price,
-            "direction": direction,
-            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
+
+        state_data["active_watch"] = watch_payload
+        watches_map = state_data.get("active_watches", {})
+        if not isinstance(watches_map, dict):
+            watches_map = {}
+        watches_map[sym] = watch_payload
+        state_data["active_watches"] = watches_map
+
         with open(state_path, "w", encoding="utf-8") as f:
             json.dump(state_data, f, indent=2)
-    except Exception:
-        pass
+        LOG.info(f"Persisted active watch for {sym} to {state_path}")
+    except Exception as err:
+        LOG.error(f"register_watch persist failed: {err}")
 
     return json.dumps({
         "status": "REGISTERED",
@@ -175,8 +191,9 @@ def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str 
         "condition": condition,
         "instruction": instruction,
         "target_price": target_price,
-        "direction": direction
-    })
+        "direction": direction,
+        "active_watch": watch_payload
+    }, indent=2)
 
 @mcp.tool()
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
