@@ -22,7 +22,7 @@ import time
 import psutil
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -35,8 +35,8 @@ if str(TRADING_DIR) not in sys.path:
     sys.path.insert(0, str(TRADING_DIR))
 
 # Constants
-OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
-OPENCODE_SESSION_TITLE = "Alpha v4"
+OPENCODE_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
+OPENCODE_SESSION_TITLE = "Alpha v5"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
