@@ -269,7 +269,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
 
 @mcp.tool()
-def mcp_alpha_query_analyst_desk(query: str, symbol: str = "XAUUSD") -> str:
+def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk; outputs are evidence, not decisions."""
     _init_mt5()
     try:
