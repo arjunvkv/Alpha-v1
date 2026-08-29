@@ -39,6 +39,7 @@ OPENCODE_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
 OPENCODE_SESSION_TITLE = "Alpha v5"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
+DAEMON_PINGS_LOG_PATH = PROJECT_ROOT / "logs" / "daemon_pings.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
 
@@ -58,29 +59,23 @@ INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
 #   XAUUSD: 10-30 normal  -> ceiling 45 (tight scalp vehicle)
 #   XAGUSD: 20-60 normal  -> ceiling 70
 #   XPTUSD: 30-80 normal  -> ceiling 150 (structurally wide)
-#   XPDUSD: 40-120 normal -> ceiling 200 (widest normal)
-#   XCUUSD: 15-40 normal  -> ceiling 80
-#   USOIL:  25-60 normal  -> ceiling 100 (BUFFERED - NOT blocked by global gate)
-SPREAD_NORMAL_THRESHOLDS = {
-    "XAUUSD": 45,
-    "XAGUSD": 70,
-    "XPTUSD": 150,
-    "XPDUSD": 200,
-    "XCUUSD": 80,
-    "USOIL.cash": 100,
-}
-# Elevated is 2x the instrument normal ceiling (beyond that = HIGH_SPIKE).
-SPREAD_ELEVATED_FACTOR = 2.0
-
-
-def spread_classification(symbol: str, spread_pts: float) -> str:
-    """Classify a spread as NORMAL / ELEVATED / HIGH_SPIKE using the per-symbol
-    buffered ceiling. Falls back to the legacy 45-80 global scale for unknown symbols."""
-    floor = SPREAD_NORMAL_THRESHOLDS.get(symbol, 45)
-    elevated = floor * SPREAD_ELEVATED_FACTOR
-    if spread_pts <= floor:
+#   XPDUSD: 30-90 normal -> ceiling 180 (wide spread vehicle)
+#   XCUUSD: 15-40 normal -> ceiling 60
+#   USOIL.cash: 25-60 normal -> ceiling 120 (generous buffer; $0.10/pt means 60 pts = $6 cost on a $150 move)
+def spread_classification(symbol: str, spread_pts: int) -> str:
+    """Return 'NORMAL' | 'ELEVATED' | 'HIGH_SPIKE' based on per-instrument ceilings."""
+    ceilings = {
+        "XAUUSD": (45, 65),
+        "XAGUSD": (70, 100),
+        "XPTUSD": (150, 220),
+        "XPDUSD": (180, 260),
+        "XCUUSD": (60, 90),
+        "USOIL.cash": (120, 180),
+    }
+    normal_ceil, elevated_ceil = ceilings.get(symbol, (45, 70))
+    if spread_pts <= normal_ceil:
         return "NORMAL"
-    elif spread_pts <= elevated:
+    elif spread_pts <= elevated_ceil:
         return "ELEVATED"
     else:
         return "HIGH_SPIKE"
@@ -92,8 +87,15 @@ LOG = logging.getLogger("alpha.trading_desk")
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
-    """Log intent, then reliably enqueue an asynchronous prompt to the active OpenCode session."""
+    """Log intent, record ping into daemon_pings.log, and enqueue prompt to OpenCode."""
     log_story(speaker, message)
+    try:
+        DAEMON_PINGS_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(DAEMON_PINGS_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(f"\n{'='*70}\n[DAEMON PING] {now_ts} | Speaker: {speaker} | Target: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n{'='*70}\n{message}\n")
+    except Exception as e:
+        LOG.error(f"Error writing to daemon_pings.log: {e}")
     LOG.info(
         f"\n=== [COMMUNICATION LOG STREAM] ===\n"
         f"Speaker: {speaker}\n"

@@ -193,3 +193,6 @@ class FairValueGapEngine:
         tf = nearest.get("timeframe", "M15")
         f_type = "Bull" if "BULLISH" in nearest.get("type", "") else "Bear"
         return f"FVG: {tf} {f_type} [{nearest.get('bottom')}-{nearest.get('top')}] (CE: {nearest.get('consequent_encroachment')}) [{nearest.get('status')}]"
+
+    # Clean method alias
+    get_fvg_matrix = get_symbol_fvg_matrix
