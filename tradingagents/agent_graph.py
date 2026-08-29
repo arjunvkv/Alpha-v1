@@ -66,8 +66,14 @@ class TechnicalAnalyst:
 
 class FundamentalAnalyst:
     def analyze(self, symbol: str, cot_data: Dict[str, Any]) -> Dict[str, Any]:
-        percentile = cot_data.get("managed_money_percentile", 50.0)
-        comm_net = cot_data.get("commercial_net", 0)
+        # Support both legacy managed_money_percentile and FuturesBench cot_index_52w / cot_index_26w
+        percentile = cot_data.get("managed_money_percentile")
+        if percentile is None:
+            percentile = cot_data.get("cot_index_52w") or cot_data.get("cot_index_26w") or 50.0
+        
+        comm_net = cot_data.get("commercial_net")
+        if comm_net is None:
+            comm_net = cot_data.get("net_noncommercial", 0)
 
         # Institutional alignment check
         institutional_long = percentile > 60.0
@@ -77,13 +83,16 @@ class FundamentalAnalyst:
         if institutional_long: score += 2.5
         if extreme_overcrowded: score -= 3.0  # Contrarian risk
 
+        bias_str = cot_data.get("bias", "")
+        thesis_extra = f" ({bias_str})" if bias_str else ""
+
         return {
             "agent": "FundamentalAnalyst",
             "symbol": symbol,
             "score": round(score, 1),
             "cot_managed_money_percentile": percentile,
             "commercial_net": comm_net,
-            "thesis": f"Managed money COT percentile at {percentile:.1f}%. Institutional support {'STRONG' if institutional_long else 'WEAK'}."
+            "thesis": f"Managed money COT percentile at {percentile:.1f}%. Institutional support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
         }
 
 class MacroNewsAnalyst:

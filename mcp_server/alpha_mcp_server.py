@@ -244,7 +244,16 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         sym = symbol.strip()
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_price = getattr(tick, "ask", 0.0)
-        cot_data = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
+        cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
+        cot_data = {
+            "managed_money_percentile": cot_pct,
+            "commercial_net": raw_cot.get("net_noncommercial", 0),
+            "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
+            "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "bias": raw_cot.get("bias", "NEUTRAL"),
+            "change": raw_cot.get("change", 0)
+        }
         mtf_res = _mtf_analyst.analyze_mtf(sym)
         rsi_val = mtf_res.get("m15_rsi", 50.0)
         
@@ -280,7 +289,16 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
         
-        cot_data = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
+        cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
+        cot_data = {
+            "managed_money_percentile": cot_pct,
+            "commercial_net": raw_cot.get("net_noncommercial", 0),
+            "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
+            "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "bias": raw_cot.get("bias", "NEUTRAL"),
+            "change": raw_cot.get("change", 0)
+        }
         macro_feed = _inst_engine.get_macro_and_gamma_feeds()
         mtf_res = _mtf_analyst.analyze_mtf(sym)
         rsi_val = mtf_res.get("m15_rsi", 50.0)
