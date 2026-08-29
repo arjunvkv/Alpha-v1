@@ -1,5 +1,22 @@
 import urllib.request, json, os, sys, time
+from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+PROXY_LOG_PATH = r"C:\Trading\Alpha\logs\gemini_proxy_stream.log"
+os.makedirs(os.path.dirname(PROXY_LOG_PATH), exist_ok=True)
+
+def record_proxy_event(event_type: str, details: dict):
+    try:
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        entry = {
+            "timestamp": now_ts,
+            "event": event_type,
+            **details
+        }
+        with open(PROXY_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(f"[{now_ts}] === [{event_type.upper()}] ===\n{json.dumps(entry, indent=2)}\n\n")
+    except Exception as e:
+        print(f"[Proxy Log Error] {e}", file=sys.stderr)
 
 SIGNATURE_CACHE = {}
 FUNCTION_NAME_CACHE = {}
@@ -232,6 +249,14 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 messages = compress_and_optimize_context(messages, min_turns_to_compress=12, max_chars_safe=80000)
                 payload['messages'] = messages
 
+            start_t = time.time()
+            record_proxy_event("inbound_request", {
+                "model": payload.get('model', 'gemini-3.5-flash-lite'),
+                "turn_count": len(messages),
+                "last_message_preview": (messages[-1].get("content")[:300] if messages else ""),
+                "tools_declared": declared_tool_names
+            })
+
             # Step 1: Re-inject thought_signatures and normalize function names/tool messages
             for m in messages:
                 if 'name' in m and not m['name']:
@@ -349,7 +374,16 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                             sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
                             if cid and sig:
                                 SIGNATURE_CACHE[cid] = sig
-                except Exception:
+                        
+                        elapsed_ms = round((time.time() - start_t) * 1000, 1)
+                        record_proxy_event("outbound_response", {
+                            "status": response.status,
+                            "latency_ms": elapsed_ms,
+                            "role": msg.get("role"),
+                            "content": msg.get("content"),
+                            "tool_calls": tcs
+                        })
+                except Exception as e:
                     pass
                 self.send_header('Content-Length', str(len(res_data)))
                 self.end_headers()
