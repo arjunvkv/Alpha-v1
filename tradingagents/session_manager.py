@@ -1,8 +1,9 @@
 """
 Centralized OpenCode Session Configuration Manager.
 
-Provides dynamic, zero-restart hot-reloading for the active OpenCode session ID,
-session title, and API endpoint across all desk components, MCP servers, and daemons.
+Single source of truth for the active OpenCode session ID, session title,
+and API endpoint across all desk components, MCP servers, and daemons.
+Backed by C:\\Trading\\Alpha\\config\\opencode_session_config.json with zero-restart hot-reloading.
 """
 
 import json
@@ -10,10 +11,11 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
-LOG = logging.getLogger("alpha.config.session_manager")
+LOG = logging.getLogger("alpha.session_manager")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_CONFIG_PATH = PROJECT_ROOT / "config" / "opencode_session_config.json"
+OPENCODE_SESSION_CONFIG_PATH = SESSION_CONFIG_PATH
 
 DEFAULT_SESSION_ID = "ses_fdba9ed77ffe7272Kqg2Cz7FoD"
 DEFAULT_SESSION_TITLE = "alpha-gravity"
@@ -34,7 +36,8 @@ def load_session_config() -> Dict[str, Any]:
     return {
         "session_id": DEFAULT_SESSION_ID,
         "session_title": DEFAULT_SESSION_TITLE,
-        "opencode_api_url": DEFAULT_API_URL
+        "opencode_api_url": DEFAULT_API_URL,
+        "dossier_streaming_enabled": True
     }
 
 
@@ -69,10 +72,12 @@ def set_opencode_session(session_id: str, session_title: str = None) -> bool:
         cfg["session_id"] = str(session_id).strip()
         if session_title:
             cfg["session_title"] = str(session_title).strip()
+        from datetime import datetime, timezone
+        cfg["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         SESSION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(SESSION_CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2)
-        LOG.info(f"Updated OpenCode session config: {cfg['session_title']} ({cfg['session_id']})")
+        LOG.info(f"Updated OpenCode session config: {cfg.get('session_title')} ({cfg.get('session_id')})")
         return True
     except Exception as e:
         LOG.error(f"Failed to write session config: {e}")
@@ -100,4 +105,3 @@ def set_dossier_streaming(enabled: bool) -> bool:
     except Exception as e:
         LOG.error(f"Failed to update dossier streaming toggle: {e}")
         return False
-
