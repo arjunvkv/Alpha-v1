@@ -635,15 +635,19 @@ class ConsolidatedTradingDaemon:
             rec = live_status.get(source, {})
             status = rec.get("status", "READ_REQUIRED")
             interval = rec.get("review_interval_seconds")
-            review_lines.append(f"  • {source}: {status}" + (f" (review interval: {interval}s)" if interval else ""))
+            read_at = rec.get("read_at")
+            suffix = (f" | LAST READ: {read_at}" if read_at else " | LAST READ: NEVER")
+            review_lines.append(f"  • {source}: {status}" + (f" (review interval: {interval}s)" if interval else "") + suffix)
         review_lines.append("")
         review_lines.append("=== MANDATORY LEARNING — EVERY STUDY CYCLE / NO EXPIRY ===")
         for source in ("Unified Learning Memory", "Pattern Book", "Historical Research", "Strategy Evidence Archive"):
-            review_lines.append(f"  • {source}: {learning_status.get(source, {}).get('status', 'READ_REQUIRED')}")
+            rec = learning_status.get(source, {})
+            read_at = rec.get("read_at")
+            review_lines.append(f"  • {source}: {rec.get('status', 'READ_REQUIRED')} | LAST READ: {read_at or 'NEVER'}")
         review_block = "\n".join(review_lines)
 
         mcp_tools_block = """=== AVAILABLE ALPHA MCP TOOLS — USE WHEN RELEVANT ===
-  • mcp_alpha_learning_review — check/start study cycle; mark evidence read after actual review.
+  • mcp_alpha_learning_review — check/start study cycle; mark one or multiple evidence sources read after actual review.
   • mcp_alpha_register_watch — register an Agent-requested market watch.
   • mcp_alpha_execute_trade — execute an Agent decision; this tool does not decide.
   • mcp_alpha_update_position — update an existing position when the Agent decides.
@@ -679,7 +683,7 @@ decision authority.
             f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
             f"{review_block}\n\n"
-            f"  • Use mcp_alpha_learning_review to check/start the study cycle and mark sources read after actual review.\n\n"
+            f"  • Use mcp_alpha_learning_review to check/start the study cycle and mark one or multiple sources read after actual review.\n\n"
             f"{mcp_tools_block}\n"
             f"=== MANDATORY AGENT CYCLE ===\n"
             f"  1. Read required live and due evidence.\n"
