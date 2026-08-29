@@ -1028,6 +1028,9 @@ class InstitutionalAnalyticsEngine:
         LOG.info(f"Wrote updated institutional deep book to {deep_book_path} ({len(md_lines)} lines).")
         return deep_book_path
 
+    # Seamless alias
+    write_institutional_deep_book = write_institutional_deep_book_file
+
     def update_needs_file_with_filled_status(self) -> Path:
         """Updates logs/needs.md with live status confirming every single gap is 100% FILLED."""
         needs_path = PROJECT_ROOT / "logs" / "needs.md"

@@ -31,3 +31,6 @@ class DossierReadLogger:
             LOG.error(f"Failed to record dossier read audit log: {err}")
 
         return entry
+
+    # Seamless alias
+    log_read = log_dossier_read
