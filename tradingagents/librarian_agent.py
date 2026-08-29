@@ -394,7 +394,16 @@ class AutonomousLibrarianAgent:
                 f"Primary requirement: Enter on 50% Consequent Encroachment tap with delta stall, maintaining strict 1:3.0 RRR sweet spot."
             )
 
-        # 4. Generate tactical Top 4
+        # 4. Query Proxima Quantitative Engine if online
+        proxima_online = self.proxima.check_health()
+        proxima_synthesis = None
+        if proxima_online:
+            proxima_synthesis = self.proxima.query_proxima_tools(
+                f"Analyze institutional pattern query for {sym}: '{query}'. Key setup: {top_matches[0].get('pattern_name') if top_matches else 'General'}. Provide concise structural invalidation & expectancy analysis.",
+                system_prompt="You are Proxima Research Quantitative Engine for institutional trading desks."
+            )
+
+        # 5. Generate tactical Top 4
         market_state = {
             "symbol": sym,
             "fvg_type": "M5_BEAR_FVG" if "SHORT" in q_upper or "BEAR" in q_upper or "SELL" in q_upper else "M5_BULL_FVG",
@@ -408,6 +417,8 @@ class AutonomousLibrarianAgent:
             "theme": theme,
             "direct_answer": direct_ans,
             "empirical_derivation": derivation_str,
+            "proxima_status": "ONLINE" if proxima_online else "STANDBY (Local Rules Active)",
+            "proxima_research_synthesis": proxima_synthesis if proxima_synthesis else "Local Deterministic & Unified Memory Rules Active (Proxima Desktop Standby)",
             "matched_evidence_count": len(matched_patterns),
             "relevant_trade_experiences_count": len(relevant_experiences),
             "recommended_precedent": cycle_res.get("top_4_precedents", [{}])[0],
