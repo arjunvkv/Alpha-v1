@@ -51,7 +51,7 @@ def _init_mt5():
         LOG.error(f"MT5 init error: {err}")
 
 @mcp.tool()
-def mcp_alpha_learning_review(action: str = "status", source: str = "", document_path: str = "") -> str:
+def mcp_alpha_learning_review(action: str = "status", source: str = "", sources_json: str = "[]", document_path: str = "") -> str:
     """Track the Agent's evidence review state using one existing MCP tool.
 
     Actions: status, start_cycle, mark_read. The four canonical learning sources
@@ -64,7 +64,15 @@ def mcp_alpha_learning_review(action: str = "status", source: str = "", document
     if action == "start_cycle":
         result = memory.start_study_cycle()
     elif action == "mark_read":
-        result = memory.mark_read(source, document_path)
+        try:
+            sources = json.loads(sources_json) if sources_json else []
+        except Exception as err:
+            return json.dumps({"status": "INVALID_SOURCES_JSON", "error": str(err)})
+        if not isinstance(sources, list):
+            return json.dumps({"status": "INVALID_SOURCES_JSON", "error": "sources_json must decode to a JSON array"})
+        if source and source not in sources:
+            sources.append(source)
+        result = memory.mark_reads(sources, document_paths={source: document_path} if source and document_path else {})
     else:
         result = memory.get_review_status()
     return json.dumps(result, indent=2)
