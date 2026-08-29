@@ -120,7 +120,7 @@ class GrangerAdapter:
             m = cot_data.get("markets", {}).get(symbol) or cot_data.get("markets", {}).get(sym_clean, {})
             
             percentile = m.get("cot_index_52w", m.get("cot_index_26w", 60.0))
-            comm_net = m.get("net_noncommercial", 0)
+            net_noncomm = m.get("net_noncommercial", 0)
             
             return {
                 "symbol": symbol,
@@ -128,7 +128,8 @@ class GrangerAdapter:
                 "report_date": cot_data.get("report_date"),
                 "source": cot_data.get("source"),
                 "managed_money_percentile": percentile,
-                "commercial_net": comm_net,
+                "net_noncommercial": net_noncomm,
+                "commercial_net": net_noncomm,  # backward-compatible alias
                 "bias": m.get("bias", "NEUTRAL"),
                 "z_score": m.get("z_score", 0.0),
                 "open_interest_change": m.get("change", 0),
@@ -139,6 +140,7 @@ class GrangerAdapter:
                 "symbol": symbol,
                 "status": "UNAVAILABLE",
                 "managed_money_percentile": 50.0,
+                "net_noncommercial": 0,
                 "commercial_net": 0,
                 "error": str(err)
             }
