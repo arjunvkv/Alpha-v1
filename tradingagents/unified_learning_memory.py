@@ -22,6 +22,16 @@ LEARNING_REVIEW_SOURCES = (
     "Strategy Evidence Archive",
 )
 
+# Live evidence uses simple elapsed review intervals. Learning sources above never
+# expire and are instead required in every explicit study cycle.
+LIVE_REVIEW_SOURCES = {
+    "Live Market State": 120,
+    "Active Positions": 120,
+    "Technical / Multi-Timeframe Detail": 240,
+    "Intermarket Context": 600,
+    "Macro / Calendar / World Events": 900,
+}
+
 
 def _now() -> str:
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -235,16 +245,53 @@ class UnifiedLearningMemory:
         self._save_review_state(state); return self.get_review_status()
 
     def mark_read(self, source: str, document_path: str = "") -> Dict[str, Any]:
-        if source not in LEARNING_REVIEW_SOURCES: return {"status": "UNKNOWN_SOURCE", "source": source}
-        state = self._load_review_state(); state.setdefault("learning_reads", {})[source] = {"read_at": _now(), "document_path": document_path, "cycle_id": state.get("cycle_id", 0)}
-        self._save_review_state(state); return self.get_review_status()
+        state = self._load_review_state()
+        if source in LEARNING_REVIEW_SOURCES:
+            state.setdefault("learning_reads", {})[source] = {
+                "read_at": _now(), "document_path": document_path,
+                "cycle_id": state.get("cycle_id", 0)
+            }
+        elif source in LIVE_REVIEW_SOURCES:
+            state.setdefault("live_reads", {})[source] = {
+                "read_at": _now(), "document_path": document_path
+            }
+        else:
+            return {"status": "UNKNOWN_SOURCE", "source": source}
+        self._save_review_state(state)
+        return self.get_review_status()
 
     def get_review_status(self) -> Dict[str, Any]:
-        state = self._load_review_state(); learning = {}
+        state = self._load_review_state(); learning = {}; live = {}
         for source in LEARNING_REVIEW_SOURCES:
             rec = state.get("learning_reads", {}).get(source)
-            learning[source] = {"status": "READ_THIS_CYCLE" if isinstance(rec, dict) and rec.get("cycle_id") == state.get("cycle_id") else "READ_REQUIRED", "document_path": rec.get("document_path") if isinstance(rec, dict) else ""}
-        return {"status": "SUCCESS", "cycle_id": state.get("cycle_id", 0), "cycle_started_at": state.get("cycle_started_at"), "learning": learning, "learning_never_expires": True, "instruction": "Consult all mandatory learning sources during every study cycle. Learn from mistakes, corrections, contradictions and successful precedents; record meaningful learning even when no trade occurs."}
+            learning[source] = {
+                "status": "READ_THIS_CYCLE" if isinstance(rec, dict) and rec.get("cycle_id") == state.get("cycle_id") else "READ_REQUIRED",
+                "document_path": rec.get("document_path") if isinstance(rec, dict) else ""
+            }
+        now = datetime.datetime.now()
+        for source, interval_seconds in LIVE_REVIEW_SOURCES.items():
+            rec = state.get("live_reads", {}).get(source)
+            status = "READ_REQUIRED"
+            if isinstance(rec, dict) and rec.get("read_at"):
+                try:
+                    read_at = datetime.datetime.strptime(rec["read_at"], "%Y-%m-%d %H:%M:%S")
+                    status = "READ_AGAIN_MANDATORY" if (now - read_at).total_seconds() >= interval_seconds else "READ_CURRENT"
+                except Exception:
+                    status = "READ_REQUIRED"
+            live[source] = {
+                "status": status,
+                "review_interval_seconds": interval_seconds,
+                "document_path": rec.get("document_path") if isinstance(rec, dict) else ""
+            }
+        return {
+            "status": "SUCCESS",
+            "cycle_id": state.get("cycle_id", 0),
+            "cycle_started_at": state.get("cycle_started_at"),
+            "learning": learning,
+            "live": live,
+            "learning_never_expires": True,
+            "instruction": "Consult all mandatory learning sources during every study cycle. Learn from mistakes, corrections, contradictions and successful precedents; record meaningful learning even when no trade occurs."
+        }
 
     def learning_cycle_complete(self) -> bool: return all(item["status"] == "READ_THIS_CYCLE" for item in self.get_review_status()["learning"].values())
 
