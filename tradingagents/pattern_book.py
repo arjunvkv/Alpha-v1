@@ -116,12 +116,7 @@ class PatternBookManager:
 
     def _emit_entry_line(self, sym: str, pname: str, count: int, obs: str,
                          outcomes_n: int, last_ts: str) -> str:
-        if count >= 5:
-            tag = (f"WATCHLIST (>=5 HITS, {outcomes_n} outcomes logged — "
-                   f"agent-evaluated, NO auto-execute)") if outcomes_n > 0 \
-                else "WATCHLIST (>=5 HITS — awaiting outcome data, NO auto-execute)"
-        else:
-            tag = f"EXPLORATORY (Count: {count})"
+        tag = f"ACTIVE EVIDENCE (Count: {count}, {outcomes_n} outcomes — agent-study only)"
         out_token = f"(Outcomes: {outcomes_n}) " if outcomes_n > 0 else ""
         return f"- **[{sym}] {pname}** [{tag}]: {obs} {out_token}(Last: {last_ts})"
 
@@ -274,7 +269,7 @@ class PatternBookManager:
                     "symbol": sym,
                     "pattern_name": matched_parsed["pname"],
                     "count": new_count,
-                    "validation": "WATCHLIST" if new_count >= 5 else "EXPLORATORY",
+                    "validation": "ACTIVE_EVIDENCE",
                     "outcomes_recorded": outcomes_n,
                     "observation": matched_parsed["obs"]
                 }
@@ -314,7 +309,7 @@ class PatternBookManager:
             "symbol": sym,
             "pattern_name": pname,
             "count": 1,
-            "validation": "EXPLORATORY",
+            "validation": "ACTIVE_EVIDENCE",
             "outcomes_recorded": outcomes_n,
             "observation": observation
         }
@@ -350,7 +345,7 @@ class PatternBookManager:
                 "pattern_name": pattern_name, "outcomes_recorded": outcomes_n}
 
     def get_validation_summary(self) -> Dict[str, Any]:
-        """Informational only (no gate). Surfaces WATCHLIST patterns + outcome stats
+        """Informational only (no gate). Surfaces all patterns + outcome stats
         so the agent can learn which patterns are actually validated."""
         meta = self._get_metadata()
         active_page = meta.get("active_page", 1)
