@@ -151,33 +151,41 @@ class BullBearDebater:
         }
 
 class RiskManager:
+    """Collect account constraints and historical risk evidence without trade veto authority."""
+
     def __init__(self):
         self.memory = DecisionMemory()
 
     def evaluate_risk(self, symbol: str, debate: Dict[str, Any], account_heat_pct: float) -> Dict[str, Any]:
-        # Check hard heat limit
-        if account_heat_pct >= 6.0:
-            return {"approved": False, "reason": f"Account heat {account_heat_pct:.1f}% exceeds max heat limit of 6.0%"}
-
-        # Check memory for historical mistake anti-patterns
         mistakes = self.memory.get_mistakes()
-        blocking_mistake = None
-        for m in mistakes:
-            if m.get("symbol") == symbol and m.get("pattern") in debate.get("bear_points", []):
-                blocking_mistake = m
-                break
+        similar_mistakes = [
+            m for m in mistakes
+            if m.get("symbol") == symbol and m.get("pattern") in debate.get("bear_points", [])
+        ]
 
-        if blocking_mistake:
-            return {
-                "approved": False,
-                "reason": f"Historical Memory Block: Past mistake logged for {symbol} pattern '{blocking_mistake.get('pattern')}'"
-            }
-
+        account_constraint = account_heat_pct >= 6.0
         return {
-            "approved": debate["consensus_score"] >= 7.5,
-            "max_volume_lots": 0.10,
-            "max_risk_pct": 1.5,
-            "reason": "Risk checks passed cleanly."
+            "approved": None,
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY",
+            "execution_feasible": not account_constraint,
+            "account_constraint": {
+                "active": account_constraint,
+                "reason": (
+                    f"Account heat {account_heat_pct:.1f}% reaches the configured 6.0% account constraint"
+                    if account_constraint else "No configured account-heat constraint active"
+                )
+            },
+            "historical_risk": {
+                "similar_mistakes": similar_mistakes,
+                "study_required": bool(similar_mistakes),
+                "veto_authority": False
+            },
+            "risk_guidance": {
+                "max_volume_lots": 0.10,
+                "max_risk_pct": 1.5
+            },
+            "reason": "Risk and historical evidence supplied for Agent study; no trading-quality approval or veto was issued."
         }
 
 from tradingagents.multitimeframe import MultiTimeframeAnalyst, OrderBlockEngine
@@ -245,38 +253,19 @@ class TradingAgentsDesk:
         # 3. Run Bull vs. Bear Debate
         debate_report = self.debater.debate(symbol, tech_report, fund_report, macro_report, sent_report)
 
-        # 4. Run Risk Officer
+        # 4. Run Risk Officer as evidence/feasibility reporter
         risk_report = self.risk_officer.evaluate_risk(symbol, debate_report, account_heat_pct)
-        if news_status.get("freeze_active"):
-            risk_report["approved"] = False
-            risk_report["reason"] = f"TRADE HALTED BY NEWS SHIELD: {news_status.get('event_name')}"
+        risk_report["news_risk"] = {
+            "active": bool(news_status.get("freeze_active")),
+            "event_name": news_status.get("event_name"),
+            "study_required": bool(news_status.get("freeze_active")),
+            "veto_authority": False
+        }
 
-        # 5. Formulate Trade Proposal if High Conviction
+        # 5. No automatic proposal or order construction.
+        # The Agent receives the full evidence and chooses direction, size, entry,
+        # stop and target through its normal decision/execution tools.
         proposal = None
-        if risk_report["approved"] and debate_report["consensus_score"] >= 8.0:
-            price = tech_report.get("prices", {}).get("current_price", 0.0)
-            if price == 0.0:
-                try:
-                    import MetaTrader5 as mt5
-                    tick = mt5.symbol_info_tick(symbol) or mt5.symbol_info_tick(symbol.upper())
-                    price = getattr(tick, "ask", 0.0)
-                except Exception:
-                    price = 0.0
-            sl = round(price * 0.985, 2)
-            tp = round(price * 1.035, 2)
-            rr = round((tp - price) / (price - sl), 2) if (price - sl) > 0 else 2.0
-
-            proposal = {
-                "symbol": symbol,
-                "side": "buy",
-                "volume": risk_report["max_volume_lots"],
-                "entry_price": price,
-                "sl": sl,
-                "tp": tp,
-                "structural_rr": rr,
-                "conviction_score": debate_report["consensus_score"],
-                "reason": f"Multi-Agent Consensus Score {debate_report['consensus_score']}/10. Bull points: {', '.join(debate_report['bull_points'])}"
-            }
 
         return {
             "symbol": symbol,
