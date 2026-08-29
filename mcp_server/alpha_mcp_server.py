@@ -368,7 +368,7 @@ def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
                 "fundamental_cot_analyst": fund_res,
                 "macro_news_analyst": macro_res,
                 "global_eyes_rss": "Active (Central Bank Reserves + Rate Cut Expectations)",
-                "historical_memory": "Memory Check Clear — Zero Matching Veto Patterns"
+                "historical_memory": "Historical learning is study evidence; it has no veto authority"
             },
             "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. "
                                      f"Technical posture: {tech_res.get('thesis')}. "
