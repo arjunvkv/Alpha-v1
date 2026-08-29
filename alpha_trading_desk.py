@@ -678,6 +678,7 @@ class ConsolidatedTradingDaemon:
   • mcp_alpha_search_book — search the Pattern Book for relevant evidence.
   • mcp_alpha_get_book_index — inspect Pattern Book structure/index.
   • mcp_alpha_get_full_book — retrieve the full Pattern Book when necessary.
+  • mcp_alpha_configure_instruments — get/update active instruments (metals/commodities) in batch with hot-reloading.
 
 MANDATORY: Know the available MCP capabilities and use the relevant tool when needed.
 Do not call tools mechanically. Study, interpret and decide first; MCP tools retrieve,

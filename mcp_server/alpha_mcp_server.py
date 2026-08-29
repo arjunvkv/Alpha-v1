@@ -296,6 +296,107 @@ def mcp_alpha_get_trade_forensics(ticket: int = 0) -> str:
     forensics = TradeForensicsEngine()
     return json.dumps(forensics.get_trade_forensics(ticket), indent=2)
 
+@mcp.tool()
+def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
+    """Get or update active trading instruments (metals/commodities) in real-time with hot-reloading.
+    
+    Actions:
+      - 'get': Retrieve currently enabled and disabled instruments.
+      - 'set': Enable or disable instruments in batch.
+    
+    Parameters:
+      - enable: Comma-separated symbol(s) to enable, e.g. 'XAUUSD,USOIL.cash' or 'ALL'
+      - disable: Comma-separated symbol(s) to disable, e.g. 'XPTUSD,XPDUSD,XCUUSD' or 'ALL'
+      - toggles_json: JSON object of symbols and booleans, e.g. '{"XAUUSD": true, "XPTUSD": false}'
+    
+    Supported symbols: XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash
+    """
+    config_path = ALPHA_ROOT / "config" / "instruments_config.json"
+    default_instruments = {
+        "XAUUSD": True,
+        "XAGUSD": True,
+        "XPTUSD": True,
+        "XPDUSD": True,
+        "XCUUSD": True,
+        "USOIL.cash": True
+    }
+    
+    config_data = {}
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+        except Exception:
+            config_data = {}
+            
+    instruments = config_data.get("instruments", default_instruments)
+    
+    if action == "get":
+        return json.dumps({
+            "status": "SUCCESS",
+            "active_instruments": [sym for sym, val in instruments.items() if val],
+            "disabled_instruments": [sym for sym, val in instruments.items() if not val],
+            "all_toggles": instruments
+        }, indent=2)
+        
+    # Process explicit toggles_json
+    if toggles_json and toggles_json != "{}":
+        try:
+            toggles = json.loads(toggles_json)
+            for sym, state in toggles.items():
+                sym_clean = sym.strip()
+                if sym_clean in instruments:
+                    instruments[sym_clean] = bool(state)
+                elif sym_clean.upper() in instruments:
+                    instruments[sym_clean.upper()] = bool(state)
+        except Exception as e:
+            return json.dumps({"status": "INVALID_JSON", "error": str(e)})
+            
+    # Process enable string (comma-separated or "ALL")
+    if enable:
+        if enable.strip().upper() == "ALL":
+            for k in instruments:
+                instruments[k] = True
+        else:
+            for s in enable.split(","):
+                sym = s.strip()
+                if sym in instruments:
+                    instruments[sym] = True
+                elif sym.upper() in instruments:
+                    instruments[sym.upper()] = True
+
+    # Process disable string (comma-separated or "ALL")
+    if disable:
+        if disable.strip().upper() == "ALL":
+            for k in instruments:
+                instruments[k] = False
+        else:
+            for s in disable.split(","):
+                sym = s.strip()
+                if sym in instruments:
+                    instruments[sym] = False
+                elif sym.upper() in instruments:
+                    instruments[sym.upper()] = False
+
+    from datetime import datetime, timezone
+    config_data["description"] = "Alpha Trading Desk - Active Instrument Toggles (Hot-Reloading)"
+    config_data["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    config_data["instruments"] = instruments
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2)
+
+    read_logger.log_dossier_read("OpenCode CIO (MCP Config Instruments)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Updated instruments: Active={[s for s, v in instruments.items() if v]}")
+
+    return json.dumps({
+        "status": "SUCCESS",
+        "message": "Instruments configuration updated with zero-restart hot-reloading.",
+        "active_instruments": [sym for sym, val in instruments.items() if val],
+        "disabled_instruments": [sym for sym, val in instruments.items() if not val],
+        "all_toggles": instruments
+    }, indent=2)
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()
