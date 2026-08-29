@@ -351,8 +351,8 @@ def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp
 class OpenCodeCIOEvaluator:
     """Legacy-named compatibility component. It never decides or executes trades."""
     def __init__(self):
-        self.session_id = OPENCODE_SESSION_ID
-        self.session_title = OPENCODE_SESSION_TITLE
+        self.session_id = get_opencode_session_id()
+        self.session_title = get_opencode_session_title()
 
     def evaluate_discovery_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         symbol = event.get("symbol", "XAUUSD")
@@ -863,6 +863,7 @@ if __name__ == "__main__":
             print(f"[ERROR] {err}")
     else:
         # Default: Run Daemon
-        log_story("System Launcher", f"=== CONSOLIDATED TRADING DESK STARTED UNDER OPENCODE SESSION '{OPENCODE_SESSION_TITLE}' ({OPENCODE_SESSION_ID}) ===")
+        sid, title, _ = get_opencode_session()
+        log_story("System Launcher", f"=== CONSOLIDATED TRADING DESK STARTED UNDER OPENCODE SESSION '{title}' ({sid}) ===")
         daemon = ConsolidatedTradingDaemon()
         asyncio.run(daemon.start_loop())
