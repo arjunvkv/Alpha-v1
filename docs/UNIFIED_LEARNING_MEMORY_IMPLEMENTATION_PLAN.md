@@ -81,3 +81,8 @@ A migration report must expose source coverage, migrated counts, linked overlaps
 
 ## Implementation Boundary
 Changes are made on a non-main branch. They are committed but not merged to main until explicit confirmation.
+
+
+## Implementation Status
+Implemented on branch `codex/unified-learning-memory` and intentionally not merged to `main`.
+The branch introduces the canonical store, routes existing learning MCP calls to it without adding tools, removes future five-hit promotion semantics, preserves legacy files as migration sources/archive, and keeps learning as Agent-study evidence rather than trading authority.
