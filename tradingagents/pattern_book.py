@@ -356,7 +356,7 @@ class PatternBookManager:
             with open(page_path, "r", encoding="utf-8") as f:
                 for line in f:
                     parsed = self._parse_entry_line(line)
-                    if not parsed or parsed["count"] < 5:
+                    if not parsed:
                         continue
                     key = self._normalize_key(parsed["sym"], parsed["pname"])
                     recs = outcomes.get(key, [])
