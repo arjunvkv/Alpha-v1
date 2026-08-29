@@ -380,3 +380,43 @@ class UnifiedLearningMemory:
                 "decision_authority": "AGENT_ONLY"
             })
         return {"status": "SUCCESS", "patterns": patterns, "total_patterns": len(patterns)}
+
+
+    def get_page(self, page_number: int = 1, page_size: int = 50) -> Dict[str, Any]:
+        patterns = self.all_patterns()
+        start = max(0, (int(page_number) - 1) * page_size)
+        page = patterns[start:start + page_size]
+        return {
+            "status": "SUCCESS",
+            "page": int(page_number),
+            "entries": page,
+            "entries_count": len(page),
+            "total_entries": len(patterns),
+            "canonical_store": self.path,
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY"
+        }
+
+    def get_index(self) -> Dict[str, Any]:
+        patterns = self.all_patterns()
+        return {
+            "status": "SUCCESS",
+            "canonical_store": self.path,
+            "total_patterns": len(patterns),
+            "total_experiences": len(self._load().get("experiences", {})),
+            "pattern_states": sorted(STATES),
+            "unlimited_evidence": True,
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY"
+        }
+
+    def get_full(self) -> str:
+        data = self._load()
+        return json.dumps({
+            "canonical_store": self.path,
+            "experiences": data.get("experiences", {}),
+            "patterns": data.get("patterns", {}),
+            "migration": data.get("migration", {}),
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY"
+        }, indent=2, ensure_ascii=False)
