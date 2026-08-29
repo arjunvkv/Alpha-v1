@@ -22,7 +22,7 @@ import time
 import psutil
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -546,13 +546,22 @@ class ConsolidatedTradingDaemon:
         journal_memory = TradeJournalMemory()
         inst_engine = InstitutionalAnalyticsEngine()
 
-        # Update Institutional Deep Book & Filled Needs Files on every cycle
+        # Update each detailed source independently. One failure must not hide the
+        # successful updates of the other sources from the Agent.
+        update_status = []
         try:
             journal_memory.write_journal_memory()
+            update_status.append(("Unified Learning Memory / Journal", "UPDATED"))
+        except Exception as err:
+            LOG.error(f"Unified learning/journal update error: {err}")
+            update_status.append(("Unified Learning Memory / Journal", f"UPDATE FAILED: {err}"))
+        try:
             inst_engine.write_institutional_deep_book(self.instruments)
-            read_logger.log_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE")
+            update_status.append(("Institutional Deep Book", "UPDATED"))
         except Exception as err:
             LOG.error(f"Institutional deep book generation error: {err}")
+            update_status.append(("Institutional Deep Book", f"UPDATE FAILED: {err}"))
+        read_logger.log_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE")
 
         self.cycle_count += 1
         dossier_res = dossier_logger.write_dossier(
@@ -593,17 +602,46 @@ class ConsolidatedTradingDaemon:
         dossier_line_count = dossier_res.get("total_lines", 80) if isinstance(dossier_res, dict) else 80
         fnd_rng = dossier_res.get("findings_range", "L26-L80") if isinstance(dossier_res, dict) else "L26-L80"
 
-        gen_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        utc_now = datetime.utcnow()
+        ist_now = utc_now + timedelta(hours=5, minutes=30)
+        gen_ts = utc_now.strftime("%Y-%m-%d %H:%M:%S UTC")
+        ist_ts = ist_now.strftime("%Y-%m-%d %H:%M:%S IST")
+        update_status_block = "\n".join(
+            f"  • {'✓' if status == 'UPDATED' else '⚠'} {name}: {status}"
+            for name, status in update_status
+        )
         file_ref_header = (
-            f"=== MANDATORY SYSTEM DIRECTIVES (MANDATE) ===\n"
-            f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & line range rules)\n"
-            f"  • Micro-Profit Scalping Strategy: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
-            f"  • Persistent Self-Study Memory Buckets: file:///C:/Trading/Alpha/logs/trade_journal_memory.md (MANDATE: Record live research patterns via mcp_alpha_record_pattern_observation; use count >= 5 patterns for FASTER ANALYSIS & CONFIDENT TRADES!)\n"
-            f"  • Institutional Deep Book (Order Flow, VWAP & Asian Ranges): file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
-            f"  • CIO Needs & Gaps Tracker (100% Resolved): file:///C:/Trading/Alpha/logs/needs.md\n"
-            f"  • Full Desk Markdown Dossier ({dossier_line_count} Lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
+            f"=== ALPHA AGENT STUDY UPDATE ===\n"
+            f"  • CURRENT TIME: {ist_ts}\n"
+            f"  • UTC: {gen_ts}\n"
+            f"  • STUDY CYCLE: {self.cycle_count}\n\n"
+            f"=== AVAILABLE EVIDENCE / SYSTEM DIRECTIVES ===\n"
+            f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md\n"
+            f"  • Strategy Evidence Archive: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
+            f"  • Unified Learning Memory: file:///C:/Trading/Alpha/logs/unified_learning_memory.json\n"
+            f"  • Pattern Book: file:///C:/Trading/Alpha/logs/pattern_book/\n"
+            f"  • Historical Research / Full Desk Evidence ({dossier_line_count} lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
+            f"  • Institutional Deep Book: file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
+            f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
-            f"NOTE: The inline MULTI-INSTRUMENT MATRIX below is the AUTHORITATIVE snapshot for this cycle (generated {gen_ts}). The dossier file is supplementary and rewritten continuously; do not treat it as newer than this inline block.\n\n"
+            f"=== MANDATORY LEARNING — EVERY STUDY CYCLE / NO EXPIRY ===\n"
+            f"  • Unified Learning Memory — CONSULT AND MARK READ\n"
+            f"  • Pattern Book — CONSULT AND MARK READ\n"
+            f"  • Historical Research — CONSULT AND MARK READ\n"
+            f"  • Strategy Evidence Archive — CONSULT AND MARK READ\n"
+            f"  • Use mcp_alpha_learning_review to check/start the study cycle and mark sources read after actual review.\n\n"
+            f"=== MANDATORY AGENT CYCLE ===\n"
+            f"  1. Read required live and due evidence.\n"
+            f"  2. Consult all four mandatory learning sources.\n"
+            f"  3. Study current conditions against accumulated evidence.\n"
+            f"  4. Learn continuously even when no trade is active.\n"
+            f"  5. Learn from mistakes: incorrect interpretations, failed hypotheses, missed evidence, missed opportunities and repeated reasoning errors.\n"
+            f"  6. Identify what was wrong, why, and correct the understanding when evidence supports it.\n"
+            f"  7. Record meaningful observations, corrections, contradictions and learning; do not create duplicate narrative merely because another cycle occurred.\n"
+            f"  8. Mark evidence READ only after actual review.\n"
+            f"  9. Daemon data is information only; interpretation and trading decisions remain AGENT-ONLY.\n\n"
+            f"=== PER-FILE UPDATE STATUS ===\n{update_status_block}\n\n"
+            f"NOTE: Detailed files are the persistent evidence. The inline matrix is a compact current-cycle briefing, not a replacement for the detailed files.\n\n"
         )
 
         from tradingagents.world_events import LiveWorldEventsEngine
