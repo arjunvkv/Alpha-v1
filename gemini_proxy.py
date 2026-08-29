@@ -201,6 +201,16 @@ def compress_and_optimize_context(messages, min_turns_to_compress=12, max_chars_
     print(f"[Gemini Proxy Context Auto-Compressor] Compressed {len(middle_messages)} bloated turns into structured memory bridge. Total active turns: {1 + 1 + len(tail_messages)}.", file=sys.stderr)
     return [first_msg, compressed_msg] + tail_messages
 
+def normalize_tool_name(model_name: str, declared_names: list) -> str:
+    if not model_name or not declared_names:
+        return model_name
+    if model_name in declared_names:
+        return model_name
+    for d in declared_names:
+        if d.endswith(f"_{model_name}") or d.endswith(model_name):
+            return d
+    return model_name
+
 
 class GeminiProxyHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -324,13 +334,10 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     time.sleep(retry_delay)
                     retry_delay = min(retry_delay * 1.5, 6.0)
 
-            if not response:
-                if isinstance(last_error, urllib.error.HTTPError):
-                    raise last_error
-                else:
-                    raise Exception(str(last_error))
+            if response is None:
+                raise last_error or RuntimeError("Failed all Gemini API retry attempts.")
 
-            self.send_response(response.status)
+            self.send_response(200)
             for k, v in response.getheaders():
                 if k.lower() not in ['transfer-encoding', 'content-length']:
                     self.send_header(k, v)
@@ -364,7 +371,9 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                                         accumulated_tool_calls[idx]['id'] = tc['id']
                                     fn = tc.get('function', {})
                                     if fn.get('name'):
-                                        accumulated_tool_calls[idx]['name'] = fn['name']
+                                        normalized_name = normalize_tool_name(fn['name'], declared_tool_names)
+                                        fn['name'] = normalized_name
+                                        accumulated_tool_calls[idx]['name'] = normalized_name
                                     if fn.get('arguments'):
                                         accumulated_tool_calls[idx]['arguments'] += fn['arguments']
                                     sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
@@ -373,6 +382,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                                         cid = tc.get('id') or accumulated_tool_calls[idx]['id']
                                         if cid:
                                             SIGNATURE_CACHE[cid] = sig
+                                line = f"data: {json.dumps(chunk_data)}\n\n".encode('utf-8')
                         except Exception:
                             pass
                     try:
@@ -400,10 +410,14 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         tcs = msg.get('tool_calls', [])
                         for tc in tcs:
                             cid = tc.get('id')
+                            fn = tc.get('function', {})
+                            if fn.get('name'):
+                                fn['name'] = normalize_tool_name(fn['name'], declared_tool_names)
                             sig = tc.get('extra_content', {}).get('google', {}).get('thought_signature')
                             if cid and sig:
                                 SIGNATURE_CACHE[cid] = sig
                         
+                        res_data = json.dumps(res_json).encode('utf-8')
                         elapsed_ms = round((time.time() - start_t) * 1000, 1)
                         record_proxy_event("outbound_response", {
                             "status": response.status,
