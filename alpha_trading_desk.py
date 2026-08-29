@@ -625,6 +625,8 @@ class ConsolidatedTradingDaemon:
             f"  • {'✓' if status == 'UPDATED' else '⚠'} {name}: {status}"
             for name, status in update_status
         )
+        from tradingagents.unified_learning_memory import UnifiedLearningMemory
+        unified_learning_memory = UnifiedLearningMemory()
         review_state = unified_learning_memory.get_review_status()
         learning_status = review_state.get("learning", {})
         live_status = review_state.get("live", {})

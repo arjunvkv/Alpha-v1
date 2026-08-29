@@ -988,6 +988,8 @@ class InstitutionalAnalyticsEngine:
             vol = d.get("volatility", {})
             sym_cot = cot.get("markets", {}).get(sym, {})
 
+            buy_tp_val = float(zones.get('dynamic_buy_tp_usd') or 0.0)
+            sell_tp_val = float(zones.get('dynamic_sell_tp_usd') or 0.0)
             md_lines.extend([
                 f"### 🔹 {sym} Deep Institutional Intelligence",
                 f"| Institutional Metric | Live Real-Time Value | Institutional Assessment / Action |",
@@ -997,7 +999,7 @@ class InstitutionalAnalyticsEngine:
                 f"| **Institutional Absorption** | `Absorption: {of.get('absorption_detected')}` | {'🚨 Heavy Absorption Zone Detected (Reversal Edge)' if of.get('absorption_detected') else 'Normal Liquidity Flow'} |",
                 f"| **Volume Profile (POC/VAH/VAL)** | `POC: {vp.get('poc')} | VAH: {vp.get('vah')} | VAL: {vp.get('val')}` | Context: **{vp.get('price_location')}** |",
                 f"| **Retail Stop Clusters** | `Buy Stops: {stops.get('buy_stop_pool')} | Sell Stops: {stops.get('sell_stop_pool')}` | Magnet Target: **{stops.get('liquidity_target')}** |",
-                f"| **Zone Proximity & TP** | `Demand: {zones.get('nearest_demand')} ({zones.get('dist_to_demand_pts')} pts) | Supply: {zones.get('nearest_supply')} ({zones.get('dist_to_supply_pts')} pts)` | Dynamic TP: **BUY +${zones.get('dynamic_buy_tp_usd'):.2f} / SELL +${zones.get('dynamic_sell_tp_usd'):.2f}** |",
+                f"| **Zone Proximity & TP** | `Demand: {zones.get('nearest_demand')} ({zones.get('dist_to_demand_pts')} pts) | Supply: {zones.get('nearest_supply')} ({zones.get('dist_to_supply_pts')} pts)` | Dynamic TP: **BUY +${buy_tp_val:.2f} / SELL +${sell_tp_val:.2f}** |",
                 f"| **Asian Session Range** | `High: {asia.get('asian_high')} / Low: {asia.get('asian_low')}` | Range: **${asia.get('range_pts', 0.0)}** ({asia.get('status')}) |",
                 f"| **Sweep Reversal Edge** | `Confirmed: {asia.get('sweep_reversal')}` | {'🟢 Price Swept Asian Liquidity & Re-Entered Range!' if asia.get('sweep_reversal') else 'No Active Asian Sweep Reversal'} |",
                 f"| **Institutional VWAP** | `VWAP: {vwap.get('vwap')} (±{vwap.get('std_dev')})` | Upper 1σ: `{vwap.get('upper_band_1')}` / Lower 1σ: `{vwap.get('lower_band_1')}` |",
