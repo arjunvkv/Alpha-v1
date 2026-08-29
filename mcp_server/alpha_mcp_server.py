@@ -401,6 +401,29 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
         "all_toggles": instruments
     }, indent=2)
 
+
+@mcp.tool()
+def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
+    """Query the Autonomous Librarian Agent for deep pattern reality checks, ticket provenance, and Proxima quantitative research."""
+    from tradingagents.librarian_agent import AutonomousLibrarianAgent
+    lib = AutonomousLibrarianAgent()
+    market_state = {
+        "symbol": symbol.upper(),
+        "fvg_type": "M5_BEAR_FVG" if "SHORT" in query.upper() or "BEAR" in query.upper() else "M5_BULL_FVG",
+        "sweep_status": "YEST_LOW_SWEPT" if "SWEEP" in query.upper() or "LOW" in query.upper() else "IN_RANGE"
+    }
+    res = lib.run_librarian_cycle(market_state)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {symbol}: '{query}'")
+    return json.dumps({
+        "query": query,
+        "symbol": symbol.upper(),
+        "status": "SUCCESS",
+        "proxima_status": "ONLINE" if lib.proxima.check_health() else "STANDBY (Local Rules Active)",
+        "active_thesis_revolved": res.get("live_thesis_revolved"),
+        "top_4_precedents": res.get("top_4_precedents", [])
+    }, indent=2)
+
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()

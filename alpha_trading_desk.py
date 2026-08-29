@@ -408,9 +408,11 @@ class ConsolidatedTradingDaemon:
     def __init__(self):
         from tradingagents.agent_graph import TradingAgentsDesk
         from mcp_server.alpha_mcp_server import AlphaMCPServer
+        from tradingagents.librarian_agent import AutonomousLibrarianAgent
 
         self.desk = TradingAgentsDesk()
         self.mcp_server = AlphaMCPServer()
+        self.librarian = AutonomousLibrarianAgent()
         self.latch = StatefulDiscoveryLatch()
         self.cio_evaluator = OpenCodeCIOEvaluator()  # evidence streamer only; never executes
         self.instruments = INSTRUMENTS
@@ -688,6 +690,7 @@ class ConsolidatedTradingDaemon:
   • mcp_alpha_search_book — search the Pattern Book for relevant evidence.
   • mcp_alpha_get_book_index — inspect Pattern Book structure/index.
   • mcp_alpha_get_full_book — retrieve the full Pattern Book when necessary.
+  • mcp_alpha_ask_librarian — query the Autonomous Librarian Agent for deep pattern reality checks, ticket provenance, and Proxima quantitative research.
   • mcp_alpha_configure_instruments — get/update active instruments (metals/commodities) in batch with hot-reloading.
 
 MANDATORY: Know the available MCP capabilities and use the relevant tool when needed.
@@ -704,6 +707,8 @@ decision authority.
             f"=== AVAILABLE EVIDENCE / SYSTEM DIRECTIVES ===\n"
             f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md\n"
             f"  • Strategy Evidence Archive: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
+            f"  • Pattern Reality Check (Truth Ledger): file:///C:/Trading/Alpha/logs/pattern_reality_check.md\n"
+            f"  • Top 4 Reproducible Precedents: file:///C:/Trading/Alpha/logs/top4_reproducible_patterns.json\n"
             f"  • Unified Learning Memory: file:///C:/Trading/Alpha/logs/unified_learning_memory.json\n"
             f"  • Pattern Book: file:///C:/Trading/Alpha/logs/pattern_book/\n"
             f"  • Historical Research / Full Desk Evidence ({dossier_line_count} lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
@@ -748,6 +753,45 @@ decision authority.
             f"{world_events_summary}\n\n"
         )
 
+        # Run Autonomous Librarian Agent for Primary Active Instrument
+        primary_sym = top_symbol if top_symbol in self.instruments else (self.instruments[0] if self.instruments else "XAUUSD")
+        primary_inst_data = next((d for d in instruments_data if d["symbol"] == primary_sym), {})
+        fvg_obj = primary_inst_data.get("fvg", {})
+        nearest_fvg = fvg_obj.get("nearest_unmitigated_fvg") or {}
+
+        primary_market_state = {
+            "symbol": primary_sym,
+            "ask": getattr(mt5.symbol_info_tick(primary_sym), "ask", 0.0) if mt5_online else 0.0,
+            "bid": getattr(mt5.symbol_info_tick(primary_sym), "bid", 0.0) if mt5_online else 0.0,
+            "spread_pts": primary_inst_data.get("spread", {}).get("pts", 50),
+            "fvg_type": nearest_fvg.get("type", "NONE"),
+            "fvg_top": nearest_fvg.get("top", 0.0),
+            "fvg_bottom": nearest_fvg.get("bottom", 0.0),
+            "fvg_ce": nearest_fvg.get("consequent_encroachment", 0.0),
+            "sweep_status": primary_inst_data.get("liquidity_targets", {}).get("sweep_status", "IN_RANGE"),
+            "h4_bias": primary_inst_data.get("mtf", {}).get("h4_trend", "NEUTRAL"),
+            "m5_bias": primary_inst_data.get("mtf", {}).get("m5_trend", "NEUTRAL"),
+            "velocity_tpm": primary_inst_data.get("velocity", {}).get("ticks_per_min", 0)
+        }
+        librarian_payload = self.librarian.run_librarian_cycle(primary_market_state)
+        top4_cards = librarian_payload.get("top_4_precedents", [])
+        top4_formatted_lines = []
+        for c in top4_cards:
+            top4_formatted_lines.append(
+                f"  [{c['role']}] {c['pattern_id']} - {c['name']} (Score: {c['score']}/10 | Win Rate: {c['win_rate']})\n"
+                f"    • Trigger: {c['execution_trigger']} | RRR: {c.get('rrr', '1:3.0')}\n"
+                f"    • Testing Focus: {c['testing_objective']}\n"
+                f"    • Invalidation: {c['invalidation']}"
+            )
+        top4_section = (
+            f"=== LIBRARIAN TOP 4 REPRODUCIBLE PRECEDENTS (REVOLVED AROUND ACTIVE LIVE THESIS) ===\n"
+            f"  • Reference Truth Ledger: file:///C:/Trading/Alpha/logs/pattern_reality_check.md\n"
+            f"  • Dynamic Pattern Queue: file:///C:/Trading/Alpha/logs/top4_reproducible_patterns.json\n"
+            f"  • Active Thesis Footprint: {librarian_payload.get('live_thesis_revolved', '')}\n\n"
+            + "\n\n".join(top4_formatted_lines)
+            + "\n\n"
+        )
+
         # ADAPTIVE DISPATCH CADENCE (1-Min Active Trade Reviews | 2-Min Idle Scans)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
@@ -779,6 +823,7 @@ decision authority.
                     f"{world_header}{top_pick_line}\n\n"
                     f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                     f"{reversal_section}\n"
+                    f"{top4_section}"
                     f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
@@ -793,6 +838,7 @@ decision authority.
                     f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Scheduled Cycle')}):\n"
                     f"{file_ref_header}"
                     f"{world_header}{top_pick_line}\n\n"
+                    f"{top4_section}"
                     f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
