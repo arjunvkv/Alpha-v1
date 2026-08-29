@@ -17,8 +17,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_CONFIG_PATH = PROJECT_ROOT / "config" / "opencode_session_config.json"
 OPENCODE_SESSION_CONFIG_PATH = SESSION_CONFIG_PATH
 
-DEFAULT_SESSION_ID = "ses_fdba9ed77ffe7272Kqg2Cz7FoD"
-DEFAULT_SESSION_TITLE = "alpha-gravity"
+DEFAULT_SESSION_ID = "ses_fb15b2b27ffezJfLoCEJP5a95r"
+DEFAULT_SESSION_TITLE = "Alpha-Gravity"
 DEFAULT_API_URL = "http://127.0.0.1:4096"
 
 
