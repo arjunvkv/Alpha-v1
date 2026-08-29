@@ -38,7 +38,8 @@ from config import (
     get_opencode_session,
     get_opencode_session_id,
     get_opencode_session_title,
-    get_opencode_api_url
+    get_opencode_api_url,
+    is_dossier_streaming_enabled
 )
 
 # Constants
@@ -116,6 +117,12 @@ def post_to_opencode_session(speaker: str, message: str):
             f.write(f"\n{'='*70}\n[DAEMON PING] {now_ts} | Speaker: {speaker} | Target: {title} ({sid})\n{'='*70}\n{message}\n")
     except Exception as e:
         LOG.error(f"Error writing to daemon_pings.log: {e}")
+
+    # Check if dossier streaming is paused
+    if not is_dossier_streaming_enabled():
+        LOG.info(f"Dossier prompt streaming to session '{title}' ({sid}) is currently PAUSED. (Daemon remains live & scanning).")
+        return
+
     LOG.info(
         f"\n=== [COMMUNICATION LOG STREAM] ===\n"
         f"Speaker: {speaker}\n"

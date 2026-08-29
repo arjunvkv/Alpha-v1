@@ -325,3 +325,23 @@ def set_opencode_session(session_id: str, session_title: str = None) -> bool:
     except Exception:
         return False
 
+def is_dossier_streaming_enabled() -> bool:
+    """Checks whether live dossier prompt dispatch to OpenCode is active or paused."""
+    cfg = load_session_config()
+    return bool(cfg.get("dossier_streaming_enabled", True))
+
+def set_dossier_streaming(enabled: bool) -> bool:
+    """Pauses or resumes dossier prompt streaming with zero-restart hot-reloading."""
+    import json
+    try:
+        cfg = load_session_config()
+        cfg["dossier_streaming_enabled"] = bool(enabled)
+        from datetime import datetime, timezone
+        cfg["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        OPENCODE_SESSION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(OPENCODE_SESSION_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        return True
+    except Exception:
+        return False
+
