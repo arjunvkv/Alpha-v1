@@ -63,33 +63,37 @@ def get_api_keys():
     groq_k = os.environ.get("GROQ_API_KEY") or ""
     return google_k.strip(), groq_k.strip()
 
-def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe=60000):
+def compress_and_optimize_context(messages, min_turns_to_compress=12, max_chars_safe=80000):
     """
     Intelligent Auto-Compress Mechanism for OpenCode Trading Sessions.
-    Safe Limit: Triggers when messages >= 16 or content size >= 60,000 characters (~15k tokens).
-    - Preserves messages[0] (root mandate/system instruction).
-    - Preserves messages[-6:] (recent 6 active turns with intact tool call/result pairs).
-    - Compresses intermediate messages into a dense, structured [SYSTEM CONTEXT COMPRESSION SUMMARY].
-    - Caps individual massive dossier messages to prevent 413 Payload Too Large errors.
+    - NEVER compresses fresh or short sessions (len(messages) < min_turns_to_compress).
+    - Caps individual massive dossier messages (>8000 chars) to prevent 413 Payload errors.
+    - Only summarizes historical middle turns when conversation history is truly long (>= 12 turns).
     """
-    if not messages:
-        return messages
+    if not messages or len(messages) < min_turns_to_compress:
+        # For fresh or short sessions, keep messages completely intact (only trim massive raw blobs)
+        cleaned = []
+        for m in messages:
+            cm = dict(m)
+            c = cm.get('content')
+            if isinstance(c, str) and len(c) > 12000 and cm.get('role') != 'system':
+                cm['content'] = c[:4000] + "\n\n...[RAW DATA BLOB TRUNCATED]...\n\n" + c[-2000:]
+            cleaned.append(cm)
+        return cleaned
 
     # Clean individual oversized messages in the payload
     cleaned_messages = []
     for m in messages:
         cm = dict(m)
         c = cm.get('content')
-        if isinstance(c, str) and len(c) > 6000 and cm.get('role') != 'system':
-            # Keep top 3000 chars and bottom 1500 chars of giant dossiers
+        if isinstance(c, str) and len(c) > 8000 and cm.get('role') != 'system':
             cm['content'] = c[:3500] + "\n\n...[HISTORICAL DOSSIER TABLES COMPRESSED]...\n\n" + c[-1500:]
         cleaned_messages.append(cm)
     messages = cleaned_messages
 
-    if len(messages) <= max_messages_safe:
-        total_chars = sum(len(str(m.get('content', ''))) for m in messages)
-        if total_chars < max_chars_safe:
-            return messages
+    total_chars = sum(len(str(m.get('content', ''))) for m in messages)
+    if total_chars < max_chars_safe:
+        return messages
 
     # Keep root message and tail messages
     tail_count = 6
@@ -103,7 +107,7 @@ def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe
     tail_messages = messages[start_tail_idx:]
     first_msg = messages[0]
 
-    if not middle_messages:
+    if not middle_messages or len(middle_messages) < 4:
         return messages
 
     # Extract high-density structured facts from middle_messages
@@ -116,7 +120,6 @@ def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe
         role = m.get('role', '')
         content = str(m.get('content', ''))
         
-        # Check for tool results or execution
         if role == 'tool':
             name = m.get('name', '')
             if 'account_status' in name or 'equity' in content.lower():
@@ -133,7 +136,6 @@ def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe
             elif 'execute_trade' in name:
                 decisions_made.append(f"Trade Execution: {content[:150]}")
         elif role == 'assistant':
-            # Extract key conclusions or decisions
             if any(kw in content for kw in ['ORDER', 'BUY', 'SELL', 'WAIT', 'HOLD', 'REJECT']):
                 for line in content.splitlines():
                     l_str = line.strip()
@@ -144,7 +146,6 @@ def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe
                     if any(kw in line for kw in ['Demand:', 'Supply:', 'Pivots:', 'VWAP:']):
                         market_levels.append(line.strip()[:120])
 
-    # Deduplicate and cap extraction
     def _dedup(lst, max_items=5):
         seen = set()
         res = []
@@ -156,19 +157,23 @@ def compress_and_optimize_context(messages, max_messages_safe=16, max_chars_safe
                     break
         return res
 
-    pos_summary = "\n  • ".join(_dedup(positions_info, 3)) or "Account metrics and active tickets maintained."
-    levels_summary = "\n  • ".join(_dedup(market_levels, 4)) or "Major multi-timeframe structural demand/supply boundaries tracked."
-    patterns_summary = "\n  • ".join(_dedup(patterns_recorded, 3)) or "Institutional pattern book observations indexed."
-    decisions_summary = "\n  • ".join(_dedup(decisions_made, 4)) or "Continuous quantitative risk evaluation active."
+    parts = []
+    if positions_info:
+        parts.append(f"**1. Account & Position State:**\n  • " + "\n  • ".join(_dedup(positions_info, 3)))
+    if market_levels:
+        parts.append(f"**2. Key Market Structure & Levels:**\n  • " + "\n  • ".join(_dedup(market_levels, 4)))
+    if patterns_recorded:
+        parts.append(f"**3. Pattern Book & Research Memory:**\n  • " + "\n  • ".join(_dedup(patterns_recorded, 3)))
+    if decisions_made:
+        parts.append(f"**4. Audited Desk Decisions & Flow:**\n  • " + "\n  • ".join(_dedup(decisions_made, 4)))
+
+    if not parts:
+        return messages
 
     compressed_text = (
         f"### 🗜️ [SYSTEM CONTEXT COMPRESSION SUMMARY: CUMULATIVE DESK MEMORY]\n"
-        f"*(Auto-compressed {len(middle_messages)} historical turns to eliminate context bloat while preserving 100% memory fidelity)*\n\n"
-        f"**1. Account & Position State:**\n  • {pos_summary}\n\n"
-        f"**2. Key Market Structure & Critical Levels:**\n  • {levels_summary}\n\n"
-        f"**3. Pattern Book & Research Memory:**\n  • {patterns_summary}\n\n"
-        f"**4. Audited Desk Decisions & Flow:**\n  • {decisions_summary}\n"
-        f"---"
+        f"*(Auto-compressed {len(middle_messages)} historical turns to eliminate context bloat)*\n\n" +
+        "\n\n".join(parts) + "\n---"
     )
 
     compressed_msg = {
