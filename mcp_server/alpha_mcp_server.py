@@ -269,7 +269,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
 
 @mcp.tool()
-def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
+def mcp_alpha_query_analyst_desk(query: str, symbol: str = "XAUUSD") -> str:
     """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk; outputs are evidence, not decisions."""
     _init_mt5()
     try:
@@ -277,19 +277,22 @@ def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
         sym = symbol.strip().upper()
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.lower())
         live_ask = getattr(tick, "ask", 0.0)
-        from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst, MacroNewsAnalyst
-        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
-        from tradingagents.multitimeframe import MultiTimeframeAnalyst
-        
-        tech = TechnicalAnalyst()
-        fund = FundamentalAnalyst()
+        from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
-        inst = InstitutionalAnalyticsEngine()
-        mtf_analyst = MultiTimeframeAnalyst()
         
-        cot_data = inst.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
-        macro_feed = inst.get_macro_and_gamma_feeds()
-        mtf_res = mtf_analyst.analyze_mtf(sym)
+        cot_data = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        macro_feed = _inst_engine.get_macro_and_gamma_feeds()
+        mtf_res = _mtf_analyst.analyze_mtf(sym)
+        rsi_val = mtf_res.get("m15_rsi", 50.0)
+        
+        tech_res = _tech_analyst.analyze(sym, {
+            "h4_bias": mtf_res.get("h4_trend"),
+            "h1_bias": mtf_res.get("h1_trend"),
+            "m15_bias": mtf_res.get("m15_trend"),
+            "m5_bias": mtf_res.get("m5_trend"),
+            "indicators": {"rsi_14": rsi_val}
+        })
+        fund_res = _fund_analyst.analyze(sym, cot_data)
         
         dxy_val = float(macro_feed.get("dxy", 101.40)) if isinstance(macro_feed.get("dxy"), (int, float)) else float(macro_feed.get("dxy", {}).get("val", 101.40))
         vix_val = float(macro_feed.get("vix", 15.80)) if isinstance(macro_feed.get("vix"), (int, float)) else float(macro_feed.get("vix", {}).get("val", 15.80))
@@ -308,7 +311,7 @@ def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
                 "historical_memory": "Historical learning is study evidence; it has no veto authority"
             },
             "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. 4TF: {mtf_res.get('formatted_4tf')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."
-        })
+        }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
 

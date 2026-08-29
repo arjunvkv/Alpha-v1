@@ -675,28 +675,27 @@ class ConsolidatedTradingDaemon:
             review_lines.append(f"  • {source}: {rec.get('status', 'READ_REQUIRED')} | LAST READ: {read_at or 'NEVER'}")
         review_block = "\n".join(review_lines)
 
-        mcp_tools_block = """=== AVAILABLE ALPHA MCP TOOLS — USE WHEN RELEVANT ===
-  • mcp_alpha_learning_review — check/start study cycle; mark one or multiple evidence sources read after actual review.
-  • mcp_alpha_register_watch — register an Agent-requested market watch.
-  • mcp_alpha_execute_trade — execute an Agent decision; this tool does not decide.
-  • mcp_alpha_update_position — update an existing position when the Agent decides.
-  • mcp_alpha_get_account_status — retrieve current account state.
-  • mcp_alpha_get_symbol_conviction — retrieve stored symbol conviction context.
-  • mcp_alpha_query_analyst_desk — query available analyst/desk evidence.
-  • mcp_alpha_get_live_world_events — retrieve current world-event evidence.
-  • mcp_alpha_record_pattern_observation — record meaningful pattern/learning observations.
-  • mcp_alpha_record_pattern_outcome — record pattern outcome evidence.
-  • mcp_alpha_get_book_page — retrieve a specific Pattern Book page.
-  • mcp_alpha_search_book — search the Pattern Book for relevant evidence.
-  • mcp_alpha_get_book_index — inspect Pattern Book structure/index.
-  • mcp_alpha_get_full_book — retrieve the full Pattern Book when necessary.
-  • mcp_alpha_ask_librarian — query the Autonomous Librarian Agent for deep pattern reality checks, ticket provenance, and Proxima quantitative research.
-  • mcp_alpha_configure_instruments — get/update active instruments (metals/commodities) in batch with hot-reloading.
+        mcp_tools_block = """=== AVAILABLE ALPHA MCP TOOLS (CAPABILITIES & DIRECTORY) ===
+  • mcp_alpha_learning_review(action, sources) — Manage mandatory study cycle & acknowledge evidence reads (status/start_cycle/mark_read).
+  • mcp_alpha_ask_librarian(query, symbol) — Ask the Librarian ANY question on win rates, failure traps, 50% CE rules & precedents.
+  • mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, RSI, COT percentile & Granger score (0-10).
+  • mcp_alpha_query_analyst_desk(query, symbol) — Request deep 7-layer local LLM multi-source intelligence (Tech + COT + Macro).
+  • mcp_alpha_get_live_world_events(category) — Fetch hot-cached breaking geopolitical, central bank, commodity & macro news feeds.
+  • mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, margin, drawdown & active ticket count.
+  • mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.
+  • mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct market buy/sell order on FTMO MT5.
+  • mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT, PARTIAL_CLOSE).
+  • mcp_alpha_configure_instruments(enable, disable) — Enable/disable active trading instruments in real-time (hot-reloaded).
+  • mcp_alpha_get_fvg_matrix(symbol) — Inspect multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and 50% CE levels.
+  • mcp_alpha_get_trade_forensics(ticket) — Query granular post-trade execution forensics and entry market context for closed deals.
+  • mcp_alpha_search_book(query) — Search the 371-pattern institutional library for specific setup names or triggers.
+  • mcp_alpha_get_book_index() — Inspect full pattern catalog taxonomy, win rates, and category statistics.
+  • mcp_alpha_record_pattern_observation(symbol, pattern_name, observation) — Log verified chart observations to Unified Learning Memory.
+  • mcp_alpha_record_pattern_outcome(symbol, pattern_name, outcome, ticket, r_value) — Attach live trade outcomes to historical patterns.
 
 MANDATORY: Know the available MCP capabilities and use the relevant tool when needed.
 Do not call tools mechanically. Study, interpret and decide first; MCP tools retrieve,
-record, track or execute the Agent's own decisions and do not have independent
-decision authority.
+record, track or execute the Agent's own decisions and do not have independent decision authority.
 """
 
         file_ref_header = (
