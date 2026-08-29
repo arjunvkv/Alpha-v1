@@ -247,20 +247,38 @@ class UnifiedLearningMemory:
         self._save_review_state(state); return self.get_review_status()
 
     def mark_read(self, source: str, document_path: str = "") -> Dict[str, Any]:
+        return self.mark_reads([source], document_paths={source: document_path} if document_path else {})
+
+    def mark_reads(self, sources: List[str], document_paths: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """Mark one or more evidence sources read in one acknowledgement."""
         state = self._load_review_state()
-        if source in LEARNING_REVIEW_SOURCES:
-            state.setdefault("learning_reads", {})[source] = {
-                "read_at": _now(), "document_path": document_path,
-                "cycle_id": state.get("cycle_id", 0)
-            }
-        elif source in LIVE_REVIEW_SOURCES:
-            state.setdefault("live_reads", {})[source] = {
-                "read_at": _now(), "document_path": document_path
-            }
-        else:
-            return {"status": "UNKNOWN_SOURCE", "source": source}
+        document_paths = document_paths or {}
+        marked, unknown = [], []
+        read_at = _now()
+        for source in sources:
+            source = str(source or "").strip()
+            if not source:
+                continue
+            document_path = document_paths.get(source, "")
+            if source in LEARNING_REVIEW_SOURCES:
+                state.setdefault("learning_reads", {})[source] = {
+                    "read_at": read_at, "document_path": document_path,
+                    "cycle_id": state.get("cycle_id", 0)
+                }
+                marked.append(source)
+            elif source in LIVE_REVIEW_SOURCES:
+                state.setdefault("live_reads", {})[source] = {
+                    "read_at": read_at, "document_path": document_path
+                }
+                marked.append(source)
+            else:
+                unknown.append(source)
         self._save_review_state(state)
-        return self.get_review_status()
+        result = self.get_review_status()
+        result["marked_read"] = marked
+        result["unknown_sources"] = unknown
+        result["read_at"] = read_at
+        return result
 
     def get_review_status(self) -> Dict[str, Any]:
         state = self._load_review_state(); learning = {}; live = {}
@@ -268,7 +286,8 @@ class UnifiedLearningMemory:
             rec = state.get("learning_reads", {}).get(source)
             learning[source] = {
                 "status": "READ_THIS_CYCLE" if isinstance(rec, dict) and rec.get("cycle_id") == state.get("cycle_id") else "READ_REQUIRED",
-                "document_path": rec.get("document_path") if isinstance(rec, dict) else ""
+                "document_path": rec.get("document_path") if isinstance(rec, dict) else "",
+                "read_at": rec.get("read_at") if isinstance(rec, dict) else None
             }
         now = datetime.datetime.now()
         for source, interval_seconds in LIVE_REVIEW_SOURCES.items():
@@ -283,7 +302,8 @@ class UnifiedLearningMemory:
             live[source] = {
                 "status": status,
                 "review_interval_seconds": interval_seconds,
-                "document_path": rec.get("document_path") if isinstance(rec, dict) else ""
+                "document_path": rec.get("document_path") if isinstance(rec, dict) else "",
+                "read_at": rec.get("read_at") if isinstance(rec, dict) else None
             }
         return {
             "status": "SUCCESS",
