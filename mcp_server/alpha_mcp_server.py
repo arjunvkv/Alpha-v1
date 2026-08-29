@@ -478,20 +478,21 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
 
 @mcp.tool()
 def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    market_state = {
-        "symbol": symbol.upper(),
-        "fvg_type": "M5_BEAR_FVG" if "SHORT" in query.upper() or "BEAR" in query.upper() else "M5_BULL_FVG",
-        "sweep_status": "YEST_LOW_SWEPT" if "SWEEP" in query.upper() or "LOW" in query.upper() else "IN_RANGE"
-    }
-    res = _librarian_agent.run_librarian_cycle(market_state)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {symbol}: '{query}'")
+    """Ask the Autonomous Librarian Agent any historical, tactical, or quantitative question about precedents, win rates, failure traps, and invalidation rules."""
+    sym = symbol.upper()
+    ans = _librarian_agent.answer_query(query, sym)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {sym}: '{query}'")
     return json.dumps({
-        "query": query,
-        "symbol": symbol.upper(),
         "status": "SUCCESS",
+        "query": query,
+        "symbol": sym,
         "proxima_status": "ONLINE" if _librarian_agent.proxima.check_health() else "STANDBY (Local Rules Active)",
-        "active_thesis_revolved": res.get("live_thesis_revolved"),
-        "top_4_precedents": res.get("top_4_precedents", [])
+        "theme": ans.get("theme"),
+        "direct_answer": ans.get("direct_answer"),
+        "matched_evidence_count": ans.get("matched_evidence_count"),
+        "relevant_trade_experiences_count": ans.get("relevant_trade_experiences_count"),
+        "recommended_precedent": ans.get("recommended_precedent"),
+        "top_4_precedents": ans.get("top_4_precedents", [])
     }, indent=2)
 
 
