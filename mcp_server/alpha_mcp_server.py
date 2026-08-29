@@ -67,7 +67,13 @@ def _init_mt5():
         LOG.error(f"MT5 init error: {err}")
 
 @mcp.tool()
-def mcp_alpha_learning_review(action: str = "status", source: str = "", sources_json: str = "[]", document_path: str = "") -> str:
+def mcp_alpha_learning_review(
+    action: str = "status",
+    source: str = "",
+    sources: Any = None,
+    sources_json: Any = None,
+    document_path: str = ""
+) -> str:
     """Track the Agent's evidence review state using one existing MCP tool.
 
     Actions: status, start_cycle, mark_read. The four canonical learning sources
@@ -77,20 +83,52 @@ def mcp_alpha_learning_review(action: str = "status", source: str = "", sources_
     """
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     memory = UnifiedLearningMemory()
-    if action == "start_cycle":
+    
+    act = str(action or "status").lower().strip()
+    
+    if act == "start_cycle":
         result = memory.start_study_cycle()
-    elif action == "mark_read":
-        try:
-            sources = json.loads(sources_json) if sources_json else []
-        except Exception as err:
-            return json.dumps({"status": "INVALID_SOURCES_JSON", "error": str(err)})
-        if not isinstance(sources, list):
-            return json.dumps({"status": "INVALID_SOURCES_JSON", "error": "sources_json must decode to a JSON array"})
-        if source and source not in sources:
-            sources.append(source)
-        result = memory.mark_reads(sources, document_paths={source: document_path} if source and document_path else {})
+    elif act in ("mark_read", "read", "mark"):
+        resolved_sources = []
+        
+        # 1. Check sources argument
+        raw_sources = sources if sources is not None else sources_json
+        if isinstance(raw_sources, (list, tuple, set)):
+            resolved_sources.extend([str(s).strip() for s in raw_sources if s])
+        elif isinstance(raw_sources, str) and raw_sources.strip():
+            raw_s = raw_sources.strip()
+            if raw_s.startswith("[") and raw_s.endswith("]"):
+                try:
+                    parsed = json.loads(raw_s)
+                    if isinstance(parsed, list):
+                        resolved_sources.extend([str(s).strip() for s in parsed if s])
+                except Exception:
+                    resolved_sources.extend([s.strip() for s in raw_s.strip("[]").split(",") if s.strip()])
+            else:
+                resolved_sources.extend([s.strip() for s in raw_s.split(",") if s.strip()])
+
+        # 2. Check singular source argument
+        if source and isinstance(source, str) and source.strip():
+            s_clean = source.strip()
+            if s_clean not in resolved_sources:
+                resolved_sources.append(s_clean)
+
+        # 3. Fallback: If mark_read requested without specific sources, mark all 4 canonical learning sources
+        if not resolved_sources:
+            resolved_sources = [
+                "Unified Learning Memory",
+                "Pattern Book",
+                "Historical Research",
+                "Strategy Evidence Archive"
+            ]
+
+        result = memory.mark_reads(
+            resolved_sources,
+            document_paths={source: document_path} if source and document_path else {}
+        )
     else:
         result = memory.get_review_status()
+
     return json.dumps(result, indent=2)
 
 @mcp.tool()
