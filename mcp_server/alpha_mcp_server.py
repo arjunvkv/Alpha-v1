@@ -52,10 +52,12 @@ def _init_mt5():
 
 @mcp.tool()
 def mcp_alpha_learning_review(action: str = "status", source: str = "", document_path: str = "") -> str:
-    """Track the Agent's mandatory learning-study cycle using one existing MCP tool.
+    """Track the Agent's evidence review state using one existing MCP tool.
 
     Actions: status, start_cycle, mark_read. The four canonical learning sources
-    never expire; each scheduled study cycle requires them to be consulted.
+    never expire and are mandatory every study cycle. Live evidence uses the
+    configured review intervals. This tool records review acknowledgement only
+    and never interprets evidence or makes trading decisions.
     """
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     memory = UnifiedLearningMemory()
