@@ -531,7 +531,7 @@ def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
         "symbol": sym,
         "theme": ans.get("theme"),
         "proxima_researched_findings": {
-            "proxima_status": ans.get("proxima_status", "ONLINE" if _librarian_agent.proxima.check_health() else "STANDBY (Local Rules Active)"),
+            "proxima_status": ans.get("proxima_status", "STANDBY"),
             "proxima_endpoint": "http://127.0.0.1:3210/v1/chat/completions",
             "quantitative_microstructure_synthesis": ans.get("proxima_research_synthesis")
         },

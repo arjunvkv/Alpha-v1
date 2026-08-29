@@ -388,11 +388,18 @@ class AutonomousLibrarianAgent:
         clean_q = query.strip()
         q_upper = clean_q.upper()
 
-        # Check for Proxima status upfront
-        proxima_online = self.proxima.check_health()
+        # 0. Normalize and check for orientation / capability queries (J1)
+        norm_q = " ".join(clean_q.lower().split()).strip("?.!,:;")
+        orientation_phrases = [
+            "hello", "hi", "hey", "help", "who are you", "what can you do",
+            "capabilit", "what do you know", "what are you", "test"
+        ]
+        is_orientation = len(clean_q) < 3 or any(
+            norm_q == p or norm_q.startswith(p) or p in norm_q
+            for p in orientation_phrases
+        )
 
-        # 0. Handle greetings, empty, or vague queries (I5)
-        if len(clean_q) < 3 or clean_q.lower() in ["?", "??", "???", "hello", "hi", "hey", "help", "who are you", "what can you do", "test"]:
+        if is_orientation:
             return {
                 "query": query,
                 "symbol": sym,
@@ -402,10 +409,11 @@ class AutonomousLibrarianAgent:
                     f"1) Historical win rates and empirical evidence (e.g. 'What is the win rate for {sym}?'); "
                     f"2) Structural invalidation rules (e.g. 'What are the exact invalidation rules for a long?'); "
                     f"3) Macro & directional confluence (e.g. 'COT is bullish but price is falling, how to handle?'); "
-                    f"4) Fair Value Gap & Consequent Encroachment (50% CE) execution criteria."
+                    f"4) Trade forensics and historical experiences (e.g. 'Show me the most recent losing {sym} trade and why it failed'); "
+                    f"5) Fair Value Gap & Consequent Encroachment (50% CE) execution criteria."
                 ),
                 "empirical_derivation": "N/A (Orientation query)",
-                "proxima_status": "ONLINE" if proxima_online else "OFFLINE_STANDBY",
+                "proxima_status": "STANDBY",
                 "proxima_research_synthesis": "Proxima Desktop is standby — ready for specific analytical queries.",
                 "matched_evidence_count": 0,
                 "relevant_trade_experiences_count": 0,
@@ -440,8 +448,67 @@ class AutonomousLibrarianAgent:
 
         top_matches = [m[2] for m in matched_patterns[:4]]
 
-        # 4. Semantic Intent Classification & Response Generation (I1)
-        if any(w in q_upper for w in ["INVALID", "STOP", "FAIL", "REVERS", "TRAP", "WRONG", "LOSS"]):
+        # 4. Semantic Intent Classification & Response Generation (J2, I1)
+        # J2: Evidence-retrieval intent branch (BEFORE invalidation)
+        retrieval_tokens = [
+            "LAST TRADE", "MOST RECENT", "RECENT", "SHOW ME", "LOSING TRADE",
+            "LOST TRADE", "WINNING TRADE", "PRINT", "MY TRADES", "WHY IT"
+        ]
+        is_retrieval = any(t in q_upper for t in retrieval_tokens)
+
+        if is_retrieval:
+            theme = "Specific Trade Evidence Retrieval"
+            sym_exps = list(relevant_experiences)
+            sym_exps.sort(
+                key=lambda e: (int(e.get("execution", {}).get("ticket") or 0), str(e.get("timestamp", ""))),
+                reverse=True
+            )
+
+            is_loss_req = any(k in q_upper for k in ["LOS", "FAIL", "BAD"])
+            is_win_req = any(k in q_upper for k in ["WIN", "PROFIT", "GAIN", "BEST"])
+
+            if is_loss_req:
+                target_exps = [
+                    e for e in sym_exps
+                    if float(e.get("outcome", {}).get("pnl", 0.0) or 0.0) < 0
+                    or "LOS" in str(e.get("type", "")).upper()
+                    or "LOSS" in str(e.get("outcome", {}).get("outcome", "")).upper()
+                ]
+                pol_label = "Losing"
+            elif is_win_req:
+                target_exps = [
+                    e for e in sym_exps
+                    if float(e.get("outcome", {}).get("pnl", 0.0) or 0.0) > 0
+                    or "WIN" in str(e.get("type", "")).upper()
+                    or "WIN" in str(e.get("outcome", {}).get("outcome", "")).upper()
+                ]
+                pol_label = "Winning"
+            else:
+                target_exps = sym_exps
+                pol_label = "Closed"
+
+            if target_exps:
+                top_exp = target_exps[0]
+                ticket = top_exp.get("execution", {}).get("ticket") or top_exp.get("ticket", "N/A")
+                pnl = float(top_exp.get("outcome", {}).get("pnl", 0.0) or 0.0)
+                r_mult = top_exp.get("outcome", {}).get("r_multiple") or top_exp.get("outcome", {}).get("r_value")
+                lesson = (
+                    top_exp.get("learning", {}).get("lesson")
+                    or top_exp.get("learning", {}).get("reason")
+                    or top_exp.get("notes")
+                    or top_exp.get("outcome", {}).get("reason")
+                    or "Execution followed setup criteria."
+                )
+                r_str = f" ({r_mult:+.2f}R)" if r_mult is not None else ""
+                direct_ans = (
+                    f"Most Recent {pol_label} {sym} Trade: Ticket #{ticket} | PnL: ${pnl:+.2f} USD{r_str}. "
+                    f"Recorded Context & Reason: {lesson} "
+                    f"Full forensics: call get_trade_forensics(ticket={ticket})."
+                )
+            else:
+                direct_ans = f"No {pol_label.lower()} experience record on file for {sym}."
+
+        elif any(w in q_upper for w in ["INVALID", "STOP", "FAIL", "REVERS", "TRAP", "WRONG", "LOSS"]):
             theme = "Structural Invalidation & Risk Boundary"
             direct_ans = (
                 f"Exact Invalidation Rules for {sym}: An active trade setup is invalidated immediately upon: "
@@ -497,7 +564,8 @@ class AutonomousLibrarianAgent:
                     f"Desk standard requires waiting for verified structural confirmation before taking execution risk."
                 )
 
-        # 5. Query Proxima Quantitative Engine if online (I6)
+        # 5. Query Proxima Quantitative Engine if online (J4, I6)
+        proxima_online = self.proxima.check_health()
         if proxima_online:
             proxima_synthesis = self.proxima.query_proxima_tools(
                 f"Analyze quantitative research for {sym}: '{query}'. Key setup: {top_matches[0].get('pattern_name') if top_matches else 'General'}. Provide concise structural invalidation & expectancy analysis.",
@@ -513,11 +581,11 @@ class AutonomousLibrarianAgent:
             prox_status = "OFFLINE_STANDBY"
             prox_synth = "Deterministic local memory and ground-truth MT5 ledger active (Proxima Desktop is offline on Port 3210)."
 
-        # 6. Generate tactical Top 4
+        # 6. Generate tactical Top 4 with direction-neutral placeholders (J3)
         market_state = {
             "symbol": sym,
-            "fvg_type": "M5_BEAR_FVG" if any(k in q_upper for k in ["SHORT", "BEAR", "SELL"]) else "M5_BULL_FVG",
-            "sweep_status": "YEST_LOW_SWEPT" if any(k in q_upper for k in ["SWEEP", "LOW"]) else "IN_RANGE"
+            "fvg_type": "NONE",
+            "sweep_status": "IN_RANGE"
         }
         cycle_res = self.run_librarian_cycle(market_state)
 
