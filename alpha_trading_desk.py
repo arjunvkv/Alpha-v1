@@ -776,7 +776,7 @@ decision authority.
                     f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
-                log_opencode_said(scheduled_prompt)
+                post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
 
             else:
                 idle_prompt = (
@@ -790,7 +790,7 @@ decision authority.
                     f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
-                log_opencode_said(idle_prompt)
+                post_to_opencode_session("OpenCode (CIO)", idle_prompt)
 
         return has_active_trades
 
