@@ -25,10 +25,9 @@ class PatternBookManager:
     - Automatically rolls over to Page N+1 when current page reaches 50 entries.
     - Provides fast search, page retrieval, index inspection, and full book compilation.
 
-    IMPORTANT (no hard gate): count >= 5 does NOT trigger automatic execution.
-    It promotes a pattern to WATCHLIST/LEARNED status so the AGENT can evaluate it.
-    Real learning requires recording trade OUTCOMES against each pattern
-    (out-of-sample evidence), not repetition of narrative.
+    IMPORTANT: evidence accumulates indefinitely. There is no five-hit promotion
+    threshold and no pattern state can trigger or block execution. Repetition and
+    outcomes are historical evidence for AGENT study only.
     """
 
     def __init__(self, book_dir: str = BOOK_DIR):
@@ -172,8 +171,7 @@ class PatternBookManager:
             content = (
                 f"# ALPHA INSTITUTIONAL PATTERN BOOK — PAGE {page_num:03d} / {MAX_PAGES}\n"
                 f"Created: {now_str} | Capacity: {MAX_ENTRIES_PER_PAGE} Entries\n"
-                f"Mandate: count >= 5 promotes a pattern to WATCHLIST/LEARNED for the AGENT to evaluate "
-                f"(NO auto-execution gate). Record trade OUTCOMES so the agent learns out-of-sample.\n"
+                f"Mandate: evidence accumulates indefinitely for AGENT study; no hit threshold promotes, blocks, or executes a trade.\n"
                 f"--------------------------------------------------------------------------------\n\n"
             )
             with open(page_path, "w", encoding="utf-8") as f:
@@ -350,7 +348,7 @@ class PatternBookManager:
         meta = self._get_metadata()
         active_page = meta.get("active_page", 1)
         outcomes = self._load_outcomes()
-        watchlist = []
+        patterns = []
         for p in range(1, active_page + 1):
             page_path = self._get_page_filename(p)
             if not os.path.exists(page_path):
@@ -364,7 +362,7 @@ class PatternBookManager:
                     recs = outcomes.get(key, [])
                     wins = sum(1 for r in recs if isinstance(r.get("r_value"), (int, float)) and r["r_value"] > 0)
                     losses = sum(1 for r in recs if isinstance(r.get("r_value"), (int, float)) and r["r_value"] <= 0)
-                    watchlist.append({
+                    patterns.append({
                         "symbol": parsed["sym"],
                         "pattern_name": parsed["pname"],
                         "count": parsed["count"],
@@ -372,8 +370,9 @@ class PatternBookManager:
                         "wins": wins,
                         "losses": losses,
                     })
-        return {"status": "SUCCESS", "watchlist_patterns": watchlist,
-                "total_watchlist": len(watchlist)}
+        return {"status": "SUCCESS", "patterns": patterns,
+                "total_patterns": len(patterns), "review_required": True,
+                "decision_authority": "AGENT_ONLY"}
 
     def reindex_book(self) -> Dict[str, Any]:
         """Consolidate all existing entries by normalized key (remediates the
