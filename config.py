@@ -265,3 +265,63 @@ TIME_STOP_DAYS = 3                  # Reassess if flat for 3 days
 LOG_LEVEL = os.environ.get("ALPHA_LOG_LEVEL", "INFO")
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_FILE = LOGS_DIR / "alpha.log"
+
+# ============================================================
+# CENTRALIZED OPENCODE SESSION CONFIGURATION (HOT-RELOADING)
+# ============================================================
+
+OPENCODE_SESSION_CONFIG_PATH = ALPHA_DIR / "config" / "opencode_session_config.json"
+DEFAULT_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
+DEFAULT_SESSION_TITLE = "Alpha v5"
+DEFAULT_API_URL = "http://127.0.0.1:4096"
+
+def load_session_config():
+    """Loads centralized OpenCode session configuration with zero-restart hot-reloading."""
+    import json
+    if OPENCODE_SESSION_CONFIG_PATH.exists():
+        try:
+            with open(OPENCODE_SESSION_CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {
+        "session_id": DEFAULT_SESSION_ID,
+        "session_title": DEFAULT_SESSION_TITLE,
+        "opencode_api_url": DEFAULT_API_URL
+    }
+
+def get_opencode_session():
+    """Returns (session_id, session_title, api_url) dynamically."""
+    cfg = load_session_config()
+    return (
+        str(cfg.get("session_id") or DEFAULT_SESSION_ID),
+        str(cfg.get("session_title") or DEFAULT_SESSION_TITLE),
+        str(cfg.get("opencode_api_url") or DEFAULT_API_URL)
+    )
+
+def get_opencode_session_id() -> str:
+    return get_opencode_session()[0]
+
+def get_opencode_session_title() -> str:
+    return get_opencode_session()[1]
+
+def get_opencode_api_url() -> str:
+    return get_opencode_session()[2]
+
+def set_opencode_session(session_id: str, session_title: str = None) -> bool:
+    """Updates centralized session config on disk with zero-restart hot-reloading."""
+    import json
+    try:
+        cfg = load_session_config()
+        cfg["session_id"] = str(session_id).strip()
+        if session_title:
+            cfg["session_title"] = str(session_title).strip()
+        OPENCODE_SESSION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(OPENCODE_SESSION_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        return True
+    except Exception:
+        return False
+

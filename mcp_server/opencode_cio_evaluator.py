@@ -17,15 +17,18 @@ from order_router import OrderRouter
 from memory import DecisionMemory
 from logs.story_logger import log_opencode_said, log_local_llm_replied
 
-LOG = logging.getLogger("alpha.mcp.evaluator")
+from config import (
+    get_opencode_session,
+    get_opencode_session_id,
+    get_opencode_session_title
+)
 
-OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
-OPENCODE_SESSION_TITLE = "Alpha v4"
+LOG = logging.getLogger("alpha.mcp.evaluator")
 
 class OpenCodeCIOEvaluator:
     def __init__(self):
-        self.session_id = OPENCODE_SESSION_ID
-        self.session_title = OPENCODE_SESSION_TITLE
+        self.session_id = get_opencode_session_id()
+        self.session_title = get_opencode_session_title()
         self.router = OrderRouter(dry_run=False)
         self.memory = DecisionMemory()
 

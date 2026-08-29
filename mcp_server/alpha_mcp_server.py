@@ -28,17 +28,21 @@ read_logger = DossierReadLogger()
 from tradingagents.world_events import LiveWorldEventsEngine
 world_events_engine = LiveWorldEventsEngine()
 
+from config import (
+    get_opencode_session,
+    get_opencode_session_id,
+    get_opencode_session_title
+)
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
-OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
-OPENCODE_SESSION_TITLE = "Alpha v4"
 mcp = FastMCP("alpha-daemon-mcp")
 
 class AlphaMCPServer:
     def __init__(self):
-        self.session_id = OPENCODE_SESSION_ID
-        self.session_title = "Alpha v4"
+        self.session_id = get_opencode_session_id()
+        self.session_title = get_opencode_session_title()
         self.active_watches: List[Dict[str, Any]] = []
         self.unsolicited_insights: List[Dict[str, Any]] = []
         _init_mt5()

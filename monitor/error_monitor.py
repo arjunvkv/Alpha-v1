@@ -33,12 +33,12 @@ from pathlib import Path
 from typing import Optional
 
 from config import ALPHA_DIR, LIVE_DATA_DIR
+from config.session_manager import get_opencode_session_id
 
 log = logging.getLogger("alpha.error_monitor")
 
 OPENCODE = r"C:\Users\arjun\AppData\Roaming\npm\opencode.cmd"
 SESSION_ID_FILE = LIVE_DATA_DIR / "session_id.txt"
-DEFAULT_SESSION_ID = "ses_feee1399cffeIkkxcPfrsT1Uhq"
 ERRORS_FILE = LIVE_DATA_DIR / "errors.json"
 
 # MT5 trade server return codes (MetaTrader5 docs)
@@ -341,7 +341,7 @@ If this error repeats after your fix, escalate: set needs_human=true."""
         try:
             return SESSION_ID_FILE.read_text(encoding="utf-8").strip()
         except OSError:
-            return DEFAULT_SESSION_ID
+            return get_opencode_session_id()
 
 
 # Module-level singleton — import anywhere without plumbing

@@ -34,9 +34,14 @@ TRADING_DIR = Path(r"C:\Trading")
 if str(TRADING_DIR) not in sys.path:
     sys.path.insert(0, str(TRADING_DIR))
 
+from config import (
+    get_opencode_session,
+    get_opencode_session_id,
+    get_opencode_session_title,
+    get_opencode_api_url
+)
+
 # Constants
-OPENCODE_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
-OPENCODE_SESSION_TITLE = "Alpha v5"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
 DAEMON_PINGS_LOG_PATH = PROJECT_ROOT / "logs" / "daemon_pings.log"
@@ -103,17 +108,18 @@ LOG = logging.getLogger("alpha.trading_desk")
 def post_to_opencode_session(speaker: str, message: str):
     """Log intent, record ping into daemon_pings.log, and enqueue prompt to OpenCode."""
     log_story(speaker, message)
+    sid, title, api_url = get_opencode_session()
     try:
         DAEMON_PINGS_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(DAEMON_PINGS_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(f"\n{'='*70}\n[DAEMON PING] {now_ts} | Speaker: {speaker} | Target: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n{'='*70}\n{message}\n")
+            f.write(f"\n{'='*70}\n[DAEMON PING] {now_ts} | Speaker: {speaker} | Target: {title} ({sid})\n{'='*70}\n{message}\n")
     except Exception as e:
         LOG.error(f"Error writing to daemon_pings.log: {e}")
     LOG.info(
         f"\n=== [COMMUNICATION LOG STREAM] ===\n"
         f"Speaker: {speaker}\n"
-        f"Target Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\n"
+        f"Target Session: {sid} ({title})\n"
         f"Payload Message:\n{message[:200]}...\n"
         f"===================================\n"
     )
@@ -122,11 +128,11 @@ def post_to_opencode_session(speaker: str, message: str):
         import urllib.error
         import urllib.request
 
-        target_sid = OPENCODE_SESSION_ID
+        target_sid = sid
         payload = json.dumps({
             "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
         }).encode("utf-8")
-        url = f"http://127.0.0.1:4096/session/{target_sid}/prompt_async"
+        url = f"{api_url}/session/{target_sid}/prompt_async"
 
         for attempt in range(1, 4):
             try:
@@ -140,7 +146,7 @@ def post_to_opencode_session(speaker: str, message: str):
                     status = getattr(resp, "status", resp.getcode())
                     if 200 <= status < 300:
                         LOG.info(
-                            f"OpenCode async prompt accepted for {OPENCODE_SESSION_TITLE} "
+                            f"OpenCode async prompt accepted for {title} "
                             f"session {target_sid} (HTTP {status}, attempt {attempt})."
                         )
                         return
@@ -153,11 +159,12 @@ def post_to_opencode_session(speaker: str, message: str):
                     time.sleep(float(attempt))
                 else:
                     LOG.error(
-                        f"OpenCode async dispatch failed after 3 attempts for {target_sid}: {err}"
+                        f"OpenCode async dispatch failed for {title} session {target_sid}: {err}"
                     )
 
     import threading
-    threading.Thread(target=_send, daemon=True).start()
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
 
 def log_story(speaker: str, message: str):
     """Write timestamped dialogue line to live_story.log (file logging only, zero HTTP chat prompts)."""
@@ -179,11 +186,14 @@ def log_local_llm_replied(msg: str): log_story("Local LLM Desk", f'"{msg}"')
 def log_local_llm_monitoring(msg: str): log_story("Local LLM Desk", f"[Monitoring] {msg}")
 def log_proactive_alert(sym: str, score: float, headline: str): log_story("Local LLM Desk", f'[Proactive Discovery] "{headline}"')
 
-def is_opencode_idle(session_id: str = OPENCODE_SESSION_ID) -> bool:
-    """Check if OpenCode Alpha v3 session is ready to receive alerts. Always defaults to True to guarantee reliable 3-min and startup dispatch."""
+def is_opencode_idle(session_id: str = None) -> bool:
+    """Check if OpenCode session is ready to receive alerts. Always defaults to True to guarantee reliable 3-min and startup dispatch."""
+    if not session_id:
+        session_id = get_opencode_session_id()
     try:
         import urllib.request
-        url = f"http://localhost:4096/session/{session_id}/message"
+        api_url = get_opencode_api_url()
+        url = f"{api_url}/session/{session_id}/message"
         req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
         resp = urllib.request.urlopen(req, timeout=2)
         if resp.status == 200:
@@ -797,11 +807,12 @@ decision authority.
     async def start_loop(self):
         self.is_running = True
         LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (1-min active trades, 2-min idle).")
-        # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
+        sid, title, _ = get_opencode_session()
+        # Immediately fire startup ping to OpenCode so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
-            f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
+            f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: 1-Min active trade / 2-Min idle\n\n"
             f"=== AGENT AUTHORITY ===\n"
