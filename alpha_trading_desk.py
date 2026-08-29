@@ -466,6 +466,19 @@ class ConsolidatedTradingDaemon:
                 spread_dict = {"pts": spread_pts, "val": spread_val, "status": status_str}
                 spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
 
+                from tradingagents.liquidity_radar import LiquidityRadarEngine
+                from tradingagents.fair_value_gap import FairValueGapEngine
+                
+                liq_radar = LiquidityRadarEngine()
+                fvg_engine = FairValueGapEngine()
+                
+                liq_data = liq_radar.get_symbol_liquidity(symbol)
+                fvg_line = fvg_engine.get_fvg_summary_line(symbol)
+                fvg_data = fvg_engine.get_symbol_fvg_matrix(symbol)
+
+                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
+                rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
+
                 # Store deep structured instrument data for persistent dossier logging
                 instruments_data.append({
                     "symbol": symbol,
@@ -480,30 +493,24 @@ class ConsolidatedTradingDaemon:
                     "adr": adr_info,
                     "spread": spread_dict,
                     "velocity": velocity,
-                    "liquidity_targets": liq_targets
+                    "liquidity_targets": liq_targets,
+                    "fvg": fvg_data
                 })
 
-                from tradingagents.liquidity_radar import LiquidityRadarEngine
-                liq_radar = LiquidityRadarEngine()
-                liq_data = liq_radar.get_symbol_liquidity(symbol)
-
-                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
-                rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
-
-                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, Full 4-TF & RRR
+                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG & RRR
                 inst_summary = (
                     f"• {symbol}: {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
                     f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) "
                     f"| 4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}] "
-                    f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
-                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand Zone: {order_blocks.get('demand_zone', 'N/A')} | Supply Zone: {order_blocks.get('supply_zone', 'N/A')} "
+                    f"| {fvg_line} | Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
+                    f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)
 
                 # Log Local LLM Agents' natural thinking dialogue into live_story.log & stdout for primary metals/oil
                 if symbol in ("XAUUSD", "XAGUSD"):
-                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {spread_info} | {velocity.get('ticks_per_min')} t/m")
+                    log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {fvg_line} | {spread_info} | {velocity.get('ticks_per_min')} t/m")
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Institutional Risk: {'WARNING' if debate.get('institutional_risk_warning') else 'CLEAR'}")
@@ -518,10 +525,10 @@ class ConsolidatedTradingDaemon:
         reversal_alerts = []
         try:
             if mt5_online:
-                pos_list = mt5.positions_get()
-                if pos_list:
-                    for p in pos_list:
-                        side = "BUY" if p.type == 0 else "SELL"
+                positions = mt5.positions_get()
+                if positions:
+                    for p in positions:
+                        side = "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL"
                         open_tickets.append(f"{p.symbol} #{p.ticket} ({p.profit:+.2f} USD)")
                         detailed_positions.append(
                             f"Ticket #{p.ticket} ({p.symbol} {side} {p.volume:.2f} lots | Entry: {p.price_open:.2f} | Current: {p.price_current:.2f} | PnL: {p.profit:+.2f} USD | SL: {p.sl:.2f})"
@@ -540,10 +547,12 @@ class ConsolidatedTradingDaemon:
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
         from tradingagents.read_logger import DossierReadLogger
         from tradingagents.trade_journal import TradeJournalMemory
+        from tradingagents.trade_forensics import TradeForensicsEngine
         from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
         
         read_logger = DossierReadLogger()
         journal_memory = TradeJournalMemory()
+        forensics_engine = TradeForensicsEngine()
         inst_engine = InstitutionalAnalyticsEngine()
 
         # Update each detailed source independently. One failure must not hide the
@@ -551,6 +560,7 @@ class ConsolidatedTradingDaemon:
         update_status = []
         try:
             journal_memory.write_journal_memory()
+            forensics_engine.sync_closed_trades()
             update_status.append(("Unified Learning Memory / Journal", "UPDATED"))
         except Exception as err:
             LOG.error(f"Unified learning/journal update error: {err}")

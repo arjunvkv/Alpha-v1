@@ -82,8 +82,10 @@ class UnifiedLearningMemory:
             return self._empty()
 
     def _save(self, data: Dict[str, Any]) -> None:
-        with open(self.path, "w", encoding="utf-8") as f:
+        tmp_path = self.path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, self.path)
 
     def _new_experience_id(self, data: Dict[str, Any]) -> str:
         return f"experience_{len(data['experiences']) + 1:06d}"

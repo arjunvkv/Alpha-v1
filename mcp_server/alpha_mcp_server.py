@@ -272,6 +272,22 @@ def mcp_alpha_get_full_book(book_name: str = "patterns") -> str:
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     return UnifiedLearningMemory().get_full()
 
+@mcp.tool()
+def mcp_alpha_get_fvg_matrix(symbol: str) -> str:
+    """Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps (FVG) and 50% Consequent Encroachment levels."""
+    from tradingagents.fair_value_gap import FairValueGapEngine
+    read_logger.log_dossier_read("OpenCode CIO (MCP FVG Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried FVG matrix for {symbol.upper()}")
+    fvg_engine = FairValueGapEngine()
+    return json.dumps(fvg_engine.get_symbol_fvg_matrix(symbol), indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_trade_forensics(ticket: int = 0) -> str:
+    """Query granular post-trade forensics and entry market context for closed MT5 deals."""
+    from tradingagents.trade_forensics import TradeForensicsEngine
+    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for ticket #{ticket}")
+    forensics = TradeForensicsEngine()
+    return json.dumps(forensics.get_trade_forensics(ticket), indent=2)
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()
