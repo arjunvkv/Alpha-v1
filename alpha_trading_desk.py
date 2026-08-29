@@ -610,6 +610,43 @@ class ConsolidatedTradingDaemon:
             f"  • {'✓' if status == 'UPDATED' else '⚠'} {name}: {status}"
             for name, status in update_status
         )
+        review_state = unified_learning_memory.get_review_status()
+        learning_status = review_state.get("learning", {})
+        live_status = review_state.get("live", {})
+        review_lines = ["=== EVIDENCE REVIEW STATUS ==="]
+        for source in ("Live Market State", "Active Positions", "Technical / Multi-Timeframe Detail", "Intermarket Context", "Macro / Calendar / World Events"):
+            rec = live_status.get(source, {})
+            status = rec.get("status", "READ_REQUIRED")
+            interval = rec.get("review_interval_seconds")
+            review_lines.append(f"  • {source}: {status}" + (f" (review interval: {interval}s)" if interval else ""))
+        review_lines.append("")
+        review_lines.append("=== MANDATORY LEARNING — EVERY STUDY CYCLE / NO EXPIRY ===")
+        for source in ("Unified Learning Memory", "Pattern Book", "Historical Research", "Strategy Evidence Archive"):
+            review_lines.append(f"  • {source}: {learning_status.get(source, {}).get('status', 'READ_REQUIRED')}")
+        review_block = "\n".join(review_lines)
+
+        mcp_tools_block = """=== AVAILABLE ALPHA MCP TOOLS — USE WHEN RELEVANT ===
+  • mcp_alpha_learning_review — check/start study cycle; mark evidence read after actual review.
+  • mcp_alpha_register_watch — register an Agent-requested market watch.
+  • mcp_alpha_execute_trade — execute an Agent decision; this tool does not decide.
+  • mcp_alpha_update_position — update an existing position when the Agent decides.
+  • mcp_alpha_get_account_status — retrieve current account state.
+  • mcp_alpha_get_symbol_conviction — retrieve stored symbol conviction context.
+  • mcp_alpha_query_analyst_desk — query available analyst/desk evidence.
+  • mcp_alpha_get_live_world_events — retrieve current world-event evidence.
+  • mcp_alpha_record_pattern_observation — record meaningful pattern/learning observations.
+  • mcp_alpha_record_pattern_outcome — record pattern outcome evidence.
+  • mcp_alpha_get_book_page — retrieve a specific Pattern Book page.
+  • mcp_alpha_search_book — search the Pattern Book for relevant evidence.
+  • mcp_alpha_get_book_index — inspect Pattern Book structure/index.
+  • mcp_alpha_get_full_book — retrieve the full Pattern Book when necessary.
+
+MANDATORY: Know the available MCP capabilities and use the relevant tool when needed.
+Do not call tools mechanically. Study, interpret and decide first; MCP tools retrieve,
+record, track or execute the Agent's own decisions and do not have independent
+decision authority.
+"""
+
         file_ref_header = (
             f"=== ALPHA AGENT STUDY UPDATE ===\n"
             f"  • CURRENT TIME: {ist_ts}\n"
@@ -624,12 +661,9 @@ class ConsolidatedTradingDaemon:
             f"  • Institutional Deep Book: file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
             f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
-            f"=== MANDATORY LEARNING — EVERY STUDY CYCLE / NO EXPIRY ===\n"
-            f"  • Unified Learning Memory — CONSULT AND MARK READ\n"
-            f"  • Pattern Book — CONSULT AND MARK READ\n"
-            f"  • Historical Research — CONSULT AND MARK READ\n"
-            f"  • Strategy Evidence Archive — CONSULT AND MARK READ\n"
+            f"{review_block}\n\n"
             f"  • Use mcp_alpha_learning_review to check/start the study cycle and mark sources read after actual review.\n\n"
+            f"{mcp_tools_block}\n"
             f"=== MANDATORY AGENT CYCLE ===\n"
             f"  1. Read required live and due evidence.\n"
             f"  2. Consult all four mandatory learning sources.\n"
