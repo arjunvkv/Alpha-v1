@@ -135,39 +135,56 @@ def post_to_opencode_session(speaker: str, message: str):
         import urllib.error
         import urllib.request
 
-        target_sid = sid
+        target_sids = set()
+        if sid:
+            target_sids.add(sid)
+        try:
+            list_req = urllib.request.Request(f"{api_url}/session")
+            with urllib.request.urlopen(list_req, timeout=5) as resp:
+                sessions_list = json.loads(resp.read().decode('utf-8'))
+                for s in sessions_list:
+                    s_title = str(s.get("title", "")).lower()
+                    if "alpha-gravity" in s_title or "alpha" in s_title or s.get("id") == sid:
+                        target_sids.add(s.get("id"))
+        except Exception as e:
+            LOG.warning(f"Could not query sessions list: {e}")
+
+        if not target_sids and sid:
+            target_sids.add(sid)
+
         payload = json.dumps({
             "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
         }).encode("utf-8")
-        url = f"{api_url}/session/{target_sid}/prompt_async"
 
-        for attempt in range(1, 4):
-            try:
-                req = urllib.request.Request(
-                    url,
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=15) as resp:
-                    status = getattr(resp, "status", resp.getcode())
-                    if 200 <= status < 300:
-                        LOG.info(
-                            f"OpenCode async prompt accepted for {title} "
-                            f"session {target_sid} (HTTP {status}, attempt {attempt})."
+        for target_sid in target_sids:
+            url = f"{api_url}/session/{target_sid}/prompt_async"
+            for attempt in range(1, 4):
+                try:
+                    req = urllib.request.Request(
+                        url,
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        status = getattr(resp, "status", resp.getcode())
+                        if 200 <= status < 300:
+                            LOG.info(
+                                f"OpenCode async prompt accepted for {title} "
+                                f"session {target_sid} (HTTP {status}, attempt {attempt})."
+                            )
+                            break
+                        raise RuntimeError(f"Unexpected HTTP status {status}")
+                except Exception as err:
+                    if attempt < 3:
+                        LOG.warning(
+                            f"OpenCode async dispatch attempt {attempt}/3 failed for {target_sid}: {err}; retrying."
                         )
-                        return
-                    raise RuntimeError(f"Unexpected HTTP status {status}")
-            except Exception as err:
-                if attempt < 3:
-                    LOG.warning(
-                        f"OpenCode async dispatch attempt {attempt}/3 failed for {target_sid}: {err}; retrying."
-                    )
-                    time.sleep(float(attempt))
-                else:
-                    LOG.error(
-                        f"OpenCode async dispatch failed for {title} session {target_sid}: {err}"
-                    )
+                        time.sleep(float(attempt))
+                    else:
+                        LOG.error(
+                            f"OpenCode async dispatch failed for {title} session {target_sid}: {err}"
+                        )
 
     import threading
     t = threading.Thread(target=_send, daemon=True)
