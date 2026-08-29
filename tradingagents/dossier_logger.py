@@ -111,6 +111,8 @@ class DeepDossierLogger:
             lib_prov = top1.get("evidence_provenance", "ESTIMATED")
             lib_trigger = top1.get("execution_trigger", "N/A")
             lib_score = top1.get("score", 0.0)
+            prox_status = lib.get("proxima_status", "STANDBY (Local Memory Active)")
+            prox_synth = lib.get("proxima_research_synthesis", "Proxima Desktop Standby — using local deterministic microstructure rules")
 
             md_lines.append(f"### 🔹 Instrument: {sym}")
             md_lines.append(f"- **Live Execution**: Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`")
@@ -121,7 +123,8 @@ class DeepDossierLogger:
             md_lines.append(f"- **COT / Fundamental Agent Internal Reasoning**: COT Percentile `{cot_pct:.1f}%` | {fund.get('thesis', 'N/A')}")
             md_lines.append(f"- **Macro / News Agent Internal Reasoning**: DXY `{macro.get('dxy', 101.4)}`, VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
             md_lines.append(f"- **Bull vs. Bear Debate Agent Internal Reasoning**: Debater LLM Consensus `{debate.get('consensus_score', 5.0)}/10` | Conviction `{debate.get('conviction', 'LOW')}` | Institutional Risk Warning: `{'YES' if debate.get('institutional_risk_warning') else 'NO'}`")
-            md_lines.append(f"- **Autonomous Librarian & Proxima Precedent**: Top Precedent: `{lib_name}` (Score: `{lib_score}/10` | Win Rate: `{lib_wr}` [{lib_prov}]) | Trigger: {lib_trigger}")
+            md_lines.append(f"- **Autonomous Librarian Historical Precedent (Unified Learning Memory)**: Top Setup: `{lib_name}` (Score: `{lib_score}/10` | Win Rate: `{lib_wr}` [{lib_prov}]) | Trigger: {lib_trigger}")
+            md_lines.append(f"- **Proxima Quantitative Research Findings (Port 3210)**: Engine Status: `{prox_status}` | Microstructure Synthesis: {prox_synth}")
             md_lines.append(f"- **Risk Officer Agent Decision**: Approved: `{risk.get('approved')}` | Recommended Max Lot Size: `{risk.get('max_volume_lots', 0.10)} lots` | Rationale: `{risk.get('reason')}`")
             md_lines.append("")
 
