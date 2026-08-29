@@ -34,10 +34,22 @@ from config import (
     get_opencode_session_title
 )
 
+from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst
+from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
+from tradingagents.multitimeframe import MultiTimeframeAnalyst
+from tradingagents.librarian_agent import AutonomousLibrarianAgent
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 mcp = FastMCP("alpha-daemon-mcp")
+
+# Pre-instantiated singletons for sub-10ms response times
+_tech_analyst = TechnicalAnalyst()
+_fund_analyst = FundamentalAnalyst()
+_inst_engine = InstitutionalAnalyticsEngine()
+_mtf_analyst = MultiTimeframeAnalyst()
+_librarian_agent = AutonomousLibrarianAgent()
 
 class AlphaMCPServer:
     def __init__(self):
@@ -82,11 +94,44 @@ def mcp_alpha_learning_review(action: str = "status", source: str = "", sources_
     return json.dumps(result, indent=2)
 
 @mcp.tool()
-def mcp_alpha_register_watch(symbol: str, condition: str, instruction: str) -> str:
-    """OpenCode assigns a dynamic smart watch to the local desk."""
-    log_opencode_said(f"Watch {symbol.upper()}: {condition}. {instruction}")
-    log_local_llm_replied(f"Understood CIO! Registered dynamic watch for {symbol.upper()}: {condition}.")
-    return json.dumps({"status": "REGISTERED", "symbol": symbol.upper(), "condition": condition, "instruction": instruction})
+def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "") -> str:
+    """OpenCode assigns a dynamic smart watch to the local desk and registers active thesis with the Librarian."""
+    sym = symbol.upper()
+    desc = condition or instruction or reason or f"Watching {sym} @ {target_price}"
+    log_opencode_said(f"Watch {sym}: {desc}")
+    log_local_llm_replied(f"Understood CIO! Registered dynamic watch for {sym}: {desc}.")
+    
+    # Save to discovery state for Librarian ingestion
+    try:
+        from pathlib import Path
+        state_path = Path(r"C:\Trading\Alpha\data\live\discovery_state.json")
+        state_data = {}
+        if state_path.exists():
+            try:
+                with open(state_path, "r", encoding="utf-8") as f:
+                    state_data = json.load(f)
+            except Exception:
+                state_data = {}
+        state_data["active_watch"] = {
+            "symbol": sym,
+            "condition": desc,
+            "target_price": target_price,
+            "direction": direction,
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump(state_data, f, indent=2)
+    except Exception:
+        pass
+
+    return json.dumps({
+        "status": "REGISTERED",
+        "symbol": sym,
+        "condition": condition,
+        "instruction": instruction,
+        "target_price": target_price,
+        "direction": direction
+    })
 
 @mcp.tool()
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
@@ -161,21 +206,12 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         sym = symbol.strip()
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_price = getattr(tick, "ask", 0.0)
-        from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst
-        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
-        from tradingagents.multitimeframe import MultiTimeframeAnalyst
-        
-        tech = TechnicalAnalyst()
-        fund = FundamentalAnalyst()
-        inst = InstitutionalAnalyticsEngine()
-        mtf_analyst = MultiTimeframeAnalyst()
-        
-        cot_data = inst.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
-        mtf_res = mtf_analyst.analyze_mtf(sym)
+        cot_data = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        mtf_res = _mtf_analyst.analyze_mtf(sym)
         rsi_val = mtf_res.get("m15_rsi", 50.0)
         
-        tech_res = tech.analyze(sym, {"h4_bias": mtf_res.get("h4_trend"), "h1_bias": mtf_res.get("h1_trend"), "m15_bias": mtf_res.get("m15_trend"), "m5_bias": mtf_res.get("m5_trend"), "indicators": {"rsi_14": rsi_val}})
-        fund_res = fund.analyze(sym, cot_data)
+        tech_res = _tech_analyst.analyze(sym, {"h4_bias": mtf_res.get("h4_trend"), "h1_bias": mtf_res.get("h1_trend"), "m15_bias": mtf_res.get("m15_trend"), "m5_bias": mtf_res.get("m5_trend"), "indicators": {"rsi_14": rsi_val}})
+        fund_res = _fund_analyst.analyze(sym, cot_data)
         score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
         
         return json.dumps({
@@ -404,21 +440,18 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
 
 @mcp.tool()
 def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    """Query the Autonomous Librarian Agent for deep pattern reality checks, ticket provenance, and Proxima quantitative research."""
-    from tradingagents.librarian_agent import AutonomousLibrarianAgent
-    lib = AutonomousLibrarianAgent()
     market_state = {
         "symbol": symbol.upper(),
         "fvg_type": "M5_BEAR_FVG" if "SHORT" in query.upper() or "BEAR" in query.upper() else "M5_BULL_FVG",
         "sweep_status": "YEST_LOW_SWEPT" if "SWEEP" in query.upper() or "LOW" in query.upper() else "IN_RANGE"
     }
-    res = lib.run_librarian_cycle(market_state)
+    res = _librarian_agent.run_librarian_cycle(market_state)
     read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {symbol}: '{query}'")
     return json.dumps({
         "query": query,
         "symbol": symbol.upper(),
         "status": "SUCCESS",
-        "proxima_status": "ONLINE" if lib.proxima.check_health() else "STANDBY (Local Rules Active)",
+        "proxima_status": "ONLINE" if _librarian_agent.proxima.check_health() else "STANDBY (Local Rules Active)",
         "active_thesis_revolved": res.get("live_thesis_revolved"),
         "top_4_precedents": res.get("top_4_precedents", [])
     }, indent=2)

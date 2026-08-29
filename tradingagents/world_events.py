@@ -44,6 +44,8 @@ class LiveWorldEventsEngine:
     """
     def __init__(self, cache_ttl_seconds: int = 120):
         self.cache_ttl = cache_ttl_seconds
+        self._mem_cache: List[Dict[str, Any]] = []
+        self._mem_cache_ts: float = 0.0
         EVENTS_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     def _categorize(self, title: str, default_cat: str) -> str:
@@ -59,72 +61,79 @@ class LiveWorldEventsEngine:
         return default_cat
 
     def fetch_live_events(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
-        """Fetch live world events from RSS feeds or return unexpired disk cache."""
+        """Fetch live world events from memory cache, disk cache, or parallel RSS feeds."""
         now_ts = time.time()
         
+        # 1. In-memory hot cache (0ms)
+        if not force_refresh and self._mem_cache and (now_ts - self._mem_cache_ts < self.cache_ttl):
+            return self._mem_cache
+
+        # 2. Disk cache (<5ms)
         if not force_refresh and EVENTS_CACHE_FILE.exists():
             try:
                 with open(EVENTS_CACHE_FILE, "r", encoding="utf-8") as f:
                     cache_data = json.load(f)
                     last_fetch = cache_data.get("updated_at_ts", 0)
                     if now_ts - last_fetch < self.cache_ttl:
-                        return cache_data.get("events", [])
+                        self._mem_cache = cache_data.get("events", [])
+                        self._mem_cache_ts = last_fetch
+                        return self._mem_cache
             except Exception as err:
                 LOG.warning(f"Failed to read events cache: {err}")
 
+        # 3. Fast parallel network fetch
         events = []
         seen_titles = set()
         timestamp_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-        for src in RSS_SOURCES:
+        def _fetch_single_source(src):
+            src_events = []
             try:
                 req = urllib.request.Request(src["url"], headers=headers)
-                xml_data = urllib.request.urlopen(req, timeout=5).read()
+                xml_data = urllib.request.urlopen(req, timeout=2.0).read()
                 root = ET.fromstring(xml_data)
-
-                for item in root.findall(".//item"):
+                for item in root.findall(".//item")[:10]:
                     title_elem = item.find("title")
                     link_elem = item.find("link")
                     pub_elem = item.find("pubDate")
-
                     if title_elem is not None and title_elem.text:
-                        raw_title = title_elem.text.strip()
-                        # Clean special encoding glitches if any
-                        clean_title = raw_title.replace("&apos;", "'").replace("&#39;", "'").replace("&quot;", '"')
-                        
-                        if clean_title.lower() in seen_titles:
-                            continue
-                        seen_titles.add(clean_title.lower())
-
-                        cat = self._categorize(clean_title, src["default_category"])
+                        raw_title = title_elem.text.strip().replace("&apos;", "'").replace("&#39;", "'").replace("&quot;", '"')
+                        cat = self._categorize(raw_title, src["default_category"])
                         link = link_elem.text.strip() if (link_elem is not None and link_elem.text) else ""
                         pub_date = pub_elem.text.strip() if (pub_elem is not None and pub_elem.text) else timestamp_str
-
-                        events.append({
-                            "title": clean_title,
+                        src_events.append({
+                            "title": raw_title,
                             "category": cat,
                             "source": src["name"],
                             "pub_date": pub_date,
                             "link": link,
-                            "fetched_at": timestamp_str
+                            "sentiment": "NEUTRAL"
                         })
-            except Exception as err:
-                LOG.debug(f"RSS fetch failed for {src['name']}: {err}")
+            except Exception:
+                pass
+            return src_events
 
-        # Save to cache
-        cache_payload = {
-            "updated_at_ts": now_ts,
-            "updated_at": timestamp_str,
-            "total_events": len(events),
-            "events": events
-        }
-        try:
-            with open(EVENTS_CACHE_FILE, "w", encoding="utf-8") as f:
-                json.dump(cache_payload, f, indent=2)
-        except Exception as err:
-            LOG.error(f"Writing live events cache failed: {err}")
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            results = executor.map(_fetch_single_source, RSS_SOURCES)
+            for res_list in results:
+                for ev in res_list:
+                    t_low = ev["title"].lower()
+                    if t_low not in seen_titles:
+                        seen_titles.add(t_low)
+                        events.append(ev)
+
+        if events:
+            self._mem_cache = events
+            self._mem_cache_ts = now_ts
+            try:
+                with open(EVENTS_CACHE_FILE, "w", encoding="utf-8") as f:
+                    json.dump({"updated_at": timestamp_str, "updated_at_ts": now_ts, "events_count": len(events), "events": events}, f, indent=2)
+            except Exception:
+                pass
+        elif self._mem_cache:
+            return self._mem_cache
 
         return events
 
