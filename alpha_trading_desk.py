@@ -271,14 +271,22 @@ def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp
         digits = getattr(sym_info, "digits", 2) if sym_info else 2
         stops_dist = max((getattr(sym_info, "trade_stops_level", 50) or 50) * point, 20 * point)
 
-        # Dynamic SL/TP safety validation relative to live market price
+        # Validate Agent-selected SL/TP without silently substituting trading decisions.
         if side == "buy":
-            sl_val = round(sl if (0 < sl < price - stops_dist) else (price - max(stops_dist * 2, 15.0)), digits)
-            tp_val = round(tp if (tp > price + stops_dist) else (price + max(stops_dist * 4, 35.0)), digits)
+            if not (0 < sl < price - stops_dist):
+                return {"success": False, "error": "invalid_agent_sl_for_buy"}
+            if not (tp > price + stops_dist):
+                return {"success": False, "error": "invalid_agent_tp_for_buy"}
+            sl_val = round(sl, digits)
+            tp_val = round(tp, digits)
             order_type = mt5.ORDER_TYPE_BUY
         else:
-            sl_val = round(sl if (sl > price + stops_dist) else (price + max(stops_dist * 2, 15.0)), digits)
-            tp_val = round(tp if (0 < tp < price - stops_dist) else (price - max(stops_dist * 4, 35.0)), digits)
+            if not (sl > price + stops_dist):
+                return {"success": False, "error": "invalid_agent_sl_for_sell"}
+            if not (0 < tp < price - stops_dist):
+                return {"success": False, "error": "invalid_agent_tp_for_sell"}
+            sl_val = round(sl, digits)
+            tp_val = round(tp, digits)
             order_type = mt5.ORDER_TYPE_SELL
 
         request = {
