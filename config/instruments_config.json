@@ -1,0 +1,12 @@
+{
+  "description": "Alpha Trading Desk - Active Instrument Toggles (Default)",
+  "updated_at": "2026-08-29T18:24:25.889494",
+  "instruments": {
+    "XAUUSD": true,
+    "XAGUSD": true,
+    "XPTUSD": true,
+    "XPDUSD": true,
+    "XCUUSD": true,
+    "USOIL.cash": true
+  }
+}

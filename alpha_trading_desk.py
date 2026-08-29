@@ -41,7 +41,21 @@ FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
 DAEMON_PINGS_LOG_PATH = PROJECT_ROOT / "logs" / "daemon_pings.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
+CONFIG_PATH = PROJECT_ROOT / "config" / "instruments_config.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
+
+def get_active_instruments() -> List[str]:
+    """Reads config/instruments_config.json with zero-restart hot-reloading."""
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                active = [sym for sym, enabled in data.get("instruments", {}).items() if enabled]
+                if active:
+                    return active
+        except Exception as e:
+            LOG.error(f"Error loading {CONFIG_PATH}: {e}")
+    return INSTRUMENTS
 
 # ----------------------------------------------------------------------
 # PER-INSTRUMENT SPREAD NORMAL/ELEVATED THRESHOLDS (points)
@@ -396,7 +410,8 @@ class ConsolidatedTradingDaemon:
         self.last_reversal_dispatch_time = 0.0
 
     async def run_cycle(self):
-        LOG.info(f"--- Starting Scan Cycle across {len(self.instruments)} instruments ---")
+        self.instruments = get_active_instruments()
+        LOG.info(f"--- Starting Scan Cycle across {len(self.instruments)} instruments ({', '.join(self.instruments)}) ---")
         log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Granger 7-Layers + Global Eyes RSS feeds active)...")
 
         scores = []
