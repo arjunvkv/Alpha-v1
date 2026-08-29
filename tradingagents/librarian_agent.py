@@ -36,7 +36,7 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 class ProximaGate:
     """Async/HTTP Client to Proxima Gateway on Port 3210."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 5.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 0.8):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -104,6 +104,29 @@ class LibrarianPatternDatabase:
 
         LOG.info(f"Librarian DB loaded {len(self.patterns)} patterns and {len(self.experiences)} experiences.")
 
+    def get_symbol_baseline_stats(self, symbol: str) -> Dict[str, Any]:
+        """Calculates deterministic, stable baseline performance metrics for a symbol."""
+        sym = symbol.upper()
+        sym_exps = [
+            e for e in self.experiences.values()
+            if isinstance(e, dict) and str(e.get("market_context", {}).get("symbol", "")).upper() == sym
+        ]
+        total_count = len(sym_exps)
+        wins_count = sum(
+            1 for e in sym_exps
+            if float(e.get("outcome", {}).get("pnl", 0.0) or 0.0) > 0 or "WIN" in str(e.get("outcome", {}).get("outcome", "")).upper()
+        )
+        win_rate = round((wins_count / max(total_count, 1)) * 100.0, 1) if total_count > 0 else 0.0
+        derivation = f"{wins_count}/{total_count} ({win_rate}%) [EMPIRICAL_LINKED_EVIDENCE]" if total_count > 0 else "0/0 (N/A) [ESTIMATED_PRIOR]"
+        return {
+            "symbol": sym,
+            "total_trades": total_count,
+            "wins": wins_count,
+            "losses": total_count - wins_count,
+            "win_rate_pct": win_rate,
+            "derivation": derivation
+        }
+
 
 class DeterministicPatternMatcher:
     """
@@ -164,21 +187,29 @@ class DeterministicPatternMatcher:
             # Geometry / FVG type matching
             is_bear_fvg_match = ("BEAR" in fvg_type and ("BEAR" in name or "SHORT" in name or "SUPPLY" in name or "FVG" in tags))
             is_bull_fvg_match = ("BULL" in fvg_type and ("BULL" in name or "BUY" in name or "DEMAND" in name or "FVG" in tags))
-            is_sweep_match = ("SWEPT" in sweep_status and ("SWEEP" in name or "LIQUIDITY" in tags or "REVERSAL" in name))
 
-            # Hard gate: Candidate must mathematically share setup geometry
-            if not (is_bear_fvg_match or is_bull_fvg_match or is_sweep_match):
+            p_sym = p_data.get("symbol", "").upper()
+            if p_sym and p_sym != symbol.upper() and p_sym != "ALL":
                 continue
 
-            # --- GATE 2: PROVENANCE & GROUND-TRUTH RECONCILIATION ---
-            stored_outcomes = p_data.get("outcomes", []) or self.db.pattern_outcomes.get(f"{symbol}|{name}", [])
-            if not isinstance(stored_outcomes, list):
-                stored_outcomes = []
+            name_upper = p_data.get("pattern_name", "").upper()
+            desc_upper = p_data.get("description", "").upper()
+            trigger_upper = p_data.get("trigger_condition", "").upper()
+            full_text = f"{p_id} {name_upper} {desc_upper} {trigger_upper}"
+
+            is_bear_fvg_match = "BEAR" in fvg_type.upper() and any(k in full_text for k in ["BEAR", "SHORT", "SUPPLY", "RESISTANCE"])
+            is_bull_fvg_match = "BULL" in fvg_type.upper() and any(k in full_text for k in ["BULL", "LONG", "DEMAND", "SUPPORT"])
+            is_sweep_match = any(k in full_text for k in ["SWEEP", "LIQUIDITY", "TRAP", "VACUUM"])
+
+            # Pull stored outcomes from pattern_outcomes or pattern body
+            stored_outcomes = p_data.get("outcomes", [])
+            if not stored_outcomes and p_id in self.db.pattern_outcomes:
+                stored_outcomes = self.db.pattern_outcomes[p_id]
+
             sample_count = len(stored_outcomes)
             win_count = sum(1 for o in stored_outcomes if isinstance(o, dict) and ("WIN" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) > 0))
-            loss_count = sum(1 for o in stored_outcomes if isinstance(o, dict) and ("LOSS" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) < 0))
-            
-            # Find linked trade tickets from pattern outcomes and experiences
+
+            # Find linked trade tickets
             linked_tickets = []
             for o in stored_outcomes:
                 if isinstance(o, dict) and o.get("ticket"):
@@ -195,24 +226,37 @@ class DeterministicPatternMatcher:
 
             provenance = p_data.get("evidence_provenance") or ("OBSERVED" if linked_tickets else ("SEEDED" if sample_count > 0 else "ESTIMATED"))
 
-            # Calculate empirical win rate with explicit mathematical derivation
             if sample_count > 0:
                 win_rate = round((win_count / sample_count) * 100.0, 1)
                 win_rate_display = f"{win_count}/{sample_count} ({win_rate}%) [EMPIRICAL_LINKED_EVIDENCE]"
             else:
                 win_rate = 50.0
                 win_rate_display = "0/0 (N/A) [ESTIMATED_PRIOR]"
-            
-            # Base deterministic score (0 - 10)
-            score = 6.0
-            if is_bear_fvg_match and "BEAR" in live_state.get("h4_bias", "").upper():
-                score += 2.0  # 4TF Trend Confluence
-            if is_sweep_match:
-                score += 1.5  # Liquidity Grab Confluence
-            if win_rate >= 60.0 and sample_count > 0:
-                score += 0.5
 
-            score = min(round(score, 1), 9.8)
+            # Provenance-Aware Scoring Hierarchy (OBSERVED > SEEDED > ESTIMATED)
+            if provenance == "OBSERVED":
+                score = 6.0
+                if (is_bear_fvg_match and "BEAR" in live_state.get("h4_bias", "").upper()) or (is_bull_fvg_match and "BULL" in live_state.get("h4_bias", "").upper()):
+                    score += 2.0
+                if is_sweep_match:
+                    score += 1.5
+                if win_rate >= 50.0:
+                    score += 0.3
+                score = min(round(score, 1), 9.8)
+            elif provenance == "SEEDED":
+                score = 4.5
+                if is_bear_fvg_match or is_bull_fvg_match:
+                    score += 0.8
+                if is_sweep_match:
+                    score += 0.5
+                score = min(round(score, 1), 6.0)
+            else:  # ESTIMATED
+                score = 2.5
+                if is_bear_fvg_match or is_bull_fvg_match:
+                    score += 0.8
+                if is_sweep_match:
+                    score += 0.5
+                score = min(round(score, 1), 4.0)  # Capped strictly at 4.0
 
             verified_candidates.append({
                 "id": p_id,
@@ -224,12 +268,12 @@ class DeterministicPatternMatcher:
                 "sample_size": sample_count,
                 "evidence_provenance": provenance,
                 "trigger_condition": p_data.get("trigger_condition") or f"{symbol} {fvg_type} mitigation with delta exhaustion",
-                "invalidation_rule": p_data.get("invalidation_rule") or f"Candle close beyond FVG boundary or spread > {spread_pts * 1.5} pts",
+                "invalidation_rule": p_data.get("invalidation_rule") or f"Candle close beyond active {symbol} zone boundary or spread > {spread_pts * 1.5:.1f} pts",
                 "description": p_data.get("description") or f"Historical institutional {symbol} mitigation setup.",
                 "linked_tickets": linked_tickets[:3]
             })
 
-        # Sort by deterministic score
+        # Sort by deterministic score (OBSERVED naturally ranks highest)
         verified_candidates.sort(key=lambda x: x["score"], reverse=True)
         return verified_candidates
 
@@ -240,57 +284,67 @@ class LibrarianTacticalClassifier:
     @staticmethod
     def slot_top_4(candidates: List[Dict[str, Any]], live_state: Dict[str, Any]) -> Dict[str, Any]:
         symbol = live_state.get("symbol", "XAUUSD")
-        fvg_ce = live_state.get("fvg_ce", 4461.98)
-        fvg_top = live_state.get("fvg_top", 4464.44)
-        fvg_bottom = live_state.get("fvg_bottom", 4459.52)
+        fvg_ce = live_state.get("fvg_ce")
+        fvg_top = live_state.get("fvg_top")
+        fvg_bottom = live_state.get("fvg_bottom")
         fvg_type = live_state.get("fvg_type", "M5_BEAR_FVG")
-        sweep = live_state.get("sweep_status", "YEST_LOW_SWEPT")
+        sweep = live_state.get("sweep_status", "IN_RANGE")
 
-        def _format_cand(cand: Dict[str, Any], default_role: str, default_name: str, default_score: float) -> Dict[str, Any]:
+        has_levels = fvg_ce is not None and fvg_top is not None and fvg_bottom is not None
+        if has_levels:
+            ce_str = f"({fvg_ce:.2f})"
+            zone_str = f"[{fvg_bottom:.2f} - {fvg_top:.2f}]"
+            thesis_str = f"{symbol} testing {fvg_type} {zone_str} (CE: {fvg_ce:.2f}) post-{sweep}"
+        else:
+            ce_str = "(50% CE level)"
+            zone_str = "structural zone"
+            thesis_str = f"{symbol} evaluating {fvg_type} post-{sweep}"
+
+        def _format_cand(cand: Dict[str, Any], default_role: str, default_name: str, fallback_score: float) -> Dict[str, Any]:
             if not cand:
                 return {
                     "role": default_role,
                     "pattern_id": "#PAT-EST",
                     "name": default_name,
-                    "score": default_score,
+                    "score": fallback_score,
                     "win_rate": "0/0 (N/A) [ESTIMATED_PRIOR]",
                     "evidence_provenance": "ESTIMATED",
                     "rrr": "1:3.0 (Target Sweet Spot)",
-                    "execution_trigger": f"Enter on 50% Consequent Encroachment tap ({fvg_ce:.2f}) with tick delta stall.",
-                    "testing_objective": f"Verify institutional rejection inside [{fvg_bottom:.2f} - {fvg_top:.2f}].",
-                    "invalidation": f"Breach and M5 close outside [{fvg_bottom:.2f} - {fvg_top:.2f}] boundary."
+                    "execution_trigger": f"Enter on 50% Consequent Encroachment tap {ce_str} with tick delta stall.",
+                    "testing_objective": f"Verify institutional rejection inside active {symbol} {zone_str}.",
+                    "invalidation": f"M5 candle close beyond {symbol} {zone_str} boundary."
                 }
             return {
                 "role": default_role,
                 "pattern_id": cand.get("id", "#PAT-001"),
                 "name": cand.get("name", default_name),
-                "score": cand.get("score", default_score),
+                "score": cand.get("score", fallback_score),
                 "win_rate": cand.get("win_rate_display", "0/0 (N/A) [ESTIMATED_PRIOR]"),
                 "evidence_provenance": cand.get("evidence_provenance", "ESTIMATED"),
-                "rrr": "1:3.0 (Risk $5 to Make $15 Sweet Spot)",
-                "execution_trigger": cand.get("trigger_condition") or f"Enter on 50% CE tap ({fvg_ce:.2f}) with tick delta stall.",
-                "testing_objective": f"Verify institutional rejection inside [{fvg_bottom:.2f} - {fvg_top:.2f}] before session overlap.",
-                "invalidation": cand.get("invalidation_rule") or f"Breach and M5 close outside [{fvg_bottom:.2f} - {fvg_top:.2f}] boundary."
+                "rrr": cand.get("rrr") or "1:3.0 (Target Sweet Spot)",
+                "execution_trigger": cand.get("trigger_condition") or f"Enter on 50% CE tap {ce_str} with tick delta stall.",
+                "testing_objective": f"Verify institutional rejection inside active {symbol} {zone_str} before session overlap.",
+                "invalidation": cand.get("invalidation_rule") or f"M5 candle close beyond {symbol} {zone_str} boundary."
             }
 
-        slot1 = _format_cand(candidates[0] if len(candidates) > 0 else {}, "Direct Match Precedent", f"{symbol} {fvg_type} Mitigation after {sweep}", 9.2)
+        slot1 = _format_cand(candidates[0] if len(candidates) > 0 else {}, "Direct Match Precedent", f"{symbol} {fvg_type} Mitigation after {sweep}", 3.5)
         slot1["rank"] = 1
-        
-        slot2 = _format_cand(candidates[1] if len(candidates) > 1 else {}, "Inversion / Alternative Play", f"{symbol} FVG Invalidation into Demand Retest", 8.4)
+
+        slot2 = _format_cand(candidates[1] if len(candidates) > 1 else {}, "Inversion / Alternative Play", f"{symbol} FVG Invalidation into Retest", 3.2)
         slot2["rank"] = 2
         slot2["rrr"] = "1:2.5"
-        
-        slot3 = _format_cand(candidates[2] if len(candidates) > 2 else {}, "Trap & Invalidation Warning", f"{symbol} Premature Sweep Trap during Velocity Spikes", 8.1)
+
+        slot3 = _format_cand(candidates[2] if len(candidates) > 2 else {}, "Trap & Invalidation Warning", f"{symbol} Premature Sweep Trap during Velocity Spikes", 3.0)
         slot3["rank"] = 3
         slot3["rrr"] = "N/A (Avoid Execution)"
-        
-        slot4 = _format_cand(candidates[3] if len(candidates) > 3 else {}, "Optimal Take Profit & Scaling Blueprint", f"{symbol} Consequent Encroachment (50% CE) TP Scaling", 8.9)
+
+        slot4 = _format_cand(candidates[3] if len(candidates) > 3 else {}, "Optimal Take Profit & Scaling Blueprint", f"{symbol} Consequent Encroachment (50% CE) TP Scaling", 3.3)
         slot4["rank"] = 4
 
         return {
             "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
             "active_symbol": symbol,
-            "live_thesis_revolved": f"{symbol} testing {fvg_type} [{fvg_bottom:.2f} - {fvg_top:.2f}] (CE: {fvg_ce:.2f}) post-{sweep}",
+            "live_thesis_revolved": thesis_str,
             "top_4_precedents": [slot1, slot2, slot3, slot4]
         }
 
@@ -331,49 +385,97 @@ class AutonomousLibrarianAgent:
     def answer_query(self, query: str, symbol: str = "XAUUSD") -> Dict[str, Any]:
         """Answers specific analytical, historical, or tactical questions asked by OpenCode CIO."""
         sym = symbol.upper()
-        q_upper = query.upper()
+        clean_q = query.strip()
+        q_upper = clean_q.upper()
 
-        # 1. Search DB for matching patterns & experiences
+        # Check for Proxima status upfront
+        proxima_online = self.proxima.check_health()
+
+        # 0. Handle greetings, empty, or vague queries (I5)
+        if len(clean_q) < 3 or clean_q.lower() in ["?", "??", "???", "hello", "hi", "hey", "help", "who are you", "what can you do", "test"]:
+            return {
+                "query": query,
+                "symbol": sym,
+                "theme": "Librarian Orientation & Capabilities",
+                "direct_answer": (
+                    f"Autonomous Librarian Agent is ready for {sym}. You can query: "
+                    f"1) Historical win rates and empirical evidence (e.g. 'What is the win rate for {sym}?'); "
+                    f"2) Structural invalidation rules (e.g. 'What are the exact invalidation rules for a long?'); "
+                    f"3) Macro & directional confluence (e.g. 'COT is bullish but price is falling, how to handle?'); "
+                    f"4) Fair Value Gap & Consequent Encroachment (50% CE) execution criteria."
+                ),
+                "empirical_derivation": "N/A (Orientation query)",
+                "proxima_status": "ONLINE" if proxima_online else "OFFLINE_STANDBY",
+                "proxima_research_synthesis": "Proxima Desktop is standby — ready for specific analytical queries.",
+                "matched_evidence_count": 0,
+                "relevant_trade_experiences_count": 0,
+                "recommended_precedent": {},
+                "top_4_precedents": []
+            }
+
+        # 1. Compute stable symbol baseline stats (I2)
+        baseline = self.db.get_symbol_baseline_stats(sym)
+
+        # 2. Search DB for matching patterns & experiences
         matched_patterns = []
+        q_words = [w for w in q_upper.replace("?", "").replace(",", "").split() if len(w) > 2]
         for p_id, p in self.db.patterns.items():
+            if not isinstance(p, dict):
+                continue
+            p_sym = p.get("symbol", "").upper()
+            if p_sym and p_sym != sym and p_sym != "ALL":
+                continue
             text_corpus = f"{p_id} {p.get('pattern_name', '')} {p.get('trigger_condition', '')} {p.get('description', '')} {p.get('invalidation_rule', '')}".upper()
-            q_words = [w for w in q_upper.split() if len(w) > 3]
             match_score = sum(1 for w in q_words if w in text_corpus)
             if sym in text_corpus or match_score > 0:
                 matched_patterns.append((match_score, p_id, p))
 
         matched_patterns.sort(key=lambda x: x[0], reverse=True)
 
-        # 2. Search experiences for relevant losses/wins
-        relevant_experiences = []
-        for exp_id, exp in self.db.experiences.items():
-            if isinstance(exp, dict):
-                ctx = exp.get("market_context", {})
-                exp_sym = str(ctx.get("symbol") or "")
-                exp_text = f"{exp_sym} {exp.get('learning', {}).get('lesson', '')} {exp.get('type', '')} {exp.get('direction_taken', '')}".upper()
-                if sym in exp_text or any(w in exp_text for w in q_words):
-                    relevant_experiences.append(exp)
+        # 3. Search experiences for relevant trade outcomes
+        relevant_experiences = [
+            exp for exp in self.db.experiences.values()
+            if isinstance(exp, dict) and str(exp.get("market_context", {}).get("symbol", "")).upper() == sym
+        ]
 
-        # 3. Formulate direct factual answer from ground-truth stored outcomes
         top_matches = [m[2] for m in matched_patterns[:4]]
-        
-        # Empirical derivation from stored outcomes
-        tot_samples = sum(len(p.get("outcomes", [])) for p in top_matches)
-        tot_wins = sum(sum(1 for o in p.get("outcomes", []) if isinstance(o, dict) and ("WIN" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) > 0)) for p in top_matches)
-        
-        if tot_samples > 0:
-            emp_win_rate = round((tot_wins / tot_samples) * 100.0, 1)
-            derivation_str = f"{tot_wins}/{tot_samples} ({emp_win_rate}%) [EMPIRICAL_LINKED_EVIDENCE]"
-        else:
-            derivation_str = "0/0 (N/A) [ESTIMATED_PRIOR]"
 
-        # Check for specific question themes
-        if any(w in q_upper for w in ["LOSS", "FAIL", "TRAP", "MISTAKE", "WRONG"]):
-            theme = "Risk & Invalidation Warning"
+        # 4. Semantic Intent Classification & Response Generation (I1)
+        if any(w in q_upper for w in ["INVALID", "STOP", "FAIL", "REVERS", "TRAP", "WRONG", "LOSS"]):
+            theme = "Structural Invalidation & Risk Boundary"
             direct_ans = (
-                f"Historical research for {sym} shows key failure traps occur during high tick velocity flushes (>120 t/m) "
-                f"or when entering before 50% Consequent Encroachment (CE) confirmation. Known failure rate on unconfirmed sweeps is ~68%. "
-                f"Mandatory Invalidation: Exit immediately if M5 candle closes outside structural FVG boundary."
+                f"Exact Invalidation Rules for {sym}: An active trade setup is invalidated immediately upon: "
+                f"1) An M5 candle close beyond the outer structural boundary of the active Fair Value Gap/Order Block; "
+                f"2) Adverse tick velocity exceeding 120 t/m through 50% Consequent Encroachment without delta absorption; or "
+                f"3) Spread expanding beyond 1.5x normal threshold. Invalidation overrides all directional bias."
+            )
+        elif any(w in q_upper for w in ["FALLING", "DROP", "DIP", "SHORT", "BREAKDOWN", "BULLISH BUT", "CONFLICT", "COT"]):
+            theme = "Macro vs Intraday Directional Confluence"
+            direct_ans = (
+                f"Directional Confluence for {sym}: When macro/COT positioning is bullish while intraday price is falling, "
+                f"the decline represents a liquidity sweep into HTF discount zones or Fair Value Gaps. "
+                f"Rule: Never buy a falling market blindly; wait for a confirmed liquidity sweep below yesterday's low/Asian low "
+                f"followed by an M5 delta absorption stall at 50% Consequent Encroachment before aligning with HTF bullish bias."
+            )
+        elif any(w in q_upper for w in ["GSR", "YIELD", "MACRO", "RATES", "DXY", "INFLATION"]):
+            theme = "Intermarket Macro Context"
+            direct_ans = (
+                f"Intermarket Context for {sym}: Intermarket GSR ratio and positive real yields dictate broader institutional risk posture. "
+                f"High positive real yields create opportunity costs for non-yielding assets, penalizing momentum breakouts. "
+                f"Execution standard: Enter strictly on high-confluence discount FVG sweeps with defined 1:3.0 RRR rather than chasing market momentum."
+            )
+        elif any(w in q_upper for w in ["WIN RATE", "STATS", "PROBABILITY", "SAMPLE", "HISTORICAL"]):
+            theme = "Quantitative Expectancy Audit"
+            direct_ans = (
+                f"Unified Learning Memory Ground-Truth Ledger for {sym}: Empirical performance across all {baseline['total_trades']} "
+                f"verified closed trade records shows {baseline['wins']} wins and {baseline['losses']} losses ({baseline['derivation']}). "
+                f"Total matched historical taxonomy patterns: {len(matched_patterns)}."
+            )
+        elif any(w in q_upper for w in ["PREDICT", "EXACT PRICE", "TOMORROW", "WILL GO", "FORECAST"]):
+            theme = "Deterministic Prediction Refusal"
+            direct_ans = (
+                f"Prediction Refusal: The Librarian does not make deterministic future price forecasts for {sym}. "
+                f"All desk operations are probabilistic, executing strictly upon verified structural triggers and adhering to pre-defined risk boundaries."
             )
         elif any(w in q_upper for w in ["SCALE", "TP", "TARGET", "PROFIT", "TAKE PROFIT"]):
             theme = "Take Profit & Scaling Strategy"
@@ -381,33 +483,41 @@ class AutonomousLibrarianAgent:
                 f"Optimal execution precedent for {sym}: Scale out 50% position at 1.5R, move stop loss to Breakeven once 50% CE level "
                 f"is decisively cleared, and trail remainder into external liquidity pools for target 1:3.0 RRR."
             )
-        elif any(w in q_upper for w in ["WIN RATE", "STATS", "PRECEDENT", "SAMPLES", "PROBABILITY"]):
-            theme = "Quantitative Expectancy Audit"
-            direct_ans = (
-                f"Unified Learning Memory verifies an empirical win rate of {derivation_str} across {len(top_matches)} "
-                f"linked {sym} institutional setups ({len(self.db.patterns)} patterns and {len(self.db.experiences)} trade experiences loaded)."
-            )
         else:
-            theme = "Tactical Alignment Synthesis"
-            direct_ans = (
-                f"For {sym} query '{query}': Ground-truth ledger identifies {len(top_matches)} precedents ({derivation_str}). "
-                f"Primary requirement: Enter on 50% Consequent Encroachment tap with delta stall, maintaining strict 1:3.0 RRR sweet spot."
-            )
+            if matched_patterns:
+                theme = "Tactical Alignment Synthesis"
+                direct_ans = (
+                    f"For {sym} query '{query}': Unified Learning Memory identifies {len(top_matches)} relevant setup precedents ({baseline['derivation']}). "
+                    f"Primary requirement: Enter on 50% Consequent Encroachment tap with confirmed delta exhaustion; exit immediately upon structural invalidation."
+                )
+            else:
+                theme = "No Precedent Stored"
+                direct_ans = (
+                    f"Unified Learning Memory contains no direct historical precedent for '{query}' on {sym}. "
+                    f"Desk standard requires waiting for verified structural confirmation before taking execution risk."
+                )
 
-        # 4. Query Proxima Quantitative Engine if online
-        proxima_online = self.proxima.check_health()
-        proxima_synthesis = None
+        # 5. Query Proxima Quantitative Engine if online (I6)
         if proxima_online:
             proxima_synthesis = self.proxima.query_proxima_tools(
-                f"Analyze institutional pattern query for {sym}: '{query}'. Key setup: {top_matches[0].get('pattern_name') if top_matches else 'General'}. Provide concise structural invalidation & expectancy analysis.",
+                f"Analyze quantitative research for {sym}: '{query}'. Key setup: {top_matches[0].get('pattern_name') if top_matches else 'General'}. Provide concise structural invalidation & expectancy analysis.",
                 system_prompt="You are Proxima Research Quantitative Engine for institutional trading desks."
             )
+            if proxima_synthesis:
+                prox_status = "ONLINE"
+                prox_synth = proxima_synthesis
+            else:
+                prox_status = "OFFLINE_STANDBY"
+                prox_synth = "Deterministic local memory and ground-truth MT5 ledger active (Proxima Desktop request timed out)."
+        else:
+            prox_status = "OFFLINE_STANDBY"
+            prox_synth = "Deterministic local memory and ground-truth MT5 ledger active (Proxima Desktop is offline on Port 3210)."
 
-        # 5. Generate tactical Top 4
+        # 6. Generate tactical Top 4
         market_state = {
             "symbol": sym,
-            "fvg_type": "M5_BEAR_FVG" if "SHORT" in q_upper or "BEAR" in q_upper or "SELL" in q_upper else "M5_BULL_FVG",
-            "sweep_status": "YEST_LOW_SWEPT" if "SWEEP" in q_upper or "LOW" in q_upper else "IN_RANGE"
+            "fvg_type": "M5_BEAR_FVG" if any(k in q_upper for k in ["SHORT", "BEAR", "SELL"]) else "M5_BULL_FVG",
+            "sweep_status": "YEST_LOW_SWEPT" if any(k in q_upper for k in ["SWEEP", "LOW"]) else "IN_RANGE"
         }
         cycle_res = self.run_librarian_cycle(market_state)
 
@@ -416,9 +526,9 @@ class AutonomousLibrarianAgent:
             "symbol": sym,
             "theme": theme,
             "direct_answer": direct_ans,
-            "empirical_derivation": derivation_str,
-            "proxima_status": "ONLINE" if proxima_online else "STANDBY (Local Rules Active)",
-            "proxima_research_synthesis": proxima_synthesis if proxima_synthesis else "Local Deterministic & Unified Memory Rules Active (Proxima Desktop Standby)",
+            "empirical_derivation": baseline["derivation"],
+            "proxima_status": prox_status,
+            "proxima_research_synthesis": prox_synth,
             "matched_evidence_count": len(matched_patterns),
             "relevant_trade_experiences_count": len(relevant_experiences),
             "recommended_precedent": cycle_res.get("top_4_precedents", [{}])[0],
