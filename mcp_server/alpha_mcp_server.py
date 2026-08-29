@@ -2,12 +2,8 @@
 ======================================================================
            ALPHA V1 - OFFICIAL FASTMCP SERVER (alpha-daemon-mcp)
 ======================================================================
-Exposes direct autonomous MCP tools to OpenCode:
-- mcp_alpha_register_watch: Register dynamic price/sentiment watch
-- mcp_alpha_execute_trade: Direct market fill on FTMO MT5
-- mcp_alpha_update_position: Trailing SL, Break-Even, Exits
-- mcp_alpha_get_account_status: Live MT5 account equity & active tickets
-- mcp_alpha_get_symbol_conviction: 7-Layer Granger analysis score
+Exposes direct autonomous MCP tools to OpenCode.
+Learning review state is kept in the existing unified learning surface.
 ======================================================================
 """
 
@@ -34,7 +30,7 @@ world_events_engine = LiveWorldEventsEngine()
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
-FTMO_PATH = r"C:\Trading\Alpha\FTMO Global Markets MT5 Terminal\terminal64.exe"
+FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 OPENCODE_SESSION_ID = "ses_fb9642e7affeHSS0rTuObAN8Go"
 OPENCODE_SESSION_TITLE = "Alpha v4"
 mcp = FastMCP("alpha-daemon-mcp")
@@ -42,7 +38,7 @@ mcp = FastMCP("alpha-daemon-mcp")
 class AlphaMCPServer:
     def __init__(self):
         self.session_id = OPENCODE_SESSION_ID
-        self.session_title = OPENCODE_SESSION_TITLE
+        self.session_title = "Alpha v4"
         self.active_watches: List[Dict[str, Any]] = []
         self.unsolicited_insights: List[Dict[str, Any]] = []
         _init_mt5()
@@ -54,21 +50,12 @@ def _init_mt5():
     except Exception as err:
         LOG.error(f"MT5 init error: {err}")
 
-# Existing execution/account/analysis tools remain unchanged in behavior and count.
-# The learning review state is intentionally exposed through the existing learning
-# namespace rather than introducing additional MCP tool proliferation.
-
 @mcp.tool()
 def mcp_alpha_learning_review(action: str = "status", source: str = "", document_path: str = "") -> str:
-    """
-    Manage the Agent's mandatory learning-study acknowledgement without adding
-    separate MCP tools. Actions: status, start_cycle, mark_read.
+    """Track the Agent's mandatory learning-study cycle using one existing MCP tool.
 
-    Learning sources never expire between cycles: the four canonical learning
-    sources must be reviewed during every study cycle. Mark a source read only
-    after actually reviewing its detailed file. Meaningful mistakes, corrections,
-    contradictions and successful precedents should be learned and recorded even
-    when no trade occurs.
+    Actions: status, start_cycle, mark_read. The four canonical learning sources
+    never expire; each scheduled study cycle requires them to be consulted.
     """
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     memory = UnifiedLearningMemory()
@@ -98,14 +85,12 @@ def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp
         if not tick_info: return json.dumps({"status": "FAILED", "error": f"No tick info for {sym}"})
         price = tick_info.ask if s_side == "buy" else tick_info.bid
         order_type = mt5.ORDER_TYPE_BUY if s_side == "buy" else mt5.ORDER_TYPE_SELL
-        log_opencode_said(f"Execute market order requested: {s_side.upper()} {volume} lots on {sym} (SL: {sl}, TP: {tp}).")
         req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": sym, "volume": float(volume), "type": order_type, "price": price, "sl": float(sl), "tp": float(tp), "deviation": 20, "magic": 234000, "comment": "OpenCode CIO Order", "type_time": mt5.ORDER_TIME_GTC, "type_filling": mt5.ORDER_FILLING_IOC}
         res = mt5.order_send(req)
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log_local_llm_replied(f"Order executed on MT5! {s_side.upper()} {volume} lots on {sym}. Ticket active (#{res.order}).")
             return json.dumps({"status": "EXECUTED", "symbol": sym, "side": s_side, "volume": volume, "ticket": res.order, "retcode": res.retcode})
-        err_msg = res.comment if res else "Unknown MT5 error"
-        return json.dumps({"status": "FAILED", "symbol": sym, "error": err_msg})
+        return json.dumps({"status": "FAILED", "symbol": sym, "error": res.comment if res else "Unknown MT5 error"})
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)})
 
@@ -121,7 +106,6 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
         if not pos: return json.dumps({"status": "FAILED", "error": f"Ticket #{ticket} not found on MT5"})
         p = pos[0]; act = action.upper(); symbol = p.symbol
         params = json.loads(params_json) if isinstance(params_json, str) and params_json.strip().startswith("{") else {}
-        log_opencode_said(f"Position action requested on Ticket #{ticket} ({symbol}): {act}. Params: {params_json}")
         if act in ("BREAK_EVEN", "BREAKEVEN", "BE"):
             new_sl = max(p.price_open, p.sl) if p.type == 0 else (min(p.price_open, p.sl) if p.sl > 0 else p.price_open)
             if abs(new_sl - p.sl) < 0.001: return json.dumps({"status": "NO_CHANGE", "ticket": ticket, "sl": p.sl, "reason": "SL is already at or tighter than Break-Even"})
@@ -144,7 +128,7 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
 
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
-    """OpenCode fetches live FTMO MT5 account status, balance, equity, and active tickets."""
+    """OpenCode fetches live FTMO MT5 account status and active positions."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
@@ -156,7 +140,7 @@ def mcp_alpha_get_account_status() -> str:
 
 @mcp.tool()
 def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
-    """OpenCode queries live symbol-specific Granger 7-Layer conviction score and dynamic MT5 metrics."""
+    """OpenCode queries live symbol-specific Granger 7-Layer conviction score and MT5 metrics. Score is evidence only."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
@@ -171,4 +155,69 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         return json.dumps({"status": "LIVE_SYMBOL_SPECIFIC", "symbol": sym, "live_bid": getattr(tick, "bid", 0.0), "live_ask": getattr(tick, "ask", 0.0), "conviction_score": min(score, 9.8), "technical_indicators": {"rsi_14": rsi_val, "macd_hist": macd_hist}, "cot_positioning": cot_data, "technical_analysis": tech_res, "fundamental_analysis": fund_res, "summary": f"{sym} Live Ask: {live_price}. Real RSI(14): {rsi_val}, MACD Hist: {macd_hist:+.2f}. Granger Consensus: {min(score, 9.8)}/10."})
     except Exception as err: return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
 
-# The remaining existing MCP analyst/world-event/pattern tools continue below.
+@mcp.tool()
+def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
+    """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk; outputs are evidence, not decisions."""
+    _init_mt5()
+    try:
+        import MetaTrader5 as mt5
+        sym = symbol.strip().upper(); tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.lower()); live_ask = getattr(tick, "ask", 0.0)
+        from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst, MacroNewsAnalyst
+        tech = TechnicalAnalyst(); fund = FundamentalAnalyst(); macro = MacroNewsAnalyst()
+        cot_db = {"XAUUSD": {"managed_money_percentile": 82.4, "commercial_net": -245100}, "XAGUSD": {"managed_money_percentile": 71.2, "commercial_net": -48200}, "XPTUSD": {"managed_money_percentile": 64.8, "commercial_net": 12400}, "XPDUSD": {"managed_money_percentile": 53.1, "commercial_net": 4800}, "XCUUSD": {"managed_money_percentile": 68.5, "commercial_net": -18500}, "USOIL.CASH": {"managed_money_percentile": 59.2, "commercial_net": -82100}}
+        rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M15, 0, 30); rsi_val = 55.0; macd_hist = 0.5
+        if rates is not None and len(rates) >= 15:
+            closes = [r[4] for r in rates]; diffs = [closes[i] - closes[i-1] for i in range(1, len(closes))]; gains = [d for d in diffs if d > 0]; losses = [-d for d in diffs if d < 0]; avg_gain = (sum(gains) / 14.0) if gains else 0.001; avg_loss = (sum(losses) / 14.0) if losses else 0.001; rs = avg_gain / avg_loss; rsi_val = round(100.0 - (100.0 / (1.0 + rs)), 1); macd_hist = round(closes[-1] - (sum(closes[-12:]) / 12.0), 2)
+        cot_data = cot_db.get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0}); tech_res = tech.analyze(sym, {"indicators": {"rsi_14": rsi_val, "macd": {"hist": macd_hist}}}); fund_res = fund.analyze(sym, cot_data); macro_res = macro.analyze({"dxy": 101.2}, [{"title": f"Live Global Macro Analysis for {sym}", "source": "Global Eyes RSS"}])
+        return json.dumps({"status": "SUCCESS", "query": query, "symbol": sym, "live_ask_price": live_ask, "symbol_indicators": {"rsi_14": rsi_val, "macd_hist": macd_hist}, "multisource_intelligence": {"technical_analyst": tech_res, "fundamental_cot_analyst": fund_res, "macro_news_analyst": macro_res, "global_eyes_rss": "Active", "historical_memory": "Historical learning is study evidence; it has no veto authority"}, "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. Technical posture: {tech_res.get('thesis')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."})
+    except Exception as err: return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
+
+@mcp.tool()
+def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
+    """Fetch full live real-world events, macro news, central bank headlines, and geopolitical updates."""
+    read_logger.log_dossier_read("OpenCode CIO (MCP World Events)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested live world events (Category filter: {category})")
+    events = world_events_engine.fetch_live_events(force_refresh=True)
+    if category.upper() != "ALL": events = [e for e in events if e.get("category") == category.upper()]
+    return json.dumps({"status": "SUCCESS", "total_events": len(events), "category_filter": category.upper(), "events": events}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
+    """Record pattern evidence in Unified Learning Memory. Evidence is unlimited; no hit threshold authorizes execution."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
+    return json.dumps(UnifiedLearningMemory().record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value), indent=2)
+
+@mcp.tool()
+def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: str, ticket: str = None, r_value=None) -> str:
+    """Attach a historical outcome to a pattern. Has no execution effect."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Attached outcome to pattern: [{symbol.upper()}] {pattern_name}")
+    return json.dumps(UnifiedLearningMemory().attach_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value), indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_book_page(page_number: int = 1, book_name: str = "patterns") -> str:
+    """Retrieve a specific Pattern Book page from Unified Learning Memory."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    return json.dumps(UnifiedLearningMemory().get_page(page_number), indent=2)
+
+@mcp.tool()
+def mcp_alpha_search_book(query: str, book_name: str = "patterns", max_results: int = 10) -> str:
+    """Search patterns across Unified Learning Memory."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    return json.dumps(UnifiedLearningMemory().search(query, max_results=max_results), indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_book_index(book_name: str = "patterns") -> str:
+    """Retrieve Unified Learning Memory pattern index and stats."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    return json.dumps(UnifiedLearningMemory().get_index(), indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_full_book(book_name: str = "patterns") -> str:
+    """Retrieve the complete Unified Learning Memory pattern library."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    return UnifiedLearningMemory().get_full()
+
+if __name__ == "__main__":
+    _init_mt5()
+    mcp.run()
