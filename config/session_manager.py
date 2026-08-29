@@ -15,8 +15,8 @@ LOG = logging.getLogger("alpha.config.session_manager")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_CONFIG_PATH = PROJECT_ROOT / "config" / "opencode_session_config.json"
 
-DEFAULT_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
-DEFAULT_SESSION_TITLE = "Alpha v5"
+DEFAULT_SESSION_ID = "ses_fb09a8448ffeBaCTOs7uK0rVYw"
+DEFAULT_SESSION_TITLE = "alpha-gravity"
 DEFAULT_API_URL = "http://127.0.0.1:4096"
 
 

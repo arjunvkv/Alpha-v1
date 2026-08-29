@@ -271,8 +271,8 @@ LOG_FILE = LOGS_DIR / "alpha.log"
 # ============================================================
 
 OPENCODE_SESSION_CONFIG_PATH = ALPHA_DIR / "config" / "opencode_session_config.json"
-DEFAULT_SESSION_ID = "ses_fb2eb6b52ffeqMc2TBOet5xjhx"
-DEFAULT_SESSION_TITLE = "Alpha v5"
+DEFAULT_SESSION_ID = "ses_fb09a8448ffeBaCTOs7uK0rVYw"
+DEFAULT_SESSION_TITLE = "alpha-gravity"
 DEFAULT_API_URL = "http://127.0.0.1:4096"
 
 def load_session_config():
