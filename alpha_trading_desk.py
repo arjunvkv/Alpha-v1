@@ -527,6 +527,9 @@ class ConsolidatedTradingDaemon:
                 liq_data = liq_radar.get_symbol_liquidity(symbol)
                 fvg_line = fvg_engine.get_fvg_summary_line(symbol)
                 fvg_data = fvg_engine.get_symbol_fvg_matrix(symbol)
+                
+                # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
+                rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
 
                 # Autonomous Librarian & Proxima Precedent Research
                 lib_payload = {}
