@@ -92,48 +92,53 @@ LOG = logging.getLogger("alpha.trading_desk")
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
-    """ALWAYS log communication intent first to live_story.log and stdout log, then attempt background HTTP POST to dynamic active OpenCode session Alpha v3."""
+    """Log intent, then reliably enqueue an asynchronous prompt to the active OpenCode session."""
     log_story(speaker, message)
-    LOG.info(f"\n=== [COMMUNICATION LOG STREAM] ===\nSpeaker: {speaker}\nTarget Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\nPayload Message:\n{message[:200]}...\n===================================\n")
+    LOG.info(
+        f"\n=== [COMMUNICATION LOG STREAM] ===\n"
+        f"Speaker: {speaker}\n"
+        f"Target Session: {OPENCODE_SESSION_ID} ({OPENCODE_SESSION_TITLE})\n"
+        f"Payload Message:\n{message[:200]}...\n"
+        f"===================================\n"
+    )
 
     def _send():
-        try:
-            import socket
-            import urllib.request
+        import urllib.error
+        import urllib.request
 
-            # Always target the confirmed active Alpha v3 session — hardcoded for reliability
-            target_sid = OPENCODE_SESSION_ID
+        target_sid = OPENCODE_SESSION_ID
+        payload = json.dumps({
+            "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
+        }).encode("utf-8")
+        url = f"http://127.0.0.1:4096/session/{target_sid}/prompt_async"
 
-            payload = json.dumps({
-                "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
-            }).encode("utf-8")
-
-            path = f"/session/{target_sid}/message"
-            http_req = (
-                f"POST {path} HTTP/1.1\r\n"
-                f"Host: localhost:4096\r\n"
-                f"Content-Type: application/json\r\n"
-                f"Content-Length: {len(payload)}\r\n"
-                f"Connection: close\r\n"
-                f"\r\n"
-            ).encode("utf-8") + payload
-
-            # Fire-and-forget: connect, send, read first response line, disconnect
+        for attempt in range(1, 4):
             try:
-                sock = socket.create_connection(("localhost", 4096), timeout=5)
-                sock.sendall(http_req)
-                sock.settimeout(2)
-                try:
-                    first_line = sock.recv(64).decode("utf-8", errors="ignore")
-                    LOG.info(f"Fired prompt to {OPENCODE_SESSION_TITLE} session {target_sid}: {first_line.strip()}")
-                except Exception:
-                    LOG.info(f"Fired prompt to {OPENCODE_SESSION_TITLE} session {target_sid} (no response read)")
-                sock.close()
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    status = getattr(resp, "status", resp.getcode())
+                    if 200 <= status < 300:
+                        LOG.info(
+                            f"OpenCode async prompt accepted for {OPENCODE_SESSION_TITLE} "
+                            f"session {target_sid} (HTTP {status}, attempt {attempt})."
+                        )
+                        return
+                    raise RuntimeError(f"Unexpected HTTP status {status}")
             except Exception as err:
-                LOG.error(f"Socket fire-and-forget to {target_sid} failed: {err}")
-
-        except Exception as err:
-            LOG.error(f"Post payload creation failed: {err}")
+                if attempt < 3:
+                    LOG.warning(
+                        f"OpenCode async dispatch attempt {attempt}/3 failed for {target_sid}: {err}; retrying."
+                    )
+                    time.sleep(float(attempt))
+                else:
+                    LOG.error(
+                        f"OpenCode async dispatch failed after 3 attempts for {target_sid}: {err}"
+                    )
 
     import threading
     threading.Thread(target=_send, daemon=True).start()
