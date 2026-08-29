@@ -246,18 +246,28 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         live_price = getattr(tick, "ask", 0.0)
         raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
+        net_noncomm = raw_cot.get("net_noncommercial", 0)
         cot_data = {
             "managed_money_percentile": cot_pct,
-            "commercial_net": raw_cot.get("net_noncommercial", 0),
+            "net_noncommercial": net_noncomm,
+            "commercial_net": net_noncomm,  # backward-compatible alias for existing consumers
             "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
             "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
             "change": raw_cot.get("change", 0)
         }
         mtf_res = _mtf_analyst.analyze_mtf(sym)
         rsi_val = mtf_res.get("m15_rsi", 50.0)
         
-        tech_res = _tech_analyst.analyze(sym, {"h4_bias": mtf_res.get("h4_trend"), "h1_bias": mtf_res.get("h1_trend"), "m15_bias": mtf_res.get("m15_trend"), "m5_bias": mtf_res.get("m5_trend"), "indicators": {"rsi_14": rsi_val}})
+        tech_res = _tech_analyst.analyze(sym, {
+            "h4_bias": mtf_res.get("h4_trend"),
+            "h1_bias": mtf_res.get("h1_trend"),
+            "m15_bias": mtf_res.get("m15_trend"),
+            "m5_bias": mtf_res.get("m5_trend"),
+            "alignment": mtf_res.get("alignment"),
+            "indicators": {"rsi_14": rsi_val}
+        })
         fund_res = _fund_analyst.analyze(sym, cot_data)
         score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
         
@@ -272,7 +282,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "cot_positioning": cot_data,
             "technical_analysis": tech_res,
             "fundamental_analysis": fund_res,
-            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Consensus: {min(score, 9.8)}/10."
+            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10."
         })
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
@@ -291,11 +301,14 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         
         raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
+        net_noncomm = raw_cot.get("net_noncommercial", 0)
         cot_data = {
             "managed_money_percentile": cot_pct,
-            "commercial_net": raw_cot.get("net_noncommercial", 0),
+            "net_noncommercial": net_noncomm,
+            "commercial_net": net_noncomm,  # backward-compatible alias
             "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
             "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
             "change": raw_cot.get("change", 0)
         }
@@ -308,6 +321,7 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
             "h1_bias": mtf_res.get("h1_trend"),
             "m15_bias": mtf_res.get("m15_trend"),
             "m5_bias": mtf_res.get("m5_trend"),
+            "alignment": mtf_res.get("alignment"),
             "indicators": {"rsi_14": rsi_val}
         })
         fund_res = _fund_analyst.analyze(sym, cot_data)

@@ -35,18 +35,33 @@ class TechnicalAnalyst:
         m15_bias = tech_data.get("m15_bias", "NEUTRAL")
         m5_bias = tech_data.get("m5_bias", "NEUTRAL")
 
-        tf_list = [h4_bias, h1_bias, m15_bias, m5_bias]
-        bull_count = sum(1 for b in tf_list if "BULL" in str(b).upper())
-        bear_count = sum(1 for b in tf_list if "BEAR" in str(b).upper())
+        # Use canonical alignment if provided by MultiTimeframeAnalyst, else compute with matching weighted rules
+        tf_confluence = tech_data.get("alignment") or tech_data.get("tf_confluence")
+        if not tf_confluence:
+            tf_list = [h4_bias, h1_bias, m15_bias, m5_bias]
+            bull_count = sum(1.0 if b == "BULLISH" else 0.5 if "BULL" in str(b).upper() else 0.0 for b in tf_list)
+            bear_count = sum(1.0 if b == "BEARISH" else 0.5 if "BEAR" in str(b).upper() else 0.0 for b in tf_list)
+
+            if bull_count >= 3.0:
+                tf_confluence = "4TF_STRONG_BULLISH_CONFLUENCE"
+            elif bear_count >= 3.0:
+                tf_confluence = "4TF_STRONG_BEARISH_CONFLUENCE"
+            elif bull_count > bear_count and bull_count >= 2.0:
+                tf_confluence = "4TF_BULLISH_LEANING"
+            elif bear_count > bull_count and bear_count >= 2.0:
+                tf_confluence = "4TF_BEARISH_LEANING"
+            else:
+                tf_confluence = "MIXED_TIMEFRAMES"
 
         score = 5.0
-        tf_confluence = "MIXED_TIMEFRAMES"
-        if bull_count >= 3:
-            tf_confluence = "4TF_STRONG_BULLISH_CONFLUENCE"
+        if "STRONG_BULLISH" in tf_confluence:
             score += 3.0
-        elif bear_count >= 3:
-            tf_confluence = "4TF_STRONG_BEARISH_CONFLUENCE"
+        elif "STRONG_BEARISH" in tf_confluence:
             score -= 3.0
+        elif "BULLISH_LEANING" in tf_confluence:
+            score += 1.5
+        elif "BEARISH_LEANING" in tf_confluence:
+            score -= 1.5
 
         # Liquidity Sweep Interaction Bonus/Penalty
         sweep_flag = tech_data.get("liquidity_sweep", {}).get("flag", "NORMAL_RANGE")
@@ -71,11 +86,11 @@ class FundamentalAnalyst:
         if percentile is None:
             percentile = cot_data.get("cot_index_52w") or cot_data.get("cot_index_26w") or 50.0
         
-        comm_net = cot_data.get("commercial_net")
-        if comm_net is None:
-            comm_net = cot_data.get("net_noncommercial", 0)
+        net_noncommercial = cot_data.get("net_noncommercial")
+        if net_noncommercial is None:
+            net_noncommercial = cot_data.get("commercial_net", 0)
 
-        # Institutional alignment check
+        # Institutional alignment check (Large Speculator / Managed Money positioning)
         institutional_long = percentile > 60.0
         extreme_overcrowded = percentile > 90.0
 
@@ -91,8 +106,13 @@ class FundamentalAnalyst:
             "symbol": symbol,
             "score": round(score, 1),
             "cot_managed_money_percentile": percentile,
-            "commercial_net": comm_net,
-            "thesis": f"Managed money COT percentile at {percentile:.1f}%. Institutional support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
+            "net_noncommercial": net_noncommercial,
+            "cot_index_52w": cot_data.get("cot_index_52w", percentile),
+            "cot_index_26w": cot_data.get("cot_index_26w", percentile),
+            "change": cot_data.get("change", 0),
+            "z_score": cot_data.get("z_score", 0.0),
+            "bias": bias_str,
+            "thesis": f"Speculator / Money-Manager COT percentile at {percentile:.1f}%. Institutional speculative support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
         }
 
 class MacroNewsAnalyst:
@@ -237,11 +257,12 @@ class TradingAgentsDesk:
         ob_data = self.order_blocks.calculate_levels(symbol)
         news_status = self.news_shield.evaluate_news_freeze()
 
-        # Inject live 4TF trends into tech_data for TechnicalAnalyst
+        # Inject live 4TF trends and canonical alignment into tech_data for TechnicalAnalyst
         tech_data["h4_bias"] = mtf_data.get("h4_trend", "NEUTRAL")
         tech_data["h1_bias"] = mtf_data.get("h1_trend", "NEUTRAL")
         tech_data["m15_bias"] = mtf_data.get("m15_trend", "NEUTRAL")
         tech_data["m5_bias"] = mtf_data.get("m5_trend", "NEUTRAL")
+        tech_data["alignment"] = mtf_data.get("alignment")
 
         # 2. Run Analyst Team
         tech_report = self.tech_analyst.analyze(symbol, tech_data)
@@ -254,10 +275,10 @@ class TradingAgentsDesk:
         tech_report["order_blocks"] = ob_data
         macro_report["news_shield"] = news_status
 
-        # Update Technical Thesis with Full 4TF Confluence & Pivots
-        mtf_str = f"4TF Alignment: {mtf_data['formatted_4tf']} (H4 RSI:{mtf_data['h4_rsi']} | H1 RSI:{mtf_data['h1_rsi']} | M15 RSI:{mtf_data['m15_rsi']} | M5 RSI:{mtf_data['m5_rsi']})"
+        # Update Technical Thesis with Full 4TF Confluence & Pivots (single canonical representation)
+        rsi_str = f"[H4 RSI:{mtf_data['h4_rsi']} | H1 RSI:{mtf_data['h1_rsi']} | M15 RSI:{mtf_data['m15_rsi']} | M5 RSI:{mtf_data['m5_rsi']}]"
         ob_str = f"Pivots: PP {ob_data['pivot_point']} | Demand: {ob_data['demand_zone']} | Supply: {ob_data['supply_zone']}"
-        tech_report["thesis"] = f"{tech_report.get('thesis', '')} | {mtf_str} | {ob_str}"
+        tech_report["thesis"] = f"{tech_report.get('thesis', '')} {rsi_str} | {ob_str}"
 
         # 3. Run Bull vs. Bear Debate
         debate_report = self.debater.debate(symbol, tech_report, fund_report, macro_report, sent_report)

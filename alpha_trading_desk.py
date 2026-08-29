@@ -554,7 +554,7 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {fvg_line} | {spread_info} | {velocity.get('ticks_per_min')} t/m")
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
-                    log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Institutional Risk: {'WARNING' if debate.get('institutional_risk_warning') else 'CLEAR'}")
+                    log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Debater LLM Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Institutional Risk: {'WARNING' if debate.get('institutional_risk_warning') else 'CLEAR'}")
                     log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
@@ -629,7 +629,7 @@ class ConsolidatedTradingDaemon:
 
         read_logger.log_dossier_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE", f"Wrote persistent dossier file:///C:/Trading/Alpha/logs/full_desk_dossier.md for cycle #{self.cycle_count}")
 
-        log_story("Desk Lead Agent", f"Consensus Audit: 6 Instruments Scanned ({', '.join(self.instruments)}). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
+        log_story("Desk Lead Agent", f"Consensus Audit: {len(self.instruments)}/{len(INSTRUMENTS)} instruments scanned (active: {', '.join(self.instruments)}). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
 
         # 4. Construct Full 4TF Institutional Alignment Reveal Block
         tf_reveal_lines = []
