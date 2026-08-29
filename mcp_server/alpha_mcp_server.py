@@ -404,14 +404,13 @@ def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observa
     Hit count auto-increments when the SAME phenomenon is recorded again, matched by a
     deterministic normalized key (cycle/timestamp suffixes do NOT fragment it).
 
-    NOTE: count >= 5 promotes a pattern to WATCHLIST/LEARNED for the AGENT to evaluate.
-    It is NOT an auto-execution gate. To make a pattern learnable, attach trade outcomes
-    via mcp_alpha_record_pattern_outcome (out-of-sample evidence). Optional outcome/ticket/
-    r_value attach a trade result at record time.
+    Evidence accumulates indefinitely with no 5-hit promotion threshold. Returned learning
+    is mandatory study context only; the Agent remains the sole decision-maker. Optional
+    outcome/ticket/r_value attach historical evidence at record time.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
-    book = PatternBookManager()
+    book = UnifiedLearningMemory()
     res = book.record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value)
     return json.dumps(res, indent=2)
 
@@ -423,9 +422,9 @@ def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: st
     Attach a trade OUTCOME (e.g. '+2.3R', 'LOSS -1.0R', ticket id) to a recorded pattern so
     the agent can learn out-of-sample whether the pattern is real. Has NO execution effect.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Attached outcome to pattern: [{symbol.upper()}] {pattern_name}")
-    book = PatternBookManager()
+    book = UnifiedLearningMemory()
     res = book.attach_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value)
     return json.dumps(res, indent=2)
 
@@ -435,9 +434,9 @@ def mcp_alpha_get_book_page(page_number: int = 1, book_name: str = "patterns") -
     Retrieve and read a specific page (Page 1 to 100) from the 100-Page Pattern Book.
     Each page contains exactly up to 100 entries/lines to prevent prompt bloat.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Get Page)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Pattern Book Page {page_number}")
-    book = PatternBookManager()
+    book = UnifiedLearningMemory()
     res = book.get_page(page_number)
     return json.dumps(res, indent=2)
 
@@ -447,10 +446,10 @@ def mcp_alpha_search_book(query: str, book_name: str = "patterns", max_results: 
     Search and find patterns, symbols, keywords, or trade setups across all 100 pages of the Pattern Book.
     Returns exact page numbers, line numbers, and file links.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for '{query}'")
-    book = PatternBookManager()
-    res = book.search_book(query, max_results=max_results)
+    book = UnifiedLearningMemory()
+    res = book.search(query, max_results=max_results)
     return json.dumps(res, indent=2)
 
 @mcp.tool()
@@ -459,10 +458,10 @@ def mcp_alpha_get_book_index(book_name: str = "patterns") -> str:
     Retrieve the table of contents and stats for all pages in the 100-Page Pattern Book.
     Shows total entries, active page, and page capacity fill percentages.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Book Index)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Pattern Book Index")
-    book = PatternBookManager()
-    res = book.get_book_index()
+    book = UnifiedLearningMemory()
+    res = book.get_index()
     return json.dumps(res, indent=2)
 
 @mcp.tool()
@@ -470,10 +469,10 @@ def mcp_alpha_get_full_book(book_name: str = "patterns") -> str:
     """
     Compile and retrieve the entire 100-page institutional pattern book content across all pages.
     """
-    from tradingagents.pattern_book import PatternBookManager
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Retrieved Full Pattern Book")
-    book = PatternBookManager()
-    content = book.get_full_book()
+    book = UnifiedLearningMemory()
+    content = book.get_full()
     return content
 
 if __name__ == "__main__":
