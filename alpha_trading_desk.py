@@ -771,10 +771,18 @@ decision authority.
         # Immediately fire startup ping to Alpha v3 so user knows daemon is alive
         post_to_opencode_session(
             "OpenCode (CIO)",
-            f"🚀 ALPHA TRADING DESK DAEMON ONLINE (ADAPTIVE CADENCE ACTIVE)\n"
+            f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {OPENCODE_SESSION_TITLE} ({OPENCODE_SESSION_ID})\n"
-            f"Status: Adaptive Briefing Active (1-Min Active Trade Reviews | 2-Min Idle Scans) + 2s Tick Ingestion\n"
-            f"MANDATE: ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS TRADE EXECUTION AUTHORITY."
+            f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: 1-Min active trade / 2-Min idle\n\n"
+            f"=== AGENT AUTHORITY ===\n"
+            f"YOU are the sole interpreter of evidence and the sole trading decision-maker.\n"
+            f"Daemons, local agents, adapters and MCP tools provide, retrieve, record or execute your explicit decisions; they do not independently decide, gate or suppress trading decisions.\n\n"
+            f"=== STARTUP ORIENTATION ===\n"
+            f"The first full Initial Review is being collected now and will arrive shortly.\n"
+            f"On that review: read all mandatory learning sources, review required live evidence, study current conditions against accumulated evidence, learn continuously (including from mistakes), and record meaningful observations or corrections without duplicate narrative.\n"
+            f"Detailed persistent files are the source evidence; the inline briefing is a current-cycle guide, not a replacement.\n"
+            f"Use relevant Alpha MCP capabilities when needed, mark evidence READ only after actual review, and keep interpretation and decisions AGENT-ONLY."
         )
         await asyncio.sleep(2.0)
         while self.is_running:
