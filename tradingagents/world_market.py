@@ -29,27 +29,38 @@ class IntradayInstitutionalEngine:
             LOG.error(f"MT5 initialization in IntradayInstitutionalEngine failed: {err}")
 
     def get_session_status(self) -> dict:
-        """Evaluates current UTC hour for global institutional session windows."""
+        """Evaluates current UTC day and hour for global institutional session windows & weekend closure."""
         now_utc = datetime.datetime.now(datetime.timezone.utc)
+        weekday = now_utc.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
         hour = now_utc.hour
         
-        if 7 <= hour < 13:
+        # Weekend Market Closure Guard (Friday 22:00 UTC through Sunday 21:00 UTC)
+        if weekday == 5 or (weekday == 4 and hour >= 22) or (weekday == 6 and hour < 21):
+            session_name = "WEEKEND_MARKET_CLOSED"
+            desc = f"Global Interbank & FTMO Broker Markets Closed for Weekend ({now_utc.strftime('%A')} | Live Ticks Inactive | Study & Strategy Review Mode)"
+            market_open = False
+        elif 7 <= hour < 13:
             session_name = "LONDON_SESSION"
             desc = "London Institutional Liquidity Window"
+            market_open = True
         elif 13 <= hour < 17:
             session_name = "LONDON_NY_OVERLAP"
             desc = "Peak Institutional Volume & Momentum Window"
+            market_open = True
         elif 17 <= hour < 21:
             session_name = "NEW_YORK_SESSION"
             desc = "US Institutional Session"
+            market_open = True
         else:
             session_name = "ASIAN_SESSION"
             desc = "Asian Session Range / Consolidation Window"
+            market_open = True
 
         return {
             "session": session_name,
             "description": desc,
-            "utc_time": now_utc.strftime("%H:%M UTC")
+            "utc_time": now_utc.strftime("%H:%M UTC"),
+            "market_open": market_open
         }
 
     def get_adr_metrics(self, symbol: str) -> dict:
