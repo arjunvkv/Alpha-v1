@@ -206,19 +206,34 @@ class UnifiedLearningMemory:
                                 continue
                             symbol, name, tag, rest = m.groups()
                             count_m = re.search(r"Count:\s*(\d+)", tag)
-                            count = int(count_m.group(1)) if count_m else 1
+                            if count_m:
+                                count = int(count_m.group(1))
+                            elif ">=5" in tag.upper() or "WATCHLIST" in tag.upper():
+                                # Legacy WATCHLIST tags encode a minimum threshold but not
+                                # the exact historical count. Preserve the known lower bound.
+                                count = 5
+                            else:
+                                count = 1
                             last_m = re.search(r"\(Last:\s*([^)]*)\)", rest)
                             last_ts = last_m.group(1).strip() if last_m else None
                             obs = re.sub(r"\(Outcomes:\s*\d+\)", "", rest)
                             obs = re.sub(r"\(Last:\s*[^)]*\)", "", obs).strip(" :")
                             pat = self._ensure_pattern(data, symbol, name, obs, "PATTERN_BOOK")
-                            # Do not overwrite/erase legacy evidence; preserve every legacy hit.
-                            for n in range(count):
-                                self._add_observation(
-                                    pat, obs, "PATTERN_BOOK",
-                                    last_ts if n == count - 1 else None,
-                                    f"legacy_pattern_book:{filename}:{line_no}:{n}"
-                                )
+                            # Avoid inflating a pattern when legacy Trade Journal and
+                            # Pattern Book clearly describe the same phenomenon. The raw
+                            # Pattern Book source is still preserved in provenance.
+                            already_linked = any(
+                                x.get("source") == "TRADE_JOURNAL" and
+                                x.get("observation") == obs
+                                for x in pat.get("observations", [])
+                            )
+                            if not already_linked:
+                                for n in range(count):
+                                    self._add_observation(
+                                        pat, obs, "PATTERN_BOOK",
+                                        last_ts if n == count - 1 else None,
+                                        f"legacy_pattern_book:{filename}:{line_no}:{n}"
+                                    )
                             key = _norm(symbol, name)
                             for outcome in outcomes.get(key, []):
                                 pat["outcomes"].append({
