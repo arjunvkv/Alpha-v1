@@ -244,7 +244,8 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         sym = symbol.strip()
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_price = getattr(tick, "ask", 0.0)
-        raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
+        cot_full = _inst_engine.get_futuresbench_cot_data()
+        raw_cot = cot_full.get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
         net_noncomm = raw_cot.get("net_noncommercial", 0)
         cot_data = {
@@ -255,7 +256,10 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
             "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
-            "change": raw_cot.get("change", 0)
+            "change": raw_cot.get("change", 0),
+            "is_live": raw_cot.get("is_live", cot_full.get("is_live", False)),
+            "data_provenance": raw_cot.get("data_provenance", cot_full.get("source", "STALE_FALLBACK")),
+            "fallback_warning": cot_full.get("fallback_warning")
         }
         mtf_res = _mtf_analyst.analyze_mtf(sym)
         rsi_val = mtf_res.get("m15_rsi", 50.0)
@@ -299,7 +303,8 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
         
-        raw_cot = _inst_engine.get_futuresbench_cot_data().get("markets", {}).get(sym, {})
+        cot_full = _inst_engine.get_futuresbench_cot_data()
+        raw_cot = cot_full.get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
         net_noncomm = raw_cot.get("net_noncommercial", 0)
         cot_data = {
@@ -310,7 +315,10 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
             "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
             "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
-            "change": raw_cot.get("change", 0)
+            "change": raw_cot.get("change", 0),
+            "is_live": raw_cot.get("is_live", cot_full.get("is_live", False)),
+            "data_provenance": raw_cot.get("data_provenance", cot_full.get("source", "STALE_FALLBACK")),
+            "fallback_warning": cot_full.get("fallback_warning")
         }
         macro_feed = _inst_engine.get_macro_and_gamma_feeds()
         mtf_res = _mtf_analyst.analyze_mtf(sym)
@@ -524,6 +532,7 @@ def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
         "proxima_status": "ONLINE" if _librarian_agent.proxima.check_health() else "STANDBY (Local Rules Active)",
         "theme": ans.get("theme"),
         "direct_answer": ans.get("direct_answer"),
+        "empirical_derivation": ans.get("empirical_derivation"),
         "matched_evidence_count": ans.get("matched_evidence_count"),
         "relevant_trade_experiences_count": ans.get("relevant_trade_experiences_count"),
         "recommended_precedent": ans.get("recommended_precedent"),

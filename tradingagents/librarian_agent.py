@@ -171,28 +171,37 @@ class DeterministicPatternMatcher:
                 continue
 
             # --- GATE 2: PROVENANCE & GROUND-TRUTH RECONCILIATION ---
-            outcomes = self.db.pattern_outcomes.get(f"{symbol}|{name}", [])
-            if not isinstance(outcomes, list):
-                outcomes = []
-            sample_count = len(outcomes)
-            win_count = sum(1 for o in outcomes if isinstance(o, dict) and "WIN" in str(o.get("outcome", "")).upper())
-            loss_count = sum(1 for o in outcomes if isinstance(o, dict) and "LOSS" in str(o.get("outcome", "")).upper())
+            stored_outcomes = p_data.get("outcomes", []) or self.db.pattern_outcomes.get(f"{symbol}|{name}", [])
+            if not isinstance(stored_outcomes, list):
+                stored_outcomes = []
+            sample_count = len(stored_outcomes)
+            win_count = sum(1 for o in stored_outcomes if isinstance(o, dict) and ("WIN" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) > 0))
+            loss_count = sum(1 for o in stored_outcomes if isinstance(o, dict) and ("LOSS" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) < 0))
             
-            # Find linked trade tickets in experiences
+            # Find linked trade tickets from pattern outcomes and experiences
             linked_tickets = []
-            for exp_id, exp_data in self.db.experiences.items():
-                if isinstance(exp_data, dict):
-                    ctx = exp_data.get("market_context")
-                    if isinstance(ctx, dict) and ctx.get("symbol") == symbol:
-                        exec_d = exp_data.get("execution")
-                        if isinstance(exec_d, dict):
-                            t_num = exec_d.get("ticket")
-                            if t_num:
-                                linked_tickets.append(str(t_num))
+            for o in stored_outcomes:
+                if isinstance(o, dict) and o.get("ticket"):
+                    t_str = str(o.get("ticket"))
+                    if t_str not in linked_tickets:
+                        linked_tickets.append(t_str)
 
-            # Calculate empirical win rate
-            calc_samples = max(sample_count, len(linked_tickets), 1)
-            win_rate = round((win_count / max(sample_count, 1)) * 100.0, 1) if sample_count > 0 else 72.5
+            for exp_id in p_data.get("experience_ids", []):
+                exp_data = self.db.experiences.get(exp_id, {})
+                if isinstance(exp_data, dict):
+                    t_num = exp_data.get("execution", {}).get("ticket")
+                    if t_num and str(t_num) not in linked_tickets:
+                        linked_tickets.append(str(t_num))
+
+            provenance = p_data.get("evidence_provenance") or ("OBSERVED" if linked_tickets else ("SEEDED" if sample_count > 0 else "ESTIMATED"))
+
+            # Calculate empirical win rate with explicit mathematical derivation
+            if sample_count > 0:
+                win_rate = round((win_count / sample_count) * 100.0, 1)
+                win_rate_display = f"{win_count}/{sample_count} ({win_rate}%) [EMPIRICAL_LINKED_EVIDENCE]"
+            else:
+                win_rate = 50.0
+                win_rate_display = "0/0 (N/A) [ESTIMATED_PRIOR]"
             
             # Base deterministic score (0 - 10)
             score = 6.0
@@ -200,18 +209,20 @@ class DeterministicPatternMatcher:
                 score += 2.0  # 4TF Trend Confluence
             if is_sweep_match:
                 score += 1.5  # Liquidity Grab Confluence
-            if win_rate >= 70.0:
+            if win_rate >= 60.0 and sample_count > 0:
                 score += 0.5
 
             score = min(round(score, 1), 9.8)
 
             verified_candidates.append({
                 "id": p_id,
-                "name": p_data.get("name", p_id),
+                "name": p_data.get("pattern_name", p_id),
                 "symbol": symbol,
                 "score": score,
                 "win_rate_pct": win_rate,
-                "sample_size": calc_samples,
+                "win_rate_display": win_rate_display,
+                "sample_size": sample_count,
+                "evidence_provenance": provenance,
                 "trigger_condition": p_data.get("trigger_condition") or f"{symbol} {fvg_type} mitigation with delta exhaustion",
                 "invalidation_rule": p_data.get("invalidation_rule") or f"Candle close beyond FVG boundary or spread > {spread_pts * 1.5} pts",
                 "description": p_data.get("description") or f"Historical institutional {symbol} mitigation setup.",
@@ -235,65 +246,46 @@ class LibrarianTacticalClassifier:
         fvg_type = live_state.get("fvg_type", "M5_BEAR_FVG")
         sweep = live_state.get("sweep_status", "YEST_LOW_SWEPT")
 
-        # Slot 1: Direct Match Precedent
-        cand1 = candidates[0] if len(candidates) > 0 else {}
-        slot1 = {
-            "rank": 1,
-            "role": "Direct Match Precedent",
-            "pattern_id": cand1.get("id", "#PAT-001"),
-            "name": cand1.get("name", f"{symbol} {fvg_type} Mitigation after {sweep}"),
-            "score": cand1.get("score", 9.2),
-            "win_rate": f"{cand1.get('win_rate_pct', 74.0)}% ({cand1.get('sample_size', 38)} samples)",
-            "rrr": "1:3.0 (Risk $5 to Make $15 Sweet Spot)",
-            "execution_trigger": f"Enter on 50% Consequent Encroachment tap ({fvg_ce:.2f}) with tick delta stall.",
-            "testing_objective": f"Verify institutional rejection inside [{fvg_bottom:.2f} - {fvg_top:.2f}] before session overlap.",
-            "invalidation": f"Breach and M5 close outside [{fvg_bottom:.2f} - {fvg_top:.2f}] boundary."
-        }
+        def _format_cand(cand: Dict[str, Any], default_role: str, default_name: str, default_score: float) -> Dict[str, Any]:
+            if not cand:
+                return {
+                    "role": default_role,
+                    "pattern_id": "#PAT-EST",
+                    "name": default_name,
+                    "score": default_score,
+                    "win_rate": "0/0 (N/A) [ESTIMATED_PRIOR]",
+                    "evidence_provenance": "ESTIMATED",
+                    "rrr": "1:3.0 (Target Sweet Spot)",
+                    "execution_trigger": f"Enter on 50% Consequent Encroachment tap ({fvg_ce:.2f}) with tick delta stall.",
+                    "testing_objective": f"Verify institutional rejection inside [{fvg_bottom:.2f} - {fvg_top:.2f}].",
+                    "invalidation": f"Breach and M5 close outside [{fvg_bottom:.2f} - {fvg_top:.2f}] boundary."
+                }
+            return {
+                "role": default_role,
+                "pattern_id": cand.get("id", "#PAT-001"),
+                "name": cand.get("name", default_name),
+                "score": cand.get("score", default_score),
+                "win_rate": cand.get("win_rate_display", "0/0 (N/A) [ESTIMATED_PRIOR]"),
+                "evidence_provenance": cand.get("evidence_provenance", "ESTIMATED"),
+                "rrr": "1:3.0 (Risk $5 to Make $15 Sweet Spot)",
+                "execution_trigger": cand.get("trigger_condition") or f"Enter on 50% CE tap ({fvg_ce:.2f}) with tick delta stall.",
+                "testing_objective": f"Verify institutional rejection inside [{fvg_bottom:.2f} - {fvg_top:.2f}] before session overlap.",
+                "invalidation": cand.get("invalidation_rule") or f"Breach and M5 close outside [{fvg_bottom:.2f} - {fvg_top:.2f}] boundary."
+            }
 
-        # Slot 2: Inversion / Alternative Play
-        cand2 = candidates[1] if len(candidates) > 1 else {}
-        slot2 = {
-            "rank": 2,
-            "role": "Inversion / Alternative Play",
-            "pattern_id": cand2.get("id", "#PAT-002"),
-            "name": f"{symbol} FVG Invalidation into Demand Retest",
-            "score": cand2.get("score", 8.4),
-            "win_rate": "68.2% (24 samples)",
-            "rrr": "1:2.5",
-            "execution_trigger": f"If M5 closes beyond {fvg_top:.2f}, pivot bias to Demand Zone retest.",
-            "testing_objective": "Avoid counter-trend bias lock; execute inversion breaker if zone fails.",
-            "invalidation": "Failure to hold new breaker support."
-        }
-
-        # Slot 3: Trap & Invalidation Warning
-        cand3 = candidates[2] if len(candidates) > 2 else {}
-        slot3 = {
-            "rank": 3,
-            "role": "Trap & Invalidation Warning",
-            "pattern_id": cand3.get("id", "#PAT-003"),
-            "name": f"{symbol} Premature Sweep Trap during Velocity Spikes",
-            "score": cand3.get("score", 8.1),
-            "win_rate": "32.0% (Known Failure Pattern)",
-            "rrr": "N/A (Avoid Execution)",
-            "execution_trigger": "DO NOT ENTER if tick velocity > 120 t/m into the zone.",
-            "testing_objective": "Prevent chasing high-velocity flushes into unconfirmed liquidity pockets.",
-            "invalidation": "Confirmed absorption with velocity collapsing back below 70 t/m."
-        }
-
-        # Slot 4: Consequent Encroachment & TP Blueprint
-        cand4 = candidates[3] if len(candidates) > 3 else {}
-        slot4 = {
-            "rank": 4,
-            "role": "Optimal Take Profit & Scaling Blueprint",
-            "pattern_id": cand4.get("id", "#PAT-004"),
-            "name": f"{symbol} Consequent Encroachment (50% CE) TP Scaling",
-            "score": cand4.get("score", 8.9),
-            "win_rate": "81.5% (42 samples)",
-            "rrr": "1:3.0",
-            "execution_trigger": f"Scale out 50% position at 1.5R, trail remainder to breakeven once CE ({fvg_ce:.2f}) cleared.",
-            "testing_objective": "Lock institutional profits at first structural liquidity pool.",
-            "invalidation": "Reversal back through entry prior to 1.5R target."
-        }
+        slot1 = _format_cand(candidates[0] if len(candidates) > 0 else {}, "Direct Match Precedent", f"{symbol} {fvg_type} Mitigation after {sweep}", 9.2)
+        slot1["rank"] = 1
+        
+        slot2 = _format_cand(candidates[1] if len(candidates) > 1 else {}, "Inversion / Alternative Play", f"{symbol} FVG Invalidation into Demand Retest", 8.4)
+        slot2["rank"] = 2
+        slot2["rrr"] = "1:2.5"
+        
+        slot3 = _format_cand(candidates[2] if len(candidates) > 2 else {}, "Trap & Invalidation Warning", f"{symbol} Premature Sweep Trap during Velocity Spikes", 8.1)
+        slot3["rank"] = 3
+        slot3["rrr"] = "N/A (Avoid Execution)"
+        
+        slot4 = _format_cand(candidates[3] if len(candidates) > 3 else {}, "Optimal Take Profit & Scaling Blueprint", f"{symbol} Consequent Encroachment (50% CE) TP Scaling", 8.9)
+        slot4["rank"] = 4
 
         return {
             "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -344,7 +336,7 @@ class AutonomousLibrarianAgent:
         # 1. Search DB for matching patterns & experiences
         matched_patterns = []
         for p_id, p in self.db.patterns.items():
-            text_corpus = f"{p_id} {p.get('name', '')} {p.get('trigger_condition', '')} {p.get('description', '')} {p.get('invalidation_rule', '')}".upper()
+            text_corpus = f"{p_id} {p.get('pattern_name', '')} {p.get('trigger_condition', '')} {p.get('description', '')} {p.get('invalidation_rule', '')}".upper()
             q_words = [w for w in q_upper.split() if len(w) > 3]
             match_score = sum(1 for w in q_words if w in text_corpus)
             if sym in text_corpus or match_score > 0:
@@ -354,15 +346,26 @@ class AutonomousLibrarianAgent:
 
         # 2. Search experiences for relevant losses/wins
         relevant_experiences = []
-        for exp in self.db.experiences:
-            exp_text = (f"{exp.get('symbol', '')} {exp.get('notes', '')} {exp.get('outcome', '')} {exp.get('action', '')}" if isinstance(exp, dict) else str(exp)).upper()
-            if sym in exp_text or any(w in exp_text for w in q_words):
-                relevant_experiences.append(exp)
+        for exp_id, exp in self.db.experiences.items():
+            if isinstance(exp, dict):
+                ctx = exp.get("market_context", {})
+                exp_sym = str(ctx.get("symbol") or "")
+                exp_text = f"{exp_sym} {exp.get('learning', {}).get('lesson', '')} {exp.get('type', '')} {exp.get('direction_taken', '')}".upper()
+                if sym in exp_text or any(w in exp_text for w in q_words):
+                    relevant_experiences.append(exp)
 
-        # 3. Formulate direct factual answer
+        # 3. Formulate direct factual answer from ground-truth stored outcomes
         top_matches = [m[2] for m in matched_patterns[:4]]
-        win_rates = [p.get("win_rate_pct", 70.0) for p in top_matches if "win_rate_pct" in p]
-        avg_win_rate = round(sum(win_rates) / len(win_rates), 1) if win_rates else 72.5
+        
+        # Empirical derivation from stored outcomes
+        tot_samples = sum(len(p.get("outcomes", [])) for p in top_matches)
+        tot_wins = sum(sum(1 for o in p.get("outcomes", []) if isinstance(o, dict) and ("WIN" in str(o.get("outcome", "")).upper() or float(o.get("r_value", 0.0) or 0.0) > 0)) for p in top_matches)
+        
+        if tot_samples > 0:
+            emp_win_rate = round((tot_wins / tot_samples) * 100.0, 1)
+            derivation_str = f"{tot_wins}/{tot_samples} ({emp_win_rate}%) [EMPIRICAL_LINKED_EVIDENCE]"
+        else:
+            derivation_str = "0/0 (N/A) [ESTIMATED_PRIOR]"
 
         # Check for specific question themes
         if any(w in q_upper for w in ["LOSS", "FAIL", "TRAP", "MISTAKE", "WRONG"]):
@@ -381,13 +384,13 @@ class AutonomousLibrarianAgent:
         elif any(w in q_upper for w in ["WIN RATE", "STATS", "PRECEDENT", "SAMPLES", "PROBABILITY"]):
             theme = "Quantitative Expectancy Audit"
             direct_ans = (
-                f"Unified Learning Memory verifies an average historical win rate of {avg_win_rate}% across {len(top_matches)} "
-                f"direct {sym} institutional setups (verified against 371 pattern records and 67 live trade experiences)."
+                f"Unified Learning Memory verifies an empirical win rate of {derivation_str} across {len(top_matches)} "
+                f"linked {sym} institutional setups ({len(self.db.patterns)} patterns and {len(self.db.experiences)} trade experiences loaded)."
             )
         else:
             theme = "Tactical Alignment Synthesis"
             direct_ans = (
-                f"For {sym} query '{query}': Ground-truth ledger identifies {len(top_matches)} high-conviction precedents. "
+                f"For {sym} query '{query}': Ground-truth ledger identifies {len(top_matches)} precedents ({derivation_str}). "
                 f"Primary requirement: Enter on 50% Consequent Encroachment tap with delta stall, maintaining strict 1:3.0 RRR sweet spot."
             )
 
@@ -404,6 +407,7 @@ class AutonomousLibrarianAgent:
             "symbol": sym,
             "theme": theme,
             "direct_answer": direct_ans,
+            "empirical_derivation": derivation_str,
             "matched_evidence_count": len(matched_patterns),
             "relevant_trade_experiences_count": len(relevant_experiences),
             "recommended_precedent": cycle_res.get("top_4_precedents", [{}])[0],

@@ -17,7 +17,7 @@ class DeepDossierLogger:
     def __init__(self):
         os.makedirs(DOSSIER_DIR, exist_ok=True)
 
-    def write_dossier(self, cycle_count: int, instruments_data: list, open_positions: list, reversal_alerts: list, session_info: dict, gsr_data: dict, account_health: dict = None, currency_strength: dict = None, real_yields: dict = None) -> str:
+    def write_dossier(self, cycle_count: int, instruments_data: list, open_positions: list, reversal_alerts: list, session_info: dict, gsr_data: dict, account_health: dict = None, currency_strength: dict = None, real_yields: dict = None, study_cycle_id: int = None) -> str:
         """
         Writes persistent JSON and Markdown dossiers to disk and returns the full markdown string.
         """
@@ -30,7 +30,8 @@ class DeepDossierLogger:
         # 1. JSON Dossier Output
         json_payload = {
             "timestamp": now_str,
-            "cycle_count": cycle_count,
+            "scan_cycle_count": cycle_count,
+            "agent_study_cycle_id": study_cycle_id,
             "session_info": session_info,
             "gsr_data": gsr_data,
             "account_health": account_health,
@@ -51,7 +52,10 @@ class DeepDossierLogger:
         # 2. Markdown Dossier Output
         md_lines = []
         md_lines.append(f"# Deep Institutional Trading Desk Dossier")
-        md_lines.append(f"**Timestamp**: `{now_str}` | **Scan Cycle**: `{cycle_count}`")
+        if study_cycle_id is not None:
+            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count} (Market Scan Loop)` | **Agent Study Cycle**: `#{study_cycle_id} (Unified Learning Review)`")
+        else:
+            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count} (Market Scan Loop)`")
         md_lines.append(f"**Session Clock**: `{session_info.get('session')}` ({session_info.get('description')} | `{session_info.get('utc_time')}`)")
         md_lines.append(f"**Intermarket GSR Ratio**: `{gsr_data.get('gsr')}` [{gsr_data.get('status')}]")
         md_lines.append(f"**US Real Yield Matrix**: Fed Rate `{real_yields.get('fed_funds_rate')}` | US10Y `{real_yields.get('us10y_nominal_yield')}` | `{real_yields.get('us_real_yield_posture')}`")

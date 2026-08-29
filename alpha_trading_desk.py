@@ -428,10 +428,21 @@ class ConsolidatedTradingDaemon:
         self.last_dispatch_time = 0.0
         self.last_reversal_dispatch_time = 0.0
 
+        # Wire live error monitoring into Desk Daemon (H4)
+        from monitor.error_monitor import error_monitor
+        self.error_monitor = error_monitor
+        self.error_monitor.install_global_handlers()
+
     async def run_cycle(self):
         self.instruments = get_active_instruments()
         LOG.info(f"--- Starting Scan Cycle across {len(self.instruments)} instruments ({', '.join(self.instruments)}) ---")
         log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Granger 7-Layers + Global Eyes RSS feeds active)...")
+
+        # Record live error-monitor heartbeat (H4)
+        try:
+            self.error_monitor.capture("INFO", "alpha_trading_desk", "DESK_DAEMON_HEARTBEAT", f"Live Desk Daemon active scan cycle #{self.cycle_count}", {"instruments": self.instruments})
+        except Exception as e_err:
+            LOG.debug(f"Error monitor heartbeat error: {e_err}")
 
         scores = []
         top_symbol = "XAUUSD"
@@ -615,6 +626,15 @@ class ConsolidatedTradingDaemon:
         read_logger.log_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE")
 
         self.cycle_count += 1
+        
+        # Load agent study cycle ID from review state for unambiguous multi-counter reporting (H5)
+        study_cycle_id = None
+        try:
+            from tradingagents.unified_learning import load_review_state
+            study_cycle_id = load_review_state().get("cycle_id")
+        except Exception:
+            pass
+
         dossier_res = dossier_logger.write_dossier(
             cycle_count=self.cycle_count,
             instruments_data=instruments_data,
@@ -624,12 +644,13 @@ class ConsolidatedTradingDaemon:
             gsr_data=gsr_data,
             account_health=account_health,
             currency_strength=currency_strength,
-            real_yields=real_yields
+            real_yields=real_yields,
+            study_cycle_id=study_cycle_id
         )
 
-        read_logger.log_dossier_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE", f"Wrote persistent dossier file:///C:/Trading/Alpha/logs/full_desk_dossier.md for cycle #{self.cycle_count}")
+        read_logger.log_dossier_read("Consolidated Desk Daemon", "MANDATORY_DOSSIER_UPDATE", f"Wrote persistent dossier file:///C:/Trading/Alpha/logs/full_desk_dossier.md for Desk Scan Cycle #{self.cycle_count}")
 
-        log_story("Desk Lead Agent", f"Consensus Audit: {len(self.instruments)}/{len(INSTRUMENTS)} instruments scanned (active: {', '.join(self.instruments)}). Persistent Dossier & Read Audit Logged. Posture DEEP DOSSIER STREAM.")
+        log_story("Desk Lead Agent", f"Consensus Audit: {len(self.instruments)}/{len(INSTRUMENTS)} instruments scanned (active: {', '.join(self.instruments)}). Desk Scan Cycle: #{self.cycle_count} | Agent Study Cycle: #{study_cycle_id or 'N/A'}. Posture DEEP DOSSIER STREAM.")
 
         # 4. Construct Full 4TF Institutional Alignment Reveal Block
         tf_reveal_lines = []

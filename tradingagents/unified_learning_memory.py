@@ -114,6 +114,75 @@ class UnifiedLearningMemory:
                                      "timestamp": timestamp, "evidence_id": evidence_id})
         pat["occurrence_count"] = len(pat["observations"])
 
+    def reconcile_links(self) -> Dict[str, Any]:
+        """Bidirectionally links trade experiences <-> patterns and tags evidence_provenance."""
+        data = self._load()
+        experiences = data.get("experiences", {})
+        patterns = data.get("patterns", {})
+        
+        linked_exp_count = 0
+        observed_patterns_count = 0
+
+        # 1. Correlate experiences with patterns by symbol and trade direction/keywords
+        for exp_id, exp in experiences.items():
+            if not isinstance(exp, dict):
+                continue
+            ctx = exp.get("market_context", {})
+            sym = str(ctx.get("symbol") or "").upper() if isinstance(ctx, dict) else ""
+            direction = str(exp.get("direction_taken") or "").upper()
+            ticket = exp.get("execution", {}).get("ticket") if isinstance(exp.get("execution"), dict) else None
+            pnl = exp.get("outcome", {}).get("pnl", 0.0) if isinstance(exp.get("outcome"), dict) else 0.0
+            is_win = float(pnl or 0.0) > 0.0
+
+            matched_pat_keys = []
+            for p_key, pat in patterns.items():
+                if not isinstance(pat, dict):
+                    continue
+                p_sym = str(pat.get("symbol") or "").upper()
+                p_name = str(pat.get("pattern_name") or pat.get("pattern_id") or "").upper()
+                if (sym and p_sym == sym) or p_sym == "ALL":
+                    if (direction and direction in p_name) or "SETUP" in p_name or "SWEEP" in p_name or "FVG" in p_name:
+                        matched_pat_keys.append(p_key)
+                        if exp_id not in pat.setdefault("experience_ids", []):
+                            pat["experience_ids"].append(exp_id)
+                        # Add linked outcome evidence if ticket is present
+                        if ticket and not any(str(o.get("ticket")) == str(ticket) for o in pat.setdefault("outcomes", []) if isinstance(o, dict)):
+                            pat["outcomes"].append({
+                                "outcome": f"{'WIN' if is_win else 'LOSS'} (PnL ${pnl:+.2f})",
+                                "ticket": str(ticket),
+                                "r_value": round(float(pnl) / 15.0, 2) if pnl != 0 else 0.0,
+                                "source": "EXPERIENCE_RECONCILIATION",
+                                "ts": exp.get("timestamp") or _now()
+                            })
+
+            exp["pattern_links"] = matched_pat_keys
+            if matched_pat_keys:
+                linked_exp_count += 1
+
+        # 2. Tag evidence_provenance on all patterns
+        for p_key, pat in patterns.items():
+            if not isinstance(pat, dict):
+                continue
+            has_linked_exps = len(pat.get("experience_ids", [])) > 0
+            has_linked_tickets = any(bool(o.get("ticket")) for o in pat.get("outcomes", []))
+            
+            if has_linked_exps or has_linked_tickets:
+                pat["evidence_provenance"] = "OBSERVED"
+                observed_patterns_count += 1
+            elif len(pat.get("outcomes", [])) > 0 or len(pat.get("observations", [])) > 0:
+                pat["evidence_provenance"] = "SEEDED"
+            else:
+                pat["evidence_provenance"] = "ESTIMATED"
+
+        self._save(data)
+        LOG.info(f"Reconciled {linked_exp_count}/{len(experiences)} experiences to {len(patterns)} patterns ({observed_patterns_count} OBSERVED).")
+        return {
+            "patterns_count": len(patterns),
+            "experiences_count": len(experiences),
+            "linked_experiences_count": linked_exp_count,
+            "observed_patterns_count": observed_patterns_count
+        }
+
     def migrate_legacy(self) -> Dict[str, Any]:
         data = self._load(); migration = data.setdefault("migration", {}); migration.setdefault("sources", {})
         unmapped: List[Dict[str, Any]] = []

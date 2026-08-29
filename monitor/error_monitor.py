@@ -32,8 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from config import ALPHA_DIR, LIVE_DATA_DIR
-from config.session_manager import get_opencode_session_id
+from config import ALPHA_DIR, LIVE_DATA_DIR, get_opencode_session_id
 
 log = logging.getLogger("alpha.error_monitor")
 

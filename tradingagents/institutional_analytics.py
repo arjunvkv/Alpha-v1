@@ -63,16 +63,19 @@ class InstitutionalAnalyticsEngine:
         if self.cached_cot and (now_ts - self.last_cot_fetch < 3600):
             return self.cached_cot
 
+        # Base structure initialized with verified last-known-good CFTC snapshot fallbacks
         res = {
-            "report_date": "2026-08-18",
-            "source": "CFTC Commitments of Traders (FuturesBench API)",
+            "report_date": "2026-08-25",
+            "source": "STALE_FALLBACK_CFTC_CACHE",
+            "is_live": False,
+            "fallback_warning": "STALE_FALLBACK: Live FuturesBench COT fetch failed; using last-known-good CFTC snapshot",
             "markets": {
-                "XAUUSD": {"name": "Gold", "net_noncommercial": 222189, "change": +4249, "cot_index_26w": 100.0, "cot_index_52w": 60.4, "z_score": 0.24, "bias": "MAXIMUM_BULLISH_INSTITUTIONAL_ACCUMULATION (100% COT Index)"},
-                "XAGUSD": {"name": "Silver", "net_noncommercial": 48210, "change": +1120, "cot_index_26w": 78.4, "cot_index_52w": 71.2, "z_score": 0.55, "bias": "STRONG_BULLISH_INSTITUTIONAL_HOLDINGS"},
-                "XPTUSD": {"name": "Platinum", "net_noncommercial": 18450, "change": -350, "cot_index_26w": 64.8, "cot_index_52w": 58.2, "z_score": -0.12, "bias": "MODERATE_INSTITUTIONAL_SUPPORT"},
-                "XPDUSD": {"name": "Palladium", "net_noncommercial": -4120, "change": -110, "cot_index_26w": 42.1, "cot_index_52w": 38.5, "z_score": -0.85, "bias": "NET_SHORT_INSTITUTIONAL_DISTRIBUTION"},
-                "XCUUSD": {"name": "Copper", "net_noncommercial": 34150, "change": +890, "cot_index_26w": 82.5, "cot_index_52w": 68.5, "z_score": 0.72, "bias": "BULLISH_INDUSTRIAL_POSITIONING"},
-                "USOIL.cash": {"name": "Crude Oil (WTI)", "net_noncommercial": 218500, "change": -5400, "cot_index_26w": 60.0, "cot_index_52w": 52.3, "z_score": -0.05, "bias": "NEUTRAL_COMMODITY_POSITIONING"}
+                "XAUUSD": {"name": "Gold", "net_noncommercial": 243334, "change": +21145, "cot_index_26w": 100.0, "cot_index_52w": 79.2, "z_score": 0.67, "bias": "MAXIMUM_BULLISH_INSTITUTIONAL_ACCUMULATION", "is_live": False, "data_provenance": "STALE_FALLBACK"},
+                "XAGUSD": {"name": "Silver", "net_noncommercial": 25261, "change": -3420, "cot_index_26w": 78.4, "cot_index_52w": 9.9, "z_score": 0.55, "bias": "MODERATE_HOLDINGS", "is_live": False, "data_provenance": "STALE_FALLBACK"},
+                "XPTUSD": {"name": "Platinum", "net_noncommercial": 18450, "change": -350, "cot_index_26w": 64.8, "cot_index_52w": 58.2, "z_score": -0.12, "bias": "MODERATE_INSTITUTIONAL_SUPPORT", "is_live": False, "data_provenance": "STALE_FALLBACK"},
+                "XPDUSD": {"name": "Palladium", "net_noncommercial": -4120, "change": -110, "cot_index_26w": 42.1, "cot_index_52w": 22.5, "z_score": -0.85, "bias": "NET_SHORT_INSTITUTIONAL_DISTRIBUTION", "is_live": False, "data_provenance": "STALE_FALLBACK"},
+                "XCUUSD": {"name": "Copper", "net_noncommercial": 34150, "change": +890, "cot_index_26w": 82.5, "cot_index_52w": 68.5, "z_score": 0.72, "bias": "BULLISH_INDUSTRIAL_POSITIONING", "is_live": False, "data_provenance": "STALE_FALLBACK"},
+                "USOIL.cash": {"name": "Crude Oil (WTI)", "net_noncommercial": 123449, "change": -5400, "cot_index_26w": 60.0, "cot_index_52w": 43.2, "z_score": -0.05, "bias": "NEUTRAL_COMMODITY_POSITIONING", "is_live": False, "data_provenance": "STALE_FALLBACK"}
             }
         }
 
@@ -82,7 +85,10 @@ class InstitutionalAnalyticsEngine:
             with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 if "markets" in data:
-                    res["report_date"] = data.get("report_date", "2026-08-18")
+                    res["report_date"] = data.get("report_date", "2026-08-25")
+                    res["source"] = "FUTURESBENCH_LIVE_API"
+                    res["is_live"] = True
+                    res["fallback_warning"] = None
                     m = data.get("markets", {})
                     
                     # Gold
@@ -90,20 +96,22 @@ class InstitutionalAnalyticsEngine:
                         g = m["gold"]
                         idx26 = g.get("cot_index_26w", 100.0)
                         res["markets"]["XAUUSD"] = {
-                            "name": "Gold", "net_noncommercial": g.get("net_noncommercial", 222189),
-                            "change": g.get("change_noncommercial", 4249), "cot_index_26w": idx26,
-                            "cot_index_52w": g.get("cot_index_52w", 60.4), "z_score": g.get("z_score_3y", 0.24),
-                            "bias": "MAXIMUM_BULLISH_INSTITUTIONAL_ACCUMULATION" if idx26 >= 80 else "MODERATE_ACCUMULATION"
+                            "name": "Gold", "net_noncommercial": g.get("net_noncommercial", 243334),
+                            "change": g.get("change_noncommercial", 21145), "cot_index_26w": idx26,
+                            "cot_index_52w": g.get("cot_index_52w", 79.2), "z_score": g.get("z_score_3y", 0.67),
+                            "bias": "MAXIMUM_BULLISH_INSTITUTIONAL_ACCUMULATION" if idx26 >= 80 else "MODERATE_ACCUMULATION",
+                            "is_live": True, "data_provenance": "FUTURESBENCH_LIVE_API"
                         }
                     # Silver
                     if "silver" in m:
                         s = m["silver"]
                         idx26 = s.get("cot_index_26w", 78.4)
                         res["markets"]["XAGUSD"] = {
-                            "name": "Silver", "net_noncommercial": s.get("net_noncommercial", 48210),
-                            "change": s.get("change_noncommercial", 1120), "cot_index_26w": idx26,
-                            "cot_index_52w": s.get("cot_index_52w", 71.2), "z_score": s.get("z_score_3y", 0.55),
-                            "bias": "STRONG_BULLISH_INSTITUTIONAL_HOLDINGS" if idx26 >= 70 else "MODERATE_HOLDINGS"
+                            "name": "Silver", "net_noncommercial": s.get("net_noncommercial", 25261),
+                            "change": s.get("change_noncommercial", -3420), "cot_index_26w": idx26,
+                            "cot_index_52w": s.get("cot_index_52w", 9.9), "z_score": s.get("z_score_3y", 0.55),
+                            "bias": "STRONG_BULLISH_INSTITUTIONAL_HOLDINGS" if idx26 >= 70 else "MODERATE_HOLDINGS",
+                            "is_live": True, "data_provenance": "FUTURESBENCH_LIVE_API"
                         }
                     # Copper
                     if "copper" in m:
@@ -113,7 +121,8 @@ class InstitutionalAnalyticsEngine:
                             "name": "Copper", "net_noncommercial": c.get("net_noncommercial", 34150),
                             "change": c.get("change_noncommercial", 890), "cot_index_26w": idx26,
                             "cot_index_52w": c.get("cot_index_52w", 68.5), "z_score": c.get("z_score_3y", 0.72),
-                            "bias": "BULLISH_INDUSTRIAL_POSITIONING"
+                            "bias": "BULLISH_INDUSTRIAL_POSITIONING",
+                            "is_live": True, "data_provenance": "FUTURESBENCH_LIVE_API"
                         }
                     # Crude Oil
                     if "crude-oil" in m or "crude-oil-light-sweet-wti" in m:
@@ -121,13 +130,14 @@ class InstitutionalAnalyticsEngine:
                         o = m[oil_key]
                         idx26 = o.get("cot_index_26w", 60.0)
                         res["markets"]["USOIL.cash"] = {
-                            "name": "Crude Oil (WTI)", "net_noncommercial": o.get("net_noncommercial", 218500),
+                            "name": "Crude Oil (WTI)", "net_noncommercial": o.get("net_noncommercial", 123449),
                             "change": o.get("change_noncommercial", -5400), "cot_index_26w": idx26,
-                            "cot_index_52w": o.get("cot_index_52w", 52.3), "z_score": o.get("z_score_3y", -0.05),
-                            "bias": "NEUTRAL_COMMODITY_POSITIONING"
+                            "cot_index_52w": o.get("cot_index_52w", 43.2), "z_score": o.get("z_score_3y", -0.05),
+                            "bias": "NEUTRAL_COMMODITY_POSITIONING",
+                            "is_live": True, "data_provenance": "FUTURESBENCH_LIVE_API"
                         }
         except Exception as err:
-            LOG.debug(f"FuturesBench COT fetch error: {err}")
+            LOG.warning(f"FuturesBench COT live fetch failed ({err}); consuming STALE_FALLBACK_CFTC_CACHE snapshot.")
 
         self.cached_cot = res
         self.last_cot_fetch = now_ts
