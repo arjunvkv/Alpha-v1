@@ -66,6 +66,13 @@ def _init_mt5():
     except Exception as err:
         LOG.error(f"MT5 init error: {err}")
 
+def _normalize_symbol(symbol: str) -> str:
+    """Normalizes symbol names across broker casing conventions (e.g. USOIL.cash vs USOIL.CASH)."""
+    s = str(symbol or "XAUUSD").strip()
+    if s.upper() in ("USOIL", "USOIL.CASH"):
+        return "USOIL.cash"
+    return s.upper()
+
 @mcp.tool()
 def mcp_alpha_learning_review(
     action: str = "status",
@@ -241,7 +248,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
     _init_mt5()
     try:
         import MetaTrader5 as mt5
-        sym = symbol.strip()
+        sym = _normalize_symbol(symbol)
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_price = getattr(tick, "ask", 0.0)
         cot_full = _inst_engine.get_futuresbench_cot_data()
@@ -289,7 +296,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10."
         })
     except Exception as err:
-        return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
+        return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
 
 @mcp.tool()
 def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
@@ -297,8 +304,8 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
     _init_mt5()
     try:
         import MetaTrader5 as mt5
-        sym = symbol.strip().upper()
-        tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.lower())
+        sym = _normalize_symbol(symbol)
+        tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_ask = getattr(tick, "ask", 0.0)
         from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
@@ -522,7 +529,7 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
 @mcp.tool()
 def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
     """Ask the Autonomous Librarian Agent any historical, tactical, or quantitative question about precedents, win rates, failure traps, and invalidation rules."""
-    sym = symbol.upper()
+    sym = _normalize_symbol(symbol)
     ans = _librarian_agent.answer_query(query, sym)
     read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {sym}: '{query}'")
     return json.dumps({
