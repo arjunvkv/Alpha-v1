@@ -307,11 +307,10 @@ def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp
         return {"success": False, "error": str(exc)}
 
 # ----------------------------------------------------------------------
-# 4. OpenCode CIO Evaluator Module
+# 4. Discovery Evidence Streamer
 # ----------------------------------------------------------------------
 class OpenCodeCIOEvaluator:
-    """Autonomously evaluates discovery events and issues CIO decisions."""
-
+    """Legacy-named compatibility component. It never decides or executes trades."""
     def __init__(self):
         self.session_id = OPENCODE_SESSION_ID
         self.session_title = OPENCODE_SESSION_TITLE
@@ -319,50 +318,25 @@ class OpenCodeCIOEvaluator:
     def evaluate_discovery_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         symbol = event.get("symbol", "XAUUSD")
         score = float(event.get("conviction_score") or event.get("score") or 0.0)
-
-        # 0. Max 1 Position Guard Check
-        try:
-            import MetaTrader5 as mt5
-            initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
-            if initialized:
-                all_pos = mt5.positions_get()
-                if all_pos:
-                    sym_target = symbol.replace(".cash", "").upper()
-                    matching = [p for p in all_pos if p.symbol.replace(".cash", "").upper() == sym_target]
-                    if matching:
-                        ticket_id = matching[0].ticket
-                        log_opencode_said(f"Reviewed {symbol} setup (Score {score}/10). Active FTMO MT5 position #{ticket_id} already open. Maintaining trade.")
-                        log_local_llm_replied(f"Understood CIO! Maintaining active MT5 position for {symbol} (Ticket #{ticket_id}). Duplicate entry suppressed.")
-                        return {"decision": "MAINTAIN", "reason": f"Active MT5 position #{ticket_id} already open"}
-        except Exception:
-            pass
-
-        # 1. CIO Conviction Threshold Check (>= 8.0/10)
-        if score >= 8.0:
-            volume = 0.05
-            try:
-                import MetaTrader5 as mt5
-                sym = symbol.strip()
-                tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
-                entry = getattr(tick, "ask", 0.0)
-            except Exception:
-                entry = 0.0
-
-            sl = round(entry * 0.985, 2) if entry > 0 else 0.0
-            tp = round(entry * 1.035, 2) if entry > 0 else 0.0
-
-            log_opencode_said(f"Reviewed {symbol} setup. Thesis validated! Execute BUY {volume} lots (SL: {sl}, TP: {tp}, R:R 2.3:1).")
-
-            res = place_ftmo_market_order(symbol, "buy", volume, sl, tp)
-            if res.get("success"):
-                log_local_llm_replied(f"Order executed on MT5! BUY {volume} lots on {symbol}. Ticket active (#{res.get('ticket')}).")
-            else:
-                log_local_llm_replied(f"Order routing status: {res.get('error')}")
-
-            return {"decision": "EXECUTE", "order_spec": {"symbol": symbol, "side": "buy", "volume": volume, "sl": sl, "tp": tp}, "mt5_result": res}
-        else:
-            log_opencode_said(f"Reviewed {symbol} setup. VETOED: Score {score}/10 below CIO threshold of 8.0/10.")
-            return {"decision": "VETO", "reason": f"Score {score}/10 below 8.0 threshold"}
+        bull_points = event.get("bull_points", [])
+        bear_points = event.get("bear_points", [])
+        summary = (
+            f"Discovery evidence update for {symbol}: consensus/conviction score {score}/10. "
+            f"Supporting evidence: {bull_points or 'none supplied'}. "
+            f"Contradictory evidence: {bear_points or 'none supplied'}. "
+            f"This is study evidence only; no score threshold approves, vetoes, or executes a trade."
+        )
+        log_opencode_said(summary)
+        return {
+            "decision": "AGENT_REVIEW_REQUIRED",
+            "symbol": symbol,
+            "conviction_score": score,
+            "supporting_evidence": bull_points,
+            "contradictory_evidence": bear_points,
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY",
+            "execution_authority": "AGENT_ONLY"
+        }
 
 # ----------------------------------------------------------------------
 # 5. Process Cleanup Utilities
@@ -399,7 +373,7 @@ class ConsolidatedTradingDaemon:
         self.desk = TradingAgentsDesk()
         self.mcp_server = AlphaMCPServer()
         self.latch = StatefulDiscoveryLatch()
-        self.cio_evaluator = OpenCodeCIOEvaluator()
+        self.cio_evaluator = OpenCodeCIOEvaluator()  # evidence streamer only; never executes
         self.instruments = INSTRUMENTS
         self.is_running = False
         self.cycle_count = 0
@@ -680,7 +654,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/pattern_book/book_index.md as a mandate. "
+                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
                 log_opencode_said(scheduled_prompt)
@@ -694,7 +668,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Audit file:///C:/Trading/Alpha/logs/pattern_book/book_index.md as a mandate. "
+                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
                     f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
                 )
                 log_opencode_said(idle_prompt)
