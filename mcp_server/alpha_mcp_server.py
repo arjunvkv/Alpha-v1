@@ -146,16 +146,41 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
     _init_mt5()
     try:
         import MetaTrader5 as mt5
-        sym = symbol.strip(); tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower()); live_price = getattr(tick, "ask", 0.0)
+        sym = symbol.strip()
+        tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
+        live_price = getattr(tick, "ask", 0.0)
         from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst
-        tech = TechnicalAnalyst(); fund = FundamentalAnalyst()
-        cot_db = {"XAUUSD": {"managed_money_percentile": 82.4, "commercial_net": -245100}, "XAGUSD": {"managed_money_percentile": 71.2, "commercial_net": -48200}, "XPTUSD": {"managed_money_percentile": 64.8, "commercial_net": 12400}, "XPDUSD": {"managed_money_percentile": 53.1, "commercial_net": 4800}, "XCUUSD": {"managed_money_percentile": 68.5, "commercial_net": -18500}, "USOIL.CASH": {"managed_money_percentile": 59.2, "commercial_net": -82100}}
-        rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M15, 0, 30); rsi_val = 55.0; macd_hist = 0.5
-        if rates is not None and len(rates) >= 15:
-            closes = [r[4] for r in rates]; diffs = [closes[i] - closes[i-1] for i in range(1, len(closes))]; gains = [d for d in diffs if d > 0]; losses = [-d for d in diffs if d < 0]; avg_gain = (sum(gains) / 14.0) if gains else 0.001; avg_loss = (sum(losses) / 14.0) if losses else 0.001; rs = avg_gain / avg_loss; rsi_val = round(100.0 - (100.0 / (1.0 + rs)), 1); macd_hist = round(closes[-1] - (sum(closes[-12:]) / 12.0), 2)
-        cot_data = cot_db.get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0}); tech_res = tech.analyze(sym, {"indicators": {"rsi_14": rsi_val, "macd": {"hist": macd_hist}}}); fund_res = fund.analyze(sym, cot_data); score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
-        return json.dumps({"status": "LIVE_SYMBOL_SPECIFIC", "symbol": sym, "live_bid": getattr(tick, "bid", 0.0), "live_ask": getattr(tick, "ask", 0.0), "conviction_score": min(score, 9.8), "technical_indicators": {"rsi_14": rsi_val, "macd_hist": macd_hist}, "cot_positioning": cot_data, "technical_analysis": tech_res, "fundamental_analysis": fund_res, "summary": f"{sym} Live Ask: {live_price}. Real RSI(14): {rsi_val}, MACD Hist: {macd_hist:+.2f}. Granger Consensus: {min(score, 9.8)}/10."})
-    except Exception as err: return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
+        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
+        from tradingagents.multitimeframe import MultiTimeframeAnalyst
+        
+        tech = TechnicalAnalyst()
+        fund = FundamentalAnalyst()
+        inst = InstitutionalAnalyticsEngine()
+        mtf_analyst = MultiTimeframeAnalyst()
+        
+        cot_data = inst.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        mtf_res = mtf_analyst.analyze_mtf(sym)
+        rsi_val = mtf_res.get("m15_rsi", 50.0)
+        
+        tech_res = tech.analyze(sym, {"h4_bias": mtf_res.get("h4_trend"), "h1_bias": mtf_res.get("h1_trend"), "m15_bias": mtf_res.get("m15_trend"), "m5_bias": mtf_res.get("m5_trend"), "indicators": {"rsi_14": rsi_val}})
+        fund_res = fund.analyze(sym, cot_data)
+        score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
+        
+        return json.dumps({
+            "status": "LIVE_SYMBOL_SPECIFIC",
+            "symbol": sym,
+            "live_bid": getattr(tick, "bid", 0.0),
+            "live_ask": getattr(tick, "ask", 0.0),
+            "conviction_score": min(score, 9.8),
+            "mtf_alignment": mtf_res.get("formatted_4tf"),
+            "technical_indicators": {"m15_rsi": rsi_val, "h4_rsi": mtf_res.get("h4_rsi")},
+            "cot_positioning": cot_data,
+            "technical_analysis": tech_res,
+            "fundamental_analysis": fund_res,
+            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Consensus: {min(score, 9.8)}/10."
+        })
+    except Exception as err:
+        return json.dumps({"status": "ERROR", "symbol": symbol.upper(), "error": str(err)})
 
 @mcp.tool()
 def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
@@ -163,16 +188,43 @@ def mcp_alpha_query_analyst_desk(query: str, symbol: str) -> str:
     _init_mt5()
     try:
         import MetaTrader5 as mt5
-        sym = symbol.strip().upper(); tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.lower()); live_ask = getattr(tick, "ask", 0.0)
+        sym = symbol.strip().upper()
+        tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.lower())
+        live_ask = getattr(tick, "ask", 0.0)
         from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst, MacroNewsAnalyst
-        tech = TechnicalAnalyst(); fund = FundamentalAnalyst(); macro = MacroNewsAnalyst()
-        cot_db = {"XAUUSD": {"managed_money_percentile": 82.4, "commercial_net": -245100}, "XAGUSD": {"managed_money_percentile": 71.2, "commercial_net": -48200}, "XPTUSD": {"managed_money_percentile": 64.8, "commercial_net": 12400}, "XPDUSD": {"managed_money_percentile": 53.1, "commercial_net": 4800}, "XCUUSD": {"managed_money_percentile": 68.5, "commercial_net": -18500}, "USOIL.CASH": {"managed_money_percentile": 59.2, "commercial_net": -82100}}
-        rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M15, 0, 30); rsi_val = 55.0; macd_hist = 0.5
-        if rates is not None and len(rates) >= 15:
-            closes = [r[4] for r in rates]; diffs = [closes[i] - closes[i-1] for i in range(1, len(closes))]; gains = [d for d in diffs if d > 0]; losses = [-d for d in diffs if d < 0]; avg_gain = (sum(gains) / 14.0) if gains else 0.001; avg_loss = (sum(losses) / 14.0) if losses else 0.001; rs = avg_gain / avg_loss; rsi_val = round(100.0 - (100.0 / (1.0 + rs)), 1); macd_hist = round(closes[-1] - (sum(closes[-12:]) / 12.0), 2)
-        cot_data = cot_db.get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0}); tech_res = tech.analyze(sym, {"indicators": {"rsi_14": rsi_val, "macd": {"hist": macd_hist}}}); fund_res = fund.analyze(sym, cot_data); macro_res = macro.analyze({"dxy": 101.2}, [{"title": f"Live Global Macro Analysis for {sym}", "source": "Global Eyes RSS"}])
-        return json.dumps({"status": "SUCCESS", "query": query, "symbol": sym, "live_ask_price": live_ask, "symbol_indicators": {"rsi_14": rsi_val, "macd_hist": macd_hist}, "multisource_intelligence": {"technical_analyst": tech_res, "fundamental_cot_analyst": fund_res, "macro_news_analyst": macro_res, "global_eyes_rss": "Active", "historical_memory": "Historical learning is study evidence; it has no veto authority"}, "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. Technical posture: {tech_res.get('thesis')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."})
-    except Exception as err: return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
+        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
+        from tradingagents.multitimeframe import MultiTimeframeAnalyst
+        
+        tech = TechnicalAnalyst()
+        fund = FundamentalAnalyst()
+        macro = MacroNewsAnalyst()
+        inst = InstitutionalAnalyticsEngine()
+        mtf_analyst = MultiTimeframeAnalyst()
+        
+        cot_data = inst.get_futuresbench_cot_data().get("markets", {}).get(sym, {"managed_money_percentile": 60.0, "commercial_net": 0})
+        macro_feed = inst.get_macro_and_gamma_feeds()
+        mtf_res = mtf_analyst.analyze_mtf(sym)
+        
+        dxy_val = float(macro_feed.get("dxy", 101.40)) if isinstance(macro_feed.get("dxy"), (int, float)) else float(macro_feed.get("dxy", {}).get("val", 101.40))
+        vix_val = float(macro_feed.get("vix", 15.80)) if isinstance(macro_feed.get("vix"), (int, float)) else float(macro_feed.get("vix", {}).get("val", 15.80))
+        macro_res = macro.analyze({"dxy": dxy_val, "vix": vix_val}, [{"title": f"Live Global Macro Analysis for {sym}", "source": "Yahoo Macro / FRED"}])
+        
+        return json.dumps({
+            "status": "SUCCESS",
+            "query": query,
+            "symbol": sym,
+            "live_ask_price": live_ask,
+            "4tf_alignment": mtf_res.get("formatted_4tf"),
+            "multisource_intelligence": {
+                "technical_analyst": tech_res,
+                "fundamental_cot_analyst": fund_res,
+                "macro_news_analyst": macro_res,
+                "historical_memory": "Historical learning is study evidence; it has no veto authority"
+            },
+            "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. 4TF: {mtf_res.get('formatted_4tf')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."
+        })
+    except Exception as err:
+        return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
 
 @mcp.tool()
 def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:

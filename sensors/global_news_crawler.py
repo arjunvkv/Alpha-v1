@@ -46,32 +46,21 @@ class GlobalNewsCrawler:
                             })
             except Exception as e:
                 LOG.debug(f"RSS fetch for {name} failed: {e}")
-
         if not headlines:
-            # Fallback synthetic breaking news feed for testing/offline resiliency
-            headlines = [
-                {"source": "kitco", "title": "Gold surges near $2,650 as central bank buying accelerates", "link": "", "pub_date": ""},
-                {"source": "marketwatch", "title": "Dollar index dips following dovish Treasury yield movements", "link": "", "pub_date": ""},
-                {"source": "reuters", "title": "Silver physical demand reaches multi-year high in Asian markets", "link": "", "pub_date": ""}
-            ]
+            # Explicitly empty list - NEVER fabricate synthetic news headlines
+            LOG.debug("No live RSS headlines returned from external feeds.")
         return headlines
 
     def search_live_web(self, query: str, max_results: int = 5) -> List[Dict[str, str]]:
-        """Live web search via DuckDuckGo search or fallback extraction."""
+        """Live web search via DuckDuckGo search or truthful empty response."""
         try:
             from duckduckgo_search import DDGS
             with DDGS() as ddgs:
                 results = list(ddgs.text(query, max_results=max_results))
                 return [{"title": r.get("title", ""), "href": r.get("href", ""), "body": r.get("body", "")} for r in results]
         except Exception as err:
-            LOG.debug(f"DuckDuckGo search fallback for '{query}': {err}")
-            return [
-                {
-                    "title": f"Live Web Result for {query}",
-                    "href": "https://example.com/news",
-                    "body": f"Recent market updates indicate strong institutional interest and macro momentum regarding {query}."
-                }
-            ]
+            LOG.debug(f"DuckDuckGo search unavailable for '{query}': {err}")
+            return []
 
     def extract_article_text(self, url: str) -> str:
         """Extract noise-free text from web article using Trafilatura or standard fallback."""
