@@ -4,5 +4,5 @@
   "session_id": "ses_fb15b2b27ffezJfLoCEJP5a95r",
   "session_title": "Alpha-Gravity",
   "opencode_api_url": "http://127.0.0.1:4096",
-  "dossier_streaming_enabled": false
+  "dossier_streaming_enabled": true
 }
