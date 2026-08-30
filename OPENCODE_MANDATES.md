@@ -232,6 +232,14 @@ Learning MCP tools do not have veto authority.
 
 Do not add artificial tool-count complexity merely to implement reasoning policy.
 
+### 10.1. Ultra-Fast Dynamic Thesis Backtesting (`mcp_alpha_backtest_thesis`)
+
+When forming ad-hoc hypotheses during live review (e.g. entering on velocity acceleration into an earlier FVG, 50% CE taps following Asian liquidity sweeps, or delta divergence traps), the Agent should invoke `mcp_alpha_backtest_thesis` to fast-forward empirical learning against historical MT5 candle streams:
+- **Zero Hardcoded Rules**: The Local LLM naturally identifies the structural formations directly in the raw MT5 candle tables and tracks forward trade trajectory/R outcomes.
+- **Empirical Grounding**: Backtest results provide real historical setup counts, win rates, realized R, and failure cluster takeaways to inform Agent conviction before taking execution risk.
+- **Usage**: Call `mcp_alpha_backtest_thesis(query="<thesis or setup description>", symbol="XAUUSD", timeframe="M5", bars=60)`.
+
+
 ## 11. Continuous Learning Cycle
 
 Decision

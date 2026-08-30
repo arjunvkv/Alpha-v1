@@ -635,6 +635,34 @@ def mcp_alpha_get_measured_cvd(symbol: str = "XAUUSD") -> str:
     return json.dumps(engine.get_symbol_cvd(sym), indent=2)
 
 
+@mcp.tool()
+def mcp_alpha_backtest_thesis(
+    query: str,
+    symbol: str = "XAUUSD",
+    timeframe: str = "M5",
+    bars: int = 60,
+    offset: int = 0
+) -> str:
+    """Ultra-fast natural backtester powered by Proxima + MT5 Data Harness + Local LLM.
+    
+    Zero hardcoded pattern rules. The Local LLM naturally identifies structural patterns (FVGs, liquidity sweeps,
+    velocity acceleration, order blocks) directly from raw historical MT5 candle tables and evaluates forward
+    trade trajectory and R outcomes.
+    
+    Args:
+        query: Free-form thesis or question (e.g. 'Backtest velocity acceleration into M5 Bearish FVG after Asian sweep')
+        symbol: Instrument symbol (default: 'XAUUSD')
+        timeframe: Candle timeframe (default: 'M5', supports 'M1', 'M5', 'M15', 'H1', 'H4')
+        bars: Historical candle window size (default: 60 bars)
+        offset: Bar offset from current time (default: 0)
+    """
+    from backtesting.pipeline import PureLLMBacktestPipeline
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Backtest Thesis)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested natural backtest: '{query}' on {sym} ({timeframe}, {bars} bars)")
+    pipeline = PureLLMBacktestPipeline()
+    return json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()
