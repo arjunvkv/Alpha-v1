@@ -539,15 +539,30 @@ class AutonomousLibrarianAgent:
             from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
             cvd_eng = CumulativeVolumeDeltaEngine()
             cvd_data = cvd_eng.get_symbol_cvd(sym)
-            m5_cvd = cvd_data.get("timeframes", {}).get("M5", {})
-            m5_cum = m5_cvd.get("cumulative_delta", 0.0)
-            m5_vel = m5_cvd.get("10_bar_velocity", 0.0)
-            m5_div = m5_cvd.get("divergence_status", "BALANCED")
             
+            if cvd_data.get("status") == "MEASURED_ACTIVE":
+                cum_delta = cvd_data.get("cumulative_volume_delta")
+                rec_10 = cvd_data.get("recent_10_bar_delta")
+                pressure_pct = cvd_data.get("delta_pressure_pct")
+                d_trend = cvd_data.get("delta_trend")
+                d_exhaustion = cvd_data.get("delta_exhaustion")
+                exh_signal = cvd_data.get("exhaustion_signal")
+                last_tick = cvd_data.get("last_tick_time")
+                mkt_status = cvd_data.get("market_status")
+
+                footprint_line = (
+                    f"Measured M5 Footprint: Cumulative Delta = {cum_delta:+.1f} | "
+                    f"10-Bar Delta Velocity = {rec_10:+.1f} ({pressure_pct:+.1f}%) | "
+                    f"Delta Trend = {d_trend} | Delta Exhaustion = {d_exhaustion} | "
+                    f"Signal = {exh_signal} | Last Tick = {last_tick} ({mkt_status})."
+                )
+            else:
+                footprint_line = f"Measured M5 Footprint: UNAVAILABLE ({cvd_data.get('status', 'DATA_UNAVAILABLE')})."
+
             direct_ans = (
                 f"Measured Cumulative Volume Delta (CVD) & Microstructure Analysis for {sym}:\n"
-                f"1) Measured M5 Footprint: Cumulative Delta = {m5_cum:+.1f} | 10-Bar Velocity = {m5_vel:+.1f} | Divergence Status = {m5_div}.\n"
-                f"2) Institutional Delta Implication: When price pushes into resistance while M5 CVD prints negative delta divergence ({m5_div}), aggressive market buyers are being passively absorbed by institutional limit sellers.\n"
+                f"1) {footprint_line}\n"
+                f"2) Institutional Delta Implication: When price pushes into resistance while M5 CVD prints negative delta divergence ({cvd_data.get('exhaustion_signal', 'Divergence')}), aggressive market buyers are being passively absorbed by institutional limit sellers.\n"
                 f"3) Long Setup Implication: Buying directly into an unmitigated Bearish FVG under Bearish Delta Divergence has an empirical win rate of 0.0% in the desk's ledger (e.g. Reference Ticket #530998080 lost -$299.06 / -19.94R in 101s). Never enter long until aggressive seller exhaustion confirms an absorption stall at 50% Consequent Encroachment."
             )
 
