@@ -36,7 +36,7 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 class ProximaGate:
     """Async/HTTP Client to Proxima Gateway on Port 3210."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 6.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 65.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -44,14 +44,14 @@ class ProximaGate:
         """Check if Proxima Desktop server is online."""
         try:
             req = urllib.request.Request(f"{self.http_url}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=1.5) as resp:
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
                 return resp.status == 200
         except Exception:
             return False
 
     def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
-        """Send mandatory research query to Proxima tools with multi-model fallback and retries."""
-        models_to_try = ["3.5-flash", "gemini", "auto"]
+        """Send mandatory research query to Proxima tools with 65s timeout, multi-model fallback and retries."""
+        models_to_try = ["3.5-flash", "gemini", "chatgpt", "auto"]
         last_err = None
         
         for m in models_to_try:
@@ -83,6 +83,8 @@ class ProximaGate:
                         }
                 except Exception as e:
                     last_err = str(e)
+                    import time
+                    time.sleep(0.5)
                     
         return {
             "status": f"OFFLINE_ERROR ({last_err})",
