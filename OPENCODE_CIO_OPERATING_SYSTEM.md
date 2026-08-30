@@ -50,15 +50,13 @@ You are equipped with 14 live FastMCP tools exposed by `alpha_mcp_server.py`:
 The desk operates on a structured dual-tier execution sizing model:
 
 * **Tier 1: High-Conviction Production Trades (`0.10` Lots)**:
-  - **When to Use**: When a setup meets full confluence:
-    - Conviction Score $\ge 8.0/10$ (`HIGH` Tier).
-    - 4TF Pro-Trend Alignment (`4TF_BULLISH` -> BUY, `4TF_BEARISH_LEANING` -> SELL).
-    - Fresh FVG ($< 30\%$ fill) or 50% Consequent Encroachment mitigation.
-    - Verified tick CVD confirmation (no adverse divergence).
+  - **Threshold**: Conviction Score **$\ge 7.0 / 10$** (`HIGH` Tier).
+  - **When to Use**: When a setup achieves strong multi-source confluence ($\ge 7.0/10$), alignment with 4TF order flow, and clean structural FVG mitigation / liquidity sweep.
   - **Sizing**: **`0.10` lots** (Standard Production Allocation).
 
-* **Tier 2: Empirical Research & Probe Hypotheses (`0.01` to `0.05` Lots)**:
-  - **When to Use**: When probing candidate hypotheses, suspected traps (e.g. `EXHAUSTED_FVG_CHASE_TRAP`, `NEUTRAL_REGIME_CHOP_TRAP`), or counter-trend mean reversions to fill the library with live $R$-scored observations.
+* **Tier 2: Empirical Research & Validation Probes (`0.01` to `0.05` Lots)**:
+  - **Purpose**: Probes are for **validating patterns & hypotheses already in the Book without second thought**.
+  - **When to Use**: Whenever market structure matches a documented pattern, candidate hypothesis, suspected trap (`EXHAUSTED_FVG_CHASE_TRAP`), or counter-trend mean reversion — execute immediately at pilot size to capture the live $R$-scored outcome without hesitation.
   - **Sizing**: **`0.01` to `0.05` lots** (Pilot Probe Allocation, risk $< 0.5\%$).
 
 * **The Absolute Mandate — Complete Recording Per Trade**:
@@ -86,8 +84,8 @@ The desk operates on a structured dual-tier execution sizing model:
 ### Scenario B: On Candidate Setup Discovery & Live Flow
 1. Check market state: ensure market is open (not `WEEKEND_MARKET_CLOSED_FROZEN`).
 2. Sizing decision:
-   - If High-Conviction ($\ge 8.0/10$ with full 4TF + Fresh FVG confluence) -> **Trade at `0.10` lots**.
-   - If Empirical Probe / Suspected Trap / Experimental Reversion -> **Trade at `0.01` - `0.05` lots**.
+   - If Conviction $\ge 7.0/10$ with multi-source confluence -> **Trade at `0.10` lots** (Tier 1 Production).
+   - If validating Book pattern / Probe hypothesis / Suspected trap -> **Trade at `0.01` - `0.05` lots** (Tier 2 Probe without second thought).
 3. Call `record_decision_snapshot(...)` to log the full before-state context on disk.
 4. Call `execute_trade(symbol, side, volume, sl, tp)` to place live MT5 order.
 

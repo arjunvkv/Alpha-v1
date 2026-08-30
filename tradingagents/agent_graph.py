@@ -243,7 +243,7 @@ class BullBearDebater:
             "bear_points": bear_points,
             "is_regime_conflict": is_regime_conflict,
             "institutional_risk_warning": len(bear_points) > 0,
-            "conviction": "HIGH" if consensus_score >= 8.0 else "MEDIUM" if consensus_score >= 6.0 else "LOW",
+            "conviction": "HIGH" if consensus_score >= 7.0 else "MEDIUM" if consensus_score >= 5.0 else "LOW",
             "score_composition": {
                 "technical_score": tech_score,
                 "fundamental_cot_score": fund_score,
