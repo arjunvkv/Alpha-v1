@@ -278,13 +278,64 @@ class UnifiedLearningMemory:
     def get_pattern(self, symbol: str, pattern_name: str) -> Optional[Dict[str, Any]]: return self._load()["patterns"].get(_norm(symbol, pattern_name))
 
     def search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
-        q = (query or "").lower(); results = []
-        for pat in self._load()["patterns"].values():
-            hay = " ".join([str(pat.get("symbol", "")), str(pat.get("pattern_name", "")), str(pat.get("description", "")), json.dumps(pat.get("observations", []), ensure_ascii=False)]).lower()
-            if q in hay:
-                results.append(self._pattern_response(pat, "MATCH"))
-                if len(results) >= max_results: break
-        return {"status": "SUCCESS", "query": query, "results": results, "count": len(results)}
+        raw_q = (query or "").strip()
+        if not raw_q:
+            return {"status": "SUCCESS", "query": query, "results": [], "count": 0}
+            
+        import re
+        q_lower = raw_q.lower()
+        stop_words = {"the", "a", "an", "for", "in", "to", "of", "and", "or", "is", "at", "by", "from", "with", "into", "below", "above", "after", "under", "on", "vs", "what", "how", "does", "are"}
+        q_clean = re.sub(r"[^a-zA-Z0-9_\-\s]", " ", q_lower)
+        tokens = [t for t in q_clean.split() if len(t) >= 2 and t not in stop_words]
+        compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
+        
+        scored_results = []
+        for pat in self._load().get("patterns", {}).values():
+            if not isinstance(pat, dict):
+                continue
+            p_sym = str(pat.get("symbol", "")).lower()
+            p_name = str(pat.get("pattern_name", "")).lower()
+            p_id = str(pat.get("pattern_id", "")).lower()
+            p_desc = str(pat.get("description", "")).lower()
+            p_obs = json.dumps(pat.get("observations", []), ensure_ascii=False).lower()
+            p_out = json.dumps(pat.get("outcomes", []), ensure_ascii=False).lower()
+            
+            hay = f"{p_sym} {p_name} {p_id} {p_desc} {p_obs} {p_out}"
+            hay_compressed = re.sub(r"[^a-zA-Z0-9]", "", hay)
+            
+            score = 0
+            if q_lower in hay:
+                score += 100
+            elif compressed_query and compressed_query in hay_compressed:
+                score += 80
+                
+            name_corpus = f"{p_name} {p_id}"
+            name_compressed = re.sub(r"[^a-zA-Z0-9]", "", name_corpus)
+            matched_tokens = 0
+            for t in tokens:
+                if t in name_corpus:
+                    score += 25
+                    matched_tokens += 1
+                elif t in name_compressed:
+                    score += 20
+                    matched_tokens += 1
+                elif t in hay:
+                    score += 8
+                    matched_tokens += 1
+                elif t in hay_compressed:
+                    score += 5
+                    matched_tokens += 1
+            
+            if tokens and matched_tokens == len(tokens):
+                score += 30
+                
+            if score > 0:
+                scored_results.append((score, matched_tokens, pat))
+                
+        scored_results.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        top_pats = [self._pattern_response(item[2], "MATCH") for item in scored_results[:max_results]]
+        
+        return {"status": "SUCCESS", "query": query, "results": top_pats, "count": len(top_pats)}
 
     def all_patterns(self) -> List[Dict[str, Any]]: return list(self._load()["patterns"].values())
 

@@ -469,32 +469,68 @@ class PatternBookManager:
     def search_book(self, query: str, max_results: int = 15) -> Dict[str, Any]:
         meta = self._get_metadata()
         active_page = meta.get("active_page", 1)
-        q_lower = query.strip().lower()
-        results = []
+        raw_q = (query or "").strip()
+        if not raw_q:
+            return {"status": "SUCCESS", "query": query, "matches_found": 0, "results": []}
 
+        import re
+        q_lower = raw_q.lower()
+        stop_words = {"the", "a", "an", "for", "in", "to", "of", "and", "or", "is", "at", "by", "from", "with", "into", "below", "above", "after", "under", "on", "vs", "what", "how", "does", "are"}
+        q_clean = re.sub(r"[^a-zA-Z0-9_\-\s]", " ", q_lower)
+        tokens = [t for t in q_clean.split() if len(t) >= 2 and t not in stop_words]
+        compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
+
+        scored_results = []
         for p in range(1, active_page + 1):
             page_path = self._get_page_filename(p)
             if os.path.exists(page_path):
                 with open(page_path, "r", encoding="utf-8") as f:
                     lines = f.readlines()
                 for line_idx, line in enumerate(lines, 1):
-                    if q_lower in line.lower() and line.strip().startswith("- **["):
-                        results.append({
-                            "page": p,
-                            "line_number": line_idx,
-                            "entry": line.strip(),
-                            "page_link": f"file:///C:/Trading/Alpha/logs/pattern_book/page_{p:03d}.md#L{line_idx}"
-                        })
-                        if len(results) >= max_results:
-                            break
-            if len(results) >= max_results:
-                break
+                    line_str = line.strip()
+                    if not line_str.startswith("- **["):
+                        continue
+                    line_lower = line_str.lower()
+                    line_compressed = re.sub(r"[^a-zA-Z0-9]", "", line_lower)
+                    
+                    score = 0
+                    if q_lower in line_lower:
+                        score += 100
+                    elif compressed_query and compressed_query in line_compressed:
+                        score += 80
+                    
+                    matched_tokens = 0
+                    for t in tokens:
+                        if t in line_lower:
+                            score += 15
+                            matched_tokens += 1
+                        elif t in line_compressed:
+                            score += 10
+                            matched_tokens += 1
+                    
+                    if tokens and matched_tokens == len(tokens):
+                        score += 25
+                        
+                    if score > 0:
+                        scored_results.append((
+                            score,
+                            matched_tokens,
+                            {
+                                "page": p,
+                                "line_number": line_idx,
+                                "entry": line_str,
+                                "page_link": f"file:///C:/Trading/Alpha/logs/pattern_book/page_{p:03d}.md#L{line_idx}"
+                            }
+                        ))
+
+        scored_results.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        top_results = [item[2] for item in scored_results[:max_results]]
 
         return {
             "status": "SUCCESS",
             "query": query,
-            "matches_found": len(results),
-            "results": results
+            "matches_found": len(top_results),
+            "results": top_results
         }
 
     def get_book_index(self) -> Dict[str, Any]:
