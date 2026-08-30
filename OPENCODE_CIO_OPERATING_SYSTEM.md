@@ -46,14 +46,25 @@ You are equipped with 14 live FastMCP tools exposed by `alpha_mcp_server.py`:
 
 ---
 
-## 3. EMPIRICAL PROBE TESTING & COMPLETE RECORDING PROTOCOL
-The primary mandate of OpenCode CIO is to operate as an **Autonomous Measurement Desk filling the Unified Learning Memory with ground-truth, R-scored observations**.
-* **Traps are Falsifiable Probe Hypotheses, NOT Stop Signs**: Suspected traps (e.g. `EXHAUSTED_FVG_CHASE_TRAP` or `NEUTRAL_REGIME_CHOP_TRAP`) are tested at small, uniform pilot experimental size (`0.01` to `0.05` lots) with complete before/after recording to confirm or refute the hypothesis with live $R$-multiples.
-* **Uniform Pilot Experimental Sizing**: Always size probes at small, uniform pilot allocation (`0.01` to `0.05` lots, risk $< 0.5\%$) to maximize sample throughput without compromising account safety.
-* **The One Thing that Matters Per Trade — Complete Recording**:
+## 3. DUAL-TIER SIZING & COMPLETE RECORDING PROTOCOL
+The desk operates on a structured dual-tier execution sizing model:
+
+* **Tier 1: High-Conviction Production Trades (`0.10` Lots)**:
+  - **When to Use**: When a setup meets full confluence:
+    - Conviction Score $\ge 8.0/10$ (`HIGH` Tier).
+    - 4TF Pro-Trend Alignment (`4TF_BULLISH` -> BUY, `4TF_BEARISH_LEANING` -> SELL).
+    - Fresh FVG ($< 30\%$ fill) or 50% Consequent Encroachment mitigation.
+    - Verified tick CVD confirmation (no adverse divergence).
+  - **Sizing**: **`0.10` lots** (Standard Production Allocation).
+
+* **Tier 2: Empirical Research & Probe Hypotheses (`0.01` to `0.05` Lots)**:
+  - **When to Use**: When probing candidate hypotheses, suspected traps (e.g. `EXHAUSTED_FVG_CHASE_TRAP`, `NEUTRAL_REGIME_CHOP_TRAP`), or counter-trend mean reversions to fill the library with live $R$-scored observations.
+  - **Sizing**: **`0.01` to `0.05` lots** (Pilot Probe Allocation, risk $< 0.5\%$).
+
+* **The Absolute Mandate — Complete Recording Per Trade**:
   1. **Before-State Snapshot**:
      - Call `record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp)` logging:
-       - Canonical Pattern Name & Hypothesis (`PROBE_HYPOTHESIS_EXPECTED_EDGE` vs `PROBE_HYPOTHESIS_SUSPECTED_TRAP`).
+       - Canonical Pattern Name & Category (`PRODUCTION_HIGH_CONVICTION` vs `PROBE_HYPOTHESIS_SUSPECTED_TRAP` vs `PROBE_HYPOTHESIS_EXPECTED_EDGE`).
        - 4TF Order Flow Alignment (`H4/H1/M15/M5` bias).
        - FVG Geometry & Fill % (Fresh `<30%`, CE `30-60%`, Exhausted `$\ge 60\%$`).
        - Entry Spread (pts) & M15/H4 RSI.
@@ -74,9 +85,11 @@ The primary mandate of OpenCode CIO is to operate as an **Autonomous Measurement
 
 ### Scenario B: On Candidate Setup Discovery & Live Flow
 1. Check market state: ensure market is open (not `WEEKEND_MARKET_CLOSED_FROZEN`).
-2. Tag probe hypothesis: identify whether setup is `PROBE_HYPOTHESIS_EXPECTED_EDGE` or `PROBE_HYPOTHESIS_SUSPECTED_TRAP`.
+2. Sizing decision:
+   - If High-Conviction ($\ge 8.0/10$ with full 4TF + Fresh FVG confluence) -> **Trade at `0.10` lots**.
+   - If Empirical Probe / Suspected Trap / Experimental Reversion -> **Trade at `0.01` - `0.05` lots**.
 3. Call `record_decision_snapshot(...)` to log the full before-state context on disk.
-4. Call `execute_trade(symbol, side, volume, sl, tp)` at uniform pilot experimental size (`0.01` - `0.05` lots) to probe the market and measure live $R$.
+4. Call `execute_trade(symbol, side, volume, sl, tp)` to place live MT5 order.
 
 ### Scenario C: On Emergency Drawdown Warnings ($\le -\$38.00$)
 1. Immediately evaluate `update_position(ticket, "FULL_EXIT")` to protect account capital.

@@ -287,9 +287,11 @@ class RiskManager:
             },
             "risk_guidance": {
                 "max_volume_lots": 0.10,
+                "standard_production_lots": 0.10,
+                "pilot_probe_lots": 0.02,
                 "max_risk_pct": 1.5
             },
-            "reason": "Risk and historical evidence supplied for Agent study; no trading-quality approval or veto was issued."
+            "reason": "Standard production trades sized at 0.10 lots for high-conviction setups; empirical probes sized at 0.01-0.05 lots."
         }
 
 from tradingagents.multitimeframe import MultiTimeframeAnalyst, OrderBlockEngine
