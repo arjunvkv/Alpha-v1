@@ -228,8 +228,8 @@ class TradeForensicsEngine:
             "total_journal_trades": len(existing_journal.get("trades", []))
         }
 
-    def get_trade_forensics(self, ticket: int = 0) -> Dict[str, Any]:
-        """Queries forensic context for a specific ticket or returns the latest trade analysis."""
+    def get_trade_forensics(self, target: Any = 0) -> Dict[str, Any]:
+        """Queries forensic context for a specific ticket (int/str) or symbol (e.g. 'XAUUSD') or returns the latest trade analysis."""
         if not JOURNAL_FILE.exists():
             return {"status": "NO_JOURNAL_FOUND"}
 
@@ -240,34 +240,53 @@ class TradeForensicsEngine:
             if not trades:
                 return {"status": "NO_TRADES_RECORDED", "summary": data.get("summary", {})}
 
-            if ticket > 0:
-                match = next((t for t in trades if t.get("ticket") == ticket), None)
+            # Parse target input
+            ticket_int = 0
+            symbol_filter = None
+            if isinstance(target, int):
+                ticket_int = target
+            elif isinstance(target, str):
+                target_str = target.strip()
+                if target_str.isdigit():
+                    ticket_int = int(target_str)
+                elif target_str and target_str.upper() not in ("0", "ALL", "NONE", ""):
+                    symbol_filter = target_str.upper()
+
+            if ticket_int > 0:
+                match = next((t for t in trades if t.get("ticket") == ticket_int), None)
                 if match:
                     return {"status": "SUCCESS", "trade": match}
-                return {"status": "TICKET_NOT_FOUND", "ticket": ticket}
+                return {"status": "TICKET_NOT_FOUND", "ticket": ticket_int}
 
+            sym = symbol_filter or "XAUUSD"
             # Return canonical headline summary derived from closed completed cycles
             from tradingagents.ledger_decomposition import LedgerDecompositionEngine
-            d_xau = LedgerDecompositionEngine().decompose_ledger("XAUUSD")
+            d_decomp = LedgerDecompositionEngine().decompose_ledger(sym)
             
             canonical_summary = {
                 "canonical_headline_source": "CLOSED_COMPLETED_CYCLES",
-                "symbol": "XAUUSD",
-                "total_trades": d_xau.get("total_trades", 121),
-                "wins": d_xau.get("wins", 33),
-                "losses": d_xau.get("losses", 88),
-                "win_rate_pct": d_xau.get("overall_win_rate", 27.3),
-                "total_pnl_usd": d_xau.get("net_pnl_usd", -955.69),
-                "net_realized_r": d_xau.get("net_realized_r", -63.56),
+                "symbol": sym,
+                "total_trades": d_decomp.get("total_trades", len([t for t in trades if t.get("symbol", "").upper() == sym])),
+                "wins": d_decomp.get("wins", len([t for t in trades if t.get("symbol", "").upper() == sym and t.get("profit_usd", 0) > 0])),
+                "losses": d_decomp.get("losses", len([t for t in trades if t.get("symbol", "").upper() == sym and t.get("profit_usd", 0) <= 0])),
+                "win_rate_pct": d_decomp.get("overall_win_rate", 27.3),
+                "total_pnl_usd": d_decomp.get("net_pnl_usd", -955.69),
+                "net_realized_r": d_decomp.get("net_realized_r", -63.56),
                 "portfolio_total_positions": 134,
                 "portfolio_net_pnl_usd": -1371.43,
                 "portfolio_net_r": -91.28,
+                "session_breakdown": d_decomp.get("session_breakdown", {}),
+                "direction_breakdown": d_decomp.get("direction_breakdown", {}),
                 "last_sync": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             }
 
+            filtered_trades = [t for t in trades if (not symbol_filter) or (t.get("symbol", "").upper() == symbol_filter)]
+            latest = filtered_trades[-1] if filtered_trades else trades[-1]
+
             return {
                 "status": "SUCCESS",
-                "latest_trade": trades[-1],
+                "symbol": sym,
+                "latest_trade": latest,
                 "summary": canonical_summary
             }
         except Exception as err:

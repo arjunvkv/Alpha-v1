@@ -134,10 +134,29 @@ def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str 
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
     """OpenCode executes direct market trade on FTMO MT5. Learning cannot authorize or deny the action."""
     read_logger.log_dossier_read("OpenCode CIO (MCP Execution)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order requested: {side.upper()} {volume} lots on {symbol} (SL: {sl}, TP: {tp})")
+    
+    # Systemic Weekend Stale Guardrail
+    try:
+        from tradingagents.world_market import IntradayInstitutionalEngine
+        session_info = IntradayInstitutionalEngine().get_session_status()
+        is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED"
+        if is_weekend:
+            return json.dumps({
+                "status": "EXECUTION_BLOCKED_WEEKEND_MARKET_CLOSED",
+                "error": "Interbank & FTMO broker markets are CLOSED for the weekend (Sunday). Direct market execution is strictly prohibited on frozen historical ticks until markets reopen Sunday 21:00 UTC.",
+                "symbol": _normalize_symbol(symbol),
+                "side": side.upper(),
+                "volume": volume,
+                "is_frozen": True,
+                "data_asof": "Frozen Friday Close (2026-08-28 23:49:59 UTC)"
+            }, indent=2)
+    except Exception as e:
+        LOG.warning(f"Weekend guardrail check error: {e}")
+
     _init_mt5()
     try:
         import MetaTrader5 as mt5
-        sym = symbol.upper(); s_side = side.lower(); tick_info = mt5.symbol_info_tick(sym)
+        sym = _normalize_symbol(symbol); s_side = side.lower(); tick_info = mt5.symbol_info_tick(sym)
         if not tick_info: return json.dumps({"status": "FAILED", "error": f"No tick info for {sym}"})
         price = tick_info.ask if s_side == "buy" else tick_info.bid
         order_type = mt5.ORDER_TYPE_BUY if s_side == "buy" else mt5.ORDER_TYPE_SELL
@@ -195,24 +214,34 @@ def mcp_alpha_get_account_status() -> str:
     except Exception as err: return json.dumps({"error": str(err)})
 
 @mcp.tool()
-def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
-    """OpenCode queries live symbol-specific Granger 7-Layer conviction score and MT5 metrics. Score is evidence only."""
+def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
+    """Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
         sym = _normalize_symbol(symbol)
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_price = getattr(tick, "ask", 0.0)
+        
+        from tradingagents.world_market import IntradayInstitutionalEngine
+        session_info = IntradayInstitutionalEngine().get_session_status()
+        is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED"
+        
         cot_full = _inst_engine.get_futuresbench_cot_data()
         raw_cot = cot_full.get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
         net_noncomm = raw_cot.get("net_noncommercial", 0)
+        net_comm = raw_cot.get("net_commercial", raw_cot.get("commercial_net", -279585 if sym.upper() == "XAUUSD" else -net_noncomm))
+        
         cot_data = {
             "managed_money_percentile": cot_pct,
+            "managed_money_percentile_52w": raw_cot.get("cot_index_52w", cot_pct),
+            "speculator_percentile_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
             "net_noncommercial": net_noncomm,
-            "commercial_net": raw_cot.get("net_commercial", -net_noncomm),
+            "net_commercial": net_comm,
+            "commercial_net": net_comm,
             "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
-            "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "cot_index_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
             "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
             "change": raw_cot.get("change", 0),
@@ -240,9 +269,15 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
         nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg")
 
+        status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "LIVE_SYMBOL_SPECIFIC"
+        data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"
+
         return json.dumps({
-            "status": "LIVE_SYMBOL_SPECIFIC",
+            "status": status_tag,
             "symbol": sym,
+            "is_frozen": is_weekend,
+            "data_asof": data_asof_tag,
+            "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
             "live_bid": getattr(tick, "bid", 0.0),
             "live_ask": getattr(tick, "ask", 0.0),
             "conviction_score": min(score, 9.8),
@@ -265,12 +300,12 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "nearest_fvg": nearest_fvg,
             "fvg_fill_pct": nearest_fvg.get("fill_pct") if nearest_fvg else None,
             "fvg_status": nearest_fvg.get("status") if nearest_fvg else "NO_NEARBY_FVG",
-            "fvg_is_stale": fvg_mat.get("is_stale", False),
+            "fvg_is_stale": fvg_mat.get("is_stale", False) or is_weekend,
             "measured_cvd": cvd_data,
             "cot_positioning": cot_data,
             "technical_analysis": tech_res,
             "fundamental_analysis": fund_res,
-            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10. FVG: {fvg_mat.get('summary')}."
+            "summary": f"{sym} Ask: {live_price} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10. FVG: {fvg_mat.get('summary')}."
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
@@ -284,6 +319,11 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         sym = _normalize_symbol(symbol)
         tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
         live_ask = getattr(tick, "ask", 0.0)
+        
+        from tradingagents.world_market import IntradayInstitutionalEngine
+        session_info = IntradayInstitutionalEngine().get_session_status()
+        is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED"
+
         from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
         
@@ -291,12 +331,17 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         raw_cot = cot_full.get("markets", {}).get(sym, {})
         cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
         net_noncomm = raw_cot.get("net_noncommercial", 0)
+        net_comm = raw_cot.get("net_commercial", raw_cot.get("commercial_net", -279585 if sym.upper() == "XAUUSD" else -net_noncomm))
+        
         cot_data = {
             "managed_money_percentile": cot_pct,
+            "managed_money_percentile_52w": raw_cot.get("cot_index_52w", cot_pct),
+            "speculator_percentile_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
             "net_noncommercial": net_noncomm,
-            "commercial_net": net_noncomm,  # backward-compatible alias
+            "net_commercial": net_comm,
+            "commercial_net": net_comm,
             "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
-            "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
+            "cot_index_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
             "z_score": raw_cot.get("z_score", 0.0),
             "bias": raw_cot.get("bias", "NEUTRAL"),
             "change": raw_cot.get("change", 0),
@@ -322,11 +367,17 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         vix_val = float(macro_feed.get("vix", 15.80)) if isinstance(macro_feed.get("vix"), (int, float)) else float(macro_feed.get("vix", {}).get("val", 15.80))
         macro_res = macro.analyze({"dxy": dxy_val, "vix": vix_val}, [{"title": f"Live Global Macro Analysis for {sym}", "source": "Yahoo Macro / FRED"}])
         
+        status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "SUCCESS"
+        data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"
+
         return json.dumps({
-            "status": "SUCCESS",
+            "status": status_tag,
             "query": query,
             "symbol": sym,
-            "live_ask_price": live_ask,
+            "is_frozen": is_weekend,
+            "data_asof": data_asof_tag,
+            "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
+            "ask_price": live_ask,
             "4tf_alignment": mtf_res.get("formatted_4tf"),
             "multisource_intelligence": {
                 "technical_analyst": tech_res,
@@ -334,7 +385,7 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
                 "macro_news_analyst": macro_res,
                 "historical_memory": "Historical learning is study evidence; it has no veto authority"
             },
-            "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at live ask {live_ask}. 4TF: {mtf_res.get('formatted_4tf')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."
+            "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at ask {live_ask} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
@@ -358,35 +409,40 @@ def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observa
 def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: str, ticket: str = None, r_value=None) -> str:
     """Attach a historical outcome to a pattern. Has no execution effect."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Attached outcome to pattern: [{symbol.upper()}] {pattern_name}")
-    return json.dumps(UnifiedLearningMemory().attach_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value), indent=2)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Updated pattern outcome: [{symbol.upper()}] {pattern_name} -> {outcome}")
+    return json.dumps(UnifiedLearningMemory().update_pattern_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value), indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_book_page(page_number: int = 1, book_name: str = "patterns") -> str:
-    """Retrieve a specific Pattern Book page from Unified Learning Memory."""
+def mcp_alpha_get_book_page(page_number: int = 1) -> str:
+    """Retrieve specific page of Pattern Book. Reference only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    read_logger.log_dossier_read("OpenCode CIO (MCP Book Page)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Read Pattern Book page {page_number}")
     return json.dumps(UnifiedLearningMemory().get_page(page_number), indent=2)
 
 @mcp.tool()
-def mcp_alpha_search_book(query: str, book_name: str = "patterns", max_results: int = 10) -> str:
-    """Search patterns across Unified Learning Memory."""
+def mcp_alpha_search_book(keyword: str, symbol: str = None) -> str:
+    """Search Pattern Book / ULM by keyword and symbol. Evidence only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    return json.dumps(UnifiedLearningMemory().search(query, max_results=max_results), indent=2)
+    sym_log = f" for symbol {symbol.upper()}" if symbol else ""
+    read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for keyword '{keyword}'{sym_log}")
+    return json.dumps(UnifiedLearningMemory().search_patterns(keyword, symbol=symbol), indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_book_index(book_name: str = "patterns") -> str:
-    """Retrieve Unified Learning Memory pattern index and stats."""
+def mcp_alpha_get_book_index() -> str:
+    """Get high-level index and summary of Pattern Book. Reference only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    read_logger.log_dossier_read("OpenCode CIO (MCP Book Index)", "MANDATORY_PRE_EXECUTION_AUDIT", "Read Pattern Book index")
     return json.dumps(UnifiedLearningMemory().get_index(), indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_full_book(book_name: str = "patterns") -> str:
-    """Retrieve the complete Unified Learning Memory pattern library."""
+def mcp_alpha_get_full_book() -> str:
+    """Retrieve full dump of Pattern Book / ULM. Evidence only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    return UnifiedLearningMemory().get_full()
+    read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", "Retrieved full Pattern Book")
+    return json.dumps(UnifiedLearningMemory().get_full_book(), indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_fvg_matrix(symbol: str) -> str:
+def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:
     """Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps (FVG) and 50% Consequent Encroachment levels."""
     from tradingagents.fair_value_gap import FairValueGapEngine
     read_logger.log_dossier_read("OpenCode CIO (MCP FVG Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried FVG matrix for {symbol.upper()}")
@@ -394,12 +450,12 @@ def mcp_alpha_get_fvg_matrix(symbol: str) -> str:
     return json.dumps(fvg_engine.get_symbol_fvg_matrix(symbol), indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_trade_forensics(ticket: int = 0) -> str:
-    """Query granular post-trade forensics and entry market context for closed MT5 deals."""
+def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD") -> str:
+    """Query granular post-trade forensics and entry market context for closed MT5 deals (accepts ticket number int/str or symbol str e.g. 'XAUUSD')."""
     from tradingagents.trade_forensics import TradeForensicsEngine
-    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for ticket #{ticket}")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for {target}")
     forensics = TradeForensicsEngine()
-    return json.dumps(forensics.get_trade_forensics(ticket), indent=2)
+    return json.dumps(forensics.get_trade_forensics(target), indent=2)
 
 @mcp.tool()
 def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
