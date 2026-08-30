@@ -446,7 +446,7 @@ def mcp_alpha_search_book(keyword: str, symbol: str = None) -> str:
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     sym_log = f" for symbol {symbol.upper()}" if symbol else ""
     read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for keyword '{keyword}'{sym_log}")
-    return json.dumps(UnifiedLearningMemory().search_patterns(keyword, symbol=symbol), indent=2)
+    return json.dumps(UnifiedLearningMemory().search(keyword, symbol=symbol), indent=2)
 
 @mcp.tool()
 def mcp_alpha_get_book_index() -> str:
@@ -460,7 +460,7 @@ def mcp_alpha_get_full_book() -> str:
     """Retrieve full dump of Pattern Book / ULM. Evidence only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", "Retrieved full Pattern Book")
-    return json.dumps(UnifiedLearningMemory().get_full_book(), indent=2)
+    return UnifiedLearningMemory().get_full()
 
 @mcp.tool()
 def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:
@@ -963,6 +963,26 @@ def get_live_world_events(category: str = "ALL") -> str:
     return mcp_alpha_get_live_world_events(category)
 
 @mcp.tool()
+def search_book(keyword: str, symbol: str = None) -> str:
+    """Search Pattern Book / ULM by keyword and symbol."""
+    return mcp_alpha_search_book(keyword, symbol)
+
+@mcp.tool()
+def get_book_index() -> str:
+    """Get high-level index and summary of Pattern Book."""
+    return mcp_alpha_get_book_index()
+
+@mcp.tool()
+def get_book_page(page_number: int = 1) -> str:
+    """Read a specific page from Pattern Book."""
+    return mcp_alpha_get_book_page(page_number)
+
+@mcp.tool()
+def get_full_book() -> str:
+    """Retrieve full dump of Pattern Book / ULM."""
+    return mcp_alpha_get_full_book()
+
+@mcp.tool()
 def list_desk_tools() -> str:
     """Live dynamic discovery of ALL available FastMCP tools and their capabilities in the desk daemon."""
     tools_list = [
@@ -973,6 +993,10 @@ def list_desk_tools() -> str:
         {"name": "get_ledger_decomposition", "description": "Decompose 121-trade history into condition base rates (Session x Direction x Spread x FVG Fill%)."},
         {"name": "get_multi_instrument_ledger", "description": "Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD)."},
         {"name": "get_live_microstructure", "description": "Live spread in pts, M1 tick velocity (t/m), order book depth imbalance, and CVD posture."},
+        {"name": "search_book", "description": "Search Pattern Book / ULM by keyword and symbol."},
+        {"name": "get_book_index", "description": "Get high-level index and summary of Pattern Book."},
+        {"name": "get_book_page", "description": "Read a specific page from Pattern Book."},
+        {"name": "get_full_book", "description": "Retrieve full dump of Pattern Book / ULM."},
         {"name": "backtest_thesis", "description": "Natural MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters."},
         {"name": "ask_librarian", "description": "Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade)."},
         {"name": "query_analyst_desk", "description": "Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear)."},
@@ -1007,6 +1031,10 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_ledger_decomposition": lambda: mcp_alpha_get_ledger_decomposition(args.get("symbol", "XAUUSD")),
         "get_multi_instrument_ledger": mcp_alpha_get_multi_instrument_ledger,
         "get_live_microstructure": lambda: mcp_alpha_get_live_microstructure(args.get("symbol", "XAUUSD")),
+        "search_book": lambda: mcp_alpha_search_book(args.get("keyword", args.get("query", "")), args.get("symbol")),
+        "get_book_index": mcp_alpha_get_book_index,
+        "get_book_page": lambda: mcp_alpha_get_book_page(args.get("page_number", 1)),
+        "get_full_book": mcp_alpha_get_full_book,
         "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query", ""), args.get("symbol", "XAUUSD"), args.get("timeframe", "M5"), args.get("bars", 60), args.get("offset", 0)),
         "ask_librarian": lambda: mcp_alpha_ask_librarian(args.get("query", ""), args.get("symbol", "XAUUSD")),
         "query_analyst_desk": lambda: mcp_alpha_query_analyst_desk(args.get("query", ""), args.get("symbol", "XAUUSD")),

@@ -321,19 +321,21 @@ class UnifiedLearningMemory:
         raw_q = (query or "").strip()
         if not raw_q:
             return {"status": "SUCCESS", "query": query, "results": [], "count": 0}
-            
-        import re
-        q_lower = raw_q.lower()
-        stop_words = {"the", "a", "an", "for", "in", "to", "of", "and", "or", "is", "at", "by", "from", "with", "into", "below", "above", "after", "under", "on", "vs", "what", "how", "does", "are"}
-        q_clean = re.sub(r"[^a-zA-Z0-9_\-\s]", " ", q_lower)
-        tokens = [t for t in q_clean.split() if len(t) >= 2 and t not in stop_words]
+    def search(self, query: str, max_results: int = 10, symbol: Optional[str] = None) -> Dict[str, Any]:
+        data = self._load()
+        patterns = data.get("patterns", {})
+        q_lower = query.lower()
         compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
+        tokens = [t for t in re.split(r"[\s_\-]+", q_lower) if t]
         
+        sym_filter = symbol.strip().upper() if symbol else None
         scored_results = []
-        for pat in self._load().get("patterns", {}).values():
+        for pat in patterns.values():
             if not isinstance(pat, dict):
                 continue
-            p_sym = str(pat.get("symbol", "")).lower()
+            p_sym = str(pat.get("symbol", "")).upper()
+            if sym_filter and p_sym and p_sym != sym_filter and p_sym != "ALL":
+                continue
             p_name = str(pat.get("pattern_name", "")).lower()
             p_id = str(pat.get("pattern_id", "")).lower()
             p_desc = str(pat.get("description", "")).lower()
@@ -375,7 +377,10 @@ class UnifiedLearningMemory:
         scored_results.sort(key=lambda x: (x[0], x[1]), reverse=True)
         top_pats = [self._pattern_response(item[2], "MATCH") for item in scored_results[:max_results]]
         
-        return {"status": "SUCCESS", "query": query, "results": top_pats, "count": len(top_pats)}
+        return {"status": "SUCCESS", "query": query, "symbol": sym_filter, "results": top_pats, "count": len(top_pats)}
+
+    search_patterns = search
+    get_full_book = lambda self: json.loads(self.get_full())
 
     def all_patterns(self) -> List[Dict[str, Any]]: return list(self._load()["patterns"].values())
 
