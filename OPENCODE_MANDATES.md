@@ -239,6 +239,13 @@ When forming ad-hoc hypotheses during live review (e.g. entering on velocity acc
 - **Empirical Grounding**: Backtest results provide real historical setup counts, win rates, realized R, and failure cluster takeaways to inform Agent conviction before taking execution risk.
 - **Usage**: Call `mcp_alpha_backtest_thesis(query="<thesis or setup description>", symbol="XAUUSD", timeframe="M5", bars=60)`.
 
+### 10.2. Absolute Data Transparency & Zero Internal Concealment (Constitutional Veto)
+
+1. **No Data Compression or Label Hiding**: No internal layer, adapter, daemon, or tool may filter, conceal, truncate, or abstract raw market data into opaque labels. OpenCode CIO must always receive full-fidelity ground-truth numbers, verbatim analytical arguments, measured CVD tick values, exact spread points, and full multi-timeframe matrices.
+2. **Zero Internal Blindspots**: No data may be trapped or gated at intermediate layers. When Proxima or the Local LLM are consulted, they must receive full-fidelity, unblinded market context, candle streams, and order flow metrics so all quantitative and qualitative reasoning is rooted in complete truth.
+3. **Auditability & Traceability**: Every tool response delivered to OpenCode CIO must be reproducible and auditable down to the exact tick, candle timestamp, and broker execution parameter.
+
+
 
 ## 11. Continuous Learning Cycle
 
