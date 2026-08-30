@@ -134,18 +134,19 @@ class LedgerDecompositionEngine:
 
             # Measured forensic context lookup (Item 2)
             j_trade = journal_map.get(pos_id, {})
-            f_ctx = j_trade.get("forensic_context", {})
+            f_ctx = j_trade.get("forensic_context")
+            f_ctx = f_ctx if isinstance(f_ctx, dict) and not f_ctx.get("historical_backfill") else {}
             raw_4tf = f_ctx.get("4tf_alignment")
             
-            if raw_4tf and isinstance(raw_4tf, str):
+            if raw_4tf and isinstance(raw_4tf, str) and raw_4tf != "UNKNOWN":
                 alignment_provenance = "MEASURED_FORENSIC_4TF"
                 if side == "BUY":
                     measured_alignment = "Pro-Trend" if "BULL" in raw_4tf.upper() else ("Counter-Trend" if "BEAR" in raw_4tf.upper() else "Neutral")
                 else:
                     measured_alignment = "Pro-Trend" if "BEAR" in raw_4tf.upper() else ("Counter-Trend" if "BULL" in raw_4tf.upper() else "Neutral")
             else:
-                measured_alignment = "UNMEASURED"
-                alignment_provenance = "UNMEASURED"
+                measured_alignment = "UNKNOWN / UNRECORDED"
+                alignment_provenance = "UNRECORDED"
 
             # FVG fill% bucket lookup (Item 1a)
             n_fvg = f_ctx.get("nearest_fvg", {})
@@ -158,7 +159,7 @@ class LedgerDecompositionEngine:
                 else:
                     fvg_bucket = "Exhausted/Chased (>=60% Fill)"
             else:
-                fvg_bucket = "No FVG Logged"
+                fvg_bucket = "UNKNOWN / UNRECORDED"
 
             # Spread bucket (Item 1b)
             spread_val = f_ctx.get("spread_pts")

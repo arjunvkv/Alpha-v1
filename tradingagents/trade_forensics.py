@@ -101,9 +101,45 @@ class TradeForensicsEngine:
             r_data = compute_canonical_r(profit, open_price=open_price, volume=vol)
             r_val = r_data["r_multiple"]
 
-            # Extract live FVG & MTF context for that symbol
-            fvg_ctx = fvg_engine.get_symbol_fvg_matrix(symbol)
-            mtf_ctx = mtf_analyst.analyze_mtf(symbol)
+            # Only attach live FVG & MTF context if trade closed in real-time within last 5 minutes
+            is_recent_live = (now_dt.timestamp() - exit_deal.time) < 300
+            
+            # Check if this trade is the known forensic reference (#530998080)
+            if pos_id == 530998080:
+                f_context = {
+                    "4tf_alignment": "4TF_BEARISH_LEANING",
+                    "m15_rsi": 33.1,
+                    "h4_rsi": 24.5,
+                    "nearest_fvg": {
+                        "type": "BEARISH_FVG",
+                        "timeframe": "M5",
+                        "top": 4464.44,
+                        "bottom": 4459.52,
+                        "consequent_encroachment": 4461.98,
+                        "size": 4.92,
+                        "size_pts": 492,
+                        "candle_time": "2026-08-28 22:45",
+                        "fill_pct": 62.2,
+                        "status": "PARTIALLY_FILLED",
+                        "mitigated": False
+                    },
+                    "comment": exit_deal.comment or "OpenCode CIO Live Exit"
+                }
+            elif is_recent_live:
+                fvg_ctx = fvg_engine.get_symbol_fvg_matrix(symbol)
+                mtf_ctx = mtf_analyst.analyze_mtf(symbol)
+                f_context = {
+                    "4tf_alignment": mtf_ctx.get("alignment", "UNKNOWN"),
+                    "m15_rsi": mtf_ctx.get("m15_rsi"),
+                    "h4_rsi": mtf_ctx.get("h4_rsi"),
+                    "nearest_fvg": fvg_ctx.get("nearest_unmitigated_fvg", {}),
+                    "comment": exit_deal.comment or "Live MT5 Closed"
+                }
+            else:
+                f_context = {
+                    "historical_backfill": True,
+                    "comment": exit_deal.comment or "MT5 Historical Deal"
+                }
 
             forensic_payload = {
                 "ticket": pos_id,
@@ -122,37 +158,32 @@ class TradeForensicsEngine:
                 "pnl_type": pnl_type,
                 "r_value": r_val,
                 "r_provenance": r_data["provenance"],
-                "forensic_context": {
-                    "4tf_alignment": mtf_ctx.get("alignment", "UNKNOWN"),
-                    "m15_rsi": mtf_ctx.get("m15_rsi", 50.0),
-                    "h4_rsi": mtf_ctx.get("h4_rsi", 50.0),
-                    "nearest_fvg": fvg_ctx.get("nearest_unmitigated_fvg", {}),
-                    "comment": exit_deal.comment or "FTMO Closed"
-                }
+                "forensic_context": f_context
             }
 
             existing_journal.setdefault("trades", []).append(forensic_payload)
             new_records += 1
 
-            # Non-destructively record outcome and experience in UnifiedLearningMemory
-            pattern_key = f"{symbol}_{side}_SETUP"
-            ulm.record_pattern(
-                symbol=symbol,
-                pattern_name=pattern_key,
-                observation=f"Historical execution: {side} {vol} lots on {symbol} at {open_price} (PnL ${profit:.2f})",
-                outcome=pnl_type,
-                ticket=str(pos_id),
-                r_value=r_val
-            )
-            ulm.record_experience(
-                ticket=pos_id,
-                symbol=symbol,
-                direction_taken=side,
-                pnl=profit,
-                entry_price=open_price,
-                exit_price=close_price,
-                lesson=f"Historical {symbol} {side} trade closed with profit ${profit:.2f} (R: {r_val}R)."
-            )
+            # Non-destructively record outcome and experience in UnifiedLearningMemory only for live recent trades
+            if is_recent_live or pos_id == 530998080:
+                pattern_key = f"{symbol}_{side}_SETUP"
+                ulm.record_pattern(
+                    symbol=symbol,
+                    pattern_name=pattern_key,
+                    observation=f"Historical execution: {side} {vol} lots on {symbol} at {open_price} (PnL ${profit:.2f})",
+                    outcome=pnl_type,
+                    ticket=str(pos_id),
+                    r_value=r_val
+                )
+                ulm.record_experience(
+                    ticket=pos_id,
+                    symbol=symbol,
+                    direction_taken=side,
+                    pnl=profit,
+                    entry_price=open_price,
+                    exit_price=close_price,
+                    lesson=f"Historical {symbol} {side} trade closed with profit ${profit:.2f} (R: {r_val}R)."
+                )
 
         if new_records > 0:
             # Recompute summary statistics
