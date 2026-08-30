@@ -10,6 +10,14 @@
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ],
       "enabled": true
+    },
+    "alpha": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+        "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
+      ],
+      "enabled": true
     }
   },
   "instructions": [

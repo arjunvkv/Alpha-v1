@@ -673,6 +673,81 @@ def mcp_alpha_get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
         return json.dumps({"status": "ERROR", "symbol": sym, "error": str(err)}, indent=2)
 
 
+# ======================================================================
+# DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
+# ======================================================================
+
+@mcp.tool()
+def get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
+    """Fetch complete institutional profile (POC/VAH/VAL, VWAP, DIX/GEX, Treasuries, Contract Specs, 4TF EMAs/RSI)."""
+    return mcp_alpha_get_full_institutional_profile(symbol)
+
+@mcp.tool()
+def get_account_status() -> str:
+    """Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states."""
+    return mcp_alpha_get_account_status()
+
+@mcp.tool()
+def execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
+    """Execute direct market buy/sell order on FTMO MT5."""
+    return mcp_alpha_execute_trade(symbol, side, volume, sl, tp)
+
+@mcp.tool()
+def update_position(ticket: int, action: str, params_json: str = "") -> str:
+    """Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
+    return mcp_alpha_update_position(ticket, action, params_json)
+
+@mcp.tool()
+def get_symbol_conviction(symbol: str = "XAUUSD") -> str:
+    """Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."""
+    return mcp_alpha_get_symbol_conviction(symbol)
+
+@mcp.tool()
+def query_analyst_desk(query: str = "", symbol: str = "XAUUSD") -> str:
+    """Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear)."""
+    return mcp_alpha_query_analyst_desk(query, symbol)
+
+@mcp.tool()
+def ask_librarian(query: str = "", symbol: str = "XAUUSD") -> str:
+    """Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research."""
+    return mcp_alpha_ask_librarian(query, symbol)
+
+@mcp.tool()
+def backtest_thesis(query: str = "", symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 500) -> str:
+    """Natural live MT5 candle-table replay (Zero hardcoded rules)."""
+    return mcp_alpha_backtest_thesis(query, symbol, timeframe, bars)
+
+@mcp.tool()
+def get_measured_cvd(symbol: str = "XAUUSD") -> str:
+    """Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5."""
+    return mcp_alpha_get_measured_cvd(symbol)
+
+@mcp.tool()
+def get_trade_forensics(symbol: str = "XAUUSD") -> str:
+    """Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution."""
+    return mcp_alpha_get_trade_forensics(symbol)
+
+@mcp.tool()
+def get_ledger_decomposition(symbol: str = "XAUUSD") -> str:
+    """Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%)."""
+    return mcp_alpha_get_ledger_decomposition(symbol)
+
+@mcp.tool()
+def record_decision_snapshot(symbol: str, side: str, conviction: float, notes: str = "", volume: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
+    """Record pre-trade decision context on disk (s4.137 Process vs Outcome)."""
+    return mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp)
+
+@mcp.tool()
+def record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0) -> str:
+    """Commit verified trade outcomes & lessons into Pattern Book & ULM."""
+    return mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple)
+
+@mcp.tool()
+def register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "") -> str:
+    """Set dynamic price or sentiment alerts for the local desk to track."""
+    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction)
+
+
 if __name__ == "__main__":
     _init_mt5()
     mcp.run()
