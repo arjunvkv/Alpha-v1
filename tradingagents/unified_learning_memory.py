@@ -74,21 +74,49 @@ class UnifiedLearningMemory:
             self.migrate_legacy()
 
     def _load(self) -> Dict[str, Any]:
-        try:
-            with open(self.path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as exc:
-            LOG.error("Failed to load unified learning memory: %s", exc)
-            return self._empty()
+        """Loads canonical learning store with concurrency retry and hard-fail on invalid JSON."""
+        import time
+        last_err = None
+        for attempt in range(5):
+            try:
+                with open(self.path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if not isinstance(data, dict) or "patterns" not in data:
+                        raise ValueError("Store is not a valid UnifiedLearningMemory dictionary structure")
+                    return data
+            except (PermissionError, OSError) as exc:
+                last_err = exc
+                time.sleep(0.05 * (attempt + 1))
+            except Exception as exc:
+                LOG.error(f"HARD-FAIL: Corrupted Unified Learning Memory store at {self.path}: {exc}")
+                return {"_error": str(exc), "patterns": {}, "experiences": {}}
+        
+        LOG.error(f"HARD-FAIL: Could not open {self.path} after 5 retries: {last_err}")
+        return {"_error": str(last_err), "patterns": {}, "experiences": {}}
 
     def _save(self, data: Dict[str, Any]) -> None:
+        """Saves canonical learning store atomically via temp file replace."""
+        import time
+        if "_error" in data:
+            LOG.error("Refusing to save corrupted data structure back to disk.")
+            return
+
         tmp_path = self.path + ".tmp"
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            try:
-                os.replace(tmp_path, self.path)
-            except (PermissionError, OSError):
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # Atomic rename with retry loop for Windows file locks
+            for attempt in range(5):
+                try:
+                    os.replace(tmp_path, self.path)
+                    break
+                except (PermissionError, OSError):
+                    time.sleep(0.05 * (attempt + 1))
+            else:
+                # Direct fallback write
                 with open(self.path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 if os.path.exists(tmp_path):
@@ -454,8 +482,27 @@ class UnifiedLearningMemory:
         return {"status": "SUCCESS", "page": int(page_number), "entries": page, "entries_count": len(page), "total_entries": len(patterns), "canonical_store": self.path, "review_required": True, "decision_authority": "AGENT_ONLY"}
 
     def get_index(self) -> Dict[str, Any]:
-        patterns = self.all_patterns()
-        return {"status": "SUCCESS", "canonical_store": self.path, "total_patterns": len(patterns), "total_experiences": len(self._load().get("experiences", {})), "pattern_states": sorted(STATES), "unlimited_evidence": True, "review_required": True, "decision_authority": "AGENT_ONLY"}
+        data = self._load()
+        if "_error" in data:
+            return {
+                "status": "LOAD_ERROR",
+                "canonical_store": self.path,
+                "error": data["_error"],
+                "total_patterns": 0,
+                "total_experiences": 0,
+                "message": "Unified Learning Memory store corrupted or unreadable"
+            }
+        patterns = list(data.get("patterns", {}).values())
+        return {
+            "status": "SUCCESS",
+            "canonical_store": self.path,
+            "total_patterns": len(patterns),
+            "total_experiences": len(data.get("experiences", {})),
+            "pattern_states": sorted(STATES),
+            "unlimited_evidence": True,
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY"
+        }
 
     def get_full(self) -> str:
         data = self._load(); return json.dumps({"canonical_store": self.path, "experiences": data.get("experiences", {}), "patterns": data.get("patterns", {}), "migration": data.get("migration", {}), "review_required": True, "decision_authority": "AGENT_ONLY"}, indent=2, ensure_ascii=False)
