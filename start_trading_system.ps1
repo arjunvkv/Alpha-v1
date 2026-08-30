@@ -30,7 +30,7 @@ python -c "from logs.story_logger import log_story; log_story('System Launcher',
 Start-Sleep -Seconds 1
 Write-Host "[4/4] Launching 24/7 Intelligent Multi-Agent Daemon & Story Stream..." -ForegroundColor Yellow
 
-Start-Process -FilePath "python.exe" -ArgumentList "-u", "C:\Trading\Alpha\daemon\intelligent_daemon.py" -WindowStyle Hidden
+Start-Process -FilePath "python.exe" -ArgumentList "-u", "C:\Trading\Alpha\alpha_trading_desk.py", "run" -WindowStyle Hidden
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location C:\Trading\Alpha; Write-Host '======================================================================' -ForegroundColor Cyan; Write-Host '            LIVE TRADING DESK STORY NARRATION STREAM (LIVE MT5)' -ForegroundColor Cyan; Write-Host '======================================================================' -ForegroundColor Cyan; Write-Host ''; Get-Content C:\Trading\Alpha\logs\live_story.log -Wait -Tail 30"
 
 Write-Host ""

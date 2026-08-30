@@ -540,10 +540,25 @@ class ConsolidatedTradingDaemon:
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
                         status_str = "FROZEN_WEEKEND_CLOSE" if is_weekend else spread_classification(symbol, spread_pts)
 
-                spread_dict = {"pts": spread_pts, "val": spread_val, "status": status_str}
+                spread_dict = {
+                    "pts": spread_pts,
+                    "val": spread_val,
+                    "status": status_str,
+                    "is_frozen": is_weekend,
+                    "data_asof": "Friday Close" if is_weekend else "Live MT5 Tick"
+                }
+                if is_weekend:
+                    velocity["ticks_per_min"] = 0.0
+                    velocity["status"] = "MARKET_CLOSED"
+                    velocity["is_frozen"] = True
+                    velocity["data_asof"] = "Friday Close"
+                    adr_info["capacity_status"] = "HISTORICAL_FRIDAY"
+                    adr_info["is_frozen"] = True
+                    adr_info["data_asof"] = "Friday Close"
+
                 spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
                 velocity_str = "Velocity: 0 t/m [MARKET_CLOSED]" if is_weekend else f"Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}]"
-                adr_str = f"ADR20: Friday ${adr_info.get('today_range')}/ADR ${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [HISTORICAL_FRIDAY]" if is_weekend else f"ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used)"
+                adr_str = f"ADR20: Friday ${adr_info.get('today_range')}/ADR ${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [HISTORICAL_FRIDAY]" if is_weekend else f"ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [{adr_info.get('capacity_status')}]"
 
                 from tradingagents.liquidity_radar import LiquidityRadarEngine
                 from tradingagents.fair_value_gap import FairValueGapEngine
@@ -854,12 +869,11 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
-            is_10min_reminder = (now_ts % 600 < 30)
             dossier_mins = max(1, int(round(dossier_interval / 60.0)))
             active_mins = max(1, int(round(active_trade_interval / 60.0)))
 
             if open_tickets:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else f"{active_mins}-Min Active Trade Review")
+                cycle_label = "Initial Review" if is_startup else f"{active_mins}-Min Active Trade Review"
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
                 reversal_section = ""
@@ -884,7 +898,7 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
                 post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
 
             else:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else f"{dossier_mins}-Min Scheduled Cycle")
+                cycle_label = "Initial Review" if is_startup else f"{dossier_mins}-Min Scheduled Cycle"
                 idle_prompt = (
                     f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({cycle_label}):\n"
                     f"{file_ref_header}"
@@ -977,18 +991,35 @@ if __name__ == "__main__":
         except Exception as err:
             print(f"[ERROR] {err}")
     else:
-        # Default: Run Daemon (Enforce strict Single-Instance PID lock)
+        # Default: Run Daemon (Enforce strict Single-Instance PID lock with immediate exit for rejected twins)
         import atexit
         import signal
 
         pid_file = PROJECT_ROOT / "data" / "live" / "alpha_daemon.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
+        current_pid = os.getpid()
+
+        if pid_file.exists():
+            try:
+                content = pid_file.read_text(encoding="utf-8").strip()
+                if content:
+                    existing_pid = int(content)
+                    if existing_pid != current_pid and psutil.pid_exists(existing_pid):
+                        try:
+                            p = psutil.Process(existing_pid)
+                            cmd = " ".join(p.cmdline()).lower()
+                            if "alpha_trading_desk" in cmd:
+                                print(f"[MUTEX_DENIED] Active daemon instance PID {existing_pid} is already running. Exiting twin PID {current_pid} immediately.")
+                                sys.exit(0)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
         killed = kill_all_daemons()
         if killed > 0:
             LOG.info(f"Terminated {killed} stale background daemon process(es) before starting.")
 
-        current_pid = os.getpid()
         with open(pid_file, "w", encoding="utf-8") as f:
             f.write(str(current_pid))
 
@@ -1000,7 +1031,9 @@ if __name__ == "__main__":
         def _cleanup_on_exit(reason="SHUTDOWN", exit_code=0):
             try:
                 if pid_file.exists():
-                    pid_file.unlink()
+                    current_content = pid_file.read_text(encoding="utf-8").strip()
+                    if current_content == str(current_pid):
+                        pid_file.unlink()
             except Exception:
                 pass
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
