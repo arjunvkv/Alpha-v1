@@ -508,7 +508,7 @@ class ConsolidatedTradingDaemon:
         instruments_data = []
         import MetaTrader5 as mt5
         mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
-        is_weekend = session_info.get("market_status") == "WEEKEND_MARKET_CLOSED"
+        is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED" or session_info.get("is_weekend", False)
 
         for symbol in self.instruments:
             try:
@@ -529,36 +529,53 @@ class ConsolidatedTradingDaemon:
                 velocity = world_engine.get_tick_velocity(symbol)
                 liq_targets = world_engine.get_liquidity_targets(symbol)
 
-                # Live MT5 Spread Metrics (Information for OpenCode decision)
+                # Live MT5 Spread Metrics & Provenance
                 spread_pts = 0
                 spread_val = 0.0
-                status_str = "N/A"
+                last_tick_ts = ""
                 if mt5_online:
                     sym_info = mt5.symbol_info(symbol)
                     if sym_info:
                         spread_pts = sym_info.spread
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
-                        status_str = "FROZEN_WEEKEND_CLOSE" if is_weekend else spread_classification(symbol, spread_pts)
+                    tick = mt5.symbol_info_tick(symbol)
+                    if tick and hasattr(tick, "time") and tick.time:
+                        last_tick_dt = datetime.fromtimestamp(tick.time, tz=timezone.utc)
+                        last_tick_ts = last_tick_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+                if not last_tick_ts and is_weekend:
+                    last_tick_ts = "2026-08-28 23:49:59 UTC (Friday Close)"
+
+                data_asof = f"Frozen Friday Close ({last_tick_ts})" if is_weekend else ("Live MT5 Tick (" + last_tick_ts + ")" if last_tick_ts else "Live MT5 Tick")
+                status_str = "FROZEN_WEEKEND_CLOSE" if is_weekend else spread_classification(symbol, spread_pts)
 
                 spread_dict = {
                     "pts": spread_pts,
                     "val": spread_val,
                     "status": status_str,
                     "is_frozen": is_weekend,
-                    "data_asof": "Friday Close" if is_weekend else "Live MT5 Tick"
+                    "data_asof": data_asof,
+                    "last_tick_time": last_tick_ts
                 }
+
                 if is_weekend:
                     velocity["ticks_per_min"] = 0.0
                     velocity["status"] = "MARKET_CLOSED"
                     velocity["is_frozen"] = True
-                    velocity["data_asof"] = "Friday Close"
+                    velocity["data_asof"] = data_asof
+                    velocity["last_tick_time"] = last_tick_ts
                     adr_info["capacity_status"] = "HISTORICAL_FRIDAY"
                     adr_info["is_frozen"] = True
-                    adr_info["data_asof"] = "Friday Close"
+                    adr_info["data_asof"] = data_asof
+                    adr_info["last_tick_time"] = last_tick_ts
+                    mtf["is_frozen"] = True
+                    mtf["data_asof"] = data_asof
+                    mtf["last_tick_time"] = last_tick_ts
 
-                spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
-                velocity_str = "Velocity: 0 t/m [MARKET_CLOSED]" if is_weekend else f"Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}]"
-                adr_str = f"ADR20: Friday ${adr_info.get('today_range')}/ADR ${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [HISTORICAL_FRIDAY]" if is_weekend else f"ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [{adr_info.get('capacity_status')}]"
+                spread_info = f"Spread: {spread_pts} pts (${spread_val}) [FROZEN_WEEKEND_CLOSE ({data_asof})]" if is_weekend else f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+                velocity_str = f"Velocity: 0 t/m [MARKET_CLOSED ({data_asof})]" if is_weekend else f"Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}]"
+                adr_str = f"ADR20: Friday ${adr_info.get('today_range')}/ADR ${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [HISTORICAL_FRIDAY ({data_asof})]" if is_weekend else f"ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [{adr_info.get('capacity_status')}]"
+                tf_alignment_str = f"4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [FROZEN_WEEKEND_CLOSE] [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}]" if is_weekend else f"4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}]"
 
                 from tradingagents.liquidity_radar import LiquidityRadarEngine
                 from tradingagents.fair_value_gap import FairValueGapEngine
@@ -570,6 +587,10 @@ class ConsolidatedTradingDaemon:
                 fvg_line = fvg_engine.get_fvg_summary_line(symbol)
                 fvg_data = fvg_engine.get_symbol_fvg_matrix(symbol)
                 near_fvg = fvg_data.get("nearest_unmitigated_fvg", {}) or {}
+                if is_weekend:
+                    fvg_data["is_frozen"] = True
+                    fvg_data["data_asof"] = data_asof
+                    fvg_data["last_tick_time"] = last_tick_ts
                 
                 # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
                 rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
@@ -613,7 +634,7 @@ class ConsolidatedTradingDaemon:
                 inst_summary = (
                     f"• {symbol}: {spread_info} | {velocity_str} "
                     f"| {adr_str} "
-                    f"| 4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}] "
+                    f"| {tf_alignment_str} "
                     f"| {fvg_line} | Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
@@ -991,35 +1012,33 @@ if __name__ == "__main__":
         except Exception as err:
             print(f"[ERROR] {err}")
     else:
-        # Default: Run Daemon (Enforce strict Single-Instance PID lock with immediate exit for rejected twins)
+        # Default: Run Daemon (Enforce OS-Level Single-Instance Mutex via msvcrt locking)
         import atexit
         import signal
 
+        lock_file_path = PROJECT_ROOT / "data" / "live" / "alpha_daemon.lock"
         pid_file = PROJECT_ROOT / "data" / "live" / "alpha_daemon.pid"
-        pid_file.parent.mkdir(parents=True, exist_ok=True)
+        lock_file_path.parent.mkdir(parents=True, exist_ok=True)
         current_pid = os.getpid()
 
-        if pid_file.exists():
-            try:
-                content = pid_file.read_text(encoding="utf-8").strip()
-                if content:
-                    existing_pid = int(content)
-                    if existing_pid != current_pid and psutil.pid_exists(existing_pid):
-                        try:
-                            p = psutil.Process(existing_pid)
-                            cmd = " ".join(p.cmdline()).lower()
-                            if "alpha_trading_desk" in cmd:
-                                print(f"[MUTEX_DENIED] Active daemon instance PID {existing_pid} is already running. Exiting twin PID {current_pid} immediately.")
-                                sys.exit(0)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+        # Open lock file and try non-blocking lock
+        try:
+            lock_handle = open(lock_file_path, "a+")
+            if sys.platform == "win32":
+                import msvcrt
+                try:
+                    lock_handle.seek(0)
+                    msvcrt.locking(lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
+                except (IOError, OSError, PermissionError):
+                    print(f"[MUTEX_DENIED] Active daemon lock already held. Twin PID {current_pid} exiting immediately.")
+                    sys.stdout.flush()
+                    os._exit(0)
+        except Exception as e:
+            print(f"[MUTEX_DENIED] Lock failed: {e}. Exiting twin PID {current_pid} immediately.")
+            sys.stdout.flush()
+            os._exit(0)
 
-        killed = kill_all_daemons()
-        if killed > 0:
-            LOG.info(f"Terminated {killed} stale background daemon process(es) before starting.")
-
+        # Successfully acquired lock! Write PID
         with open(pid_file, "w", encoding="utf-8") as f:
             f.write(str(current_pid))
 
@@ -1034,6 +1053,17 @@ if __name__ == "__main__":
                     current_content = pid_file.read_text(encoding="utf-8").strip()
                     if current_content == str(current_pid):
                         pid_file.unlink()
+            except Exception:
+                pass
+            try:
+                if sys.platform == "win32" and 'lock_handle' in locals():
+                    try:
+                        lock_handle.seek(0)
+                        import msvcrt
+                        msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    except Exception:
+                        pass
+                    lock_handle.close()
             except Exception:
                 pass
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

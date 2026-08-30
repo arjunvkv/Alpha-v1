@@ -58,9 +58,11 @@ class IntradayInstitutionalEngine:
 
         return {
             "session": session_name,
+            "market_status": session_name if not market_open else "MARKET_OPEN",
             "description": desc,
             "utc_time": now_utc.strftime("%H:%M UTC"),
-            "market_open": market_open
+            "market_open": market_open,
+            "is_weekend": not market_open
         }
 
     def get_adr_metrics(self, symbol: str) -> dict:
