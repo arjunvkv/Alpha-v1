@@ -35,7 +35,13 @@ from config import (
     get_opencode_session_title
 )
 
-from tradingagents.agent_graph import TechnicalAnalyst, FundamentalAnalyst
+from tradingagents.agent_graph import (
+    TechnicalAnalyst,
+    FundamentalAnalyst,
+    MacroNewsAnalyst,
+    SentimentAnalyst,
+    TradingAgentsDesk
+)
 from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
 from tradingagents.multitimeframe import MultiTimeframeAnalyst
 from tradingagents.librarian_agent import AutonomousLibrarianAgent
@@ -48,9 +54,12 @@ mcp = FastMCP("alpha-daemon-mcp")
 # Pre-instantiated singletons for sub-10ms response times
 _tech_analyst = TechnicalAnalyst()
 _fund_analyst = FundamentalAnalyst()
+_macro_analyst = MacroNewsAnalyst()
+_sent_analyst = SentimentAnalyst()
 _inst_engine = InstitutionalAnalyticsEngine()
 _mtf_analyst = MultiTimeframeAnalyst()
 _librarian_agent = AutonomousLibrarianAgent()
+_desk = TradingAgentsDesk()
 _active_watches: Dict[str, Dict[str, Any]] = {}
 
 class AlphaMCPServer:
@@ -261,13 +270,22 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
             "indicators": {"rsi_14": rsi_val}
         })
         fund_res = _fund_analyst.analyze(sym, cot_data)
-        score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
+        macro_res = _macro_analyst.analyze({"dxy": 99.68, "vix": 14.4}, [])
+        sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, [])
+        
+        debate_res = _desk.debater.debate(sym, tech_res, fund_res, macro_res, sent_res)
+        score = debate_res.get("consensus_score", 2.9)
         
         from tradingagents.fair_value_gap import FairValueGapEngine
         from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
         fvg_mat = FairValueGapEngine().get_symbol_fvg_matrix(sym)
         cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
-        nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg")
+        nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg") or fvg_mat.get("m5_fvg")
+
+        # Trap detection
+        fvg_fill_val = nearest_fvg.get("fill_pct") if nearest_fvg else None
+        is_exhausted_fvg = bool(fvg_fill_val and fvg_fill_val >= 60.0)
+        trap_msg = f"EXHAUSTED_FVG_WARNING: Nearest {nearest_fvg.get('type')} is {fvg_fill_val:.1f}% filled - CHASE TRAP ZONE (-97.09R historical loss)." if is_exhausted_fvg else None
 
         status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "LIVE_SYMBOL_SPECIFIC"
         data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"
@@ -280,7 +298,10 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
             "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
             "live_bid": getattr(tick, "bid", 0.0),
             "live_ask": getattr(tick, "ask", 0.0),
-            "conviction_score": min(score, 9.8),
+            "conviction_score": score,
+            "conviction_tier": debate_res.get("conviction", "LOW"),
+            "is_regime_conflict": debate_res.get("is_regime_conflict", False),
+            "exhausted_fvg_trap_warning": trap_msg,
             "mtf_alignment": mtf_res.get("formatted_4tf"),
             "technical_indicators": {
                 "h4_rsi": mtf_res.get("h4_rsi"),

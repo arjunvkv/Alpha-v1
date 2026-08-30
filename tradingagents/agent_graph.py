@@ -173,31 +173,85 @@ class SentimentAnalyst:
 
 class BullBearDebater:
     def debate(self, symbol: str, tech: dict, fund: dict, macro: dict, sent: dict) -> Dict[str, Any]:
-        # Bull thesis
         bull_points = []
-        if tech["score"] >= 6.0: bull_points.append("4TF Market Structure shows strong institutional alignment")
-        if fund["score"] >= 6.0: bull_points.append("Institutional COT positioning is net long")
-        if macro["score"] >= 6.0: bull_points.append("Weak DXY provides macro tailwind")
-
-        # Bear thesis - Pure Institutional Liquidity & Crowded Risk Checks
         bear_points = []
-        if fund["cot_managed_money_percentile"] > 88.0:
-            bear_points.append("INSTITUTIONAL RISK: Managed money percentile > 88% represents extreme crowded long risk")
-        if macro["dxy"] > 104.0:
+
+        tech_score = float(tech.get("score", 5.0))
+        fund_score = float(fund.get("score", 5.0))
+        macro_score = float(macro.get("score", 5.0))
+        sent_score = float(sent.get("score", 5.0))
+
+        # Check for Exhausted FVG trap
+        mtf = tech.get("mtf", {})
+        alignment = tech.get("alignment") or mtf.get("alignment", "UNKNOWN")
+        
+        # Pull live FVG matrix to detect if nearest FVG is exhausted
+        try:
+            from tradingagents.fvg_engine import fvg_engine
+            fvg_matrix = fvg_engine.get_symbol_fvg_matrix(symbol)
+            nearest_fvg = fvg_matrix.get("nearest_unmitigated_fvg") or fvg_matrix.get("m5_fvg")
+            if nearest_fvg and isinstance(nearest_fvg, dict):
+                fill_pct = float(nearest_fvg.get("fill_pct", 0.0))
+                if fill_pct >= 60.0:
+                    bear_points.append(f"CHASE TRAP WARNING: Nearest {nearest_fvg.get('type', 'FVG')} is {fill_pct:.1f}% filled (Exhausted FVG zone). Historical expectancy is -4.41R / -97.09R.")
+        except Exception:
+            pass
+
+        # Technical Bull vs Bear
+        if tech_score >= 6.0:
+            bull_points.append("4TF Market Structure shows strong bullish alignment")
+        elif tech_score <= 4.0:
+            bear_points.append(f"4TF Market Structure is bearish-leaning ({alignment})")
+
+        # Fundamental COT Bull vs Bear
+        cot_perc = float(fund.get("cot_managed_money_percentile", 50.0))
+        if cot_perc >= 70.0:
+            bull_points.append(f"COT Institutional Speculator positioning is heavily net long ({cot_perc:.1f}%)")
+        if cot_perc > 88.0:
+            bear_points.append("INSTITUTIONAL OVERCROWDING: Managed money percentile > 88% represents extreme crowded long risk")
+
+        # Macro Bull vs Bear
+        dxy = float(macro.get("dxy", 100.0))
+        if dxy < 101.5:
+            bull_points.append("Weak DXY provides macro tailwind")
+        elif dxy > 103.5:
             bear_points.append("Strong Dollar headwind opposes bullish commodity thesis")
 
-        # Calculate consensus score
-        avg_analyst_score = (tech["score"] + fund["score"] + macro["score"] + sent["score"]) / 4.0
-        penalty = len(bear_points) * 1.5
-        consensus_score = round(max(0.0, min(10.0, avg_analyst_score - penalty + (len(bull_points) * 0.8))), 1)
+        # Regime Conflict Penalty: Technical vs Fundamental divergence
+        is_regime_conflict = False
+        conflict_penalty = 0.0
+        if ("BEAR" in str(alignment).upper() or tech_score <= 4.2) and cot_perc >= 70.0:
+            is_regime_conflict = True
+            conflict_penalty = 1.2
+            bear_points.append("REGIME CONFLICT: 4TF Technical Order Flow is Bearish vs COT Institutional Speculators at Maximum Bullish Accumulation.")
+
+        # Compute dynamic, responsive consensus score
+        # Base weighted average: Tech (35%), Fund (30%), Macro (20%), Sent (15%)
+        weighted_score = (tech_score * 0.35) + (fund_score * 0.30) + (macro_score * 0.20) + (sent_score * 0.15)
+        
+        # Penalty for explicit traps and conflict
+        trap_penalty = 1.5 if any("CHASE TRAP" in bp for bp in bear_points) else 0.0
+        crowd_penalty = 0.8 if any("OVERCROWDING" in bp for bp in bear_points) else 0.0
+        
+        final_score = weighted_score - conflict_penalty - trap_penalty - crowd_penalty
+        consensus_score = round(max(1.0, min(10.0, final_score)), 1)
 
         return {
             "symbol": symbol,
             "consensus_score": consensus_score,
             "bull_points": bull_points,
             "bear_points": bear_points,
+            "is_regime_conflict": is_regime_conflict,
             "institutional_risk_warning": len(bear_points) > 0,
-            "conviction": "HIGH" if consensus_score >= 8.0 else "MEDIUM" if consensus_score >= 6.0 else "LOW"
+            "conviction": "HIGH" if consensus_score >= 8.0 else "MEDIUM" if consensus_score >= 6.0 else "LOW",
+            "score_composition": {
+                "technical_score": tech_score,
+                "fundamental_cot_score": fund_score,
+                "macro_score": macro_score,
+                "sentiment_score": sent_score,
+                "conflict_penalty": conflict_penalty,
+                "trap_penalty": trap_penalty
+            }
         }
 
 class RiskManager:
