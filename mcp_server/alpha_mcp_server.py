@@ -441,12 +441,13 @@ def mcp_alpha_get_book_page(page_number: int = 1) -> str:
     return json.dumps(UnifiedLearningMemory().get_page(page_number), indent=2)
 
 @mcp.tool()
-def mcp_alpha_search_book(keyword: str, symbol: str = None) -> str:
-    """Search Pattern Book / ULM by keyword and symbol. Evidence only; does not authorize execution."""
+def mcp_alpha_search_book(keyword: str, symbol: str = "") -> str:
+    """Search Pattern Book / ULM by keyword and optional symbol. Evidence only; does not authorize execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    sym_log = f" for symbol {symbol.upper()}" if symbol else ""
+    sym_clean = symbol if symbol and str(symbol).strip().upper() not in ("", "NONE", "NULL", "ALL") else None
+    sym_log = f" for symbol {sym_clean}" if sym_clean else ""
     read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for keyword '{keyword}'{sym_log}")
-    return json.dumps(UnifiedLearningMemory().search(keyword, symbol=symbol), indent=2)
+    return json.dumps(UnifiedLearningMemory().search(keyword, symbol=sym_clean), indent=2)
 
 @mcp.tool()
 def mcp_alpha_get_book_index() -> str:
@@ -457,10 +458,33 @@ def mcp_alpha_get_book_index() -> str:
 
 @mcp.tool()
 def mcp_alpha_get_full_book() -> str:
-    """Retrieve full dump of Pattern Book / ULM. Evidence only; does not authorize execution."""
+    """Retrieve full structured catalog and overview of Pattern Book / ULM."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", "Retrieved full Pattern Book")
-    return UnifiedLearningMemory().get_full()
+    ulm = UnifiedLearningMemory()
+    data = ulm._load()
+    pats = data.get("patterns", {})
+    exps = data.get("experiences", {})
+    catalog = [
+        {
+            "pattern_id": p.get("pattern_id", k),
+            "pattern_name": p.get("pattern_name", k),
+            "symbol": p.get("symbol", "ALL"),
+            "evidence_provenance": p.get("evidence_provenance", "SEEDED"),
+            "outcomes_count": len(p.get("outcomes", [])),
+            "observations_count": len(p.get("observations", []))
+        }
+        for k, p in list(pats.items())[:100]
+    ]
+    return json.dumps({
+        "status": "SUCCESS",
+        "canonical_store": ulm.path,
+        "total_patterns": len(pats),
+        "total_experiences": len(exps),
+        "total_recorded_outcomes": sum(len(p.get("outcomes", [])) for p in pats.values() if isinstance(p, dict)),
+        "pattern_catalog_sample": catalog,
+        "note": f"Full database contains {len(pats)} patterns and {len(exps)} experiences on disk. Use get_book_page(page_number) for complete paginated retrieval or search_book(keyword) for specific queries."
+    }, indent=2)
 
 @mcp.tool()
 def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:

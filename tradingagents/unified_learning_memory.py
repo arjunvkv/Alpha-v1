@@ -317,18 +317,20 @@ class UnifiedLearningMemory:
 
     def get_pattern(self, symbol: str, pattern_name: str) -> Optional[Dict[str, Any]]: return self._load()["patterns"].get(_norm(symbol, pattern_name))
 
-    def search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
-        raw_q = (query or "").strip()
-        if not raw_q:
-            return {"status": "SUCCESS", "query": query, "results": [], "count": 0}
     def search(self, query: str, max_results: int = 10, symbol: Optional[str] = None) -> Dict[str, Any]:
         data = self._load()
         patterns = data.get("patterns", {})
-        q_lower = query.lower()
+        raw_q = (query or "").strip()
+        if not raw_q:
+            return {"status": "SUCCESS", "query": query, "results": [], "count": 0}
+        q_lower = raw_q.lower()
         compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
         tokens = [t for t in re.split(r"[\s_\-]+", q_lower) if t]
         
-        sym_filter = symbol.strip().upper() if symbol else None
+        sym_filter = None
+        if symbol and str(symbol).strip().upper() not in ("", "NONE", "NULL", "ALL"):
+            sym_filter = str(symbol).strip().upper()
+
         scored_results = []
         for pat in patterns.values():
             if not isinstance(pat, dict):
