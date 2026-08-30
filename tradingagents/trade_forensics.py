@@ -162,12 +162,26 @@ class TradeForensicsEngine:
             tot_pnl = sum(t.get("profit_usd", 0) for t in all_trades)
             win_rate = round((len(wins) / len(all_trades)) * 100.0, 1) if all_trades else 0.0
 
+            xau_trades = [t for t in all_trades if t.get("symbol") == "XAUUSD"]
+            xau_wins = [t for t in xau_trades if t.get("profit_usd", 0) > 0]
+            xau_losses = [t for t in xau_trades if t.get("profit_usd", 0) <= 0]
+            xau_pnl = sum(t.get("profit_usd", 0) for t in xau_trades)
+            xau_wr = round((len(xau_wins) / len(xau_trades)) * 100.0, 1) if xau_trades else 0.0
+
             existing_journal["summary"] = {
+                "canonical_headline_source": "CLOSED_COMPLETED_CYCLES",
                 "total_trades": len(all_trades),
                 "wins": len(wins),
                 "losses": len(losses),
                 "win_rate_pct": win_rate,
                 "total_pnl_usd": round(tot_pnl, 2),
+                "xauusd_summary": {
+                    "total_trades": len(xau_trades),
+                    "wins": len(xau_wins),
+                    "losses": len(xau_losses),
+                    "win_rate_pct": xau_wr,
+                    "total_pnl_usd": round(xau_pnl, 2)
+                },
                 "last_sync": now_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
             }
 

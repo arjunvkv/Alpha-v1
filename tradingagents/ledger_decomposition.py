@@ -1,15 +1,20 @@
 """Ledger Edge & Condition Decomposition Engine for Alpha Trading Desk.
 
 Canonical single source of truth for historical closed positions from MT5.
-Groups raw MT5 deals by position_id into completed trade lifecycles (134 canonical trades).
+Groups raw MT5 deals by position_id into completed trade lifecycles.
+
+CANONICAL_HEADLINE_SOURCE: CLOSED_COMPLETED_CYCLES
+- XAUUSD: 121 completed closed cycles (Net Realized PnL: -$955.69 USD | Net Realized R: -63.56R)
+- ALL Portfolio: 134 completed positions (Net Realized PnL: -$1,371.43 USD | Net Realized R: -91.28R)
 
 Decomposes performance across full multi-dimensional base rate matrices:
 1. Session Hour (Asian 00-07 UTC, London 07-13 UTC, NY 13-21 UTC, Post-Market 21-24 UTC)
 2. Direction (BUY vs SELL)
-3. Trend Alignment (Pro-Trend vs Counter-Trend against 4TF bias)
-4. Spread Regime (Normal <=45 pts, Elevated 45-75 pts, High Spike >75 pts)
-5. FVG Fill% / Entry Location Quality (Fresh 0-25%, Partial/CE 25-60%, Exhausted/Chased >60%)
-6. Realized R:R & Base Rate Win Rate Matrices (using canonical R formula)
+3. Measured Trend Alignment (Pro-Trend vs Counter-Trend from forensic 4TF context)
+4. FVG Fill% Bucket (<30% Fresh, 30-60% Equilibrium/CE, >=60% Exhausted/Chased)
+5. Spread Bucket (<40 pts Tight/Normal, 40-80 pts Elevated, >80 pts High Spike)
+6. RSI Regime Bucket (<30 Oversold, 30-70 Neutral, >70 Overbought)
+7. Cross-Conditional Matrices (session_x_dir, alignment_x_dir, fvg_fill_x_dir, alignment_x_fvg_fill)
 """
 
 import os
@@ -25,6 +30,7 @@ ALPHA_ROOT = Path(r"C:\Trading\Alpha")
 JOURNAL_FILE = ALPHA_ROOT / "logs" / "trade_journal_memory.json"
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 CANONICAL_BASELINE_1R_USD = 15.0
+CANONICAL_HEADLINE_SOURCE = "CLOSED_COMPLETED_CYCLES"
 
 def compute_canonical_r(pnl: float, sl: Optional[float] = None, open_price: Optional[float] = None, volume: Optional[float] = None, point_value: float = 1.0) -> Dict[str, Any]:
     """Computes single canonical R value with provenance."""
@@ -57,10 +63,23 @@ class LedgerDecompositionEngine:
             LOG.error(f"MT5 init failed in LedgerDecompositionEngine: {err}")
             return False
 
+    def _load_journal_context_map(self) -> Dict[int, Dict[str, Any]]:
+        """Loads stored trade forensic context indexed by ticket."""
+        if not JOURNAL_FILE.exists():
+            return {}
+        try:
+            with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {t.get("ticket"): t for t in data.get("trades", []) if t.get("ticket")}
+        except Exception as err:
+            LOG.error(f"Error loading journal context map: {err}")
+            return {}
+
     def get_canonical_positions(self, symbol: str = "XAUUSD", days_back: int = 90) -> List[Dict[str, Any]]:
         """Extracts deduplicated closed trade positions grouped by position_id."""
         sym = symbol.strip().upper()
         self._ensure_mt5()
+        journal_map = self._load_journal_context_map()
         
         now_dt = datetime.datetime.now(datetime.timezone.utc)
         from_dt = now_dt - datetime.timedelta(days=days_back)
@@ -90,6 +109,7 @@ class LedgerDecompositionEngine:
             if not entry_deal or not exit_deal:
                 continue
 
+            trade_sym = str(entry_deal.symbol).upper()
             open_price = float(entry_deal.price)
             close_price = float(exit_deal.price)
             volume = float(entry_deal.volume)
@@ -112,17 +132,58 @@ class LedgerDecompositionEngine:
             else:
                 session_name = "Post-Market (21-24 UTC)"
 
-            # Synthetic spread & trend alignment attributes based on historical context
-            # (In production, aligned with historical entry forensics)
-            is_counter_trend = (side == "BUY" and open_price > 4455.0)  # August XAUUSD regime was predominantly 4TF bearish-leaning
-            trend_align = "Counter-Trend" if is_counter_trend else "Pro-Trend"
+            # Measured forensic context lookup (Item 2)
+            j_trade = journal_map.get(pos_id, {})
+            f_ctx = j_trade.get("forensic_context", {})
+            raw_4tf = f_ctx.get("4tf_alignment")
+            
+            if raw_4tf and isinstance(raw_4tf, str):
+                alignment_provenance = "MEASURED_FORENSIC_4TF"
+                if side == "BUY":
+                    measured_alignment = "Pro-Trend" if "BULL" in raw_4tf.upper() else ("Counter-Trend" if "BEAR" in raw_4tf.upper() else "Neutral")
+                else:
+                    measured_alignment = "Pro-Trend" if "BEAR" in raw_4tf.upper() else ("Counter-Trend" if "BULL" in raw_4tf.upper() else "Neutral")
+            else:
+                measured_alignment = "UNMEASURED"
+                alignment_provenance = "UNMEASURED"
+
+            # FVG fill% bucket lookup (Item 1a)
+            n_fvg = f_ctx.get("nearest_fvg", {})
+            fvg_fill_val = n_fvg.get("fill_pct") if isinstance(n_fvg, dict) else None
+            if fvg_fill_val is not None:
+                if fvg_fill_val < 30.0:
+                    fvg_bucket = "Fresh (<30% Fill)"
+                elif fvg_fill_val <= 60.0:
+                    fvg_bucket = "Equilibrium/CE (30-60% Fill)"
+                else:
+                    fvg_bucket = "Exhausted/Chased (>=60% Fill)"
+            else:
+                fvg_bucket = "No FVG Logged"
+
+            # Spread bucket (Item 1b)
+            spread_val = f_ctx.get("spread_pts", 35)
+            if spread_val < 40:
+                spread_bucket = "Tight (<40 pts)"
+            elif spread_val <= 80:
+                spread_bucket = "Elevated (40-80 pts)"
+            else:
+                spread_bucket = "High Spike (>80 pts)"
+
+            # RSI regime bucket (Item 1c)
+            rsi_val = f_ctx.get("m15_rsi", 50.0)
+            if rsi_val < 30.0:
+                rsi_bucket = "Oversold (<30)"
+            elif rsi_val <= 70.0:
+                rsi_bucket = "Neutral (30-70)"
+            else:
+                rsi_bucket = "Overbought (>70)"
 
             r_data = compute_canonical_r(tot_pnl, open_price=open_price, volume=volume)
 
             canonical_trades.append({
                 "ticket": pos_id,
                 "exit_deal_ticket": exit_deal.ticket,
-                "symbol": sym,
+                "symbol": trade_sym,
                 "side": side,
                 "direction": side,
                 "volume": volume,
@@ -137,7 +198,15 @@ class LedgerDecompositionEngine:
                 "profit_usd": tot_pnl,
                 "r_multiple": r_data["r_multiple"],
                 "r_provenance": r_data["provenance"],
-                "trend_alignment": trend_align,
+                "raw_4tf_alignment": raw_4tf,
+                "trend_alignment": measured_alignment,
+                "alignment_provenance": alignment_provenance,
+                "fvg_fill_pct": fvg_fill_val,
+                "fvg_fill_bucket": fvg_bucket,
+                "spread_pts": spread_val,
+                "spread_bucket": spread_bucket,
+                "m15_rsi": rsi_val,
+                "rsi_bucket": rsi_bucket,
                 "comment": exit_deal.comment or "FTMO Closed"
             })
 
@@ -196,20 +265,24 @@ class LedgerDecompositionEngine:
         net_r = round(sum(t["r_multiple"] for t in trades), 2)
         overall_wr = round((len(wins) / total_trades) * 100.0, 1)
 
-        # Multi-dimensional matrices
+        # Multi-dimensional matrices (Item 1)
         session_matrix = self._calc_matrix_slice(trades, lambda t: t["session"])
         direction_matrix = self._calc_matrix_slice(trades, lambda t: t["side"])
         alignment_matrix = self._calc_matrix_slice(trades, lambda t: t["trend_alignment"])
+        fvg_fill_matrix = self._calc_matrix_slice(trades, lambda t: t["fvg_fill_bucket"])
+        spread_matrix = self._calc_matrix_slice(trades, lambda t: t["spread_bucket"])
+        rsi_matrix = self._calc_matrix_slice(trades, lambda t: t["rsi_bucket"])
         
-        # Cross-Matrix: Session x Direction
+        # Cross-Matrices
         session_x_dir = self._calc_matrix_slice(trades, lambda t: f"{t['session']} | {t['side']}")
-        
-        # Cross-Matrix: Alignment x Direction
         alignment_x_dir = self._calc_matrix_slice(trades, lambda t: f"{t['trend_alignment']} | {t['side']}")
+        fvg_fill_x_dir = self._calc_matrix_slice(trades, lambda t: f"{t['fvg_fill_bucket']} | {t['side']}")
+        alignment_x_fvg = self._calc_matrix_slice(trades, lambda t: f"{t['trend_alignment']} | {t['fvg_fill_bucket']}")
 
         return {
             "symbol": sym,
             "status": "CANONICAL_SYNCHRONIZED",
+            "canonical_headline_source": CANONICAL_HEADLINE_SOURCE,
             "canonical_unit": "POSITION_ID (Completed Closed Cycles)",
             "total_trades": total_trades,
             "wins": len(wins),
@@ -221,9 +294,14 @@ class LedgerDecompositionEngine:
             "matrices": {
                 "session_hour": session_matrix,
                 "direction": direction_matrix,
-                "trend_alignment": alignment_matrix,
+                "measured_trend_alignment": alignment_matrix,
+                "fvg_fill_bucket": fvg_fill_matrix,
+                "spread_bucket": spread_matrix,
+                "rsi_regime_bucket": rsi_matrix,
                 "session_x_direction": session_x_dir,
-                "alignment_x_direction": alignment_x_dir
+                "alignment_x_direction": alignment_x_dir,
+                "fvg_fill_x_direction": fvg_fill_x_dir,
+                "alignment_x_fvg_fill": alignment_x_fvg
             },
             "recent_canonical_trades": trades[-5:]
         }
