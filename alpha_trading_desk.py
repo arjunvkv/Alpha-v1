@@ -734,29 +734,23 @@ class ConsolidatedTradingDaemon:
             review_lines.append(f"  • {source}: {rec.get('status', 'READ_REQUIRED')} | LAST READ: {read_at or 'NEVER'}")
         review_block = "\n".join(review_lines)
 
-        mcp_tools_block = """=== AVAILABLE ALPHA MCP TOOLS (CAPABILITIES & DIRECTORY) ===
-  • mcp_alpha_learning_review(action, sources) — Manage mandatory study cycle & acknowledge evidence reads (status/start_cycle/mark_read).
-  • mcp_alpha_ask_librarian(query, symbol) — Ask the Librarian ANY question on win rates, failure traps, 50% CE rules & precedents.
-  • mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, RSI, COT percentile & Granger score (0-10).
-  • mcp_alpha_query_analyst_desk(query, symbol) — Request deep 7-layer local LLM multi-source intelligence (Tech + COT + Macro).
-  • mcp_alpha_get_live_world_events(category) — Fetch hot-cached breaking geopolitical, central bank, commodity & macro news feeds.
-  • mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, margin, drawdown & active ticket count.
-  • mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.
+        mcp_tools_block = """=== COMPLETE FAST-MCP TOOL SUITE (14 TOOLS AVAILABLE) ===
+  • mcp_alpha_get_full_institutional_profile(symbol) — Fetch Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.
+  • mcp_alpha_backtest_thesis(query, symbol, timeframe, bars) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.
+  • mcp_alpha_ask_librarian(query, symbol) — Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).
+  • mcp_alpha_query_analyst_desk(query, symbol) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).
+  • mcp_alpha_get_measured_cvd(symbol) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.
+  • mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.
+  • mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.
+  • mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).
   • mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct market buy/sell order on FTMO MT5.
-  • mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT, PARTIAL_CLOSE).
-  • mcp_alpha_configure_instruments(enable, disable) — Enable/disable active trading instruments in real-time (hot-reloaded).
-  • mcp_alpha_get_fvg_matrix(symbol) — Inspect multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and 50% CE levels.
+  • mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
+  • mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple) — Commit verified trade outcomes & lessons into Pattern Book & ULM.
+  • mcp_alpha_get_trade_forensics(symbol) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.
   • mcp_alpha_get_ledger_decomposition(symbol) — Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).
-  • mcp_alpha_record_decision_snapshot(symbol, side, conviction, fill_pct, spread_pts, regime_flag, contradictions_count, notes) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).
-  • mcp_alpha_get_measured_cvd(symbol) — Fetch measured Cumulative Volume Delta (CVD) and Delta Exhaustion / Absorption metrics from MT5.
-  • mcp_alpha_search_book(query) — Search the 377-pattern institutional library for specific setup names or triggers.
-  • mcp_alpha_get_book_index() — Inspect full pattern catalog taxonomy, win rates, and category statistics.
-  • mcp_alpha_record_pattern_observation(symbol, pattern_name, observation) — Log verified chart observations to Unified Learning Memory.
-  • mcp_alpha_record_pattern_outcome(symbol, pattern_name, outcome, ticket, r_value) — Attach live trade outcomes to historical patterns.
+  • mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.
 
-MANDATORY: Know the available MCP capabilities and use the relevant tool when needed.
-Do not call tools mechanically. Study, interpret and decide first; MCP tools retrieve,
-record, track or execute the Agent's own decisions and do not have independent decision authority.
+MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track or execute the Agent's own decisions and do not have independent decision authority.
 """
 
         file_ref_header = (
@@ -774,19 +768,18 @@ record, track or execute the Agent's own decisions and do not have independent d
             f"  • Historical Research / Full Desk Evidence ({dossier_line_count} lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
             f"  • Institutional Deep Book: file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
             f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
-            f"  • Mandatory Read Audit Trail: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
+            f"  • Automatic Audit Log: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
             f"{review_block}\n\n"
-            f"  • Use mcp_alpha_learning_review to check/start the study cycle and mark one or multiple sources read after actual review.\n\n"
             f"{mcp_tools_block}\n"
             f"=== MANDATORY AGENT CYCLE ===\n"
-            f"  1. Read required live and due evidence.\n"
-            f"  2. Consult all four mandatory learning sources.\n"
+            f"  1. Review required live evidence.\n"
+            f"  2. Consult mandatory learning sources.\n"
             f"  3. Study current conditions against accumulated evidence.\n"
             f"  4. Learn continuously even when no trade is active.\n"
-            f"  5. Learn from mistakes: incorrect interpretations, failed hypotheses, missed evidence, missed opportunities and repeated reasoning errors.\n"
+            f"  5. Learn from mistakes: incorrect interpretations, failed hypotheses, missed evidence, and repeated reasoning errors.\n"
             f"  6. Identify what was wrong, why, and correct the understanding when evidence supports it.\n"
-            f"  7. Record meaningful observations, corrections, contradictions and learning; do not create duplicate narrative merely because another cycle occurred.\n"
-            f"  8. Mark evidence READ only after actual review.\n"
+            f"  7. Record meaningful observations, corrections, contradictions and learning into Pattern Book / ULM.\n"
+            f"  8. All evidence requested via MCP is automatically audited and logged on disk.\n"
             f"  9. Daemon data is information only; interpretation and trading decisions remain AGENT-ONLY.\n\n"
             f"=== PER-FILE UPDATE STATUS ===\n{update_status_block}\n\n"
             f"NOTE: Detailed files are the persistent evidence. The inline matrix is a compact current-cycle briefing, not a replacement for the detailed files.\n\n"
@@ -880,7 +873,7 @@ record, track or execute the Agent's own decisions and do not have independent d
                 scheduled_prompt = (
                     f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n"
                     f"{file_ref_header}"
-                    f"{world_header}{top_pick_line}\n\n"
+                    f"{world_header}\n"
                     f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
                     f"{reversal_section}\n"
                     f"{top4_section}"
@@ -897,7 +890,7 @@ record, track or execute the Agent's own decisions and do not have independent d
                 idle_prompt = (
                     f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Scheduled Cycle')}):\n"
                     f"{file_ref_header}"
-                    f"{world_header}{top_pick_line}\n\n"
+                    f"{world_header}\n"
                     f"{top4_section}"
                     f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
@@ -921,14 +914,30 @@ record, track or execute the Agent's own decisions and do not have independent d
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: 1-Min active trade / 2-Min idle\n\n"
-            f"=== AGENT AUTHORITY ===\n"
+            f"=== AGENT AUTHORITY & CONSTITUTIONAL GUARANTEES (§10.2) ===\n"
             f"YOU are the sole interpreter of evidence and the sole trading decision-maker.\n"
-            f"Daemons, local agents, adapters and MCP tools provide, retrieve, record or execute your explicit decisions; they do not independently decide, gate or suppress trading decisions.\n\n"
+            f"• Zero Data Concealment: No layer compresses, filters, or hides raw market numbers behind opaque labels.\n"
+            f"• Zero Automatic Gates: Backtests and pattern records inform conviction, but NEVER veto your trade decisions.\n"
+            f"• Automatic Audit Trail: All evidence requested via MCP is automatically audited and logged on disk.\n\n"
+            f"=== COMPLETE FAST-MCP TOOL SUITE (14 TOOLS AVAILABLE) ===\n"
+            f"  1. mcp_alpha_get_full_institutional_profile(symbol) — Fetch Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.\n"
+            f"  2. mcp_alpha_backtest_thesis(query, symbol, timeframe, bars) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.\n"
+            f"  3. mcp_alpha_ask_librarian(query, symbol) — Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).\n"
+            f"  4. mcp_alpha_query_analyst_desk(query, symbol) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).\n"
+            f"  5. mcp_alpha_get_measured_cvd(symbol) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.\n"
+            f"  6. mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.\n"
+            f"  7. mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.\n"
+            f"  8. mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).\n"
+            f"  9. mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct market buy/sell order on FTMO MT5.\n"
+            f"  10. mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).\n"
+            f"  11. mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple) — Commit verified trade outcomes & lessons into Pattern Book & ULM.\n"
+            f"  12. mcp_alpha_get_trade_forensics(symbol) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.\n"
+            f"  13. mcp_alpha_get_ledger_decomposition(symbol) — Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).\n"
+            f"  14. mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.\n\n"
             f"=== STARTUP ORIENTATION ===\n"
             f"The first full Initial Review is being collected now and will arrive shortly.\n"
-            f"On that review: read all mandatory learning sources, review required live evidence, study current conditions against accumulated evidence, learn continuously (including from mistakes), and record meaningful observations or corrections without duplicate narrative.\n"
-            f"Detailed persistent files are the source evidence; the inline briefing is a current-cycle guide, not a replacement.\n"
-            f"Use relevant Alpha MCP capabilities when needed, mark evidence READ only after actual review, and keep interpretation and decisions AGENT-ONLY."
+            f"On that review: study current conditions against accumulated evidence, learn continuously (including from mistakes), and record meaningful observations or corrections into Pattern Book / ULM.\n"
+            f"Detailed persistent files are the source evidence; the inline briefing is a current-cycle guide, not a replacement."
         )
         await asyncio.sleep(2.0)
         while self.is_running:

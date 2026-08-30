@@ -312,7 +312,21 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "live_ask": getattr(tick, "ask", 0.0),
             "conviction_score": min(score, 9.8),
             "mtf_alignment": mtf_res.get("formatted_4tf"),
-            "technical_indicators": {"m15_rsi": rsi_val, "h4_rsi": mtf_res.get("h4_rsi")},
+            "technical_indicators": {
+                "h4_rsi": mtf_res.get("h4_rsi"),
+                "h1_rsi": mtf_res.get("h1_rsi"),
+                "m15_rsi": mtf_res.get("m15_rsi"),
+                "m5_rsi": mtf_res.get("m5_rsi"),
+                "h4_ema20": mtf_res.get("h4_ema20"),
+                "h4_ema50": mtf_res.get("h4_ema50"),
+                "h1_ema20": mtf_res.get("h1_ema20"),
+                "h1_ema50": mtf_res.get("h1_ema50"),
+                "m15_ema20": mtf_res.get("m15_ema20"),
+                "m15_ema50": mtf_res.get("m15_ema50"),
+                "m5_ema20": mtf_res.get("m5_ema20"),
+                "m5_ema50": mtf_res.get("m5_ema50")
+            },
+            "four_timeframe_matrix": mtf_res,
             "nearest_fvg": nearest_fvg,
             "fvg_fill_pct": nearest_fvg.get("fill_pct") if nearest_fvg else None,
             "fvg_status": nearest_fvg.get("status") if nearest_fvg else "NO_NEARBY_FVG",
@@ -661,6 +675,67 @@ def mcp_alpha_backtest_thesis(
     read_logger.log_dossier_read("OpenCode CIO (MCP Backtest Thesis)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested natural backtest: '{query}' on {sym} ({timeframe}, {bars} bars)")
     pipeline = PureLLMBacktestPipeline()
     return json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
+    """Fetch complete uncompressed institutional profile: Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), DIX/GEX, Macro Yields (US10Y/US2Y/DXY/VIX), Contract Specs, and 4TF EMAs/RSI."""
+    _init_mt5()
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Institutional Profile)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried full institutional profile for {sym}")
+    try:
+        vp = _inst_engine.get_volume_profile_metrics(sym)
+        vwap = _inst_engine.get_institutional_vwap(sym)
+        macro = _inst_engine.get_macro_and_gamma_feeds()
+        specs = _inst_engine.get_contract_specifications(sym)
+        struct = _inst_engine.get_choch_and_structure_break(sym)
+        tf_mat = _inst_engine.get_multi_timeframe_matrix(sym)
+        cot_full = _inst_engine.get_futuresbench_cot_data()
+        raw_cot = cot_full.get("markets", {}).get(sym, {})
+        
+        return json.dumps({
+            "status": "SUCCESS",
+            "symbol": sym,
+            "volume_profile": {
+                "point_of_control_poc": vp.get("poc"),
+                "value_area_high_vah_70": vp.get("vah"),
+                "value_area_low_val_70": vp.get("val"),
+                "value_area_width_pts": vp.get("value_area_width"),
+                "price_location": vp.get("price_location")
+            },
+            "institutional_vwap": {
+                "vwap": vwap.get("vwap"),
+                "std_dev": vwap.get("std_dev"),
+                "upper_band_1sigma": vwap.get("upper_band_1"),
+                "upper_band_2sigma": vwap.get("upper_band_2"),
+                "lower_band_1sigma": vwap.get("lower_band_1"),
+                "lower_band_2sigma": vwap.get("lower_band_2"),
+                "distance_usd": vwap.get("distance_usd"),
+                "posture": vwap.get("posture")
+            },
+            "macro_treasury_and_volatility": {
+                "us_10y_yield": macro.get("us_10y"),
+                "us_2y_yield": macro.get("us_2y"),
+                "yield_curve_10y_2y_spread": macro.get("yield_curve_spread"),
+                "dollar_index_dxy": macro.get("dxy"),
+                "dxy_posture": macro.get("dxy_posture"),
+                "cboe_vix": macro.get("vix"),
+                "vix_regime": macro.get("vix_regime"),
+                "dark_pool_dix_pct": macro.get("dix"),
+                "gamma_exposure_gex_billions": macro.get("gex_billions"),
+                "gex_regime": macro.get("gex_regime")
+            },
+            "contract_specifications": specs,
+            "structural_market_state": {
+                "choch_status": struct.get("choch_status"),
+                "bos_status": struct.get("bos_status"),
+                "displacement": struct.get("displacement")
+            },
+            "four_timeframe_matrix": tf_mat,
+            "cot_institutional_positioning": raw_cot
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "ERROR", "symbol": sym, "error": str(err)}, indent=2)
 
 
 if __name__ == "__main__":

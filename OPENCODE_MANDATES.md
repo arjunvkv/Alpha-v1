@@ -245,6 +245,18 @@ When forming ad-hoc hypotheses during live review (e.g. entering on velocity acc
 2. **Zero Internal Blindspots**: No data may be trapped or gated at intermediate layers. When Proxima or the Local LLM are consulted, they must receive full-fidelity, unblinded market context, candle streams, and order flow metrics so all quantitative and qualitative reasoning is rooted in complete truth.
 3. **Auditability & Traceability**: Every tool response delivered to OpenCode CIO must be reproducible and auditable down to the exact tick, candle timestamp, and broker execution parameter.
 
+### 10.3. Full Institutional Profile Retrieval (`mcp_alpha_get_full_institutional_profile`)
+
+When evaluating market context for execution, the Agent should invoke `mcp_alpha_get_full_institutional_profile(symbol)` to inspect uncompressed:
+- **Volume Profile**: Point of Control (POC), Value Area High (VAH 70%), Value Area Low (VAL 70%).
+- **Institutional VWAP**: Session VWAP, $+1\sigma/+2\sigma$ Upper Premium Bands, $-1\sigma/-2\sigma$ Lower Discount Bands.
+- **Squeezemetrics Dark Pool & Gamma**: Dark Pool Index (DIX %), Institutional Gamma Exposure (GEX in Billions).
+- **Macro Treasury Yields & Volatility**: US 10-Year Yield (US10Y), US 2-Year Yield (US2Y), 10Y-2Y Curve Spread, Dollar Index (DXY), and CBOE VIX.
+- **FTMO Contract Specifications**: Contract size, point size, tick value, \$ cost per point for 1.0 lot and 0.10 lot, min/max lot, and exact spread dollar cost.
+- **Complete 4TF Numerical Indicators**: Exact H4, H1, M15, M5 EMA20, EMA50, and RSI(14) values.
+- **Market Structure State**: Change of Character (CHoCH), Break of Structure (BOS), and ATR(14) in exact points.
+
+
 
 
 ## 11. Continuous Learning Cycle
