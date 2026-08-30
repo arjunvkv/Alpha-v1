@@ -283,4 +283,8 @@ from tradingagents.session_manager import (
     set_opencode_session,
     is_dossier_streaming_enabled,
     set_dossier_streaming,
+    get_dossier_interval_seconds,
+    set_dossier_interval_seconds,
+    get_active_trade_interval_seconds,
+    set_active_trade_interval_seconds,
 )

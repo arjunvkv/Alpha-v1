@@ -39,7 +39,9 @@ from config import (
     get_opencode_session_id,
     get_opencode_session_title,
     get_opencode_api_url,
-    is_dossier_streaming_enabled
+    is_dossier_streaming_enabled,
+    get_dossier_interval_seconds,
+    get_active_trade_interval_seconds
 )
 
 # Constants
@@ -832,11 +834,13 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
             + "\n\n"
         )
 
-        # ADAPTIVE DISPATCH CADENCE (1-Min Active Trade Reviews | 2-Min Idle Scans)
+        # DYNAMIC DISPATCH CADENCE (Configurable via opencode_session_config.json)
         now_ts = time.time()
         is_startup = (self.cycle_count == 1)
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
-        required_interval = 60.0 if open_tickets else 120.0
+        dossier_interval = get_dossier_interval_seconds()
+        active_trade_interval = get_active_trade_interval_seconds()
+        required_interval = float(active_trade_interval) if open_tickets else float(dossier_interval)
 
         ready_for_dispatch = False
         if is_startup:
@@ -847,9 +851,11 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
             is_10min_reminder = (now_ts % 600 < 30)
+            dossier_mins = max(1, int(round(dossier_interval / 60.0)))
+            active_mins = max(1, int(round(active_trade_interval / 60.0)))
 
             if open_tickets:
-                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else "1-Min Active Trade Review")
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else f"{active_mins}-Min Active Trade Review")
                 pos_details_formatted = "\n  • ".join(detailed_positions)
 
                 reversal_section = ""
@@ -874,8 +880,9 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
                 post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
 
             else:
+                cycle_label = "Initial Review" if is_startup else ("10-Min Directive" if is_10min_reminder else f"{dossier_mins}-Min Scheduled Cycle")
                 idle_prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'Initial Review' if is_startup else ('10-Min Directive' if is_10min_reminder else '2-Min Scheduled Cycle')}):\n"
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({cycle_label}):\n"
                     f"{file_ref_header}"
                     f"{world_header}\n"
                     f"{top4_section}"
@@ -892,7 +899,9 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
 
     async def start_loop(self):
         self.is_running = True
-        LOG.info("Consolidated Trading Daemon started with Adaptive Briefing Cadence (1-min active trades, 2-min idle).")
+        dossier_mins = max(1, int(round(get_dossier_interval_seconds() / 60.0)))
+        active_mins = max(1, int(round(get_active_trade_interval_seconds() / 60.0)))
+        LOG.info(f"Consolidated Trading Daemon started with Dynamic Briefing Cadence ({active_mins}-min active trades, {dossier_mins}-min idle).")
         sid, title, _ = get_opencode_session()
         # Immediately fire startup ping to OpenCode so user knows daemon is alive
         post_to_opencode_session(
@@ -900,7 +909,7 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: 1-Min active trade / 2-Min idle\n\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: {active_mins}-Min active trade / {dossier_mins}-Min idle\n\n"
             f"=== AGENT AUTHORITY & CONSTITUTIONAL GUARANTEES (§10.2) ===\n"
             f"YOU are the sole interpreter of evidence and the sole trading decision-maker.\n"
             f"• Zero Data Concealment: No layer compresses, filters, or hides raw market numbers behind opaque labels.\n"

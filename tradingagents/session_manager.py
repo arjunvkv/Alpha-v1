@@ -105,3 +105,55 @@ def set_dossier_streaming(enabled: bool) -> bool:
     except Exception as e:
         LOG.error(f"Failed to update dossier streaming toggle: {e}")
         return False
+
+
+def get_dossier_interval_seconds() -> int:
+    """Returns dynamic scheduled dossier interval in seconds (default 300s = 5 min)."""
+    cfg = load_session_config()
+    try:
+        return int(cfg.get("dossier_interval_seconds", 300))
+    except Exception:
+        return 300
+
+
+def set_dossier_interval_seconds(seconds: int) -> bool:
+    """Updates dynamic scheduled dossier interval in seconds with zero-restart hot-reloading."""
+    try:
+        cfg = load_session_config()
+        cfg["dossier_interval_seconds"] = max(30, int(seconds))
+        from datetime import datetime, timezone
+        cfg["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        SESSION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(SESSION_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        LOG.info(f"Updated dossier interval to {seconds} seconds")
+        return True
+    except Exception as e:
+        LOG.error(f"Failed to update dossier interval: {e}")
+        return False
+
+
+def get_active_trade_interval_seconds() -> int:
+    """Returns dynamic active trade review interval in seconds (default 60s = 1 min)."""
+    cfg = load_session_config()
+    try:
+        return int(cfg.get("active_trade_interval_seconds", 60))
+    except Exception:
+        return 60
+
+
+def set_active_trade_interval_seconds(seconds: int) -> bool:
+    """Updates dynamic active trade review interval in seconds with zero-restart hot-reloading."""
+    try:
+        cfg = load_session_config()
+        cfg["active_trade_interval_seconds"] = max(10, int(seconds))
+        from datetime import datetime, timezone
+        cfg["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        SESSION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(SESSION_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        LOG.info(f"Updated active trade interval to {seconds} seconds")
+        return True
+    except Exception as e:
+        LOG.error(f"Failed to update active trade interval: {e}")
+        return False
