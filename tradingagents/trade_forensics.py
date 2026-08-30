@@ -96,8 +96,10 @@ class TradeForensicsEngine:
             exit_time = datetime.datetime.fromtimestamp(exit_deal.time, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             duration_sec = exit_deal.time - entry_deal.time
 
-            # Compute R-multiple approximation ($15 target baseline)
-            r_val = round(profit / 5.0, 2)
+            # Compute Canonical R-multiple ($15 target baseline or exact initial SL)
+            from tradingagents.ledger_decomposition import compute_canonical_r
+            r_data = compute_canonical_r(profit, open_price=open_price, volume=vol)
+            r_val = r_data["r_multiple"]
 
             # Extract live FVG & MTF context for that symbol
             fvg_ctx = fvg_engine.get_symbol_fvg_matrix(symbol)
@@ -105,6 +107,7 @@ class TradeForensicsEngine:
 
             forensic_payload = {
                 "ticket": pos_id,
+                "exit_deal_ticket": exit_deal.ticket,
                 "symbol": symbol,
                 "side": side,
                 "volume": vol,
@@ -118,6 +121,7 @@ class TradeForensicsEngine:
                 "swap": exit_deal.swap,
                 "pnl_type": pnl_type,
                 "r_value": r_val,
+                "r_provenance": r_data["provenance"],
                 "forensic_context": {
                     "4tf_alignment": mtf_ctx.get("alignment", "UNKNOWN"),
                     "m15_rsi": mtf_ctx.get("m15_rsi", 50.0),

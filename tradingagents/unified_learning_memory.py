@@ -83,9 +83,21 @@ class UnifiedLearningMemory:
 
     def _save(self, data: Dict[str, Any]) -> None:
         tmp_path = self.path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_path, self.path)
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            try:
+                os.replace(tmp_path, self.path)
+            except (PermissionError, OSError):
+                with open(self.path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
+        except Exception as e:
+            LOG.error(f"Failed saving unified learning memory: {e}")
 
     def _new_experience_id(self, data: Dict[str, Any]) -> str:
         return f"experience_{len(data['experiences']) + 1:06d}"
