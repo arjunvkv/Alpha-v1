@@ -451,8 +451,9 @@ class ConsolidatedTradingDaemon:
         self.error_monitor.install_global_handlers()
 
     async def run_cycle(self):
+        self.cycle_count += 1
         self.instruments = get_active_instruments()
-        LOG.info(f"--- Starting Scan Cycle across {len(self.instruments)} instruments ({', '.join(self.instruments)}) ---")
+        LOG.info(f"--- Starting Scan Cycle #{self.cycle_count} across {len(self.instruments)} instruments ({', '.join(self.instruments)}) ---")
         log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Granger 7-Layers + Global Eyes RSS feeds active)...")
 
         # Record live error-monitor heartbeat (H4)
@@ -501,6 +502,7 @@ class ConsolidatedTradingDaemon:
         instruments_data = []
         import MetaTrader5 as mt5
         mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        is_weekend = session_info.get("market_status") == "WEEKEND_MARKET_CLOSED"
 
         for symbol in self.instruments:
             try:
@@ -530,10 +532,12 @@ class ConsolidatedTradingDaemon:
                     if sym_info:
                         spread_pts = sym_info.spread
                         spread_val = round((sym_info.ask - sym_info.bid), 3)
-                        status_str = spread_classification(symbol, spread_pts)
+                        status_str = "FROZEN_WEEKEND_CLOSE" if is_weekend else spread_classification(symbol, spread_pts)
 
                 spread_dict = {"pts": spread_pts, "val": spread_val, "status": status_str}
                 spread_info = f"Spread: {spread_pts} pts (${spread_val}) [{status_str}]"
+                velocity_str = "Velocity: 0 t/m [MARKET_CLOSED]" if is_weekend else f"Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}]"
+                adr_str = f"ADR20: Friday ${adr_info.get('today_range')}/ADR ${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) [HISTORICAL_FRIDAY]" if is_weekend else f"ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used)"
 
                 from tradingagents.liquidity_radar import LiquidityRadarEngine
                 from tradingagents.fair_value_gap import FairValueGapEngine
@@ -544,6 +548,7 @@ class ConsolidatedTradingDaemon:
                 liq_data = liq_radar.get_symbol_liquidity(symbol)
                 fvg_line = fvg_engine.get_fvg_summary_line(symbol)
                 fvg_data = fvg_engine.get_symbol_fvg_matrix(symbol)
+                near_fvg = fvg_data.get("nearest_unmitigated_fvg", {}) or {}
                 
                 # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
                 rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
@@ -553,7 +558,10 @@ class ConsolidatedTradingDaemon:
                 try:
                     lib_payload = self.librarian.run_librarian_cycle({
                         "symbol": symbol,
-                        "fvg_type": "M5_BEAR_FVG" if "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG",
+                        "fvg_type": near_fvg.get("type") or ("M5_BEAR_FVG" if "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG"),
+                        "fvg_top": near_fvg.get("top"),
+                        "fvg_bottom": near_fvg.get("bottom"),
+                        "fvg_ce": near_fvg.get("consequent_encroachment"),
                         "sweep_status": liq_data.get("sweep_status", "IN_RANGE"),
                         "h4_bias": mtf.get("h4_trend", "NEUTRAL"),
                         "m5_bias": mtf.get("m5_trend", "NEUTRAL")
@@ -582,8 +590,8 @@ class ConsolidatedTradingDaemon:
 
                 # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG & RRR
                 inst_summary = (
-                    f"• {symbol}: {spread_info} | Velocity: {velocity.get('ticks_per_min')} t/m [{velocity.get('status')}] "
-                    f"| ADR20: ${adr_info.get('today_range')}/${adr_info.get('adr_20')} ({adr_info.get('pct_used')}% used) "
+                    f"• {symbol}: {spread_info} | {velocity_str} "
+                    f"| {adr_str} "
                     f"| 4TF Alignment: {mtf.get('formatted_4tf', 'N/A')} [RSI H4:{mtf.get('h4_rsi')} H1:{mtf.get('h1_rsi')} M15:{mtf.get('m15_rsi')} M5:{mtf.get('m5_rsi')}] "
                     f"| {fvg_line} | Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "

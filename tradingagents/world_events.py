@@ -93,12 +93,20 @@ class LiveWorldEventsEngine:
                 req = urllib.request.Request(src["url"], headers=headers)
                 xml_data = urllib.request.urlopen(req, timeout=2.0).read()
                 root = ET.fromstring(xml_data)
-                for item in root.findall(".//item")[:10]:
+                EXCLUDED_NOISE_KEYWORDS = [
+                    "ROTH", "401K", "RETIREE", "ESTATE PLAN", "MORTGAGE RATE", "REFINANCE",
+                    "CREDIT CARD", "SOCIAL SECURITY", "TOO OLD FOR", "MY WIFE", "RETIREMENT SAVINGS",
+                    "MEDICARE", "INHERITANCE"
+                ]
+                for item in root.findall(".//item")[:15]:
                     title_elem = item.find("title")
                     link_elem = item.find("link")
                     pub_elem = item.find("pubDate")
                     if title_elem is not None and title_elem.text:
                         raw_title = title_elem.text.strip().replace("&apos;", "'").replace("&#39;", "'").replace("&quot;", '"')
+                        t_upper = raw_title.upper()
+                        if any(kw in t_upper for kw in EXCLUDED_NOISE_KEYWORDS):
+                            continue
                         cat = self._categorize(raw_title, src["default_category"])
                         link = link_elem.text.strip() if (link_elem is not None and link_elem.text) else ""
                         pub_date = pub_elem.text.strip() if (pub_elem is not None and pub_elem.text) else timestamp_str
@@ -143,8 +151,11 @@ class LiveWorldEventsEngine:
         if not events:
             return "  • No high-impact live world events detected at this moment."
 
+        cat_prio = {"CENTRAL_BANKS_FED": 1, "COMMODITIES_ENERGY": 2, "GEOPOLITICAL_GLOBAL": 3, "MACRO_ECONOMIC_INDICATORS": 4}
+        sorted_events = sorted(events, key=lambda e: cat_prio.get(e.get("category", ""), 99))
+
         bullets = []
-        for ev in events[:max_items]:
+        for ev in sorted_events[:max_items]:
             bullets.append(f"  • [{ev['category']}] {ev['title']} ({ev['source']})")
 
         return "\n".join(bullets)

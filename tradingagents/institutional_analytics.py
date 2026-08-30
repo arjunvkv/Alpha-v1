@@ -95,8 +95,11 @@ class InstitutionalAnalyticsEngine:
                     if "gold" in m:
                         g = m["gold"]
                         idx26 = g.get("cot_index_26w", 100.0)
+                        net_noncomm = g.get("net_noncommercial", 243334)
                         res["markets"]["XAUUSD"] = {
-                            "name": "Gold", "net_noncommercial": g.get("net_noncommercial", 243334),
+                            "name": "Gold", "net_noncommercial": net_noncomm,
+                            "net_commercial": g.get("net_commercial", -net_noncomm),
+                            "commercial_net": g.get("net_commercial", -net_noncomm),
                             "change": g.get("change_noncommercial", 21145), "cot_index_26w": idx26,
                             "cot_index_52w": g.get("cot_index_52w", 79.2), "z_score": g.get("z_score_3y", 0.67),
                             "bias": "MAXIMUM_BULLISH_INSTITUTIONAL_ACCUMULATION" if idx26 >= 80 else "MODERATE_ACCUMULATION",
@@ -106,9 +109,12 @@ class InstitutionalAnalyticsEngine:
                     if "silver" in m:
                         s = m["silver"]
                         idx26 = s.get("cot_index_26w", 78.4)
+                        net_noncomm = s.get("net_noncommercial", 25261)
                         res["markets"]["XAGUSD"] = {
-                            "name": "Silver", "net_noncommercial": s.get("net_noncommercial", 25261),
-                            "change": s.get("change_noncommercial", -3420), "cot_index_26w": idx26,
+                            "name": "Silver", "net_noncommercial": net_noncomm,
+                            "net_commercial": s.get("net_commercial", -net_noncomm),
+                            "commercial_net": s.get("net_commercial", -net_noncomm),
+                            "change": g.get("change_noncommercial", -3420), "cot_index_26w": idx26,
                             "cot_index_52w": s.get("cot_index_52w", 9.9), "z_score": s.get("z_score_3y", 0.55),
                             "bias": "STRONG_BULLISH_INSTITUTIONAL_HOLDINGS" if idx26 >= 70 else "MODERATE_HOLDINGS",
                             "is_live": True, "data_provenance": "FUTURESBENCH_LIVE_API"

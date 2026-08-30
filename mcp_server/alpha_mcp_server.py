@@ -210,7 +210,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         cot_data = {
             "managed_money_percentile": cot_pct,
             "net_noncommercial": net_noncomm,
-            "commercial_net": net_noncomm,  # backward-compatible alias for existing consumers
+            "commercial_net": raw_cot.get("net_commercial", -net_noncomm),
             "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
             "cot_index_26w": raw_cot.get("cot_index_26w", cot_pct),
             "z_score": raw_cot.get("z_score", 0.0),

@@ -306,8 +306,8 @@ class DeterministicPatternMatcher:
                 "linked_tickets": linked_tickets[:3]
             })
 
-        # Sort by deterministic score (OBSERVED naturally ranks highest)
-        verified_candidates.sort(key=lambda x: x["score"], reverse=True)
+        # Sort by deterministic score, empirical win rate %, and sample robustness
+        verified_candidates.sort(key=lambda x: (x["score"], x["win_rate_pct"], x["sample_size"]), reverse=True)
         return verified_candidates
 
 
@@ -340,6 +340,7 @@ class LibrarianTacticalClassifier:
                     "pattern_id": "#PAT-EST",
                     "name": default_name,
                     "score": fallback_score,
+                    "score_type": "RELEVANCE_MATCH",
                     "win_rate": "0/0 (N/A) [ESTIMATED_PRIOR]",
                     "evidence_provenance": "ESTIMATED",
                     "rrr": "1:3.0 (Target Sweet Spot)",
@@ -352,6 +353,7 @@ class LibrarianTacticalClassifier:
                 "pattern_id": cand.get("id", "#PAT-001"),
                 "name": cand.get("name", default_name),
                 "score": cand.get("score", fallback_score),
+                "score_type": "RELEVANCE_MATCH",
                 "win_rate": cand.get("win_rate_display", "0/0 (N/A) [ESTIMATED_PRIOR]"),
                 "evidence_provenance": cand.get("evidence_provenance", "ESTIMATED"),
                 "rrr": cand.get("rrr") or "1:3.0 (Target Sweet Spot)",
@@ -367,9 +369,10 @@ class LibrarianTacticalClassifier:
         slot2["rank"] = 2
         slot2["rrr"] = "1:2.5"
 
-        slot3 = _format_cand(candidates[2] if len(candidates) > 2 else {}, "Trap & Invalidation Warning", f"{symbol} Premature Sweep Trap during Velocity Spikes", 3.0)
+        c3 = candidates[2] if len(candidates) > 2 else {}
+        slot3 = _format_cand(c3, "Trap & Invalidation Warning", f"{symbol} Premature Sweep Trap during Velocity Spikes", 3.0)
         slot3["rank"] = 3
-        slot3["rrr"] = "N/A (Avoid Execution)"
+        slot3["rrr"] = c3.get("rrr") or ("N/A (Avoid Execution)" if c3.get("win_rate_pct", 50.0) < 30.0 else "1:2.0")
 
         slot4 = _format_cand(candidates[3] if len(candidates) > 3 else {}, "Optimal Take Profit & Scaling Blueprint", f"{symbol} Consequent Encroachment (50% CE) TP Scaling", 3.3)
         slot4["rank"] = 4
@@ -712,11 +715,19 @@ class AutonomousLibrarianAgent:
                 "note": f"Mandatory Proxima consultation failed after retries: {prox_status}"
             }
 
-        # 6. Generate tactical Top 4 with direction-neutral placeholders (J3)
+        # 6. Generate tactical Top 4 synced with live FVG and liquidity state
+        from tradingagents.fair_value_gap import FairValueGapEngine
+        from tradingagents.liquidity_radar import LiquidityRadarEngine
+        fvg_mat = FairValueGapEngine().get_symbol_fvg_matrix(sym)
+        liq_mat = LiquidityRadarEngine().get_symbol_liquidity(sym)
+        near_fvg = fvg_mat.get("nearest_unmitigated_fvg", {}) or {}
         market_state = {
             "symbol": sym,
-            "fvg_type": "NONE",
-            "sweep_status": "IN_RANGE"
+            "fvg_type": near_fvg.get("type", "NONE"),
+            "fvg_top": near_fvg.get("top"),
+            "fvg_bottom": near_fvg.get("bottom"),
+            "fvg_ce": near_fvg.get("consequent_encroachment"),
+            "sweep_status": liq_mat.get("sweep_status", "IN_RANGE")
         }
         cycle_res = self.run_librarian_cycle(market_state)
 
