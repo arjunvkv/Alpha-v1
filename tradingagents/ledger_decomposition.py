@@ -135,8 +135,8 @@ class LedgerDecompositionEngine:
             # Measured forensic context lookup (Item 2)
             j_trade = journal_map.get(pos_id, {})
             f_ctx = j_trade.get("forensic_context")
-            f_ctx = f_ctx if isinstance(f_ctx, dict) and not f_ctx.get("historical_backfill") else {}
-            raw_4tf = f_ctx.get("4tf_alignment")
+            f_ctx = f_ctx if isinstance(f_ctx, dict) else {}
+            raw_4tf = f_ctx.get("4tf_alignment") or f_ctx.get("four_timeframe_alignment")
             
             if raw_4tf and isinstance(raw_4tf, str) and raw_4tf != "UNKNOWN":
                 alignment_provenance = "MEASURED_FORENSIC_4TF"
@@ -150,7 +150,9 @@ class LedgerDecompositionEngine:
 
             # FVG fill% bucket lookup (Item 1a)
             n_fvg = f_ctx.get("nearest_fvg", {})
-            fvg_fill_val = n_fvg.get("fill_pct") if isinstance(n_fvg, dict) else None
+            fvg_fill_val = f_ctx.get("fvg_fill_pct")
+            if fvg_fill_val is None and isinstance(n_fvg, dict):
+                fvg_fill_val = n_fvg.get("fill_pct")
             if fvg_fill_val is not None:
                 if fvg_fill_val < 30.0:
                     fvg_bucket = "Fresh (<30% Fill)"
@@ -162,7 +164,7 @@ class LedgerDecompositionEngine:
                 fvg_bucket = "UNKNOWN / UNRECORDED"
 
             # Spread bucket (Item 1b)
-            spread_val = f_ctx.get("spread_pts")
+            spread_val = f_ctx.get("spread_pts") or f_ctx.get("spread_points")
             if spread_val is not None:
                 if spread_val < 40:
                     spread_bucket = "Tight (<40 pts)"
