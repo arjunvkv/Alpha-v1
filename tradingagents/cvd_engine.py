@@ -88,6 +88,46 @@ class CumulativeVolumeDeltaEngine:
             else:
                 exhaustion_desc = "NO_DIVERGENCE"
 
+            # Compute live M1 tick velocity (ticks/min) and current spread (pts)
+            live_spread_pts = int(getattr(tick, "spread", 0)) if tick else 0
+            if live_spread_pts == 0 and tick and getattr(tick, "ask", 0) and getattr(tick, "bid", 0):
+                point = getattr(mt5.symbol_info(sym), "point", 0.01) or 0.01
+                live_spread_pts = int(round((tick.ask - tick.bid) / point))
+
+            # M1 velocity calculation
+            m1_rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M1, 0, 5)
+            if m1_rates is not None and len(m1_rates) > 0:
+                current_m1_velocity = float(m1_rates[-1]['tick_volume'])
+                avg_5m_velocity = round(float(sum(r['tick_volume'] for r in m1_rates) / len(m1_rates)), 1)
+            else:
+                current_m1_velocity = 0.0
+                avg_5m_velocity = 0.0
+
+            # Adverse velocity warning (loss clusters occur when velocity > 120 t/m into setup)
+            is_high_velocity = current_m1_velocity > 120.0 or avg_5m_velocity > 120.0
+            velocity_posture = "HIGH_VELOCITY_SPIKE (>120 t/m)" if is_high_velocity else ("MODERATE_FLOW (60-120 t/m)" if current_m1_velocity >= 60.0 else "LOW_COMPRESSION (<60 t/m)")
+
+            # Order book imbalance read
+            book_imbalance = "BALANCED"
+            try:
+                mt5.market_book_add(sym)
+                dom = mt5.market_book_get(sym)
+                if dom and len(dom) > 0:
+                    bid_depth = sum(d.volume for d in dom if d.type == mt5.BOOK_TYPE_BUY)
+                    ask_depth = sum(d.volume for d in dom if d.type == mt5.BOOK_TYPE_SELL)
+                    tot_depth = bid_depth + ask_depth
+                    if tot_depth > 0:
+                        imbalance_pct = ((bid_depth - ask_depth) / tot_depth) * 100.0
+                        if imbalance_pct > 25.0:
+                            book_imbalance = f"HEAVY_BID_STACK (+{imbalance_pct:.1f}% Bids)"
+                        elif imbalance_pct < -25.0:
+                            book_imbalance = f"HEAVY_ASK_STACK ({imbalance_pct:.1f}% Asks)"
+                        else:
+                            book_imbalance = f"BALANCED_BOOK ({imbalance_pct:+.1f}%)"
+                mt5.market_book_release(sym)
+            except Exception:
+                pass
+
             return {
                 "symbol": sym,
                 "status": "MEASURED_ACTIVE",
@@ -95,6 +135,12 @@ class CumulativeVolumeDeltaEngine:
                 "is_stale": is_stale,
                 "last_tick_time": tick_time_str,
                 "market_status": "WEEKEND_MARKET_CLOSED" if is_weekend else "ACTIVE",
+                "live_spread_pts": live_spread_pts,
+                "tick_velocity_tpm": current_m1_velocity,
+                "avg_5m_velocity_tpm": avg_5m_velocity,
+                "velocity_posture": velocity_posture,
+                "adverse_velocity_warning": is_high_velocity,
+                "order_book_imbalance": book_imbalance,
                 "cumulative_volume_delta": round(cum_delta, 1),
                 "recent_10_bar_delta": round(recent_10_delta, 1),
                 "delta_pressure_pct": delta_ratio,

@@ -35,9 +35,19 @@ class PreTradeDecisionRecorder:
         notes: str = "",
         volume: float = 0.0,
         sl: float = 0.0,
-        tp: float = 0.0
+        tp: float = 0.0,
+        pattern_name: str = "",
+        category_tag: str = "PROBE_HYPOTHESIS_EXPECTED_EDGE",
+        four_tf_alignment: str = "",
+        m15_rsi: float = 50.0,
+        h4_rsi: float = 50.0,
+        session_name: str = "",
+        tick_velocity_tpm: float = 0.0,
+        macro_event_tag: str = "CLEAR",
+        order_book_imbalance: str = "BALANCED",
+        direction_thesis: str = ""
     ) -> Dict[str, Any]:
-        """Saves a structured pre-trade decision snapshot."""
+        """Saves a structured pre-trade decision snapshot with complete experimental metadata."""
         utc_now = datetime.datetime.now(datetime.timezone.utc)
         ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
         
@@ -46,13 +56,24 @@ class PreTradeDecisionRecorder:
             "timestamp_ist": ist_now.strftime("%Y-%m-%d %H:%M:%S IST"),
             "symbol": symbol.strip().upper(),
             "side": side.strip().upper(),
+            "pattern_name": pattern_name or f"{symbol.strip().upper()}_{side.strip().upper()}_SETUP",
+            "category_tag": category_tag,
             "volume": volume,
             "sl": sl,
             "tp": tp,
             "conviction_score": conviction_score,
+            "four_tf_alignment": four_tf_alignment,
             "in_direction_fvg_fill_pct": in_direction_fvg_fill_pct,
+            "fvg_fill_pct": in_direction_fvg_fill_pct,
             "spread_pts": spread_pts,
+            "m15_rsi": m15_rsi,
+            "h4_rsi": h4_rsi,
+            "session": session_name,
+            "tick_velocity_tpm": tick_velocity_tpm,
+            "order_book_imbalance": order_book_imbalance,
+            "macro_event_tag": macro_event_tag,
             "regime_flag": regime_flag,
+            "direction_thesis": direction_thesis,
             "contradictions_count": contradictions_count,
             "notes": notes,
             "process_evaluated": True,
@@ -62,7 +83,7 @@ class PreTradeDecisionRecorder:
         try:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
-            LOG.info(f"Recorded pre-trade decision snapshot for {symbol} {side} (Conviction: {conviction_score}, Fill: {in_direction_fvg_fill_pct}%)")
+            LOG.info(f"Recorded pre-trade decision snapshot for {symbol} {side} [{category_tag}] (Conviction: {conviction_score}, Fill: {in_direction_fvg_fill_pct}%, Vel: {tick_velocity_tpm} t/m)")
         except Exception as e:
             LOG.error(f"Failed to record pre-trade snapshot: {e}")
 
