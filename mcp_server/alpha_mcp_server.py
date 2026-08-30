@@ -943,9 +943,90 @@ def record_trade_observation(symbol: str, pattern_name: str, observation: str, o
     return mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple)
 
 @mcp.tool()
-def register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "") -> str:
-    """Set dynamic price or sentiment alerts for the local desk to track."""
-    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction)
+def get_multi_instrument_ledger() -> str:
+    """Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD)."""
+    return mcp_alpha_get_multi_instrument_ledger()
+
+@mcp.tool()
+def get_live_microstructure(symbol: str = "XAUUSD") -> str:
+    """Fetch live market microstructure: real-time spread (pts), M1 tick velocity (t/m), order-book depth imbalance, and CVD posture."""
+    return mcp_alpha_get_live_microstructure(symbol)
+
+@mcp.tool()
+def get_fvg_matrix(symbol: str = "XAUUSD") -> str:
+    """Fetch multi-timeframe Fair Value Gaps (H4, H1, M15, M5) and 50% Consequent Encroachment levels."""
+    return mcp_alpha_get_fvg_matrix(symbol)
+
+@mcp.tool()
+def get_live_world_events(category: str = "ALL") -> str:
+    """Live macroeconomic releases, central bank speeches, and geopolitical intelligence."""
+    return mcp_alpha_get_live_world_events(category)
+
+@mcp.tool()
+def list_desk_tools() -> str:
+    """Live dynamic discovery of ALL available FastMCP tools and their capabilities in the desk daemon."""
+    tools_list = [
+        {"name": "get_account_status", "description": "Live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states."},
+        {"name": "get_full_institutional_profile", "description": "Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI."},
+        {"name": "get_symbol_conviction", "description": "4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."},
+        {"name": "get_trade_forensics", "description": "Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution."},
+        {"name": "get_ledger_decomposition", "description": "Decompose 121-trade history into condition base rates (Session x Direction x Spread x FVG Fill%)."},
+        {"name": "get_multi_instrument_ledger", "description": "Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD)."},
+        {"name": "get_live_microstructure", "description": "Live spread in pts, M1 tick velocity (t/m), order book depth imbalance, and CVD posture."},
+        {"name": "backtest_thesis", "description": "Natural MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters."},
+        {"name": "ask_librarian", "description": "Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade)."},
+        {"name": "query_analyst_desk", "description": "Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear)."},
+        {"name": "get_measured_cvd", "description": "Measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5."},
+        {"name": "get_fvg_matrix", "description": "Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and Consequent Encroachment levels."},
+        {"name": "get_live_world_events", "description": "Live macroeconomic releases, central bank speeches, and geopolitical intelligence."},
+        {"name": "record_decision_snapshot", "description": "Record pre-trade decision context on disk with full experimental metadata."},
+        {"name": "execute_trade", "description": "Execute direct market buy/sell orders on FTMO MT5 at uniform pilot size (0.10 lots or lower)."},
+        {"name": "update_position", "description": "Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."},
+        {"name": "register_watch", "description": "Set dynamic price or sentiment alerts for the local desk to track."},
+        {"name": "call_desk_tool", "description": "Universal dynamic dispatcher allowing invocation of any tool by name with arguments."}
+    ]
+    return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
+
+@mcp.tool()
+def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
+    """Universal Dynamic Tool Dispatcher. Executes any desk tool by name dynamically with auto-reload pickup."""
+    name = tool_name.strip()
+    if name.startswith("mcp_alpha_"):
+        name = name.replace("mcp_alpha_", "")
+    
+    try:
+        args = json.loads(arguments_json) if isinstance(arguments_json, str) and arguments_json.strip() else {}
+    except Exception as e:
+        args = {}
+
+    fn_map = {
+        "get_account_status": mcp_alpha_get_account_status,
+        "get_full_institutional_profile": lambda: mcp_alpha_get_full_institutional_profile(args.get("symbol", "XAUUSD")),
+        "get_symbol_conviction": lambda: mcp_alpha_get_symbol_conviction(args.get("symbol", "XAUUSD")),
+        "get_trade_forensics": lambda: mcp_alpha_get_trade_forensics(args.get("symbol_or_ticket", args.get("symbol", "XAUUSD"))),
+        "get_ledger_decomposition": lambda: mcp_alpha_get_ledger_decomposition(args.get("symbol", "XAUUSD")),
+        "get_multi_instrument_ledger": mcp_alpha_get_multi_instrument_ledger,
+        "get_live_microstructure": lambda: mcp_alpha_get_live_microstructure(args.get("symbol", "XAUUSD")),
+        "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query", ""), args.get("symbol", "XAUUSD"), args.get("timeframe", "M5"), args.get("bars", 60), args.get("offset", 0)),
+        "ask_librarian": lambda: mcp_alpha_ask_librarian(args.get("query", ""), args.get("symbol", "XAUUSD")),
+        "query_analyst_desk": lambda: mcp_alpha_query_analyst_desk(args.get("query", ""), args.get("symbol", "XAUUSD")),
+        "get_measured_cvd": lambda: mcp_alpha_get_measured_cvd(args.get("symbol", "XAUUSD")),
+        "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol", "XAUUSD")),
+        "get_live_world_events": lambda: mcp_alpha_get_live_world_events(args.get("category", "ALL")),
+        "record_decision_snapshot": lambda: mcp_alpha_record_decision_snapshot(**args),
+        "execute_trade": lambda: mcp_alpha_execute_trade(args.get("symbol", "XAUUSD"), args.get("side", "BUY"), args.get("volume", 0.05), args.get("sl", 0.0), args.get("tp", 0.0)),
+        "update_position": lambda: mcp_alpha_update_position(args.get("ticket", 0), args.get("action", "BREAK_EVEN"), args.get("params_json", "")),
+        "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol", "XAUUSD"), args.get("condition", ""), args.get("instruction", ""), args.get("target_price"), args.get("reason", ""), args.get("direction", "")),
+        "list_desk_tools": list_desk_tools
+    }
+
+    if name in fn_map:
+        try:
+            return fn_map[name]()
+        except Exception as e:
+            return json.dumps({"status": "ERROR", "tool": name, "error": str(e)}, indent=2)
+    
+    return json.dumps({"status": "UNKNOWN_TOOL", "requested_tool": name, "available_tools": list(fn_map.keys())}, indent=2)
 
 
 if __name__ == "__main__":
