@@ -36,7 +36,7 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 class ProximaGate:
     """Async/HTTP Client to Proxima Gateway on Port 3210."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 0.8):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 6.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -44,33 +44,52 @@ class ProximaGate:
         """Check if Proxima Desktop server is online."""
         try:
             req = urllib.request.Request(f"{self.http_url}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 return resp.status == 200
         except Exception:
             return False
 
-    def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Optional[str]:
-        """Send research query to Proxima tools on demand."""
-        try:
-            payload = json.dumps({
-                "model": "auto",
-                "messages": [
-                    {"role": "system", "content": system_prompt or "You are Proxima Research Quantitative Engine."},
-                    {"role": "user", "content": prompt}
-                ]
-            }).encode("utf-8")
-            req = urllib.request.Request(
-                f"{self.http_url}/v1/chat/completions",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            LOG.debug(f"Proxima query skipped (server standby): {e}")
-            return None
+    def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
+        """Send mandatory research query to Proxima tools with multi-model fallback and retries."""
+        models_to_try = ["3.5-flash", "gemini", "auto"]
+        last_err = None
+        
+        for m in models_to_try:
+            for attempt in range(2):
+                payload = json.dumps({
+                    "model": m,
+                    "messages": [
+                        {"role": "system", "content": system_prompt or "You are Proxima Research Quantitative Microstructure Engine for institutional trading desks."},
+                        {"role": "user", "content": prompt}
+                    ]
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    f"{self.http_url}/v1/chat/completions",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                t0 = datetime.now()
+                try:
+                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                        lat_ms = int((datetime.now() - t0).total_seconds() * 1000)
+                        data = json.loads(resp.read().decode("utf-8"))
+                        content = data["choices"][0]["message"]["content"]
+                        return {
+                            "status": "ONLINE",
+                            "model": m,
+                            "latency_ms": lat_ms,
+                            "synthesis": content.strip()
+                        }
+                except Exception as e:
+                    last_err = str(e)
+                    
+        return {
+            "status": f"OFFLINE_ERROR ({last_err})",
+            "model": "3.5-flash",
+            "latency_ms": 0,
+            "synthesis": None
+        }
 
 
 class LibrarianPatternDatabase:
@@ -661,46 +680,34 @@ class AutonomousLibrarianAgent:
                     f"Desk standard requires waiting for verified structural confirmation before taking execution risk."
                 )
 
-        # 5. Query Proxima LLM Gateway if online (Ask 1: Honest labeling when timed out/offline)
-        proxima_online = self.proxima.check_health()
-        if proxima_online:
-            start_t = datetime.now()
-            proxima_synthesis = self.proxima.query_proxima_tools(
-                f"Analyze quantitative research for {sym}: '{query}'. Key setup: {top_matches[0].get('pattern_name') if top_matches else 'General'}. Provide concise structural invalidation & expectancy analysis.",
-                system_prompt="You are Proxima Research Quantitative Engine for institutional trading desks."
-            )
-            lat_ms = int((datetime.now() - start_t).total_seconds() * 1000)
-            if proxima_synthesis:
-                prox_status = "ONLINE"
-                prox_synth = proxima_synthesis
-                prox_findings = {
-                    "proxima_status": "ONLINE",
-                    "proxima_endpoint": f"{self.proxima.http_url}/v1/chat/completions",
-                    "gateway_type": "TEXT_ADVISORY_LLM_GATEWAY",
-                    "latency_ms": lat_ms,
-                    "quantitative_microstructure_synthesis": proxima_synthesis
-                }
-            else:
-                prox_status = "NOT_CONSULTED"
-                prox_synth = None
-                prox_findings = {
-                    "proxima_status": "NOT_CONSULTED",
-                    "proxima_endpoint": f"{self.proxima.http_url}/v1/chat/completions",
-                    "gateway_type": "TEXT_ADVISORY_LLM_GATEWAY",
-                    "latency_ms": lat_ms,
-                    "quantitative_microstructure_synthesis": None,
-                    "note": "Proxima Desktop request timed out or returned empty response."
-                }
-        else:
-            prox_status = "NOT_CONSULTED"
-            prox_synth = None
+        # 5. Mandatory Consultation of Proxima Desktop LLM Gateway
+        top_pat_name = top_matches[0].get('pattern_name') if top_matches else 'General'
+        prox_res = self.proxima.query_proxima_tools(
+            f"Analyze quantitative microstructure & execution strategy for {sym}: '{query}'. Key setup: {top_pat_name}. Provide concise 2-sentence institutional synthesis.",
+            system_prompt="You are Proxima Research Quantitative Microstructure Engine for institutional trading desks."
+        )
+        
+        if prox_res.get("status") == "ONLINE" and prox_res.get("synthesis"):
+            prox_status = "ONLINE"
+            prox_synth = prox_res["synthesis"]
             prox_findings = {
-                "proxima_status": "NOT_CONSULTED",
+                "proxima_status": "ONLINE",
                 "proxima_endpoint": f"{self.proxima.http_url}/v1/chat/completions",
                 "gateway_type": "TEXT_ADVISORY_LLM_GATEWAY",
-                "latency_ms": 0,
+                "model_consulted": prox_res.get("model", "3.5-flash"),
+                "latency_ms": prox_res.get("latency_ms", 0),
+                "quantitative_microstructure_synthesis": prox_synth
+            }
+        else:
+            prox_status = prox_res.get("status", "OFFLINE_STANDBY")
+            prox_synth = None
+            prox_findings = {
+                "proxima_status": prox_status,
+                "proxima_endpoint": f"{self.proxima.http_url}/v1/chat/completions",
+                "gateway_type": "TEXT_ADVISORY_LLM_GATEWAY",
+                "latency_ms": prox_res.get("latency_ms", 0),
                 "quantitative_microstructure_synthesis": None,
-                "note": "Proxima LLM Gateway offline / not consulted for deterministic analytical retrieval."
+                "note": f"Mandatory Proxima consultation failed after retries: {prox_status}"
             }
 
         # 6. Generate tactical Top 4 with direction-neutral placeholders (J3)
