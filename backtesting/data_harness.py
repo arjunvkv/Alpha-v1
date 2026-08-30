@@ -7,10 +7,12 @@ Zero hardcoded pattern rules or FVG calculations - outputs pure chronological ma
 import os
 import sys
 import datetime
+import threading
 from typing import Dict, Any, List, Optional
 import MetaTrader5 as mt5
 
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
+_MT5_LOCK = threading.Lock()
 
 class MT5DataHarness:
     """Extracts and formats raw MT5 candle data into token-efficient tables for LLM evaluation."""
@@ -19,14 +21,15 @@ class MT5DataHarness:
         self.ftmo_path = ftmo_path or FTMO_PATH
 
     def _ensure_mt5(self) -> bool:
-        try:
-            if mt5.terminal_info() is not None:
-                return True
-            if os.path.exists(self.ftmo_path):
-                return mt5.initialize(path=self.ftmo_path)
-            return mt5.initialize()
-        except Exception:
-            return False
+        with _MT5_LOCK:
+            try:
+                if mt5.terminal_info() is not None:
+                    return True
+                if os.path.exists(self.ftmo_path):
+                    return mt5.initialize(path=self.ftmo_path)
+                return mt5.initialize()
+            except Exception:
+                return False
 
     def get_timeframe_const(self, tf_str: str) -> int:
         tf = tf_str.upper().strip()
@@ -50,7 +53,8 @@ class MT5DataHarness:
         sym = symbol.strip().upper()
         tf_const = self.get_timeframe_const(timeframe)
 
-        rates = mt5.copy_rates_from_pos(sym, tf_const, offset, bars)
+        with _MT5_LOCK:
+            rates = mt5.copy_rates_from_pos(sym, tf_const, offset, bars)
         if rates is None or len(rates) == 0:
             return {
                 "status": "DATA_UNAVAILABLE",
