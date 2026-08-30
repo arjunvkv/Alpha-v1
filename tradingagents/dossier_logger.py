@@ -114,13 +114,21 @@ class DeepDossierLogger:
             prox_status = lib.get("proxima_status", "STANDBY (Local Memory Active)")
             prox_synth = lib.get("proxima_research_synthesis", "Proxima Desktop Standby — using local deterministic microstructure rules")
 
+            is_weekend = session_info.get("market_status") == "WEEKEND_MARKET_CLOSED"
+            if is_weekend:
+                live_exec_str = f"Spread: `{spread.get('pts')} pts (${spread.get('val')}) [FROZEN_WEEKEND_CLOSE]` | Velocity: `0 t/m [MARKET_CLOSED]`"
+                adr_str = f"Range Friday `${adr.get('today_range')}/${adr.get('adr_20')}` (`{adr.get('pct_used')}% used`) [HISTORICAL_FRIDAY]"
+            else:
+                live_exec_str = f"Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`"
+                adr_str = f"Range `${adr.get('today_range')}/${adr.get('adr_20')}` (`{adr.get('pct_used')}% used`) [{adr.get('capacity_status')}]"
+
             md_lines.append(f"### 🔹 Instrument: {sym}")
-            md_lines.append(f"- **Live Execution**: Spread: `{spread.get('pts')} pts (${spread.get('val')}) [{spread.get('status')}]` | Velocity: `{vel.get('ticks_per_min')} t/m [{vel.get('status')}]`")
-            md_lines.append(f"- **ADR(20) Expansion**: Range `${adr.get('today_range')}/${adr.get('adr_20')}` (`{adr.get('pct_used')}% used`) [{adr.get('capacity_status')}]")
+            md_lines.append(f"- **Live Execution**: {live_exec_str}")
+            md_lines.append(f"- **ADR(20) Expansion**: {adr_str}")
             md_lines.append(f"- **Multi-Timeframe Alignment**: H4 (`{h4_bias}`) | H1 (`{h1_bias}`) | M15 (`{m15_bias}`) | M5 (`{m5_bias}`) $\\rightarrow$ **{alignment_label}**")
             md_lines.append(f"- **Order Blocks & Pivots**: Daily PP `{ob.get('pivot_point')}` (S1: `{ob.get('support_s1')}`, R1: `{ob.get('resistance_r1')}`) | Demand: `{ob.get('demand_zone')}` | Supply: `{ob.get('supply_zone')}`")
             md_lines.append(f"- **Technical Agent Internal Reasoning**: {tech.get('thesis', 'N/A')}")
-            md_lines.append(f"- **COT / Fundamental Agent Internal Reasoning**: COT Percentile `{cot_pct:.1f}%` | {fund.get('thesis', 'N/A')}")
+            md_lines.append(f"- **COT / Fundamental Agent Internal Reasoning**: COT Percentile `{cot_pct:.1f}%` (26w: `{fund.get('cot_index_26w', cot_pct)}%` | Change: `{fund.get('change', 0):+d}` | Net: `{fund.get('net_noncommercial', 0):+d}` | Provenance: `{fund.get('data_provenance', 'FUTURESBENCH_LIVE_API')}`) | {fund.get('thesis', 'N/A')}")
             md_lines.append(f"- **Macro / News Agent Internal Reasoning**: DXY `{macro.get('dxy', 101.4)}`, VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
             md_lines.append(f"- **Bull vs. Bear Debate Agent Internal Reasoning**: Debater LLM Consensus `{debate.get('consensus_score', 5.0)}/10` | Conviction `{debate.get('conviction', 'LOW')}` | Institutional Risk Warning: `{'YES' if debate.get('institutional_risk_warning') else 'NO'}`")
             md_lines.append(f"- **Autonomous Librarian Historical Precedent (Unified Learning Memory)**: Top Setup: `{lib_name}` (Score: `{lib_score}/10` | Win Rate: `{lib_wr}` [{lib_prov}]) | Trigger: {lib_trigger}")

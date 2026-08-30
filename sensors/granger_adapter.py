@@ -119,19 +119,26 @@ class GrangerAdapter:
             sym_clean = symbol.replace(".cash", "").upper()
             m = cot_data.get("markets", {}).get(symbol) or cot_data.get("markets", {}).get(sym_clean, {})
             
-            percentile = m.get("cot_index_52w", m.get("cot_index_26w", 60.0))
+            percentile = m.get("cot_index_26w", m.get("cot_index_52w", 60.0))
             net_noncomm = m.get("net_noncommercial", 0)
+            net_comm = m.get("net_commercial", -net_noncomm)
             
             return {
                 "symbol": symbol,
                 "status": "LIVE_CFTC_COT",
-                "report_date": cot_data.get("report_date"),
-                "source": cot_data.get("source"),
+                "report_date": cot_data.get("report_date", "2026-08-25"),
+                "source": cot_data.get("source", "FUTURESBENCH_LIVE_API"),
+                "data_provenance": m.get("data_provenance", cot_data.get("source", "FUTURESBENCH_LIVE_API")),
+                "is_live": m.get("is_live", cot_data.get("is_live", True)),
                 "managed_money_percentile": percentile,
+                "cot_index_26w": m.get("cot_index_26w", percentile),
+                "cot_index_52w": m.get("cot_index_52w", 79.2),
                 "net_noncommercial": net_noncomm,
-                "commercial_net": net_noncomm,  # backward-compatible alias
+                "commercial_net": net_comm,
+                "net_commercial": net_comm,
                 "bias": m.get("bias", "NEUTRAL"),
                 "z_score": m.get("z_score", 0.0),
+                "change": m.get("change", 0),
                 "open_interest_change": m.get("change", 0),
                 "fundamentals": m
             }

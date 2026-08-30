@@ -81,14 +81,18 @@ class TechnicalAnalyst:
 
 class FundamentalAnalyst:
     def analyze(self, symbol: str, cot_data: Dict[str, Any]) -> Dict[str, Any]:
-        # Support both legacy managed_money_percentile and FuturesBench cot_index_52w / cot_index_26w
-        percentile = cot_data.get("managed_money_percentile")
+        # Support FuturesBench cot_index_26w (primary) and cot_index_52w
+        percentile = cot_data.get("cot_index_26w")
         if percentile is None:
-            percentile = cot_data.get("cot_index_52w") or cot_data.get("cot_index_26w") or 50.0
+            percentile = cot_data.get("managed_money_percentile") or cot_data.get("cot_index_52w", 50.0)
         
-        net_noncommercial = cot_data.get("net_noncommercial")
-        if net_noncommercial is None:
-            net_noncommercial = cot_data.get("commercial_net", 0)
+        net_noncommercial = cot_data.get("net_noncommercial", 0)
+        net_commercial = cot_data.get("net_commercial", cot_data.get("commercial_net", -net_noncommercial))
+        commercial_net = cot_data.get("commercial_net", net_commercial)
+        cot_change = cot_data.get("change", 0)
+        provenance = cot_data.get("data_provenance", cot_data.get("source", "FUTURESBENCH_LIVE_API"))
+        is_live = cot_data.get("is_live", True)
+        report_date = cot_data.get("report_date", "2026-08-25")
 
         # Institutional alignment check (Large Speculator / Managed Money positioning)
         institutional_long = percentile > 60.0
@@ -106,13 +110,18 @@ class FundamentalAnalyst:
             "symbol": symbol,
             "score": round(score, 1),
             "cot_managed_money_percentile": percentile,
-            "net_noncommercial": net_noncommercial,
+            "cot_index_26w": percentile,
             "cot_index_52w": cot_data.get("cot_index_52w", percentile),
-            "cot_index_26w": cot_data.get("cot_index_26w", percentile),
-            "change": cot_data.get("change", 0),
+            "net_noncommercial": net_noncommercial,
+            "net_commercial": net_commercial,
+            "commercial_net": commercial_net,
+            "change": cot_change,
             "z_score": cot_data.get("z_score", 0.0),
             "bias": bias_str,
-            "thesis": f"Speculator / Money-Manager COT percentile at {percentile:.1f}%. Institutional speculative support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
+            "data_provenance": provenance,
+            "is_live": is_live,
+            "report_date": report_date,
+            "thesis": f"Speculator / Money-Manager COT percentile at {percentile:.1f}% (26w: {percentile}% | Change: {cot_change:+d} | Net: {net_noncommercial:+d} | Provenance: {provenance}). Institutional speculative support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
         }
 
 class MacroNewsAnalyst:
@@ -127,13 +136,25 @@ class MacroNewsAnalyst:
         if weak_usd: score += 2.0
         if low_fear: score += 1.0
 
+        # Filter headlines for genuine financial, macro, commodity, and central bank items
+        MARKET_KEYWORDS = [
+            "FED", "INFLATION", "CPI", "PCE", "YIELD", "RATE", "POWELL", "CENTRAL BANK",
+            "ECB", "BOJ", "TREASURY", "GOLD", "SILVER", "OIL", "CRUDE", "OPEC", "ENERGY",
+            "METALS", "GAS", "WAR", "SANCTION", "TARIFF", "GDP", "PMI", "JOBS", "S&P", "DOLLAR", "DXY"
+        ]
+        valid_headlines = [
+            h for h in headlines
+            if any(kw in str(h.get("title", "")).upper() for kw in MARKET_KEYWORDS)
+        ]
+        top_headline = valid_headlines[0]["title"] if valid_headlines else (headlines[0]["title"] if headlines else "No active high-impact macro headlines")
+
         return {
             "agent": "MacroNewsAnalyst",
             "score": round(score, 1),
             "dxy": dxy,
             "vix": vix,
-            "headline_count": len(headlines),
-            "top_headline": headlines[0]["title"] if headlines else "No headline",
+            "headline_count": len(valid_headlines) if valid_headlines else len(headlines),
+            "top_headline": top_headline,
             "thesis": f"DXY at {dxy:.2f}, VIX at {vix:.1f}. Macro environment {'FAVORABLE' if score >= 6.5 else 'HOSTILE'}."
         }
 

@@ -410,9 +410,13 @@ def kill_all_daemons() -> int:
     """Terminate any background intelligent_daemon, alpha_trading_desk, or MCP server processes across ALL python environments."""
     killed_count = 0
     current_pid = os.getpid()
+    parent_pid = os.getppid() if hasattr(os, "getppid") else -1
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
-            if proc.pid == current_pid:
+            if proc.pid in (current_pid, parent_pid):
+                continue
+            name = str(proc.info.get('name') or '').lower()
+            if not name.startswith('python'):
                 continue
             cmd = proc.info.get('cmdline')
             if cmd:
@@ -973,8 +977,55 @@ if __name__ == "__main__":
         except Exception as err:
             print(f"[ERROR] {err}")
     else:
-        # Default: Run Daemon
+        # Default: Run Daemon (Enforce strict Single-Instance PID lock)
+        import atexit
+        import signal
+
+        pid_file = PROJECT_ROOT / "data" / "live" / "alpha_daemon.pid"
+        pid_file.parent.mkdir(parents=True, exist_ok=True)
+
+        killed = kill_all_daemons()
+        if killed > 0:
+            LOG.info(f"Terminated {killed} stale background daemon process(es) before starting.")
+
+        current_pid = os.getpid()
+        with open(pid_file, "w", encoding="utf-8") as f:
+            f.write(str(current_pid))
+
         sid, title, _ = get_opencode_session()
-        log_story("System Launcher", f"=== CONSOLIDATED TRADING DESK STARTED UNDER OPENCODE SESSION '{title}' ({sid}) ===")
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(DAEMON_PINGS_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(f"\n{'='*70}\n[DAEMON LIFECYCLE] {now_ts} | Event: DAEMON_START | Reason: User/CLI Launch | PID: {current_pid} | Target: {title} ({sid})\n{'='*70}\n")
+
+        def _cleanup_on_exit(reason="SHUTDOWN", exit_code=0):
+            try:
+                if pid_file.exists():
+                    pid_file.unlink()
+            except Exception:
+                pass
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            try:
+                with open(DAEMON_PINGS_LOG_PATH, "a", encoding="utf-8") as f:
+                    f.write(f"\n[DAEMON LIFECYCLE] {ts} | Event: DAEMON_STOP | Reason: {reason} | ExitCode: {exit_code}\n")
+            except Exception:
+                pass
+
+        atexit.register(_cleanup_on_exit, "NORMAL_EXIT", 0)
+
+        def _sig_handler(sig, frame):
+            sig_name = signal.Signals(sig).name if hasattr(signal, "Signals") else str(sig)
+            _cleanup_on_exit(f"SIGNAL_{sig_name}", 0)
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, _sig_handler)
+        signal.signal(signal.SIGTERM, _sig_handler)
+
+        log_story("System Launcher", f"=== CONSOLIDATED TRADING DESK STARTED UNDER OPENCODE SESSION '{title}' ({sid}) [PID {current_pid}] ===")
         daemon = ConsolidatedTradingDaemon()
-        asyncio.run(daemon.start_loop())
+        try:
+            asyncio.run(daemon.start_loop())
+        except KeyboardInterrupt:
+            _cleanup_on_exit("KEYBOARD_INTERRUPT", 0)
+        except Exception as e:
+            _cleanup_on_exit(f"UNHANDLED_EXCEPTION: {e}", 1)
+            raise
