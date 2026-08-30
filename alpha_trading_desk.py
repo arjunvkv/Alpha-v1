@@ -713,26 +713,6 @@ class ConsolidatedTradingDaemon:
             f"  • {'✓' if status == 'UPDATED' else '⚠'} {name}: {status}"
             for name, status in update_status
         )
-        from tradingagents.unified_learning_memory import UnifiedLearningMemory
-        unified_learning_memory = UnifiedLearningMemory()
-        review_state = unified_learning_memory.get_review_status()
-        learning_status = review_state.get("learning", {})
-        live_status = review_state.get("live", {})
-        review_lines = ["=== EVIDENCE REVIEW STATUS ==="]
-        for source in ("Live Market State", "Active Positions", "Technical / Multi-Timeframe Detail", "Intermarket Context", "Macro / Calendar / World Events"):
-            rec = live_status.get(source, {})
-            status = rec.get("status", "READ_REQUIRED")
-            interval = rec.get("review_interval_seconds")
-            read_at = rec.get("read_at")
-            suffix = (f" | LAST READ: {read_at}" if read_at else " | LAST READ: NEVER")
-            review_lines.append(f"  • {source}: {status}" + (f" (review interval: {interval}s)" if interval else "") + suffix)
-        review_lines.append("")
-        review_lines.append("=== MANDATORY LEARNING — EVERY STUDY CYCLE / NO EXPIRY ===")
-        for source in ("Unified Learning Memory", "Pattern Book", "Historical Research", "Strategy Evidence Archive"):
-            rec = learning_status.get(source, {})
-            read_at = rec.get("read_at")
-            review_lines.append(f"  • {source}: {rec.get('status', 'READ_REQUIRED')} | LAST READ: {read_at or 'NEVER'}")
-        review_block = "\n".join(review_lines)
 
         mcp_tools_block = """=== COMPLETE FAST-MCP TOOL SUITE (14 TOOLS AVAILABLE) ===
   • mcp_alpha_get_full_institutional_profile(symbol) — Fetch Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.
@@ -769,7 +749,6 @@ MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track 
             f"  • Institutional Deep Book: file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
             f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
             f"  • Automatic Audit Log: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
-            f"{review_block}\n\n"
             f"{mcp_tools_block}\n"
             f"=== MANDATORY AGENT CYCLE ===\n"
             f"  1. Review required live evidence.\n"
