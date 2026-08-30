@@ -182,8 +182,11 @@ class TradeForensicsEngine:
                     pnl=profit,
                     entry_price=open_price,
                     exit_price=close_price,
-                    lesson=f"Historical {symbol} {side} trade closed with profit ${profit:.2f} (R: {r_val}R)."
+                    r_multiple=r_val,
+                    actual_risk_usd=r_data.get("initial_risk_usd"),
+                    lesson=f"Historical {symbol} {side} trade closed with profit ${profit:.2f} (Realized R: {r_val:+.2f}R | Risk ${r_data.get('initial_risk_usd', 0.0):.2f})."
                 )
+                ulm.reconcile_links()
 
         if new_records > 0:
             # Recompute summary statistics
