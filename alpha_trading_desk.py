@@ -746,8 +746,10 @@ class ConsolidatedTradingDaemon:
   • mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT, PARTIAL_CLOSE).
   • mcp_alpha_configure_instruments(enable, disable) — Enable/disable active trading instruments in real-time (hot-reloaded).
   • mcp_alpha_get_fvg_matrix(symbol) — Inspect multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and 50% CE levels.
-  • mcp_alpha_get_trade_forensics(ticket) — Query granular post-trade execution forensics and entry market context for closed deals.
-  • mcp_alpha_search_book(query) — Search the 371-pattern institutional library for specific setup names or triggers.
+  • mcp_alpha_get_ledger_decomposition(symbol) — Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).
+  • mcp_alpha_record_decision_snapshot(symbol, side, conviction, fill_pct, spread_pts, regime_flag, contradictions_count, notes) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).
+  • mcp_alpha_get_measured_cvd(symbol) — Fetch measured Cumulative Volume Delta (CVD) and Delta Exhaustion / Absorption metrics from MT5.
+  • mcp_alpha_search_book(query) — Search the 377-pattern institutional library for specific setup names or triggers.
   • mcp_alpha_get_book_index() — Inspect full pattern catalog taxonomy, win rates, and category statistics.
   • mcp_alpha_record_pattern_observation(symbol, pattern_name, observation) — Log verified chart observations to Unified Learning Memory.
   • mcp_alpha_record_pattern_outcome(symbol, pattern_name, outcome, ticket, r_value) — Attach live trade outcomes to historical patterns.

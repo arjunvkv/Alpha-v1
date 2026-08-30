@@ -43,7 +43,7 @@ class FairValueGapEngine:
             return False
 
     def get_symbol_fvg_matrix(self, symbol: str) -> Dict[str, Any]:
-        """Scans H4, H1, M15, and M5 for active and unmitigated Fair Value Gaps."""
+        """Scans H4, H1, M15, and M5 for active and unmitigated Fair Value Gaps with exact fill% metrics."""
         self._ensure_mt5()
         sym = symbol.strip().upper()
         
@@ -52,6 +52,13 @@ class FairValueGapEngine:
         point = getattr(sym_info, "point", 0.01) if sym_info else 0.01
         digits = getattr(sym_info, "digits", 2) if sym_info else 2
         live_price = getattr(tick, "ask", 0.0) if tick else 0.0
+
+        # Market staleness & weekend detection
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
+        is_weekend = (utc_now.weekday() >= 5) or (utc_now.weekday() == 4 and utc_now.hour >= 22)
+        tick_time_str = datetime.datetime.fromtimestamp(tick.time, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if tick and getattr(tick, "time", 0) > 0 else "N/A"
+        is_stale = is_weekend or (tick is None) or (getattr(tick, "time", 0) > 0 and (utc_now.timestamp() - tick.time > 300))
+        market_status = "WEEKEND_MARKET_CLOSED" if is_weekend else ("TICK_FEED_ACTIVE" if not is_stale else "FEED_STALE")
 
         tf_results = {}
         nearest_fvg = None
@@ -77,26 +84,31 @@ class FairValueGapEngine:
                     high_curr = float(c_current['high'])
                     low_curr = float(c_current['low'])
 
-                    # 1. Bullish FVG: Low of candle i > High of candle i-2
+                    # 1. Bullish FVG: Low of candle i > High of candle i-2 (Price gap between high[i-2] and low[i])
                     if low_curr > high_prior:
                         gap_bottom = high_prior
                         gap_top = low_curr
                         gap_size = round(gap_top - gap_bottom, digits)
                         ce_level = round((gap_top + gap_bottom) / 2.0, digits)
 
-                        # Check subsequent candles for mitigation
-                        mitigated = False
-                        fill_pct = 0.0
-                        lowest_subsequent = min([float(r['low']) for r in rates[i+1:]]) if i+1 < n else live_price
+                        # Lifetime penetration calculation from subsequent candles
+                        subsequent_lows = [float(r['low']) for r in rates[i+1:]] if i+1 < n else []
+                        lowest_subsequent = min(subsequent_lows) if subsequent_lows else (live_price if live_price > 0 else gap_top)
                         
+                        # Bullish FVG fill formula: price penetrates from top downwards
                         if lowest_subsequent <= gap_bottom:
-                            mitigated = True
                             fill_pct = 100.0
+                            mitigated = True
+                            status = "MITIGATED"
                         elif lowest_subsequent < gap_top:
                             filled_range = gap_top - lowest_subsequent
-                            fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 0.0001)) * 100.0)), 1)
-                            if fill_pct >= 85.0:
-                                mitigated = True
+                            fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 1e-6)) * 100.0)), 1)
+                            mitigated = (fill_pct >= 100.0)
+                            status = "MITIGATED" if mitigated else "PARTIALLY_FILLED"
+                        else:
+                            fill_pct = 0.0
+                            mitigated = False
+                            status = "FRESH"
 
                         fvg_entry = {
                             "type": "BULLISH_FVG",
@@ -107,9 +119,14 @@ class FairValueGapEngine:
                             "size": gap_size,
                             "size_pts": int(gap_size / point) if point > 0 else int(gap_size * 100),
                             "candle_time": datetime.datetime.fromtimestamp(rates[i-1]['time'], datetime.timezone.utc).strftime("%Y-%m-%d %H:%M"),
-                            "mitigated": mitigated,
                             "fill_pct": fill_pct,
-                            "status": "MITIGATED" if mitigated else ("PARTIALLY_FILLED" if fill_pct > 0 else "FRESH")
+                            "status": status,
+                            "mitigated": mitigated,
+                            "is_stale": is_stale,
+                            "last_tick_time": tick_time_str,
+                            "market_status": market_status,
+                            "formula_id": "MAX_LIFETIME_PENETRATION_V1",
+                            "provenance": f"MT5_{tf_name}_CANDLES"
                         }
                         fvgs.append(fvg_entry)
 
@@ -119,26 +136,31 @@ class FairValueGapEngine:
                                 min_distance = dist
                                 nearest_fvg = fvg_entry
 
-                    # 2. Bearish FVG: High of candle i < Low of candle i-2
+                    # 2. Bearish FVG: High of candle i < Low of candle i-2 (Price gap between high[i] and low[i-2])
                     elif high_curr < low_prior:
                         gap_top = low_prior
                         gap_bottom = high_curr
                         gap_size = round(gap_top - gap_bottom, digits)
                         ce_level = round((gap_top + gap_bottom) / 2.0, digits)
 
-                        # Check subsequent candles for mitigation
-                        mitigated = False
-                        fill_pct = 0.0
-                        highest_subsequent = max([float(r['high']) for r in rates[i+1:]]) if i+1 < n else live_price
+                        # Lifetime penetration calculation from subsequent candles
+                        subsequent_highs = [float(r['high']) for r in rates[i+1:]] if i+1 < n else []
+                        highest_subsequent = max(subsequent_highs) if subsequent_highs else (live_price if live_price > 0 else gap_bottom)
                         
+                        # Bearish FVG fill formula: price penetrates from bottom upwards
                         if highest_subsequent >= gap_top:
-                            mitigated = True
                             fill_pct = 100.0
+                            mitigated = True
+                            status = "MITIGATED"
                         elif highest_subsequent > gap_bottom:
                             filled_range = highest_subsequent - gap_bottom
-                            fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 0.0001)) * 100.0)), 1)
-                            if fill_pct >= 85.0:
-                                mitigated = True
+                            fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 1e-6)) * 100.0)), 1)
+                            mitigated = (fill_pct >= 100.0)
+                            status = "MITIGATED" if mitigated else "PARTIALLY_FILLED"
+                        else:
+                            fill_pct = 0.0
+                            mitigated = False
+                            status = "FRESH"
 
                         fvg_entry = {
                             "type": "BEARISH_FVG",
@@ -149,9 +171,14 @@ class FairValueGapEngine:
                             "size": gap_size,
                             "size_pts": int(gap_size / point) if point > 0 else int(gap_size * 100),
                             "candle_time": datetime.datetime.fromtimestamp(rates[i-1]['time'], datetime.timezone.utc).strftime("%Y-%m-%d %H:%M"),
-                            "mitigated": mitigated,
                             "fill_pct": fill_pct,
-                            "status": "MITIGATED" if mitigated else ("PARTIALLY_FILLED" if fill_pct > 0 else "FRESH")
+                            "status": status,
+                            "mitigated": mitigated,
+                            "is_stale": is_stale,
+                            "last_tick_time": tick_time_str,
+                            "market_status": market_status,
+                            "formula_id": "MAX_LIFETIME_PENETRATION_V1",
+                            "provenance": f"MT5_{tf_name}_CANDLES"
                         }
                         fvgs.append(fvg_entry)
 
@@ -173,13 +200,17 @@ class FairValueGapEngine:
 
         summary_str = "No active unmitigated FVGs nearby"
         if nearest_fvg:
-            summary_str = f"{nearest_fvg['timeframe']} {nearest_fvg['type'].replace('_', ' ')} [{nearest_fvg['bottom']} - {nearest_fvg['top']}] (CE: {nearest_fvg['consequent_encroachment']}) [{nearest_fvg['status']}]"
+            stale_tag = " [STALE/WEEKEND]" if is_stale else ""
+            summary_str = f"{nearest_fvg['timeframe']} {nearest_fvg['type'].replace('_', ' ')} [{nearest_fvg['bottom']} - {nearest_fvg['top']}] (CE: {nearest_fvg['consequent_encroachment']}, Fill: {nearest_fvg['fill_pct']}%) [{nearest_fvg['status']}]{stale_tag}"
 
         return {
             "symbol": sym,
             "live_price": live_price,
             "nearest_unmitigated_fvg": nearest_fvg,
             "summary": summary_str,
+            "is_stale": is_stale,
+            "market_status": market_status,
+            "last_tick_time": tick_time_str,
             "timeframes": tf_results
         }
 

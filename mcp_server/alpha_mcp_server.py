@@ -299,6 +299,12 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
         fund_res = _fund_analyst.analyze(sym, cot_data)
         score = round((tech_res.get("score", 5.0) + fund_res.get("score", 5.0)) / 2.0 + 1.0, 1)
         
+        from tradingagents.fair_value_gap import FairValueGapEngine
+        from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
+        fvg_mat = FairValueGapEngine().get_symbol_fvg_matrix(sym)
+        cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
+        nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg")
+
         return json.dumps({
             "status": "LIVE_SYMBOL_SPECIFIC",
             "symbol": sym,
@@ -307,11 +313,16 @@ def mcp_alpha_get_symbol_conviction(symbol: str) -> str:
             "conviction_score": min(score, 9.8),
             "mtf_alignment": mtf_res.get("formatted_4tf"),
             "technical_indicators": {"m15_rsi": rsi_val, "h4_rsi": mtf_res.get("h4_rsi")},
+            "nearest_fvg": nearest_fvg,
+            "fvg_fill_pct": nearest_fvg.get("fill_pct") if nearest_fvg else None,
+            "fvg_status": nearest_fvg.get("status") if nearest_fvg else "NO_NEARBY_FVG",
+            "fvg_is_stale": fvg_mat.get("is_stale", False),
+            "measured_cvd": cvd_data,
             "cot_positioning": cot_data,
             "technical_analysis": tech_res,
             "fundamental_analysis": fund_res,
-            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10."
-        })
+            "summary": f"{sym} Live Ask: {live_price}. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10. FVG: {fvg_mat.get('summary')}."
+        }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
 
@@ -568,6 +579,60 @@ def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
             "top_4_precedents": ans.get("top_4_precedents", [])
         }
     }, indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_get_ledger_decomposition(symbol: str = "XAUUSD") -> str:
+    """Decompose historical closed-trade ledger into condition base rates: Session x Direction x Alignment x Spread x FVG Fill%."""
+    from tradingagents.ledger_decomposition import LedgerDecompositionEngine
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Ledger Decomposition)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested historical ledger decomposition for {sym}")
+    engine = LedgerDecompositionEngine()
+    return json.dumps(engine.decompose_ledger(sym), indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_record_decision_snapshot(
+    symbol: str,
+    side: str,
+    conviction_score: float,
+    in_direction_fvg_fill_pct: float = None,
+    spread_pts: int = 0,
+    regime_flag: str = "NORMAL",
+    contradictions_count: int = 0,
+    notes: str = "",
+    volume: float = 0.0,
+    sl: float = 0.0,
+    tp: float = 0.0
+) -> str:
+    """Record a pre-trade decision snapshot on disk (Constitutional Mandate s4.137 Process vs Outcome separation)."""
+    from tradingagents.decision_snapshot_recorder import PreTradeDecisionRecorder
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Decision Snapshot)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded pre-trade decision snapshot for {sym} {side}")
+    recorder = PreTradeDecisionRecorder()
+    return json.dumps(recorder.record_decision(
+        symbol=sym,
+        side=side,
+        conviction_score=conviction_score,
+        in_direction_fvg_fill_pct=in_direction_fvg_fill_pct,
+        spread_pts=spread_pts,
+        regime_flag=regime_flag,
+        contradictions_count=contradictions_count,
+        notes=notes,
+        volume=volume,
+        sl=sl,
+        tp=tp
+    ), indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_get_measured_cvd(symbol: str = "XAUUSD") -> str:
+    """Fetch measured Cumulative Volume Delta (CVD) and Delta Exhaustion / Absorption metrics directly from MT5 ticks."""
+    from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP CVD Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried measured CVD for {sym}")
+    engine = CumulativeVolumeDeltaEngine()
+    return json.dumps(engine.get_symbol_cvd(sym), indent=2)
 
 
 if __name__ == "__main__":
