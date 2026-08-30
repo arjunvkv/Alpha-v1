@@ -161,22 +161,28 @@ class LedgerDecompositionEngine:
                 fvg_bucket = "No FVG Logged"
 
             # Spread bucket (Item 1b)
-            spread_val = f_ctx.get("spread_pts", 35)
-            if spread_val < 40:
-                spread_bucket = "Tight (<40 pts)"
-            elif spread_val <= 80:
-                spread_bucket = "Elevated (40-80 pts)"
+            spread_val = f_ctx.get("spread_pts")
+            if spread_val is not None:
+                if spread_val < 40:
+                    spread_bucket = "Tight (<40 pts)"
+                elif spread_val <= 80:
+                    spread_bucket = "Elevated (40-80 pts)"
+                else:
+                    spread_bucket = "High Spike (>80 pts)"
             else:
-                spread_bucket = "High Spike (>80 pts)"
+                spread_bucket = "UNKNOWN / UNRECORDED"
 
             # RSI regime bucket (Item 1c)
-            rsi_val = f_ctx.get("m15_rsi", 50.0)
-            if rsi_val < 30.0:
-                rsi_bucket = "Oversold (<30)"
-            elif rsi_val <= 70.0:
-                rsi_bucket = "Neutral (30-70)"
+            rsi_val = f_ctx.get("m15_rsi")
+            if rsi_val is not None:
+                if rsi_val < 30.0:
+                    rsi_bucket = "Oversold (<30)"
+                elif rsi_val <= 70.0:
+                    rsi_bucket = "Neutral (30-70)"
+                else:
+                    rsi_bucket = "Overbought (>70)"
             else:
-                rsi_bucket = "Overbought (>70)"
+                rsi_bucket = "UNKNOWN / UNRECORDED"
 
             r_data = compute_canonical_r(tot_pnl, open_price=open_price, volume=volume)
 
