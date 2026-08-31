@@ -36,7 +36,7 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 class ProximaGate:
     """Async/HTTP Client to Proxima Gateway on Port 3210 (Mandatory Quantitative Engine)."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 18.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 60.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -44,7 +44,7 @@ class ProximaGate:
         """Check if Proxima Desktop server is online."""
         try:
             req = urllib.request.Request(f"{self.http_url}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
                 return resp.status == 200
         except Exception:
             return False
@@ -52,7 +52,7 @@ class ProximaGate:
     def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
         """Mandatory query to Proxima quantitative research engine via Perplexity on Port 3210."""
         full_content = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        models_to_try = ["perplexity"]
+        models_to_try = ["perplexity", "3.5-flash"]
         last_err = None
         
         for m in models_to_try:
