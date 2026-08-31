@@ -949,10 +949,12 @@ def mcp_alpha_get_live_microstructure(symbol: str = "XAUUSD") -> str:
 
 @mcp.tool()
 def mcp_alpha_record_decision_snapshot(
-    symbol: str,
-    side: str,
-    conviction_score: float,
+    symbol: str = "XAUUSD",
+    side: str = "BUY",
+    conviction_score: float = None,
+    conviction: float = None,
     in_direction_fvg_fill_pct: float = None,
+    fvg_fill_pct: float = None,
     spread_pts: int = 0,
     regime_flag: str = "NORMAL",
     contradictions_count: int = 0,
@@ -969,7 +971,8 @@ def mcp_alpha_record_decision_snapshot(
     tick_velocity_tpm: float = 0.0,
     macro_event_tag: str = "CLEAR",
     order_book_imbalance: str = "BALANCED",
-    direction_thesis: str = ""
+    direction_thesis: str = "",
+    **kwargs
 ) -> str:
     """Record a comprehensive pre-trade experimental decision snapshot on disk before execution."""
     from tradingagents.decision_snapshot_recorder import PreTradeDecisionRecorder
@@ -978,7 +981,11 @@ def mcp_alpha_record_decision_snapshot(
     from tradingagents.news_shield import NewsShield
 
     sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Decision Snapshot)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded pre-trade decision snapshot for {sym} {side} [{category_tag}]")
+    score = conviction_score if conviction_score is not None else (conviction if conviction is not None else kwargs.get("score", 5.0))
+    resolved_side = str(kwargs.get("direction", side or "BUY")).strip().upper()
+    fill = in_direction_fvg_fill_pct if in_direction_fvg_fill_pct is not None else (fvg_fill_pct if fvg_fill_pct is not None else kwargs.get("fill_pct"))
+    
+    read_logger.log_dossier_read("OpenCode CIO (MCP Decision Snapshot)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded pre-trade decision snapshot for {sym} {resolved_side} [{category_tag}]")
     
     # Auto-enrich missing fields from live engines if omitted
     if spread_pts == 0 or tick_velocity_tpm == 0.0 or order_book_imbalance == "BALANCED":
@@ -1013,9 +1020,9 @@ def mcp_alpha_record_decision_snapshot(
     recorder = PreTradeDecisionRecorder()
     return json.dumps(recorder.record_decision(
         symbol=sym,
-        side=side,
-        conviction_score=conviction_score,
-        in_direction_fvg_fill_pct=in_direction_fvg_fill_pct,
+        side=resolved_side,
+        conviction_score=score,
+        in_direction_fvg_fill_pct=fill,
         spread_pts=spread_pts,
         regime_flag=regime_flag,
         contradictions_count=contradictions_count,
@@ -1032,7 +1039,8 @@ def mcp_alpha_record_decision_snapshot(
         tick_velocity_tpm=tick_velocity_tpm,
         macro_event_tag=macro_event_tag,
         order_book_imbalance=order_book_imbalance,
-        direction_thesis=direction_thesis
+        direction_thesis=direction_thesis,
+        **kwargs
     ), indent=2)
 
 
@@ -1195,9 +1203,29 @@ def get_ledger_decomposition(symbol: str = "XAUUSD") -> str:
     return mcp_alpha_get_ledger_decomposition(symbol)
 
 @mcp.tool()
-def record_decision_snapshot(symbol: str, side: str, conviction: float, notes: str = "", volume: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
+def record_decision_snapshot(
+    symbol: str = "XAUUSD",
+    side: str = "BUY",
+    conviction: float = None,
+    conviction_score: float = None,
+    notes: str = "",
+    volume: float = 0.0,
+    sl: float = 0.0,
+    tp: float = 0.0,
+    **kwargs
+) -> str:
     """Record pre-trade decision context on disk (s4.137 Process vs Outcome)."""
-    return mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes=notes, volume=volume, sl=sl, tp=tp)
+    return mcp_alpha_record_decision_snapshot(
+        symbol=symbol,
+        side=side,
+        conviction=conviction,
+        conviction_score=conviction_score,
+        notes=notes,
+        volume=volume,
+        sl=sl,
+        tp=tp,
+        **kwargs
+    )
 
 @mcp.tool()
 def record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:

@@ -25,10 +25,12 @@ class PreTradeDecisionRecorder:
 
     def record_decision(
         self,
-        symbol: str,
-        side: str,
-        conviction_score: float,
+        symbol: str = "XAUUSD",
+        side: str = "BUY",
+        conviction_score: Optional[float] = None,
+        conviction: Optional[float] = None,
         in_direction_fvg_fill_pct: Optional[float] = None,
+        fvg_fill_pct: Optional[float] = None,
         spread_pts: int = 0,
         regime_flag: str = "NORMAL",
         contradictions_count: int = 0,
@@ -45,26 +47,32 @@ class PreTradeDecisionRecorder:
         tick_velocity_tpm: float = 0.0,
         macro_event_tag: str = "CLEAR",
         order_book_imbalance: str = "BALANCED",
-        direction_thesis: str = ""
+        direction_thesis: str = "",
+        **kwargs
     ) -> Dict[str, Any]:
         """Saves a structured pre-trade decision snapshot with complete experimental metadata."""
         utc_now = datetime.datetime.now(datetime.timezone.utc)
         ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
         
+        score = conviction_score if conviction_score is not None else (conviction if conviction is not None else kwargs.get("score", 5.0))
+        fill = in_direction_fvg_fill_pct if in_direction_fvg_fill_pct is not None else (fvg_fill_pct if fvg_fill_pct is not None else kwargs.get("fill_pct"))
+        resolved_side = str(kwargs.get("direction", side or "BUY")).strip().upper()
+        resolved_symbol = str(symbol or "XAUUSD").strip().upper()
+
         snapshot = {
             "timestamp_utc": utc_now.strftime("%Y-%m-%d %H:%M:%S UTC"),
             "timestamp_ist": ist_now.strftime("%Y-%m-%d %H:%M:%S IST"),
-            "symbol": symbol.strip().upper(),
-            "side": side.strip().upper(),
-            "pattern_name": pattern_name or f"{symbol.strip().upper()}_{side.strip().upper()}_SETUP",
+            "symbol": resolved_symbol,
+            "side": resolved_side,
+            "pattern_name": pattern_name or f"{resolved_symbol}_{resolved_side}_SETUP",
             "category_tag": category_tag,
             "volume": volume,
             "sl": sl,
             "tp": tp,
-            "conviction_score": conviction_score,
+            "conviction_score": score,
             "four_tf_alignment": four_tf_alignment,
-            "in_direction_fvg_fill_pct": in_direction_fvg_fill_pct,
-            "fvg_fill_pct": in_direction_fvg_fill_pct,
+            "in_direction_fvg_fill_pct": fill,
+            "fvg_fill_pct": fill,
             "spread_pts": spread_pts,
             "m15_rsi": m15_rsi,
             "h4_rsi": h4_rsi,
@@ -83,7 +91,7 @@ class PreTradeDecisionRecorder:
         try:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
-            LOG.info(f"Recorded pre-trade decision snapshot for {symbol} {side} [{category_tag}] (Conviction: {conviction_score}, Fill: {in_direction_fvg_fill_pct}%, Vel: {tick_velocity_tpm} t/m)")
+            LOG.info(f"Recorded pre-trade decision snapshot for {resolved_symbol} {resolved_side} [{category_tag}] (Conviction: {score}, Fill: {fill}%, Vel: {tick_velocity_tpm} t/m)")
         except Exception as e:
             LOG.error(f"Failed to record pre-trade snapshot: {e}")
 
