@@ -11,7 +11,7 @@ import sys
 import os
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -555,6 +555,165 @@ def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:
     return json.dumps(fvg_engine.get_symbol_fvg_matrix(symbol), indent=2)
 
 @mcp.tool()
+def mcp_alpha_get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: int = 100, position_id: int = 0) -> str:
+    """Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal.
+    
+    Extracts native MT5 deal tickets, order settings (SL/TP, volume, prices, commissions, swaps, fees),
+    execution comments, magic numbers, entry/exit timestamps, and grouped round-trip trade performance.
+    
+    Args:
+        days: Number of past days to query from MT5 history (default: 30)
+        symbol: Symbol filter (e.g. 'XAUUSD', 'XAGUSD', 'XCUUSD', or 'ALL')
+        limit: Max closed position records to return in output (default: 100, 0 for all)
+        position_id: Optional specific MT5 position ID filter (0 for all)
+    """
+    _init_mt5()
+    read_logger.log_dossier_read("OpenCode CIO (MCP MT5 Deals History)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried native MT5 deals history (days={days}, symbol={symbol}, limit={limit}, pos={position_id})")
+    try:
+        import MetaTrader5 as mt5
+        acc = mt5.account_info()
+        login_num = getattr(acc, "login", 0) if acc else 0
+        
+        now_dt = datetime.now(timezone.utc)
+        from_dt = now_dt - timedelta(days=max(int(days), 1))
+        
+        deals = mt5.history_deals_get(from_dt, now_dt)
+        orders = mt5.history_orders_get(from_dt, now_dt)
+        
+        if deals is None:
+            return json.dumps({"status": "NO_DEALS_FOUND", "login": login_num, "total_deals": 0, "closed_positions": []}, indent=2)
+            
+        orders_by_pos = {}
+        if orders:
+            for o in orders:
+                orders_by_pos[getattr(o, "position_id", getattr(o, "ticket", 0))] = o
+                
+        pos_groups = {}
+        sym_filter = symbol.strip().upper() if symbol else "ALL"
+        
+        for d in deals:
+            if not d.symbol or d.type == 2:  # skip balance/credit operations
+                continue
+            if sym_filter not in ("ALL", "", "NONE") and d.symbol.upper() != sym_filter:
+                continue
+            if position_id > 0 and d.position_id != int(position_id):
+                continue
+                
+            pid = d.position_id or d.order or d.ticket
+            if pid not in pos_groups:
+                pos_groups[pid] = []
+            pos_groups[pid].append(d)
+            
+        closed_positions = []
+        for pid, d_list in pos_groups.items():
+            d_list.sort(key=lambda x: x.time)
+            entry_deal = d_list[0]
+            exit_deal = d_list[-1] if len(d_list) > 1 else None
+            
+            order_rec = orders_by_pos.get(pid)
+            sl_val = getattr(order_rec, "sl", 0.0) if order_rec else 0.0
+            tp_val = getattr(order_rec, "tp", 0.0) if order_rec else 0.0
+            order_comment = getattr(order_rec, "comment", "") if order_rec else ""
+            
+            pnl = sum(d.profit for d in d_list)
+            comm = sum(d.commission for d in d_list)
+            swap = sum(d.swap for d in d_list)
+            fee = sum(d.fee for d in d_list)
+            net_pnl = pnl + comm + swap + fee
+            
+            side = "BUY" if entry_deal.type == 0 else ("SELL" if entry_deal.type == 1 else str(entry_deal.type))
+            open_time = datetime.fromtimestamp(entry_deal.time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            close_time = datetime.fromtimestamp(exit_deal.time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if exit_deal else "OPEN"
+            dur_s = (exit_deal.time - entry_deal.time) if exit_deal else 0
+            dur_human = f"{dur_s}s" if dur_s < 60 else f"{dur_s // 60}m {dur_s % 60}s" if dur_s < 3600 else f"{dur_s // 3600}h {(dur_s % 3600) // 60}m"
+            
+            closed_positions.append({
+                "position_id": pid,
+                "symbol": entry_deal.symbol,
+                "side": side,
+                "volume": entry_deal.volume,
+                "open_price": entry_deal.price,
+                "close_price": exit_deal.price if exit_deal else None,
+                "sl": sl_val,
+                "tp": tp_val,
+                "open_time": open_time,
+                "close_time": close_time,
+                "duration": dur_human,
+                "duration_seconds": dur_s,
+                "gross_profit_usd": round(pnl, 2),
+                "commission_usd": round(comm, 2),
+                "swap_usd": round(swap, 2),
+                "fee_usd": round(fee, 2),
+                "net_profit_usd": round(net_pnl, 2),
+                "outcome": "WIN" if net_pnl > 0 else ("LOSS" if net_pnl < 0 else "BREAKEVEN"),
+                "magic": entry_deal.magic,
+                "open_comment": entry_deal.comment,
+                "close_comment": exit_deal.comment if exit_deal else order_comment
+            })
+            
+        closed_positions.sort(key=lambda x: x.get("close_time", ""), reverse=True)
+        
+        wins = sum(1 for p in closed_positions if p["net_profit_usd"] > 0)
+        losses = sum(1 for p in closed_positions if p["net_profit_usd"] < 0)
+        breakevens = sum(1 for p in closed_positions if p["net_profit_usd"] == 0)
+        total_p = len(closed_positions)
+        win_rate = round((wins / max(total_p, 1)) * 100.0, 1)
+        
+        gross_profit = sum(p["gross_profit_usd"] for p in closed_positions if p["gross_profit_usd"] > 0)
+        gross_loss = sum(p["gross_profit_usd"] for p in closed_positions if p["gross_profit_usd"] < 0)
+        net_total = sum(p["net_profit_usd"] for p in closed_positions)
+        total_comm = sum(p["commission_usd"] for p in closed_positions)
+        total_swap = sum(p["swap_usd"] for p in closed_positions)
+        profit_factor = round(abs(gross_profit / gross_loss), 2) if gross_loss != 0 else 0.0
+        
+        symbols_map = {}
+        for p in closed_positions:
+            s = p["symbol"]
+            if s not in symbols_map:
+                symbols_map[s] = {"trades": 0, "wins": 0, "losses": 0, "net_pnl_usd": 0.0}
+            symbols_map[s]["trades"] += 1
+            if p["net_profit_usd"] > 0:
+                symbols_map[s]["wins"] += 1
+            elif p["net_profit_usd"] < 0:
+                symbols_map[s]["losses"] += 1
+            symbols_map[s]["net_pnl_usd"] = round(symbols_map[s]["net_pnl_usd"] + p["net_profit_usd"], 2)
+            
+        for s, s_data in symbols_map.items():
+            s_data["win_rate_pct"] = round((s_data["wins"] / max(s_data["trades"], 1)) * 100.0, 1)
+            
+        display_positions = closed_positions[:int(limit)] if limit > 0 else closed_positions
+        
+        return json.dumps({
+            "status": "SUCCESS",
+            "account_login": login_num,
+            "query_parameters": {
+                "days_back": days,
+                "symbol_filter": symbol,
+                "limit": limit,
+                "position_id_filter": position_id
+            },
+            "portfolio_summary": {
+                "total_mt5_deals_retrieved": len(deals),
+                "total_closed_positions": total_p,
+                "wins": wins,
+                "losses": losses,
+                "breakevens": breakevens,
+                "win_rate_pct": win_rate,
+                "gross_profit_usd": round(gross_profit, 2),
+                "gross_loss_usd": round(gross_loss, 2),
+                "net_profit_usd": round(net_total, 2),
+                "total_commission_usd": round(total_comm, 2),
+                "total_swap_usd": round(total_swap, 2),
+                "profit_factor": profit_factor,
+                "symbol_breakdown": symbols_map
+            },
+            "closed_positions_count_returned": len(display_positions),
+            "closed_positions": display_positions
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "ERROR", "error": str(err)}, indent=2)
+
+@mcp.tool()
 def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD") -> str:
     """Query granular post-trade forensics and entry market context for closed MT5 deals (accepts ticket number int/str or symbol str e.g. 'XAUUSD')."""
     from tradingagents.trade_forensics import TradeForensicsEngine
@@ -1067,10 +1226,16 @@ def get_full_book() -> str:
     return mcp_alpha_get_full_book()
 
 @mcp.tool()
+def get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: int = 100, position_id: int = 0) -> str:
+    """Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal."""
+    return mcp_alpha_get_mt5_deals_history(days, symbol, limit, position_id)
+
+@mcp.tool()
 def list_desk_tools() -> str:
     """Live dynamic discovery of ALL available FastMCP tools and their capabilities in the desk daemon."""
     tools_list = [
         {"name": "get_account_status", "description": "Live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states."},
+        {"name": "get_mt5_deals_history", "description": "Fetch closed trade history and deal execution settings (SL/TP, volume, prices, commissions, swaps, profit, duration) directly from MT5 terminal."},
         {"name": "get_full_institutional_profile", "description": "Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI."},
         {"name": "get_symbol_conviction", "description": "4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."},
         {"name": "get_trade_forensics", "description": "Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution."},
@@ -1082,7 +1247,7 @@ def list_desk_tools() -> str:
         {"name": "get_book_page", "description": "Read a specific page from Pattern Book."},
         {"name": "get_full_book", "description": "Retrieve full dump of Pattern Book / ULM."},
         {"name": "backtest_thesis", "description": "Natural MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters."},
-        {"name": "ask_librarian", "description": "Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade)."},
+        {"name": "ask_librarian", "description": "Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210)."},
         {"name": "query_analyst_desk", "description": "Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear)."},
         {"name": "get_measured_cvd", "description": "Measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5."},
         {"name": "get_fvg_matrix", "description": "Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and Consequent Encroachment levels."},
@@ -1109,6 +1274,8 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
 
     fn_map = {
         "get_account_status": mcp_alpha_get_account_status,
+        "get_mt5_deals_history": lambda: mcp_alpha_get_mt5_deals_history(args.get("days", 30), args.get("symbol", "ALL"), args.get("limit", 100), args.get("position_id", 0)),
+        "get_deals_history": lambda: mcp_alpha_get_mt5_deals_history(args.get("days", 30), args.get("symbol", "ALL"), args.get("limit", 100), args.get("position_id", 0)),
         "get_full_institutional_profile": lambda: mcp_alpha_get_full_institutional_profile(args.get("symbol", "XAUUSD")),
         "get_symbol_conviction": lambda: mcp_alpha_get_symbol_conviction(args.get("symbol", "XAUUSD")),
         "get_trade_forensics": lambda: mcp_alpha_get_trade_forensics(args.get("symbol_or_ticket", args.get("symbol", "XAUUSD"))),
