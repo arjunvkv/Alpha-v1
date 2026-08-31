@@ -46,6 +46,20 @@ from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
 from tradingagents.multitimeframe import MultiTimeframeAnalyst
 from tradingagents.librarian_agent import AutonomousLibrarianAgent
 
+import asyncio
+import functools
+from concurrent.futures import ThreadPoolExecutor
+
+MCP_EXECUTOR = ThreadPoolExecutor(max_workers=32, thread_name_prefix="alpha-mcp-worker")
+
+async def run_in_thread(func, *args, **kwargs):
+    """Executes any blocking function in a dedicated background worker thread to prevent blocking FastMCP event loop."""
+    loop = asyncio.get_running_loop()
+    if kwargs:
+        p_func = functools.partial(func, *args, **kwargs)
+        return await loop.run_in_executor(MCP_EXECUTOR, p_func)
+    return await loop.run_in_executor(MCP_EXECUTOR, func, *args)
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
@@ -349,8 +363,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
 
-@mcp.tool()
-def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
+def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk; outputs are evidence, not decisions."""
     _init_mt5()
     try:
@@ -488,6 +501,16 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
+
+@mcp.tool()
+async def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
+    """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk in a non-blocking background thread."""
+    return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
+
+@mcp.tool()
+async def query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
+    """7-Layer Local LLM Analyst Desk alias."""
+    return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
 
 @mcp.tool()
 def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
@@ -860,9 +883,7 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
     }, indent=2)
 
 
-@mcp.tool()
-def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    """Ask the Autonomous Librarian Agent any historical, tactical, or quantitative question about precedents, win rates, failure traps, and invalidation rules."""
+def _sync_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
     sym = _normalize_symbol(symbol)
     ans = _librarian_agent.answer_query(query, sym)
     read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {sym}: '{query}'")
@@ -885,6 +906,16 @@ def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
             "top_4_precedents": ans.get("top_4_precedents", [])
         }
     }, indent=2)
+
+@mcp.tool()
+async def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
+    """Ask the Autonomous Librarian Agent any historical, tactical, or quantitative question about precedents, win rates, failure traps, and invalidation rules."""
+    return await run_in_thread(_sync_ask_librarian, query=query, symbol=symbol)
+
+@mcp.tool()
+async def ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
+    """Ask the Autonomous Librarian Agent alias."""
+    return await run_in_thread(_sync_ask_librarian, query=query, symbol=symbol)
 
 
 @mcp.tool()
@@ -1072,32 +1103,37 @@ def mcp_alpha_get_measured_cvd(symbol: str = "XAUUSD") -> str:
     return json.dumps(engine.get_symbol_cvd(sym), indent=2)
 
 
+def _sync_backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 60, offset: int = 0) -> str:
+    from backtesting.pipeline import PureLLMBacktestPipeline
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Backtest Thesis)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested natural backtest: '{query}' on {sym} ({timeframe}, {bars} bars)")
+    pipeline = PureLLMBacktestPipeline()
+    return json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+
 @mcp.tool()
-def mcp_alpha_backtest_thesis(
+async def mcp_alpha_backtest_thesis(
     query: str,
     symbol: str = "XAUUSD",
     timeframe: str = "M5",
     bars: int = 60,
     offset: int = 0
 ) -> str:
-    """Ultra-fast natural backtester powered by Proxima + MT5 Data Harness + Local LLM.
+    """Ultra-fast multi-threaded natural backtester powered by Proxima + MT5 Data Harness + Local LLM.
     
-    Zero hardcoded pattern rules. The Local LLM naturally identifies structural patterns (FVGs, liquidity sweeps,
-    velocity acceleration, order blocks) directly from raw historical MT5 candle tables and evaluates forward
-    trade trajectory and R outcomes.
-    
-    Args:
-        query: Free-form thesis or question (e.g. 'Backtest velocity acceleration into M5 Bearish FVG after Asian sweep')
-        symbol: Instrument symbol (default: 'XAUUSD')
-        timeframe: Candle timeframe (default: 'M5', supports 'M1', 'M5', 'M15', 'H1', 'H4')
-        bars: Historical candle window size (default: 60 bars)
-        offset: Bar offset from current time (default: 0)
+    Executes in a dedicated background worker thread to support simultaneous concurrent backtest executions without blocking.
     """
-    from backtesting.pipeline import PureLLMBacktestPipeline
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Backtest Thesis)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested natural backtest: '{query}' on {sym} ({timeframe}, {bars} bars)")
-    pipeline = PureLLMBacktestPipeline()
-    return json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+    return await run_in_thread(_sync_backtest_thesis, query=query, symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
+
+@mcp.tool()
+async def backtest_thesis(
+    query: str,
+    symbol: str = "XAUUSD",
+    timeframe: str = "M5",
+    bars: int = 60,
+    offset: int = 0
+) -> str:
+    """Multi-threaded natural backtester alias."""
+    return await run_in_thread(_sync_backtest_thesis, query=query, symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
 
 
 @mcp.tool()
