@@ -145,8 +145,7 @@ def post_to_opencode_session(speaker: str, message: str):
             with urllib.request.urlopen(list_req, timeout=5) as resp:
                 sessions_list = json.loads(resp.read().decode('utf-8'))
                 for s in sessions_list:
-                    s_title = str(s.get("title", "")).lower()
-                    if "alpha-gravity" in s_title or "alpha" in s_title or s.get("id") == sid:
+                    if s.get("id"):
                         target_sids.add(s.get("id"))
         except Exception as e:
             LOG.warning(f"Could not query sessions list: {e}")
