@@ -140,6 +140,24 @@ def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str 
     }, indent=2)
 
 @mcp.tool()
+def mcp_alpha_get_active_watches() -> str:
+    """Fetch currently registered dynamic watches on the trading desk."""
+    try:
+        state_path = ALPHA_ROOT / "data" / "live" / "discovery_state.json"
+        if state_path.exists():
+            with open(state_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return json.dumps(data.get("active_watches", []), indent=2)
+    except Exception:
+        pass
+    return json.dumps(list(_active_watches.values()), indent=2)
+
+@mcp.tool()
+def get_active_watches() -> str:
+    """Fetch currently registered dynamic watches on the trading desk."""
+    return mcp_alpha_get_active_watches()
+
+@mcp.tool()
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
     """OpenCode executes direct market trade on FTMO MT5. Learning cannot authorize or deny the action."""
     read_logger.log_dossier_read("OpenCode CIO (MCP Execution)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order requested: {side.upper()} {volume} lots on {symbol} (SL: {sl}, TP: {tp})")
