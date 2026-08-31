@@ -34,9 +34,9 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 
 
 class ProximaGate:
-    """Async/HTTP Client to Proxima Gateway on Port 3210 with fast sub-second fallback."""
+    """Async/HTTP Client to Proxima Gateway on Port 3210 (Mandatory Quantitative Engine)."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 3.5):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 7.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -44,30 +44,22 @@ class ProximaGate:
         """Check if Proxima Desktop server is online."""
         try:
             req = urllib.request.Request(f"{self.http_url}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=1.5) as resp:
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
                 return resp.status == 200
         except Exception:
             return False
 
     def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
-        """Send research query to Proxima with fast 3.5s timeout and instant ULM fallback."""
-        if not self.check_health():
-            return {
-                "status": "OFFLINE",
-                "model": "local-ulm",
-                "latency_ms": 0,
-                "synthesis": "Proxima offline, using deterministic ULM local store."
-            }
-
-        models_to_try = ["perplexity", "auto", "3.5-flash"]
+        """Mandatory query to Proxima quantitative research engine via Perplexity on Port 3210."""
+        full_content = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        models_to_try = ["perplexity"]
         last_err = None
         
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
                 "messages": [
-                    {"role": "system", "content": system_prompt or "You are Proxima Research Quantitative Microstructure Engine for institutional trading desks."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": full_content}
                 ]
             }).encode("utf-8")
             req = urllib.request.Request(
