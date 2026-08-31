@@ -36,29 +36,35 @@
     "REFER TO C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md FOR YOUR COMPLETE MASTER OPERATING PROTOCOL."
   ],
   "provider": {
-    "proxima-proxy": {
-      "name": "Proxima Local Gateway",
+    "google-proxy": {
+      "name": "Google Proxy",
       "type": "openai",
       "url": "http://127.0.0.1:3210/v1",
-      "api_key": "local-key",
+      "api_key": "google-proxy-key",
       "models": {
         "gemini": {
-          "name": "Gemini 2.5 (Proxima)"
+          "name": "Gemini (Google Proxy)"
+        },
+        "gemini-2.5-pro": {
+          "name": "Gemini 2.5 Pro (Google Proxy)"
+        },
+        "gemini-2.5-flash": {
+          "name": "Gemini 2.5 Flash (Google Proxy)"
         },
         "3.5-flash": {
-          "name": "Gemini 3.5 Flash (Proxima)"
+          "name": "Gemini 3.5 Flash (Google Proxy)"
         },
         "3.1-pro": {
-          "name": "Gemini 3.1 Pro (Proxima)"
+          "name": "Gemini 3.1 Pro (Google Proxy)"
         },
         "3.1-flash-lite": {
-          "name": "Gemini 3.1 Flash-Lite (Proxima)"
+          "name": "Gemini 3.1 Flash-Lite (Google Proxy)"
         },
         "perplexity": {
-          "name": "Perplexity (Proxima)"
+          "name": "Perplexity (Google Proxy)"
         },
         "chatgpt": {
-          "name": "ChatGPT 4o (Proxima)"
+          "name": "ChatGPT (Google Proxy)"
         }
       }
     }
