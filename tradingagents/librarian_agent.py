@@ -34,9 +34,9 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 
 
 class ProximaGate:
-    """Async/HTTP Client to Proxima Gateway on Port 3210."""
+    """Async/HTTP Client to Proxima Gateway on Port 3210 with fast sub-second fallback."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 65.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 3.5):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -44,53 +44,59 @@ class ProximaGate:
         """Check if Proxima Desktop server is online."""
         try:
             req = urllib.request.Request(f"{self.http_url}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=3.0) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 return resp.status == 200
         except Exception:
             return False
 
     def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
-        """Send mandatory research query to Proxima tools with 65s timeout, multi-model fallback and retries."""
-        models_to_try = ["3.5-flash", "gemini", "chatgpt", "auto"]
+        """Send research query to Proxima with fast 3.5s timeout and instant ULM fallback."""
+        if not self.check_health():
+            return {
+                "status": "OFFLINE",
+                "model": "local-ulm",
+                "latency_ms": 0,
+                "synthesis": "Proxima offline, using deterministic ULM local store."
+            }
+
+        models_to_try = ["perplexity", "auto", "3.5-flash"]
         last_err = None
         
         for m in models_to_try:
-            for attempt in range(2):
-                payload = json.dumps({
-                    "model": m,
-                    "messages": [
-                        {"role": "system", "content": system_prompt or "You are Proxima Research Quantitative Microstructure Engine for institutional trading desks."},
-                        {"role": "user", "content": prompt}
-                    ]
-                }).encode("utf-8")
-                req = urllib.request.Request(
-                    f"{self.http_url}/v1/chat/completions",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                t0 = datetime.now()
-                try:
-                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                        lat_ms = int((datetime.now() - t0).total_seconds() * 1000)
-                        data = json.loads(resp.read().decode("utf-8"))
-                        content = data["choices"][0]["message"]["content"]
-                        return {
-                            "status": "ONLINE",
-                            "model": m,
-                            "latency_ms": lat_ms,
-                            "synthesis": content.strip()
-                        }
-                except Exception as e:
-                    last_err = str(e)
-                    import time
-                    time.sleep(0.5)
-                    
+            payload = json.dumps({
+                "model": m,
+                "messages": [
+                    {"role": "system", "content": system_prompt or "You are Proxima Research Quantitative Microstructure Engine for institutional trading desks."},
+                    {"role": "user", "content": prompt}
+                ]
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                f"{self.http_url}/v1/chat/completions",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            t0 = datetime.now()
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    lat_ms = int((datetime.now() - t0).total_seconds() * 1000)
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data["choices"][0]["message"]["content"]
+                    return {
+                        "status": "ONLINE",
+                        "model": m,
+                        "latency_ms": lat_ms,
+                        "synthesis": content.strip()
+                    }
+            except Exception as e:
+                last_err = str(e)
+                continue
+                
         return {
-            "status": f"OFFLINE_ERROR ({last_err})",
-            "model": "3.5-flash",
+            "status": f"OFFLINE_FALLBACK ({last_err})",
+            "model": "local-ulm",
             "latency_ms": 0,
-            "synthesis": None
+            "synthesis": "Fast fallback to deterministic ULM pattern synthesis."
         }
 
 

@@ -38,39 +38,38 @@ class ProximaBacktestBridge:
             f"4) Expected JSON Output Schema for the Local LLM."
         )
 
-        models_to_try = ["3.5-flash", "gemini", "auto"]
+        models_to_try = ["perplexity", "auto", "3.5-flash"]
         t0 = time.time()
 
         for m in models_to_try:
-            for attempt in range(2):
-                payload = json.dumps({
-                    "model": m,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                }).encode("utf-8")
+            payload = json.dumps({
+                "model": m,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            }).encode("utf-8")
 
-                req = urllib.request.Request(
-                    f"{self.http_url}/v1/chat/completions",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
+            req = urllib.request.Request(
+                f"{self.http_url}/v1/chat/completions",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
 
-                try:
-                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                        lat_ms = int((time.time() - t0) * 1000)
-                        data = json.loads(resp.read().decode("utf-8"))
-                        content = data["choices"][0]["message"]["content"]
-                        return {
-                            "status": "SUCCESS",
-                            "model": m,
-                            "latency_ms": lat_ms,
-                            "rubric_prompt": content.strip()
-                        }
-                except Exception as e:
-                    time.sleep(0.3)
+            try:
+                with urllib.request.urlopen(req, timeout=3.5) as resp:
+                    lat_ms = int((time.time() - t0) * 1000)
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data["choices"][0]["message"]["content"]
+                    return {
+                        "status": "SUCCESS",
+                        "model": m,
+                        "latency_ms": lat_ms,
+                        "rubric_prompt": content.strip()
+                    }
+            except Exception as e:
+                continue
 
         # Robust deterministic fallback rubric if Proxima server is unreachable
         return {
