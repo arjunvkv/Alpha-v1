@@ -140,6 +140,8 @@ def post_to_opencode_session(speaker: str, message: str):
         target_sids = set()
         if sid:
             target_sids.add(sid)
+        
+        # 1. Discover via HTTP API
         try:
             list_req = urllib.request.Request(f"{api_url}/session")
             with urllib.request.urlopen(list_req, timeout=5) as resp:
@@ -149,6 +151,19 @@ def post_to_opencode_session(speaker: str, message: str):
                         target_sids.add(s.get("id"))
         except Exception as e:
             LOG.warning(f"Could not query sessions list: {e}")
+
+        # 2. Discover via OpenCode SQLite database (finds all sessions across C:/Trading and C:/Trading/Alpha)
+        try:
+            import sqlite3
+            db_path = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+            if db_path.exists():
+                with sqlite3.connect(str(db_path), timeout=2) as conn:
+                    cursor = conn.cursor()
+                    for row in cursor.execute("SELECT id FROM session WHERE time_archived IS NULL ORDER BY time_updated DESC LIMIT 10"):
+                        if row[0]:
+                            target_sids.add(row[0])
+        except Exception as db_err:
+            pass
 
         if not target_sids and sid:
             target_sids.add(sid)
