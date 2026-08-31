@@ -18,7 +18,7 @@ PROXIMA_HTTP_URL = "http://127.0.0.1:3210"
 class LocalLLMBacktestRunner:
     """Executes natural pattern discovery and trade simulation on raw OHLCV candle tables."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 90.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 120.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -68,11 +68,11 @@ class LocalLLMBacktestRunner:
             "}"
         )
 
-        models_to_try = ["3.5-flash", "perplexity", "gemini", "auto"]
+        models_to_try = ["perplexity", "3.5-flash", "3.1-flash-lite", "gemini"]
         t0 = time.time()
 
         for m in models_to_try:
-            for attempt in range(2):
+            for attempt in range(1):
                 payload = json.dumps({
                     "model": m,
                     "messages": [

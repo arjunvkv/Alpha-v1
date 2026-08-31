@@ -16,7 +16,7 @@ PROXIMA_HTTP_URL = "http://127.0.0.1:3210"
 class ProximaBacktestBridge:
     """Translates arbitrary agent queries into structured prompts for the Local LLM."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 90.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 120.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -38,7 +38,7 @@ class ProximaBacktestBridge:
             f"4) Expected JSON Output Schema for the Local LLM."
         )
 
-        models_to_try = ["perplexity", "3.5-flash"]
+        models_to_try = ["perplexity", "3.5-flash", "3.1-flash-lite"]
         full_user_prompt = f"{system_prompt}\n\n{user_prompt}"
         t0 = time.time()
 
