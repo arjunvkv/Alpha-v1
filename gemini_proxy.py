@@ -251,6 +251,8 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 name = fn.get('name')
                 if name:
                     declared_tool_names.append(name)
+            default_tool_name = declared_tool_names[0] if declared_tool_names else "mcp_alpha_get_account_status"
+
             # Normalize model name for Google Generative AI
             req_model = payload.get('model', 'gemini-3.5-flash-lite')
             model_remap = {
@@ -313,7 +315,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             retry_delay = 1.0
             consecutive_429 = 0
 
-            # Step 3: Pure Google Gemini Execution with 3-Strike Permanent Key Promotion
+            # Step 3: Pure Google Gemini Execution with Instant 1st-Strike Key Rotation & Proxima Fallback
             for attempt in range(max_retries):
                 current_key = get_active_gemini_key()
                 auth_header = f"Bearer {current_key}"
@@ -330,27 +332,30 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 except urllib.error.HTTPError as e:
                     last_error = e
                     if e.code in [429, 503, 500]:
-                        consecutive_429 += 1
-                        print(f"[Gemini Proxy Pure-Retry] Key #{ACTIVE_KEY_INDEX} ({current_key[:12]}...) rate-limited ({e.code}). Attempt {attempt+1}/{max_retries}...", file=sys.stderr)
-                        
-                        # 3-Strike Rule: If current default key rate limits 3 times, promote next key as permanent default!
-                        if consecutive_429 >= 3:
-                            new_k = rotate_default_gemini_key()
-                            consecutive_429 = 0
-                            retry_delay = 0.5  # Immediately try new default key
-                        else:
-                            time.sleep(retry_delay)
-                            retry_delay = min(retry_delay * 1.5, 6.0)
+                        # Instant 1st-Strike Rotation: Switch to next API key immediately!
+                        new_k = rotate_default_gemini_key()
+                        print(f"⚡ [Gemini Proxy Instant-Rotator] Key #{ACTIVE_KEY_INDEX} hit {e.code}. Swapped to Key #{ACTIVE_KEY_INDEX} (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
+                        time.sleep(0.2)
                     else:
                         raise e
                 except Exception as e:
                     last_error = e
-                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in {retry_delay:.1f}s...", file=sys.stderr)
-                    time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 1.5, 6.0)
+                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in 0.5s...", file=sys.stderr)
+                    time.sleep(0.5)
 
+            # Step 4: Fallback to Port 3210 if all Google keys are exhausted
             if response is None:
-                raise last_error or RuntimeError("Failed all Gemini API retry attempts.")
+                print("⚠️ [Gemini Proxy Safety Fallback] All Google API keys currently rate-limited. Routing request to Port 3210...", file=sys.stderr)
+                try:
+                    fallback_req = urllib.request.Request(
+                        "http://127.0.0.1:3210/v1/chat/completions",
+                        data=json.dumps({"model": "3.5-flash", "messages": payload.get("messages", [])}).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    response = urllib.request.urlopen(fallback_req, timeout=20)
+                except Exception as fb_err:
+                    print(f"[Gemini Proxy Fallback Error] {fb_err}", file=sys.stderr)
+                    raise last_error or fb_err
 
             self.send_response(200)
             for k, v in response.getheaders():
