@@ -38,15 +38,15 @@ class ProximaBacktestBridge:
             f"4) Expected JSON Output Schema for the Local LLM."
         )
 
-        models_to_try = ["perplexity", "auto", "3.5-flash"]
+        models_to_try = ["perplexity"]
+        full_user_prompt = f"{system_prompt}\n\n{user_prompt}"
         t0 = time.time()
 
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
                 "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": full_user_prompt}
                 ]
             }).encode("utf-8")
 
@@ -58,7 +58,7 @@ class ProximaBacktestBridge:
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=3.5) as resp:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     lat_ms = int((time.time() - t0) * 1000)
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
