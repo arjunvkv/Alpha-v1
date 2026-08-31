@@ -38,10 +38,11 @@ class ProximaBacktestBridge:
             f"4) Expected JSON Output Schema for the Local LLM."
         )
 
-        models_to_try = ["perplexity", "3.5-flash", "3.1-flash-lite"]
+        models_to_try = ["3.5-flash", "3.1-flash-lite", "perplexity", "gemini"]
         full_user_prompt = f"{system_prompt}\n\n{user_prompt}"
         t0 = time.time()
 
+        # Tier 1: Query Proxima Gateway on Port 3210 (10s per-model fast limit)
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
@@ -58,7 +59,7 @@ class ProximaBacktestBridge:
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                with urllib.request.urlopen(req, timeout=10.0) as resp:
                     lat_ms = int((time.time() - t0) * 1000)
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
@@ -71,7 +72,34 @@ class ProximaBacktestBridge:
             except Exception as e:
                 continue
 
-        # Robust deterministic fallback rubric if Proxima server is unreachable
+        # Tier 2: Instant Failover to Gemini Proxy on Port 4095
+        try:
+            proxy_payload = json.dumps({
+                "model": "gemini-3.5-flash-lite",
+                "messages": [
+                    {"role": "user", "content": full_user_prompt}
+                ]
+            }).encode("utf-8")
+            proxy_req = urllib.request.Request(
+                "http://127.0.0.1:4095/v1/chat/completions",
+                data=proxy_payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(proxy_req, timeout=8.0) as resp:
+                lat_ms = int((time.time() - t0) * 1000)
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data["choices"][0]["message"]["content"]
+                return {
+                    "status": "SUCCESS",
+                    "model": "gemini-3.5-flash-lite (Proxy Fallback)",
+                    "latency_ms": lat_ms,
+                    "rubric_prompt": content.strip()
+                }
+        except Exception:
+            pass
+
+        # Tier 3: Robust deterministic fallback rubric if all gateways are busy
         return {
             "status": "STANDBY_FALLBACK",
             "model": "local_fallback",

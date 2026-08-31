@@ -50,11 +50,13 @@ class ProximaGate:
             return False
 
     def query_proxima_tools(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
-        """Mandatory query to Proxima quantitative research engine via Perplexity on Port 3210."""
+        """Mandatory query to Proxima quantitative research engine with multi-tier fast failover."""
         full_content = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        models_to_try = ["perplexity", "3.5-flash"]
+        models_to_try = ["3.5-flash", "3.1-flash-lite", "perplexity", "gemini"]
         last_err = None
+        t0 = datetime.now()
         
+        # Tier 1: Query Proxima Gateway on Port 3210 (10s per-model fast limit)
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
@@ -68,9 +70,8 @@ class ProximaGate:
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
-            t0 = datetime.now()
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                with urllib.request.urlopen(req, timeout=10.0) as resp:
                     lat_ms = int((datetime.now() - t0).total_seconds() * 1000)
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
@@ -83,11 +84,39 @@ class ProximaGate:
             except Exception as e:
                 last_err = str(e)
                 continue
+
+        # Tier 2: Instant Failover to High-Speed Gemini Proxy on Port 4095
+        try:
+            proxy_payload = json.dumps({
+                "model": "gemini-3.5-flash-lite",
+                "messages": [
+                    {"role": "user", "content": full_content}
+                ]
+            }).encode("utf-8")
+            proxy_req = urllib.request.Request(
+                "http://127.0.0.1:4095/v1/chat/completions",
+                data=proxy_payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(proxy_req, timeout=8.0) as resp:
+                lat_ms = int((datetime.now() - t0).total_seconds() * 1000)
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data["choices"][0]["message"]["content"]
+                return {
+                    "status": "ONLINE",
+                    "model": "gemini-3.5-flash-lite (Proxy Fallback)",
+                    "latency_ms": lat_ms,
+                    "synthesis": content.strip()
+                }
+        except Exception as pe:
+            last_err = f"Port 3210: {last_err} | Port 4095: {pe}"
                 
+        # Tier 3: Deterministic Local ULM Synthesis
         return {
             "status": f"OFFLINE_FALLBACK ({last_err})",
             "model": "local-ulm",
-            "latency_ms": 0,
+            "latency_ms": int((datetime.now() - t0).total_seconds() * 1000),
             "synthesis": "Fast fallback to deterministic ULM pattern synthesis."
         }
 

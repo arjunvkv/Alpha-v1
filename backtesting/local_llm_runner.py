@@ -68,43 +68,72 @@ class LocalLLMBacktestRunner:
             "}"
         )
 
-        models_to_try = ["perplexity", "3.5-flash", "3.1-flash-lite", "gemini"]
+        models_to_try = ["3.5-flash", "3.1-flash-lite", "perplexity", "gemini"]
         t0 = time.time()
 
+        # Tier 1: Query Proxima Gateway on Port 3210 (12s per-model limit)
         for m in models_to_try:
-            for attempt in range(1):
-                payload = json.dumps({
-                    "model": m,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ]
-                }).encode("utf-8")
+            payload = json.dumps({
+                "model": m,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ]
+            }).encode("utf-8")
 
-                req = urllib.request.Request(
-                    f"{self.http_url}/v1/chat/completions",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
+            req = urllib.request.Request(
+                f"{self.http_url}/v1/chat/completions",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
 
-                try:
-                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                        lat_ms = int((time.time() - t0) * 1000)
-                        data = json.loads(resp.read().decode("utf-8"))
-                        raw_reply = data["choices"][0]["message"]["content"]
-                        
-                        # Extract JSON object from LLM response
-                        parsed = self._extract_json(raw_reply)
-                        if parsed and isinstance(parsed, dict):
-                            return {
-                                "status": "SUCCESS",
-                                "model_used": m,
-                                "latency_ms": lat_ms,
-                                "backtest_results": parsed
-                            }
-                except Exception as e:
-                    time.sleep(0.3)
+            try:
+                with urllib.request.urlopen(req, timeout=12.0) as resp:
+                    lat_ms = int((time.time() - t0) * 1000)
+                    data = json.loads(resp.read().decode("utf-8"))
+                    raw_reply = data["choices"][0]["message"]["content"]
+                    
+                    parsed = self._extract_json(raw_reply)
+                    if parsed and isinstance(parsed, dict):
+                        return {
+                            "status": "SUCCESS",
+                            "model_used": m,
+                            "latency_ms": lat_ms,
+                            "backtest_results": parsed
+                        }
+            except Exception:
+                continue
+
+        # Tier 2: Instant Failover to Gemini Proxy on Port 4095
+        try:
+            proxy_payload = json.dumps({
+                "model": "gemini-3.5-flash-lite",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ]
+            }).encode("utf-8")
+            proxy_req = urllib.request.Request(
+                "http://127.0.0.1:4095/v1/chat/completions",
+                data=proxy_payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(proxy_req, timeout=12.0) as resp:
+                lat_ms = int((time.time() - t0) * 1000)
+                data = json.loads(resp.read().decode("utf-8"))
+                raw_reply = data["choices"][0]["message"]["content"]
+                parsed = self._extract_json(raw_reply)
+                if parsed and isinstance(parsed, dict):
+                    return {
+                        "status": "SUCCESS",
+                        "model_used": "gemini-3.5-flash-lite (Proxy Fallback)",
+                        "latency_ms": lat_ms,
+                        "backtest_results": parsed
+                    }
+        except Exception:
+            pass
 
         return {
             "status": "EVALUATION_ERROR",
