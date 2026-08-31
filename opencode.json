@@ -34,5 +34,33 @@
     "- mcp_alpha_update_position: Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).",
     "- mcp_alpha_register_watch: Set dynamic price or sentiment alerts for the local desk to track.",
     "REFER TO C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md FOR YOUR COMPLETE MASTER OPERATING PROTOCOL."
-  ]
+  ],
+  "provider": {
+    "proxima-proxy": {
+      "name": "Proxima Local Gateway",
+      "type": "openai",
+      "url": "http://127.0.0.1:3210/v1",
+      "api_key": "local-key",
+      "models": {
+        "gemini": {
+          "name": "Gemini 2.5 (Proxima)"
+        },
+        "3.5-flash": {
+          "name": "Gemini 3.5 Flash (Proxima)"
+        },
+        "3.1-pro": {
+          "name": "Gemini 3.1 Pro (Proxima)"
+        },
+        "3.1-flash-lite": {
+          "name": "Gemini 3.1 Flash-Lite (Proxima)"
+        },
+        "perplexity": {
+          "name": "Perplexity (Proxima)"
+        },
+        "chatgpt": {
+          "name": "ChatGPT 4o (Proxima)"
+        }
+      }
+    }
+  }
 }
