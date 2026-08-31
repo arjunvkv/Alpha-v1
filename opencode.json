@@ -38,36 +38,25 @@
   "provider": {
     "google-proxy": {
       "name": "Google Proxy",
-      "type": "openai",
-      "url": "http://127.0.0.1:3211/v1",
-      "api_key": "google-proxy-key",
+      "options": {
+        "baseURL": "http://127.0.0.1:4095/v1",
+        "apiKey": "gemini-proxy-local"
+      },
       "models": {
-        "gemini-2.5-flash-lite": {
-          "name": "Gemini 2.5 Flash-Lite"
+        "gemini-3.5-flash-lite": {
+          "name": "Gemini 3.5 Flash-Lite"
         },
         "gemini-3.1-flash-lite": {
           "name": "Gemini 3.1 Flash-Lite"
         },
-        "gemini-3.5-flash-lite": {
-          "name": "Gemini 3.5 Flash-Lite"
+        "gemini-2.5-flash-lite": {
+          "name": "Gemini 2.5 Flash-Lite"
         },
         "gemini-3.6-flash": {
           "name": "Gemini 3.6 Flash"
         },
-        "gemini-3.7-flash": {
-          "name": "Gemini 3.7 Flash"
-        },
         "gemini-3.5-flash": {
           "name": "Gemini 3.5 Flash"
-        },
-        "gemini-2.5-flash": {
-          "name": "Gemini 2.5 Flash"
-        },
-        "gemini-2.5-pro": {
-          "name": "Gemini 2.5 Pro"
-        },
-        "gemini-3.1-pro": {
-          "name": "Gemini 3.1 Pro"
         }
       }
     }

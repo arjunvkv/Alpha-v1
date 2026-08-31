@@ -251,7 +251,22 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                 name = fn.get('name')
                 if name:
                     declared_tool_names.append(name)
-            default_tool_name = declared_tool_names[0] if declared_tool_names else "mcp_alpha_get_account_status"
+            # Normalize model name for Google Generative AI
+            req_model = payload.get('model', 'gemini-3.5-flash-lite')
+            model_remap = {
+                'gemini-2.5-flash-lite': 'gemini-3.5-flash-lite',
+                '3.1-flash-lite': 'gemini-3.1-flash-lite',
+                '3.5-flash-lite': 'gemini-3.5-flash-lite',
+                '3.6-flash': 'gemini-3.6-flash',
+                '3.7-flash': 'gemini-3.7-flash',
+                '3.5-flash': 'gemini-3.5-flash',
+                '2.5-flash': 'gemini-2.5-flash',
+                '2.5-pro': 'gemini-2.5-pro',
+                '3.1-pro': 'gemini-3.1-pro-preview',
+                'gemini-3.1-pro': 'gemini-3.1-pro-preview',
+                'gemini': 'gemini-3.5-flash-lite'
+            }
+            payload['model'] = model_remap.get(req_model.lower(), req_model)
 
             # Step 0: Intelligent Auto-Compress Mechanism
             messages = payload.get('messages', [])
