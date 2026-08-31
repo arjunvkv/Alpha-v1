@@ -274,23 +274,6 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             messages = payload.get('messages', [])
             if messages:
                 messages = compress_and_optimize_context(messages, min_turns_to_compress=12, max_chars_safe=80000)
-                
-                # Step 0.5: Deliberative Reasoning & Deep Thinking Protocol
-                reasoning_booster = (
-                    "\n\n[DELIBERATIVE REASONING MANDATE: Always engage in deep step-by-step multi-turn analytical reasoning. "
-                    "Explicitly evaluate: (1) 4TF Structural Bias & FVG geometry, (2) CVD Delta Absorption vs Traps, "
-                    "(3) Exact Invalidation Boundaries & RRR Math, (4) Empirical ULM Historical Precedents before concluding or invoking tools.]"
-                )
-                has_system = False
-                for m in messages:
-                    if m.get('role') == 'system':
-                        if reasoning_booster not in m.get('content', ''):
-                            m['content'] = (m.get('content') or '') + reasoning_booster
-                        has_system = True
-                        break
-                if not has_system and messages:
-                    messages.insert(0, {'role': 'system', 'content': 'You are an elite quantitative trading desk CIO and quantitative reasoning model.' + reasoning_booster})
-                
                 payload['messages'] = messages
 
             start_t = time.time()

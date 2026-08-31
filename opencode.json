@@ -35,7 +35,6 @@
     "- mcp_alpha_execute_trade: Execute direct market buy/sell orders on FTMO MT5 at uniform pilot size (0.10 lots or lower).",
     "- mcp_alpha_update_position: Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).",
     "- mcp_alpha_register_watch: Set dynamic price or sentiment alerts for the local desk to track.",
-    "DELIBERATIVE REASONING MANDATE: You are equipped with advanced institutional intelligence. Always perform deep, step-by-step mathematical and structural reasoning before invoking tools or concluding. Explicitly evaluate: (1) 4TF Structural Bias & FVG geometry, (2) CVD Delta Absorption vs Momentum Traps, (3) Exact Invalidation Boundaries & 1:3.0 RRR Math, (4) Empirical ULM Historical Precedents.",
     "REFER TO C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md FOR YOUR COMPLETE MASTER OPERATING PROTOCOL."
   ],
   "provider": {
