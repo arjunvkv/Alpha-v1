@@ -487,6 +487,25 @@ def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observa
     return json.dumps(UnifiedLearningMemory().record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value), indent=2)
 
 @mcp.tool()
+def mcp_alpha_record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
+    """Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & Unified Learning Memory."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Record Trade Observation)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded trade observation for {sym}: [{pattern_name}] {observation[:60]}... (Outcome: {outcome}, R: {r_multiple})")
+    ulm = UnifiedLearningMemory()
+    r_val = float(r_multiple) if r_multiple is not None else 0.0
+    res = ulm.record_pattern(symbol=sym, pattern_name=pattern_name, observation=observation, outcome=outcome, ticket=str(ticket) if ticket is not None else None, r_value=r_val)
+    return json.dumps({
+        "status": "SUCCESS",
+        "symbol": sym,
+        "pattern_name": pattern_name,
+        "observation": observation,
+        "outcome": outcome,
+        "r_multiple": r_val,
+        "record": res
+    }, indent=2)
+
+@mcp.tool()
 def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: str, ticket: str = None, r_value=None) -> str:
     """Attach a historical outcome to a pattern. Has no execution effect."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
@@ -1178,12 +1197,17 @@ def get_ledger_decomposition(symbol: str = "XAUUSD") -> str:
 @mcp.tool()
 def record_decision_snapshot(symbol: str, side: str, conviction: float, notes: str = "", volume: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
     """Record pre-trade decision context on disk (s4.137 Process vs Outcome)."""
-    return mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp)
+    return mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes=notes, volume=volume, sl=sl, tp=tp)
 
 @mcp.tool()
-def record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0) -> str:
+def record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
     """Commit verified trade outcomes & lessons into Pattern Book & ULM."""
-    return mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple)
+    return mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple, ticket)
+
+@mcp.tool()
+def record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
+    """Record pattern evidence in Unified Learning Memory."""
+    return mcp_alpha_record_pattern_observation(symbol, pattern_name, observation, outcome, ticket, r_value)
 
 @mcp.tool()
 def get_multi_instrument_ledger() -> str:
@@ -1253,6 +1277,8 @@ def list_desk_tools() -> str:
         {"name": "get_fvg_matrix", "description": "Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and Consequent Encroachment levels."},
         {"name": "get_live_world_events", "description": "Live macroeconomic releases, central bank speeches, and geopolitical intelligence."},
         {"name": "record_decision_snapshot", "description": "Record pre-trade decision context on disk with full experimental metadata."},
+        {"name": "record_trade_observation", "description": "Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & ULM."},
+        {"name": "record_pattern_observation", "description": "Record pattern evidence in Unified Learning Memory."},
         {"name": "execute_trade", "description": "Execute direct market buy/sell orders on FTMO MT5 at uniform pilot size (0.10 lots or lower)."},
         {"name": "update_position", "description": "Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."},
         {"name": "register_watch", "description": "Set dynamic price or sentiment alerts for the local desk to track."},
@@ -1293,6 +1319,9 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol", "XAUUSD")),
         "get_live_world_events": lambda: mcp_alpha_get_live_world_events(args.get("category", "ALL")),
         "record_decision_snapshot": lambda: mcp_alpha_record_decision_snapshot(**args),
+        "record_trade_observation": lambda: mcp_alpha_record_trade_observation(args.get("symbol", "XAUUSD"), args.get("pattern_name", ""), args.get("observation", ""), args.get("outcome", "STUDY"), args.get("r_multiple", 0.0), args.get("ticket")),
+        "record_pattern_observation": lambda: mcp_alpha_record_pattern_observation(args.get("symbol", "XAUUSD"), args.get("pattern_name", ""), args.get("observation", ""), args.get("outcome"), args.get("ticket"), args.get("r_value")),
+        "record_pattern_outcome": lambda: mcp_alpha_record_pattern_outcome(args.get("symbol", "XAUUSD"), args.get("pattern_name", ""), args.get("outcome", ""), args.get("ticket"), args.get("r_value")),
         "execute_trade": lambda: mcp_alpha_execute_trade(args.get("symbol", "XAUUSD"), args.get("side", "BUY"), args.get("volume", 0.05), args.get("sl", 0.0), args.get("tp", 0.0)),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket", 0), args.get("action", "BREAK_EVEN"), args.get("params_json", "")),
         "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol", "XAUUSD"), args.get("condition", ""), args.get("instruction", ""), args.get("target_price"), args.get("reason", ""), args.get("direction", "")),
