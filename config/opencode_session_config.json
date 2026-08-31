@@ -1,10 +1,10 @@
 {
   "description": "Alpha Trading Desk - Centralized OpenCode Session Configuration (Hot-Reloading)",
-  "updated_at": "2026-08-31 04:30:00 UTC",
-  "session_id": "ses_fa9ec7cbdffe3F5I8Ii8XInKT3",
-  "session_title": "Alpha v6 (Active Live Desk)",
+  "updated_at": "2026-08-31 04:35:00 UTC",
+  "session_id": "ses_fa9e6a221ffeWyVVh9lzDWGFYr",
+  "session_title": "Alpha v7",
   "opencode_api_url": "http://127.0.0.1:4096",
   "dossier_streaming_enabled": true,
-  "dossier_interval_seconds": 120,
+  "dossier_interval_seconds": 180,
   "active_trade_interval_seconds": 60
 }
