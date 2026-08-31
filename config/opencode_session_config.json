@@ -1,10 +1,10 @@
 {
   "description": "Alpha Trading Desk - Centralized OpenCode Session Configuration (Hot-Reloading)",
-  "updated_at": "2026-08-29 21:50:30 UTC",
-  "session_id": "ses_fb15b2b27ffezJfLoCEJP5a95r",
-  "session_title": "Alpha-Gravity",
+  "updated_at": "2026-08-31 04:20:00 UTC",
+  "session_id": "ses_fa9f3b6deffeZpZsf6QT37dDF4",
+  "session_title": "Alpha v6",
   "opencode_api_url": "http://127.0.0.1:4096",
-  "dossier_streaming_enabled": false,
-  "dossier_interval_seconds": 300,
+  "dossier_streaming_enabled": true,
+  "dossier_interval_seconds": 120,
   "active_trade_interval_seconds": 60
 }
