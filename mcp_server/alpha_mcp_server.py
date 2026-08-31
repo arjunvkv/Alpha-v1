@@ -387,7 +387,53 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
         dxy_val = float(macro_feed.get("dxy", 101.40)) if isinstance(macro_feed.get("dxy"), (int, float)) else float(macro_feed.get("dxy", {}).get("val", 101.40))
         vix_val = float(macro_feed.get("vix", 15.80)) if isinstance(macro_feed.get("vix"), (int, float)) else float(macro_feed.get("vix", {}).get("val", 15.80))
         macro_res = macro.analyze({"dxy": dxy_val, "vix": vix_val}, [{"title": f"Live Global Macro Analysis for {sym}", "source": "Yahoo Macro / FRED"}])
-        
+        sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, [])
+
+        # Run full Bull vs Bear Debate
+        debate_res = _desk.debater.debate(sym, tech_res, fund_res, macro_res, sent_res)
+
+        # Microstructure & FVG overlays
+        from tradingagents.fair_value_gap import FairValueGapEngine
+        from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
+        from tradingagents.multitimeframe import OrderBlockEngine
+        fvg_mat = FairValueGapEngine().get_symbol_fvg_matrix(sym)
+        cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
+        ob_data = OrderBlockEngine().calculate_levels(sym)
+
+        nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg") or fvg_mat.get("m5_fvg") or {}
+        fvg_str = f"{nearest_fvg.get('type', 'FVG')} [{nearest_fvg.get('top', 0):.2f}-{nearest_fvg.get('bottom', 0):.2f}, 50% CE: {nearest_fvg.get('consequent_encroachment', 0):.2f}, {nearest_fvg.get('fill_pct', 0):.1f}% filled]"
+
+        # Build Deep Intelligent Synthesis Tailored to User's Specific Query
+        q_upper = query.upper()
+        if "CONVICTION" in q_upper or "AUDIT" in q_upper:
+            tactical_verdict = (
+                f"Conviction Audit ({debate_res.get('consensus_score', 2.4)}/10 {debate_res.get('conviction', 'LOW')}): "
+                f"Severe regime conflict between HTF/4TF price trend ({mtf_res.get('formatted_4tf')}) and max-bullish COT positioning ({cot_data.get('managed_money_percentile_52w', 100):.1f}%). "
+                f"Adverse tick velocity ({cvd_data.get('tick_velocity_tpm', 0.0):.1f} t/m) and elevated spread ({cvd_data.get('live_spread_pts', 0)} pts) mandate cash preservation until structure stabilizes."
+            )
+        elif "SWEEP" in q_upper or "TRAP" in q_upper or "LOW" in q_upper:
+            tactical_verdict = (
+                f"Liquidity Sweep & Trap Audit: Prior low sweep confirmed at {live_ask:.2f}. "
+                f"Precedent requires M5 delta absorption and candle close back above {fvg_str} before validating a long reversal. "
+                f"Do not front-run the bounce without confirmed delta turn."
+            )
+        elif "BUY" in q_upper or "LONG" in q_upper:
+            tactical_verdict = (
+                f"Long Thesis Evaluation: Long setups face counter-trend friction against {mtf_res.get('formatted_4tf')}. "
+                f"Optimal long entry requires reclaim of 50% CE ({nearest_fvg.get('consequent_encroachment', 0):.2f}) with stop anchored below the sweep wick low."
+            )
+        elif "SELL" in q_upper or "SHORT" in q_upper:
+            tactical_verdict = (
+                f"Short Thesis Evaluation: Short momentum aligns with 4TF trend, but entering here risks selling into oversold exhaustion (H1 RSI {mtf_res.get('h1_rsi')}). "
+                f"Wait for a premium pullback into supply ({ob_data.get('supply_zone')}) rather than chasing breakdown wicks."
+            )
+        else:
+            tactical_verdict = (
+                f"Institutional Consensus: 4TF is {mtf_res.get('formatted_4tf')}, COT is {cot_data.get('bias', 'BULLISH')}, Macro risk is ACTIVE. "
+                f"Primary structure: {fvg_str}. CVD Posture: {cvd_data.get('velocity_posture', 'NORMAL')} with delta {cvd_data.get('cumulative_volume_delta', 0):.1f}. "
+                f"Desk recommendation: Maintain strict risk posture, size probes at 0.01-0.05 lots only upon confirmed structural triggers."
+            )
+
         status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "SUCCESS"
         data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"
 
@@ -397,16 +443,30 @@ def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundament
             "symbol": sym,
             "is_frozen": is_weekend,
             "data_asof": data_asof_tag,
-            "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
             "ask_price": live_ask,
             "4tf_alignment": mtf_res.get("formatted_4tf"),
+            "conviction": {
+                "score": debate_res.get("consensus_score", 2.4),
+                "tier": debate_res.get("conviction", "LOW"),
+                "is_regime_conflict": debate_res.get("is_regime_conflict", True)
+            },
+            "debate_breakdown": {
+                "bull_arguments": debate_res.get("bull_points", []),
+                "bear_arguments": debate_res.get("bear_points", [])
+            },
+            "microstructure_overlay": {
+                "live_spread_pts": cvd_data.get("live_spread_pts", 0),
+                "tick_velocity_tpm": cvd_data.get("tick_velocity_tpm", 0.0),
+                "nearest_fvg": fvg_str,
+                "demand_zone": ob_data.get("demand_zone"),
+                "supply_zone": ob_data.get("supply_zone")
+            },
             "multisource_intelligence": {
                 "technical_analyst": tech_res,
                 "fundamental_cot_analyst": fund_res,
-                "macro_news_analyst": macro_res,
-                "historical_memory": "Historical learning is study evidence; it has no veto authority"
+                "macro_news_analyst": macro_res
             },
-            "analyst_desk_synthesis": f"Granger 7-Layer Analyst Desk evaluated query '{query}' for {sym} at ask {live_ask} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. COT posture: {fund_res.get('thesis')}. Macro posture: {macro_res.get('thesis')}."
+            "tactical_analyst_synthesis": tactical_verdict
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})

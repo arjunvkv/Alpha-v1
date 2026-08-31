@@ -36,7 +36,7 @@ PROXIMA_WS_URL = "ws://127.0.0.1:3210/ws"
 class ProximaGate:
     """Async/HTTP Client to Proxima Gateway on Port 3210 (Mandatory Quantitative Engine)."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 7.0):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 18.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
