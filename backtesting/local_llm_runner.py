@@ -68,10 +68,40 @@ class LocalLLMBacktestRunner:
             "}"
         )
 
-        models_to_try = ["perplexity", "gemini", "3.5-flash", "3.1-flash-lite"]
         t0 = time.time()
 
-        # Tier 1: Query Proxima Gateway on Port 3210 (8s per-model limit)
+        # Tier 1: Instant High-Speed Gemini Proxy on Port 4095 (<2s response)
+        try:
+            proxy_payload = json.dumps({
+                "model": "gemini-3.5-flash-lite",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ]
+            }).encode("utf-8")
+            proxy_req = urllib.request.Request(
+                "http://127.0.0.1:4095/v1/chat/completions",
+                data=proxy_payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(proxy_req, timeout=4.5) as resp:
+                lat_ms = int((time.time() - t0) * 1000)
+                data = json.loads(resp.read().decode("utf-8"))
+                raw_reply = data["choices"][0]["message"]["content"]
+                parsed = self._extract_json(raw_reply)
+                if parsed and isinstance(parsed, dict):
+                    return {
+                        "status": "SUCCESS",
+                        "model_used": "gemini-3.5-flash-lite (Ultra-Fast Proxy)",
+                        "latency_ms": lat_ms,
+                        "backtest_results": parsed
+                    }
+        except Exception:
+            pass
+
+        # Tier 2: Query Proxima Gateway on Port 3210 (3.5s per-model fast limit)
+        models_to_try = ["3.5-flash", "perplexity", "gemini"]
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
@@ -89,7 +119,7 @@ class LocalLLMBacktestRunner:
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=8.0) as resp:
+                with urllib.request.urlopen(req, timeout=3.5) as resp:
                     lat_ms = int((time.time() - t0) * 1000)
                     data = json.loads(resp.read().decode("utf-8"))
                     raw_reply = data["choices"][0]["message"]["content"]
@@ -104,36 +134,6 @@ class LocalLLMBacktestRunner:
                         }
             except Exception:
                 continue
-
-        # Tier 2: Instant Failover to Gemini Proxy on Port 4095
-        try:
-            proxy_payload = json.dumps({
-                "model": "gemini-3.5-flash-lite",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ]
-            }).encode("utf-8")
-            proxy_req = urllib.request.Request(
-                "http://127.0.0.1:4095/v1/chat/completions",
-                data=proxy_payload,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-            with urllib.request.urlopen(proxy_req, timeout=10.0) as resp:
-                lat_ms = int((time.time() - t0) * 1000)
-                data = json.loads(resp.read().decode("utf-8"))
-                raw_reply = data["choices"][0]["message"]["content"]
-                parsed = self._extract_json(raw_reply)
-                if parsed and isinstance(parsed, dict):
-                    return {
-                        "status": "SUCCESS",
-                        "model_used": "gemini-3.5-flash-lite (Proxy Fallback)",
-                        "latency_ms": lat_ms,
-                        "backtest_results": parsed
-                    }
-        except Exception:
-            pass
 
         # Tier 3: Deterministic Candle Replay Fallback (Zero crash guarantee)
         return {
