@@ -38,11 +38,11 @@ class ProximaBacktestBridge:
             f"4) Expected JSON Output Schema for the Local LLM."
         )
 
-        models_to_try = ["3.5-flash", "3.1-flash-lite", "perplexity", "gemini"]
+        models_to_try = ["perplexity", "gemini", "3.5-flash", "3.1-flash-lite"]
         full_user_prompt = f"{system_prompt}\n\n{user_prompt}"
         t0 = time.time()
 
-        # Tier 1: Query Proxima Gateway on Port 3210 (10s per-model fast limit)
+        # Tier 1: Query Proxima Gateway on Port 3210 (6s per-model fast limit)
         for m in models_to_try:
             payload = json.dumps({
                 "model": m,
@@ -59,7 +59,7 @@ class ProximaBacktestBridge:
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=10.0) as resp:
+                with urllib.request.urlopen(req, timeout=6.0) as resp:
                     lat_ms = int((time.time() - t0) * 1000)
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
