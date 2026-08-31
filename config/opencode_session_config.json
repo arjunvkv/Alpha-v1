@@ -1,8 +1,8 @@
 {
   "description": "Alpha Trading Desk - Centralized OpenCode Session Configuration (Hot-Reloading)",
   "updated_at": "2026-08-31 04:55:00 UTC",
-  "session_id": "ses_fa9d5bf54ffeguIWaOBmfeJLXe",
-  "session_title": "Alpha Granger v8",
+  "session_id": "ses_fa78d8cbaffeRr42l7ZJDurb6H",
+  "session_title": "Alpha Granger v9 (Active MCP)",
   "opencode_api_url": "http://127.0.0.1:4096",
   "dossier_streaming_enabled": true,
   "dossier_interval_seconds": 180,

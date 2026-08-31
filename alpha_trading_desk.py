@@ -761,23 +761,27 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        mcp_tools_block = """=== COMPLETE FAST-MCP TOOL SUITE (14 TOOLS AVAILABLE) ===
-  • mcp_alpha_get_full_institutional_profile(symbol) — Fetch Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.
-  • mcp_alpha_backtest_thesis(query, symbol, timeframe, bars) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.
-  • mcp_alpha_ask_librarian(query, symbol) — Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).
-  • mcp_alpha_query_analyst_desk(query, symbol) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).
-  • mcp_alpha_get_measured_cvd(symbol) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.
-  • mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.
-  • mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.
-  • mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).
-  • mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct market buy/sell order on FTMO MT5.
-  • mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
-  • mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple) — Commit verified trade outcomes & lessons into Pattern Book & ULM.
-  • mcp_alpha_get_trade_forensics(symbol) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.
-  • mcp_alpha_get_ledger_decomposition(symbol) — Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).
-  • mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.
-
-MANDATORY: Study, interpret and decide first; MCP tools retrieve, record, track or execute the Agent's own decisions and do not have independent decision authority.
+        mcp_tools_block = """=== COMPLETE FAST-MCP TOOL SUITE (17 TOOLS AVAILABLE) ===
+  • alpha-daemon-mcp_mcp_alpha_get_account_status (or mcp_alpha_get_account_status) — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.
+  • alpha-daemon-mcp_mcp_alpha_get_symbol_conviction (or mcp_alpha_get_symbol_conviction) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.
+  • alpha-daemon-mcp_mcp_alpha_backtest_thesis (or mcp_alpha_backtest_thesis) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.
+  • alpha-daemon-mcp_mcp_alpha_ask_librarian (or mcp_alpha_ask_librarian) — Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).
+  • alpha-daemon-mcp_mcp_alpha_get_measured_cvd (or mcp_alpha_get_measured_cvd) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.
+  • alpha-daemon-mcp_mcp_alpha_get_live_microstructure (or mcp_alpha_get_live_microstructure) — Live spread in pts, M1 tick velocity (t/m), order book depth imbalance, and CVD posture.
+  • alpha-daemon-mcp_mcp_alpha_get_full_institutional_profile (or mcp_alpha_get_full_institutional_profile) — Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.
+  • alpha-daemon-mcp_mcp_alpha_get_trade_forensics (or mcp_alpha_get_trade_forensics) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.
+  • alpha-daemon-mcp_mcp_alpha_get_ledger_decomposition (or mcp_alpha_get_ledger_decomposition) — Decompose 121-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).
+  • alpha-daemon-mcp_mcp_alpha_get_multi_instrument_ledger (or mcp_alpha_get_multi_instrument_ledger) — Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD).
+  • alpha-daemon-mcp_mcp_alpha_get_mt5_deals_history (or mcp_alpha_get_mt5_deals_history) — Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal.
+  • alpha-daemon-mcp_mcp_alpha_query_analyst_desk (or mcp_alpha_query_analyst_desk) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).
+  • alpha-daemon-mcp_mcp_alpha_get_fvg_matrix (or mcp_alpha_get_fvg_matrix) — Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and Consequent Encroachment levels.
+  • alpha-daemon-mcp_mcp_alpha_get_live_world_events (or mcp_alpha_get_live_world_events) — Live macroeconomic releases, central bank speeches, and geopolitical intelligence.
+  • alpha-daemon-mcp_mcp_alpha_record_decision_snapshot (or mcp_alpha_record_decision_snapshot) — Record pre-trade decision context on disk with full experimental metadata.
+  • alpha-daemon-mcp_mcp_alpha_record_trade_observation (or mcp_alpha_record_trade_observation) — Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & ULM.
+  • alpha-daemon-mcp_mcp_alpha_record_pattern_observation (or mcp_alpha_record_pattern_observation) — Record pattern evidence in Unified Learning Memory.
+  • alpha-daemon-mcp_mcp_alpha_execute_trade (or mcp_alpha_execute_trade) — Execute direct market buy/sell orders on FTMO MT5.
+  • alpha-daemon-mcp_mcp_alpha_update_position (or mcp_alpha_update_position) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
+  • alpha-daemon-mcp_mcp_alpha_register_watch (or mcp_alpha_register_watch) — Set dynamic price or sentiment alerts for the local desk to track.
 """
 
         file_ref_header = (
