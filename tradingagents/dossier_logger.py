@@ -60,6 +60,14 @@ class DeepDossierLogger:
         md_lines.append(f"**FTMO Account Health**: Balance `${account_health.get('balance')}` | Equity `${account_health.get('equity')}` | Free Margin `${account_health.get('free_margin')}` | Margin Level `{account_health.get('margin_level_pct')}%` | Floating PnL `${account_health.get('floating_pnl')}`")
         md_lines.append(f"**Macro Matrix**: GSR `{gsr_data.get('gsr')}` [{gsr_data.get('status')}] | US Real Yield `{real_yields.get('us_real_yield_posture')}` (US10Y `{real_yields.get('us10y_nominal_yield')}`) | USD `{currency_strength.get('usd_index_posture')}` | EUR `{currency_strength.get('eur_strength')}` | JPY `{currency_strength.get('jpy_strength')}`\n")
         
+        md_lines.append(f"## 🌊 Full Ocean Institutional Synthesis & CIO Mandate")
+        md_lines.append(f"1. **Macro & Real Yields**: Synthesize US10Y nominal yield, US Real Yields (US10Y - 2.4%), DXY, and geopolitical tailwinds.")
+        md_lines.append(f"2. **CFTC COT Positioning**: Cross-reference Managed Money (Speculator) net percentiles vs Commercial Hedger accumulation to detect positioning extremes.")
+        md_lines.append(f"3. **Volume Profile Value Area**: Locate live price relative to Point of Control (POC), Value Area High (VAH 70%), and Value Area Low (VAL 70%) to identify deep discount vs premium zones.")
+        md_lines.append(f"4. **4TF Multi-Timeframe Confluence**: Reconcile H4, H1, M15, and M5 structural trends with exact RSI 14 and EMA 20/50 levels.")
+        md_lines.append(f"5. **Microstructure & Measured CVD**: Track M5 Fair Value Gap Consequent Encroachment (30-50% CE), live tick velocity, spread, and cumulative delta absorption.")
+        md_lines.append(f"6. **Probe-and-Scale Execution**: Deploy 0.01 lot probe at CE touch immediately -> scale to 1.0 lot on +0.5R expansion -> move Stop Loss to Breakeven at +1.0R.\n")
+        
         md_lines.append(f"## 🎯 Probe-and-Scale Execution Blueprint (Zero-Loss Protocol)")
         md_lines.append(f"1. **0.01 Lot Probe Test**: Deploy 0.01 lot probe at M5 FVG Consequent Encroachment (30%-50% CE) or Swept Session Extreme.")
         md_lines.append(f"2. **Confirm & Full Scale (1.0 Lot)**: Once the 0.01 probe reacts with momentum (+0.5R), deploy the full 1.0 lot order.")

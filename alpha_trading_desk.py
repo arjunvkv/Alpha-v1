@@ -765,13 +765,17 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== OPENCODE CIO EXECUTIVE DIRECTIVE (AUTHENTIC INSTITUTIONAL LEADERSHIP) ===
+        execution_blueprint_block = """=== FULL OCEAN INSTITUTIONAL SYNTHESIS & CIO MANDATE ===
+  1. MACRO & REAL YIELDS: US10Y nominal yields, Real Yields (US10Y - 2.4%), DXY, and geopolitical feeds.
+  2. CFTC COT POSITIONING: Speculator 100th percentile long vs Commercial hedger accumulation.
+  3. VOLUME PROFILE: POC (4430), VAH (4461), VAL (4377) — identify deep discount vs premium zones.
+  4. 4TF STRUCTURAL CONFLUENCE: Reconcile H4, H1, M15, M5 trends with exact RSIs and EMAs.
+  5. MICROSTRUCTURE & CVD: M5 FVG Consequent Encroachment (30-50% CE), live measured CVD delta absorption.
+  6. PROBE-AND-SCALE EXECUTION: 0.01 Probe at CE touch -> 1.0 Lot Scale at +0.5R -> Breakeven Shield at +1.0R.
+
+=== OPENCODE CIO EXECUTIVE DIRECTIVE (AUTHENTIC INSTITUTIONAL LEADERSHIP) ===
   MANDATE: Reason with the full authority, market acumen, and quantitative rigor of the Chief Investment Officer.
-  DO NOT repeat mechanical bullet lists. Interweave the 6 raw dimensions into a cohesive, actionable market thesis:
-  • Macro & COT: Connect US10Y Real Yields (+2.38%) & 100th percentile COT long positioning to the macro tide.
-  • Volume Profile: Evaluate current price vs Value Area Low (VAL 4377) and Point of Control (POC 4430).
-  • 4TF & Microstructure: Cross-reference 4TF trend with M5 FVG CE geometry and live measured CVD delta absorption.
-  • Decisive Action: Deploy the 0.01 Probe at CE touch, scale to 1.0 lot at +0.5R, and advance SL to Breakeven at +1.0R.
+  Synthesize the 6 raw dimensions above into a cohesive, actionable market thesis in every response.
 """
 
         file_ref_header = (
