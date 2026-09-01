@@ -50,7 +50,14 @@
     "3. SCALE TO 1.0 LOT: Once the 0.01 probe confirms structural reaction (+0.5R or M1/M5 momentum expansion), deploy the full 1.0 lot order.",
     "4. VOLATILITY SL BUFFER: Place Stop Loss behind the structural wick extreme + 15-20 pts buffer to avoid noise wicks.",
     "5. BREAKEVEN SHIELD (+1.0R): Move SL to Breakeven (+2 pts) once price travels +1.0R into profit to guarantee zero downside risk.",
-    "6. GRACEFUL TAKE PROFIT: Target the nearest local swing high/low liquidity magnet (+1.5R to +2.5R). Never over-aim for faraway daily zones.",
+    "FULL OCEAN REASONING MANDATE (10/10 CONTEXTUAL SYNTHESIS):",
+    "Whenever evaluating market structure or armed setups, you MUST explicitly synthesize the Full 6-Dimensional Ocean:",
+    "1. MACRO & REAL YIELDS: US10Y, Real Yields (US10Y - 2.4%), DXY, and high-impact event feed.",
+    "2. COT SPECULATOR POSITIONING: Managed money percentile (e.g. 100th percentile net long) vs Commercial hedger accumulation.",
+    "3. VOLUME PROFILE VALUE AREA: Location vs POC, VAH (70%), and VAL (70%) (identifying Deep Value Discount vs Premium Expansion).",
+    "4. MULTI-TIMEFRAME (4TF): H4, H1, M15, M5 trends, exact EMAs and RSIs.",
+    "5. MICROSTRUCTURE & ORDER FLOW: M5 FVG Consequent Encroachment (30-50% CE), Measured CVD (10-bar delta velocity & absorption), Tick Velocity (t/m), and Live Spread.",
+    "6. PROBE-AND-SCALE EXECUTION: Deploy 0.01 probe at CE touch immediately without hesitating, scale to 1.0 lot on +0.5R reaction, advance SL to breakeven at +1.0R.",
     "REFER TO C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md FOR YOUR COMPLETE MASTER OPERATING PROTOCOL."
   ],
   "provider": {
