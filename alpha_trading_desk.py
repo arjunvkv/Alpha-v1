@@ -765,20 +765,13 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== AGENT EXECUTION DIRECTIVE (10/10 EXECUTION RATING) ===
-  MANDATORY OUTPUT REQUIREMENT: In your response, you MUST print the explicit 6-Layer Full Ocean Matrix:
-  🌊 --- FULL OCEAN SYNTHESIS MATRIX ---
-  1. 🏛️ MACRO & REAL YIELDS: [US10Y / Real Yields / DXY / VIX / News Events]
-  2. 📊 CFTC COT POSITIONING: [Speculator % / Net Non-Comm / Net Comm / Commercial Accumulation]
-  3. 📦 VOLUME PROFILE: [POC / VAH 70% / VAL 70% / Distance to Value Area / Value Discount]
-  4. ⏱️ 4TF STRUCTURAL CONFLUENCE: [H4 / H1 / M15 / M5 Trends & Exact RSIs/EMAs]
-  5. 🔬 MICROSTRUCTURE & CVD: [M5 FVG CE / Cumulative Delta / 10-Bar Delta Flow / Tick Velocity / Spread]
-  6. 🎯 TACTICAL VERDICT & ACTION: [0.01 Probe Status / 1.0 Lot Scale Trigger / Breakeven Target]
-
-  EXECUTION PROTOCOL:
-  • 0.01 PROBE: At M5 FVG 50% CE touch, IMMEDIATELY deploy 0.01 probe (Risk ~$0.30). No 5-min candle close delay!
-  • 1.0 LOT SCALE: Scale to full 1.0 lot on +0.5R reaction.
-  • BREAKEVEN SHIELD: Advance SL to Entry + 2 pts at +1.0R in profit.
+        execution_blueprint_block = """=== OPENCODE CIO EXECUTIVE DIRECTIVE (AUTHENTIC INSTITUTIONAL LEADERSHIP) ===
+  MANDATE: Reason with the full authority, market acumen, and quantitative rigor of the Chief Investment Officer.
+  DO NOT repeat mechanical bullet lists. Interweave the 6 raw dimensions into a cohesive, actionable market thesis:
+  • Macro & COT: Connect US10Y Real Yields (+2.38%) & 100th percentile COT long positioning to the macro tide.
+  • Volume Profile: Evaluate current price vs Value Area Low (VAL 4377) and Point of Control (POC 4430).
+  • 4TF & Microstructure: Cross-reference 4TF trend with M5 FVG CE geometry and live measured CVD delta absorption.
+  • Decisive Action: Deploy the 0.01 Probe at CE touch, scale to 1.0 lot at +0.5R, and advance SL to Breakeven at +1.0R.
 """
 
         file_ref_header = (
