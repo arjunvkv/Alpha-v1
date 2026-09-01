@@ -438,9 +438,11 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
         q_upper = query.upper()
         if "CONVICTION" in q_upper or "AUDIT" in q_upper:
             tactical_verdict = (
-                f"Conviction Audit ({debate_res.get('consensus_score', 2.4)}/10 {debate_res.get('conviction', 'LOW')}): "
-                f"Severe regime conflict between HTF/4TF price trend ({mtf_res.get('formatted_4tf')}) and max-bullish COT positioning ({cot_data.get('managed_money_percentile_52w', 100):.1f}%). "
-                f"Adverse tick velocity ({cvd_data.get('tick_velocity_tpm', 0.0):.1f} t/m) and elevated spread ({cvd_data.get('live_spread_pts', 0)} pts) mandate cash preservation until structure stabilizes."
+                f"Structural Alignment Audit: "
+                f"Regime Divergence: {'YES' if debate_res.get('is_regime_conflict') else 'NO'}. "
+                f"Technical Order Flow ({mtf_res.get('formatted_4tf')}) vs COT Speculator Positioning ({cot_data.get('managed_money_percentile_52w', 100):.1f}th percentile). "
+                f"Tick Velocity: {cvd_data.get('tick_velocity_tpm', 0.0):.1f} t/m, Live Spread: {cvd_data.get('live_spread_pts', 0)} pts. "
+                f"Probe-and-Scale Protocol: Deploy 0.01 lot probe at M5 FVG CE ({nearest_fvg.get('consequent_encroachment', 0):.2f}) upon structural trigger."
             )
         elif "SWEEP" in q_upper or "TRAP" in q_upper or "LOW" in q_upper:
             tactical_verdict = (
@@ -451,7 +453,7 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
         elif "BUY" in q_upper or "LONG" in q_upper:
             tactical_verdict = (
                 f"Long Thesis Evaluation: Long setups face counter-trend friction against {mtf_res.get('formatted_4tf')}. "
-                f"Optimal long entry requires reclaim of 50% CE ({nearest_fvg.get('consequent_encroachment', 0):.2f}) with stop anchored below the sweep wick low."
+                f"Optimal long entry requires reclaim of 50% CE ({nearest_fvg.get('consequent_encroachment', 0):.2f}) with stop anchored below the sweep wick low + 15 pts buffer."
             )
         elif "SELL" in q_upper or "SHORT" in q_upper:
             tactical_verdict = (
@@ -462,7 +464,7 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
             tactical_verdict = (
                 f"Institutional Consensus: 4TF is {mtf_res.get('formatted_4tf')}, COT is {cot_data.get('bias', 'BULLISH')}, Macro risk is ACTIVE. "
                 f"Primary structure: {fvg_str}. CVD Posture: {cvd_data.get('velocity_posture', 'NORMAL')} with delta {cvd_data.get('cumulative_volume_delta', 0):.1f}. "
-                f"Desk recommendation: Maintain strict risk posture, size probes at 0.01-0.05 lots only upon confirmed structural triggers."
+                f"Desk recommendation: Deploy 0.01 lot probe test first, scale to 1.0 lot upon +0.5R expansion, trail SL to breakeven at +1.0R."
             )
 
         status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "SUCCESS"
