@@ -44,9 +44,9 @@ def load_session_config() -> Dict[str, Any]:
 def get_opencode_session() -> Tuple[str, str, str]:
     """Returns (session_id, session_title, opencode_api_url) dynamically."""
     cfg = load_session_config()
-    sid = cfg.get("session_id") or DEFAULT_SESSION_ID
-    title = cfg.get("session_title") or DEFAULT_SESSION_TITLE
-    api_url = cfg.get("opencode_api_url") or DEFAULT_API_URL
+    sid = cfg.get("session_id") or cfg.get("opencode_session_id") or DEFAULT_SESSION_ID
+    title = cfg.get("session_title") or cfg.get("opencode_session_title") or DEFAULT_SESSION_TITLE
+    api_url = cfg.get("opencode_api_url") or cfg.get("api_url") or DEFAULT_API_URL
     return str(sid), str(title), str(api_url)
 
 
