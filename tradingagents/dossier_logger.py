@@ -53,14 +53,19 @@ class DeepDossierLogger:
         md_lines = []
         md_lines.append(f"# Deep Institutional Trading Desk Dossier")
         if study_cycle_id is not None:
-            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count} (Market Scan Loop)` | **Agent Study Cycle**: `#{study_cycle_id} (Unified Learning Review)`")
+            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count}` | **Agent Study Cycle**: `#{study_cycle_id}`")
         else:
-            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count} (Market Scan Loop)`")
+            md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count}`")
         md_lines.append(f"**Session Clock**: `{session_info.get('session')}` ({session_info.get('description')} | `{session_info.get('utc_time')}`)")
-        md_lines.append(f"**Intermarket GSR Ratio**: `{gsr_data.get('gsr')}` [{gsr_data.get('status')}]")
-        md_lines.append(f"**US Real Yield Matrix**: Fed Rate `{real_yields.get('fed_funds_rate')}` | US10Y `{real_yields.get('us10y_nominal_yield')}` | `{real_yields.get('us_real_yield_posture')}`")
-        md_lines.append(f"**Currency Strength Matrix**: USD `{currency_strength.get('usd_index_posture')}` | EUR `{currency_strength.get('eur_strength')}` | GBP `{currency_strength.get('gbp_strength')}` | JPY `{currency_strength.get('jpy_strength')}`")
-        md_lines.append(f"**FTMO Account Health**: Balance `${account_health.get('balance')}` | Equity `${account_health.get('equity')}` | Free Margin `${account_health.get('free_margin')}` | Margin Level `{account_health.get('margin_level_pct')}%` | Floating PnL `${account_health.get('floating_pnl')}` | Account Heat `{account_health.get('account_heat_pct')}%`\n")
+        md_lines.append(f"**FTMO Account Health**: Balance `${account_health.get('balance')}` | Equity `${account_health.get('equity')}` | Free Margin `${account_health.get('free_margin')}` | Margin Level `{account_health.get('margin_level_pct')}%` | Floating PnL `${account_health.get('floating_pnl')}`")
+        md_lines.append(f"**Macro Matrix**: GSR `{gsr_data.get('gsr')}` [{gsr_data.get('status')}] | US Real Yield `{real_yields.get('us_real_yield_posture')}` (US10Y `{real_yields.get('us10y_nominal_yield')}`) | USD `{currency_strength.get('usd_index_posture')}` | EUR `{currency_strength.get('eur_strength')}` | JPY `{currency_strength.get('jpy_strength')}`\n")
+        
+        md_lines.append(f"## 🎯 Probe-and-Scale Execution Blueprint (Zero-Loss Protocol)")
+        md_lines.append(f"1. **0.01 Lot Probe Test**: Deploy 0.01 lot probe at M5 FVG Consequent Encroachment (30%-50% CE) or Swept Session Extreme.")
+        md_lines.append(f"2. **Confirm & Full Scale (1.0 Lot)**: Once the 0.01 probe reacts with momentum (+0.5R), deploy the full 1.0 lot order.")
+        md_lines.append(f"3. **Volatility SL Buffer**: Place Stop Loss behind structural wick extreme + 15-20 pts buffer to avoid noise wicks.")
+        md_lines.append(f"4. **Graceful Take Profit**: Target nearest local swing high/low liquidity magnet (+1.5R to +2.5R). Never over-aim.")
+        md_lines.append(f"5. **Breakeven Defense**: At +1.0R in profit, move SL to Entry + 2 pts to guarantee zero downside risk.\n")
 
         if open_positions:
             md_lines.append(f"## 📊 Active FTMO MT5 Positions ({len(open_positions)})")

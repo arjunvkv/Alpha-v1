@@ -752,58 +752,20 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        mcp_tools_block = """=== COMPLETE FAST-MCP TOOL SUITE (17 TOOLS AVAILABLE) ===
-  • alpha-daemon-mcp_mcp_alpha_get_account_status (or mcp_alpha_get_account_status) — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.
-  • alpha-daemon-mcp_mcp_alpha_get_symbol_conviction (or mcp_alpha_get_symbol_conviction) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.
-  • alpha-daemon-mcp_mcp_alpha_backtest_thesis (or mcp_alpha_backtest_thesis) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.
-  • alpha-daemon-mcp_mcp_alpha_ask_librarian (or mcp_alpha_ask_librarian) — Search 371 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).
-  • alpha-daemon-mcp_mcp_alpha_get_measured_cvd (or mcp_alpha_get_measured_cvd) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.
-  • alpha-daemon-mcp_mcp_alpha_get_live_microstructure (or mcp_alpha_get_live_microstructure) — Live spread in pts, M1 tick velocity (t/m), order book depth imbalance, and CVD posture.
-  • alpha-daemon-mcp_mcp_alpha_get_full_institutional_profile (or mcp_alpha_get_full_institutional_profile) — Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.
-  • alpha-daemon-mcp_mcp_alpha_get_trade_forensics (or mcp_alpha_get_trade_forensics) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.
-  • alpha-daemon-mcp_mcp_alpha_get_ledger_decomposition (or mcp_alpha_get_ledger_decomposition) — Decompose 121-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).
-  • alpha-daemon-mcp_mcp_alpha_get_multi_instrument_ledger (or mcp_alpha_get_multi_instrument_ledger) — Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD).
-  • alpha-daemon-mcp_mcp_alpha_get_mt5_deals_history (or mcp_alpha_get_mt5_deals_history) — Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal.
-  • alpha-daemon-mcp_mcp_alpha_query_analyst_desk (or mcp_alpha_query_analyst_desk) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).
-  • alpha-daemon-mcp_mcp_alpha_get_fvg_matrix (or mcp_alpha_get_fvg_matrix) — Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps and Consequent Encroachment levels.
-  • alpha-daemon-mcp_mcp_alpha_get_live_world_events (or mcp_alpha_get_live_world_events) — Live macroeconomic releases, central bank speeches, and geopolitical intelligence.
-  • alpha-daemon-mcp_mcp_alpha_record_decision_snapshot (or mcp_alpha_record_decision_snapshot) — Record pre-trade decision context on disk with full experimental metadata.
-  • alpha-daemon-mcp_mcp_alpha_record_trade_observation (or mcp_alpha_record_trade_observation) — Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & ULM.
-  • alpha-daemon-mcp_mcp_alpha_record_pattern_observation (or mcp_alpha_record_pattern_observation) — Record pattern evidence in Unified Learning Memory.
-  • alpha-daemon-mcp_mcp_alpha_execute_trade (or mcp_alpha_execute_trade) — Execute direct market buy/sell orders on FTMO MT5.
-  • alpha-daemon-mcp_mcp_alpha_update_position (or mcp_alpha_update_position) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
-  • alpha-daemon-mcp_mcp_alpha_register_watch (or mcp_alpha_register_watch) — Set dynamic price or sentiment alerts for the local desk to track.
+        execution_blueprint_block = """=== PROBE-AND-SCALE EXECUTION BLUEPRINT (ZERO-LOSS PROTOCOL) ===
+  1. PROBE TEST: Deploy 0.01 lot probe at M5 FVG Consequent Encroachment (30%-50% CE) or Swept Session Extreme.
+  2. CONFIRM & FULL SCALE (1.0 LOT): Once 0.01 probe reacts with momentum (+0.5R or M1/M5 momentum expansion), deploy full 1.0 lot order.
+  3. VOLATILITY SL BUFFER: Place Stop Loss behind structural wick extreme + 15-20 pts buffer to avoid noise wicks.
+  4. GRACEFUL TAKE PROFIT: Target nearest local swing high/low liquidity magnet (+1.5R to +2.5R). Never over-aim for faraway zones.
+  5. BREAKEVEN SHIELD: At +1.0R in profit, move SL to Entry + 2 pts to guarantee zero downside risk.
 """
 
         file_ref_header = (
             f"=== ALPHA AGENT STUDY UPDATE ===\n"
-            f"  • CURRENT TIME: {ist_ts}\n"
-            f"  • UTC: {gen_ts}\n"
-            f"  • STUDY CYCLE: {self.cycle_count}\n\n"
-            f"=== AVAILABLE EVIDENCE / SYSTEM DIRECTIVES ===\n"
-            f"  • MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md\n"
-            f"  • Strategy Evidence Archive: file:///C:/Trading/Alpha/MICRO_PROFIT_SCALPING_STRATEGY.md\n"
-            f"  • Pattern Reality Check (Truth Ledger): file:///C:/Trading/Alpha/logs/pattern_reality_check.md\n"
-            f"  • Top 4 Reproducible Precedents: file:///C:/Trading/Alpha/logs/top4_reproducible_patterns.json\n"
-            f"  • Unified Learning Memory: file:///C:/Trading/Alpha/logs/unified_learning_memory.json\n"
-            f"  • Pattern Book: file:///C:/Trading/Alpha/logs/pattern_book/\n"
-            f"  • Historical Research / Full Desk Evidence ({dossier_line_count} lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
-            f"  • Institutional Deep Book: file:///C:/Trading/Alpha/logs/institutional_deep_book.md#L1-L100\n"
-            f"  • CIO Needs & Gaps Tracker: file:///C:/Trading/Alpha/logs/needs.md\n"
-            f"  • Automatic Audit Log: file:///C:/Trading/Alpha/logs/dossier_read_audit.log\n\n"
-            f"{mcp_tools_block}\n"
-            f"=== MANDATORY AGENT CYCLE ===\n"
-            f"  1. Review required live evidence.\n"
-            f"  2. Consult mandatory learning sources.\n"
-            f"  3. Study current conditions against accumulated evidence.\n"
-            f"  4. Learn continuously even when no trade is active.\n"
-            f"  5. Learn from mistakes: incorrect interpretations, failed hypotheses, missed evidence, and repeated reasoning errors.\n"
-            f"  6. Identify what was wrong, why, and correct the understanding when evidence supports it.\n"
-            f"  7. Record meaningful observations, corrections, contradictions and learning into Pattern Book / ULM.\n"
-            f"  8. All evidence requested via MCP is automatically audited and logged on disk.\n"
-            f"  9. Daemon data is information only; interpretation and trading decisions remain AGENT-ONLY.\n\n"
-            f"=== PER-FILE UPDATE STATUS ===\n{update_status_block}\n\n"
-            f"NOTE: Detailed files are the persistent evidence. The inline matrix is a compact current-cycle briefing, not a replacement for the detailed files.\n\n"
+            f"  • CURRENT TIME: {ist_ts} | UTC: {gen_ts} | SCAN CYCLE: #{self.cycle_count}\n"
+            f"  • Live Evidence Dossier ({dossier_line_count} lines): file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng}\n"
+            f"  • Unified Learning Memory: file:///C:/Trading/Alpha/logs/unified_learning_memory.json\n\n"
+            f"{execution_blueprint_block}\n"
         )
 
         from tradingagents.world_events import LiveWorldEventsEngine
@@ -852,9 +814,9 @@ class ConsolidatedTradingDaemon:
         top4_formatted_lines = []
         for c in top4_cards:
             top4_formatted_lines.append(
-                f"  [{c['role']}] {c['pattern_id']} - {c['name']} (Score: {c['score']}/10 | Win Rate: {c['win_rate']})\n"
-                f"    • Trigger: {c['execution_trigger']} | RRR: {c.get('rrr', '1:3.0')}\n"
-                f"    • Testing Focus: {c['testing_objective']}\n"
+                f"  [{c['role']}] {c['pattern_id']} - {c['name']} (Win Rate: {c['win_rate']})\n"
+                f"    • Trigger: {c['execution_trigger']} | RRR: {c.get('rrr', '1:2.0')}\n"
+                f"    • Focus: {c['testing_objective']}\n"
                 f"    • Invalidation: {c['invalidation']}"
             )
         top4_section = (
