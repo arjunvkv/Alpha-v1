@@ -737,8 +737,7 @@ class ConsolidatedTradingDaemon:
         full_4tf_reveal_block = "=== FULL PER-TIMEFRAME (4TF) INSTITUTIONAL ALIGNMENT REVEAL ===\n" + "\n".join(tf_reveal_lines) + "\n\n"
 
         matrix_formatted = "\n".join(instrument_matrix)
-        top_pick_line = (f"HIGHEST GANGER 7-LAYER CONVICTION THIS CYCLE: {top_symbol} "
-                         f"(Score {top_score:.1f}/10)" + (f" — {headline}" if headline else ""))
+        top_pick_line = f"PRIMARY FOCUS INSTRUMENT: {top_symbol}" + (f" — {headline}" if headline else "")
         
         # Token-Efficient Line Range Pointers & Strategy References
         dossier_line_count = dossier_res.get("total_lines", 80) if isinstance(dossier_res, dict) else 80
