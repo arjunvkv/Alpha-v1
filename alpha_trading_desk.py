@@ -492,6 +492,8 @@ class ConsolidatedTradingDaemon:
         account_health = world_engine.get_account_health()
         currency_strength = world_engine.get_currency_strength()
         real_yields = world_engine.get_real_yields()
+        from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
+        inst_engine = InstitutionalAnalyticsEngine()
 
         instrument_matrix = []
         instruments_data = []
@@ -600,6 +602,15 @@ class ConsolidatedTradingDaemon:
                 except Exception as l_err:
                     LOG.debug(f"Librarian cycle for {symbol} skipped: {l_err}")
 
+                # Volume Profile Metrics (POC, VAH 70%, VAL 70%)
+                vp_data = {}
+                try:
+                    vp_data = inst_engine.get_volume_profile_metrics(symbol)
+                except Exception as vp_err:
+                    LOG.debug(f"Volume profile calculation error for {symbol}: {vp_err}")
+
+                vp_summary = f"Volume Profile: POC {vp_data.get('poc', 0.0):.2f} | VAH {vp_data.get('vah', 0.0):.2f} | VAL {vp_data.get('val', 0.0):.2f} [{vp_data.get('price_location', 'N/A')}]" if vp_data else "Volume Profile: Initializing"
+
                 # Store deep structured instrument data for persistent dossier logging
                 instruments_data.append({
                     "symbol": symbol,
@@ -616,15 +627,17 @@ class ConsolidatedTradingDaemon:
                     "velocity": velocity,
                     "liquidity_targets": liq_targets,
                     "fvg": fvg_data,
+                    "volume_profile": vp_data,
                     "librarian": lib_payload
                 })
 
-                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG & RRR
+                # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG, Volume Profile & RRR
                 inst_summary = (
                     f"• {symbol}: {spread_info} | {velocity_str} "
                     f"| {adr_str} "
                     f"| {tf_alignment_str} "
-                    f"| {fvg_line} | Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
+                    f"| {fvg_line} | {vp_summary} "
+                    f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
                     f"| RRR: {rrr_str} | Regime Divergence: {'YES' if debate.get('is_regime_conflict') else 'NO'} | Catalysts: {len(debate.get('bull_points', []))} | Risks: {len(debate.get('bear_points', []))} | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
                 )

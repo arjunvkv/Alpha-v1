@@ -130,8 +130,12 @@ class DeepDossierLogger:
             md_lines.append(f"### 🔹 Instrument: {sym}")
             md_lines.append(f"- **Live Execution**: {live_exec_str}")
             md_lines.append(f"- **ADR(20) Expansion**: {adr_str}")
+            vp = inst.get("volume_profile", {})
+            vp_line = f"- **Volume Profile Structure**: POC `{vp.get('poc', 'N/A')}` | VAH (70%) `{vp.get('vah', 'N/A')}` | VAL (70%) `{vp.get('val', 'N/A')}` | Location: `{vp.get('price_location', 'N/A')}`"
+
             md_lines.append(f"- **Multi-Timeframe Alignment**: H4 (`{h4_bias}`) | H1 (`{h1_bias}`) | M15 (`{m15_bias}`) | M5 (`{m5_bias}`) $\\rightarrow$ **{alignment_label}**")
             md_lines.append(f"- **Order Blocks & Pivots**: Daily PP `{ob.get('pivot_point')}` (S1: `{ob.get('support_s1')}`, R1: `{ob.get('resistance_r1')}`) | Demand: `{ob.get('demand_zone')}` | Supply: `{ob.get('supply_zone')}`")
+            md_lines.append(vp_line)
             md_lines.append(f"- **Technical Order Flow**: {tech.get('thesis', 'N/A')}")
             md_lines.append(f"- **COT / Fundamental Positioning**: COT Percentile `{cot_pct:.1f}%` (26w: `{fund.get('cot_index_26w', cot_pct)}%` | Change: `{fund.get('change', 0):+d}` | Net Non-Comm: `{fund.get('net_noncommercial', 0):+d}` | Net Comm: `{fund.get('commercial_net', 0):+d}` | Provenance: `{fund.get('data_provenance', 'FUTURESBENCH_LIVE_API')}`) | {fund.get('thesis', 'N/A')}")
             md_lines.append(f"- **Macro Intermarket Telemetry**: DXY `{macro.get('dxy', 101.4)}` | US10Y `{macro.get('us10y', 4.25)}%` | VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
