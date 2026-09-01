@@ -277,3 +277,13 @@ The objective is disciplined self-correction without accumulating automatic no-t
 This file is Alpha's single controlling Agent rule and study mandate.
 
 Historical strategy documents may be retained as source evidence and archive material, but they do not override this file and do not independently control Agent decisions.
+
+## 13. Probe-and-Scale Decisive Action Protocol (10/10 Execution Rating)
+
+To achieve maximum execution decisiveness without risking capital:
+1. **Immediate Probe Firing**: When price reaches an M5 FVG Consequent Encroachment (30%-50% CE) or rejects a swept session level, the Agent must NOT sit passively waiting for a 5-minute candle to close. Immediately deploy a **0.01 lot probe test** (Risk: ~$0.30) to secure optimal entry pricing.
+2. **Empirical Validation & Scale**: When the 0.01 probe confirms structural reaction (+0.5R or M1/M5 momentum expansion), deploy the full **1.0 lot order**.
+3. **Volatility SL Buffer**: Anchor Stop Loss behind the structural wick extreme + 15-20 pts buffer to avoid noise wicks.
+4. **Graceful Take Profit (+1.5R to +2.5R)**: Target the nearest local swing high/low liquidity magnet. Never hold for faraway daily zones.
+5. **Breakeven Shield**: Move Stop Loss to Entry + 2 pts at +1.0R in profit to guarantee zero downside risk.
+

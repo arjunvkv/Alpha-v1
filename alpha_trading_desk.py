@@ -752,9 +752,9 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== PROBE-AND-SCALE EXECUTION BLUEPRINT (ZERO-LOSS PROTOCOL) ===
-  1. PROBE TEST: Deploy 0.01 lot probe at M5 FVG Consequent Encroachment (30%-50% CE) or Swept Session Extreme.
-  2. CONFIRM & FULL SCALE (1.0 LOT): Once 0.01 probe reacts with momentum (+0.5R or M1/M5 momentum expansion), deploy full 1.0 lot order.
+        execution_blueprint_block = """=== AGENT EXECUTION DIRECTIVE (10/10 EXECUTION RATING) ===
+  1. DECISIVE 0.01 PROBE: When price reaches M5 FVG 50% CE or rejects a swept level, IMMEDIATELY deploy a 0.01 lot probe (Risk ~$0.30). Do NOT wait for a 5-min candle close to test a level!
+  2. CONFIRM & FULL SCALE (1.0 LOT): Once 0.01 probe confirms structural reaction (+0.5R or M1/M5 momentum expansion), deploy full 1.0 lot order.
   3. VOLATILITY SL BUFFER: Place Stop Loss behind structural wick extreme + 15-20 pts buffer to avoid noise wicks.
   4. GRACEFUL TAKE PROFIT: Target nearest local swing high/low liquidity magnet (+1.5R to +2.5R). Never over-aim for faraway zones.
   5. BREAKEVEN SHIELD: At +1.0R in profit, move SL to Entry + 2 pts to guarantee zero downside risk.
