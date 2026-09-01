@@ -765,17 +765,12 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== FULL OCEAN INSTITUTIONAL SYNTHESIS & CIO MANDATE ===
-  1. MACRO & REAL YIELDS: US10Y nominal yields, Real Yields (US10Y - 2.4%), DXY, and geopolitical feeds.
-  2. CFTC COT POSITIONING: Speculator 100th percentile long vs Commercial hedger accumulation.
-  3. VOLUME PROFILE: POC (4430), VAH (4461), VAL (4377) — identify deep discount vs premium zones.
-  4. 4TF STRUCTURAL CONFLUENCE: Reconcile H4, H1, M15, M5 trends with exact RSIs and EMAs.
-  5. MICROSTRUCTURE & CVD: M5 FVG Consequent Encroachment (30-50% CE), live measured CVD delta absorption.
-  6. PROBE-AND-SCALE EXECUTION: 0.01 Probe at CE touch -> 1.0 Lot Scale at +0.5R -> Breakeven Shield at +1.0R.
-
-=== OPENCODE CIO EXECUTIVE DIRECTIVE (AUTHENTIC INSTITUTIONAL LEADERSHIP) ===
-  MANDATE: Reason with the full authority, market acumen, and quantitative rigor of the Chief Investment Officer.
-  Synthesize the 6 raw dimensions above into a cohesive, actionable market thesis in every response.
+        execution_blueprint_block = """=== FULL OCEAN INSTITUTIONAL SYNTHESIS & ANTI-OVERGATING MANDATE ===
+  1. ANTI-OVERGATING (ELIMINATE ANALYSIS PARALYSIS):
+     • Do NOT invent extreme gates (e.g. requiring delta <= -5000 or 10-indicator alignment). A 0.01 probe only risks ~$0.30!
+     • When price reaches M5 FVG 50% CE or rejects a swept level with moderate flow (10-bar delta < -1000 for short / > 0 for long), DEPLOY 0.01 PROBE IMMEDIATELY.
+  2. MANDATORY 6-DIMENSIONAL REASONING: In your written rationale, you MUST synthesize ALL 6 layers:
+     [1] Macro Real Yields -> [2] COT Speculators vs Commercials -> [3] Volume Profile VAL/POC -> [4] 4TF Alignment -> [5] CVD Delta & M5 FVG CE -> [6] 0.01 Probe & Scale Plan.
 """
 
         file_ref_header = (
