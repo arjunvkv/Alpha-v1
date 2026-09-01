@@ -306,7 +306,6 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
         sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, [])
         
         debate_res = _desk.debater.debate(sym, tech_res, fund_res, macro_res, sent_res)
-        score = debate_res.get("consensus_score", 2.9)
         
         from tradingagents.fair_value_gap import FairValueGapEngine
         from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
@@ -330,9 +329,10 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
             "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
             "live_bid": getattr(tick, "bid", 0.0),
             "live_ask": getattr(tick, "ask", 0.0),
-            "conviction_score": score,
-            "conviction_tier": debate_res.get("conviction", "LOW"),
             "is_regime_conflict": debate_res.get("is_regime_conflict", False),
+            "structural_risk_warning": debate_res.get("structural_risk_warning", False),
+            "bull_catalysts": debate_res.get("bull_points", []),
+            "bear_risks": debate_res.get("bear_points", []),
             "exhausted_fvg_trap_warning": trap_msg,
             "mtf_alignment": mtf_res.get("formatted_4tf"),
             "technical_indicators": {
@@ -358,7 +358,7 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
             "cot_positioning": cot_data,
             "technical_analysis": tech_res,
             "fundamental_analysis": fund_res,
-            "summary": f"{sym} Ask: {live_price} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. Granger Conviction: {min(score, 9.8)}/10. FVG: {fvg_mat.get('summary')}."
+            "summary": f"{sym} Ask: {live_price} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. CVD Delta: {cvd_data.get('cumulative_volume_delta')} ({cvd_data.get('delta_pressure_pct')}%). COT: {cot_pct:.1f}th pct. FVG: {fvg_mat.get('summary')}."
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
@@ -476,10 +476,9 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
             "data_asof": data_asof_tag,
             "ask_price": live_ask,
             "4tf_alignment": mtf_res.get("formatted_4tf"),
-            "conviction": {
-                "score": debate_res.get("consensus_score", 2.4),
-                "tier": debate_res.get("conviction", "LOW"),
-                "is_regime_conflict": debate_res.get("is_regime_conflict", True)
+            "structural_consensus": {
+                "is_regime_conflict": debate_res.get("is_regime_conflict", False),
+                "structural_risk_warning": debate_res.get("structural_risk_warning", False)
             },
             "debate_breakdown": {
                 "bull_arguments": debate_res.get("bull_points", []),

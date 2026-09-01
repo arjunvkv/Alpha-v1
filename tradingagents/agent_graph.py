@@ -35,7 +35,7 @@ class TechnicalAnalyst:
         m15_bias = tech_data.get("m15_bias", "NEUTRAL")
         m5_bias = tech_data.get("m5_bias", "NEUTRAL")
 
-        # Use canonical alignment if provided by MultiTimeframeAnalyst, else compute with matching weighted rules
+        # Use canonical alignment if provided by MultiTimeframeAnalyst
         tf_confluence = tech_data.get("alignment") or tech_data.get("tf_confluence")
         if not tf_confluence:
             tf_list = [h4_bias, h1_bias, m15_bias, m5_bias]
@@ -53,35 +53,26 @@ class TechnicalAnalyst:
             else:
                 tf_confluence = "MIXED_TIMEFRAMES"
 
-        score = 5.0
-        if "STRONG_BULLISH" in tf_confluence:
-            score += 3.0
-        elif "STRONG_BEARISH" in tf_confluence:
-            score -= 3.0
-        elif "BULLISH_LEANING" in tf_confluence:
-            score += 1.5
-        elif "BEARISH_LEANING" in tf_confluence:
-            score -= 1.5
-
-        # Liquidity Sweep Interaction Bonus/Penalty
-        sweep_flag = tech_data.get("liquidity_sweep", {}).get("flag", "NORMAL_RANGE")
-        if "LOW_SWEPT" in sweep_flag:
-            score += 1.5  # Bullish liquidity grab reversal potential
-        elif "HIGH_SWEPT" in sweep_flag:
-            score -= 1.5  # Bearish liquidity grab reversal potential
+        sweep_info = tech_data.get("liquidity_sweep", {})
+        fvg_info = tech_data.get("fvg", {})
 
         return {
             "agent": "TechnicalAnalyst",
             "symbol": symbol,
-            "score": round(score, 1),
             "h4_bias": h4_bias,
+            "h1_bias": h1_bias,
+            "m15_bias": m15_bias,
+            "m5_bias": m5_bias,
             "tf_confluence": tf_confluence,
+            "liquidity_sweep": sweep_info,
+            "fvg_matrix": fvg_info,
+            "m15_rsi": tech_data.get("m15_rsi"),
+            "h4_rsi": tech_data.get("h4_rsi"),
             "thesis": f"Pure Market Structure & Order Flow. 4TF Alignment: H4({h4_bias}) H1({h1_bias}) M15({m15_bias}) M5({m5_bias}) -> {tf_confluence}."
         }
 
 class FundamentalAnalyst:
     def analyze(self, symbol: str, cot_data: Dict[str, Any]) -> Dict[str, Any]:
-        # Support FuturesBench cot_index_26w (primary) and cot_index_52w
         percentile = cot_data.get("cot_index_26w")
         if percentile is None:
             percentile = cot_data.get("managed_money_percentile") or cot_data.get("cot_index_52w", 50.0)
@@ -94,21 +85,12 @@ class FundamentalAnalyst:
         is_live = cot_data.get("is_live", True)
         report_date = cot_data.get("report_date", "2026-08-25")
 
-        # Institutional alignment check (Large Speculator / Managed Money positioning)
-        institutional_long = percentile > 60.0
-        extreme_overcrowded = percentile > 90.0
-
-        score = 5.0
-        if institutional_long: score += 2.5
-        if extreme_overcrowded: score -= 3.0  # Contrarian risk
-
         bias_str = cot_data.get("bias", "")
         thesis_extra = f" ({bias_str})" if bias_str else ""
 
         return {
             "agent": "FundamentalAnalyst",
             "symbol": symbol,
-            "score": round(score, 1),
             "cot_managed_money_percentile": percentile,
             "cot_index_26w": percentile,
             "cot_index_52w": cot_data.get("cot_index_52w", percentile),
@@ -121,22 +103,16 @@ class FundamentalAnalyst:
             "data_provenance": provenance,
             "is_live": is_live,
             "report_date": report_date,
-            "thesis": f"Speculator / Money-Manager COT percentile at {percentile:.1f}% (26w: {percentile}% | Change: {cot_change:+d} | Net: {net_noncommercial:+d} | Provenance: {provenance}). Institutional speculative support {'STRONG' if institutional_long else 'WEAK'}{thesis_extra}."
+            "thesis": f"Speculator / Money-Manager COT percentile at {percentile:.1f}% (26w: {percentile}% | Change: {cot_change:+d} | Net Non-Comm: {net_noncommercial:+d} | Net Comm: {commercial_net:+d} | Provenance: {provenance}){thesis_extra}."
         }
 
 class MacroNewsAnalyst:
     def analyze(self, macro_data: Dict[str, Any], headlines: List[Dict[str, str]]) -> Dict[str, Any]:
         dxy = macro_data.get("dxy", 101.5)
         vix = macro_data.get("vix", 16.0)
+        us10y = macro_data.get("us10y", 4.25)
+        us2y = macro_data.get("us2y", 4.10)
 
-        weak_usd = dxy < 102.0
-        low_fear = vix < 20.0
-
-        score = 5.0
-        if weak_usd: score += 2.0
-        if low_fear: score += 1.0
-
-        # Filter headlines for genuine financial, macro, commodity, and central bank items
         MARKET_KEYWORDS = [
             "FED", "INFLATION", "CPI", "PCE", "YIELD", "RATE", "POWELL", "CENTRAL BANK",
             "ECB", "BOJ", "TREASURY", "GOLD", "SILVER", "OIL", "CRUDE", "OPEC", "ENERGY",
@@ -150,25 +126,27 @@ class MacroNewsAnalyst:
 
         return {
             "agent": "MacroNewsAnalyst",
-            "score": round(score, 1),
             "dxy": dxy,
             "vix": vix,
+            "us10y": us10y,
+            "us2y": us2y,
             "headline_count": len(valid_headlines) if valid_headlines else len(headlines),
             "top_headline": top_headline,
-            "thesis": f"DXY at {dxy:.2f}, VIX at {vix:.1f}. Macro environment {'FAVORABLE' if score >= 6.5 else 'HOSTILE'}."
+            "macro_news_shield": macro_data.get("news_shield", "CLEAR"),
+            "thesis": f"DXY: {dxy:.2f} | US10Y: {us10y:.2f}% | VIX: {vix:.1f}. Top Headline: '{top_headline}'."
         }
 
 class SentimentAnalyst:
     def analyze(self, sentiment_data: Dict[str, Any], web_results: List[Dict[str, str]]) -> Dict[str, Any]:
         vader = sentiment_data.get("vader_compound", 0.0)
-        score = 5.0 + (vader * 4.0)
 
         return {
             "agent": "SentimentAnalyst",
-            "score": round(min(10.0, max(0.0, score)), 1),
-            "vader": vader,
+            "vader_compound": vader,
+            "retail_long_pct": sentiment_data.get("retail_long_pct", 50.0),
+            "retail_short_pct": sentiment_data.get("retail_short_pct", 50.0),
             "web_snippets_analyzed": len(web_results),
-            "thesis": f"VADER sentiment compound {vader:+.2f}. Market mood is {'POSITIVE' if vader > 0.05 else 'NEGATIVE' if vader < -0.05 else 'NEUTRAL'}."
+            "thesis": f"VADER sentiment compound {vader:+.2f} across {len(web_results)} sources."
         }
 
 class BullBearDebater:
@@ -176,14 +154,8 @@ class BullBearDebater:
         bull_points = []
         bear_points = []
 
-        tech_score = float(tech.get("score", 5.0))
-        fund_score = float(fund.get("score", 5.0))
-        macro_score = float(macro.get("score", 5.0))
-        sent_score = float(sent.get("score", 5.0))
-
-        # Check for Exhausted FVG trap
         mtf = tech.get("mtf", {})
-        alignment = tech.get("alignment") or mtf.get("alignment", "UNKNOWN")
+        alignment = tech.get("tf_confluence") or tech.get("alignment") or mtf.get("alignment", "UNKNOWN")
         
         # Pull live FVG matrix to detect if nearest FVG is exhausted
         try:
@@ -193,64 +165,49 @@ class BullBearDebater:
             if nearest_fvg and isinstance(nearest_fvg, dict):
                 fill_pct = float(nearest_fvg.get("fill_pct", 0.0))
                 if fill_pct >= 60.0:
-                    bear_points.append(f"CHASE TRAP WARNING: Nearest {nearest_fvg.get('type', 'FVG')} is {fill_pct:.1f}% filled (Exhausted FVG zone). Historical expectancy is -4.41R / -97.09R.")
+                    bear_points.append(f"CHASE TRAP: Nearest {nearest_fvg.get('type', 'FVG')} is {fill_pct:.1f}% filled (Exhausted FVG zone).")
+                else:
+                    bull_points.append(f"FVG OPPORTUNITY: Nearest {nearest_fvg.get('type', 'FVG')} at {nearest_fvg.get('ce_price')} ({fill_pct:.1f}% fill).")
         except Exception:
             pass
 
-        # Technical Bull vs Bear
-        if tech_score >= 6.0:
-            bull_points.append("4TF Market Structure shows strong bullish alignment")
-        elif tech_score <= 4.0:
-            bear_points.append(f"4TF Market Structure is bearish-leaning ({alignment})")
+        # Technical structure points
+        if "BULL" in str(alignment).upper():
+            bull_points.append(f"4TF Market Structure: {alignment}")
+        elif "BEAR" in str(alignment).upper():
+            bear_points.append(f"4TF Market Structure: {alignment}")
 
         # Fundamental COT Bull vs Bear
         cot_perc = float(fund.get("cot_managed_money_percentile", 50.0))
-        if cot_perc >= 70.0:
-            bull_points.append(f"COT Institutional Speculator positioning is heavily net long ({cot_perc:.1f}%)")
+        if cot_perc >= 60.0:
+            bull_points.append(f"COT Money-Manager positioning net long ({cot_perc:.1f}th percentile)")
         if cot_perc > 88.0:
-            bear_points.append("INSTITUTIONAL OVERCROWDING: Managed money percentile > 88% represents extreme crowded long risk")
+            bear_points.append("OVERCROWDING RISK: Managed money percentile > 88% represents extreme crowded positioning")
 
         # Macro Bull vs Bear
         dxy = float(macro.get("dxy", 100.0))
         if dxy < 101.5:
-            bull_points.append("Weak DXY provides macro tailwind")
+            bull_points.append(f"Weak Dollar tailwind (DXY: {dxy:.2f})")
         elif dxy > 103.5:
-            bear_points.append("Strong Dollar headwind opposes bullish commodity thesis")
+            bear_points.append(f"Strong Dollar headwind (DXY: {dxy:.2f})")
 
-        # Regime Conflict Penalty: Technical vs Fundamental divergence
-        is_regime_conflict = False
-        conflict_penalty = 0.0
-        if ("BEAR" in str(alignment).upper() or tech_score <= 4.2) and cot_perc >= 70.0:
-            is_regime_conflict = True
-            conflict_penalty = 1.2
-            bear_points.append("REGIME CONFLICT: 4TF Technical Order Flow is Bearish vs COT Institutional Speculators at Maximum Bullish Accumulation.")
-
-        # Compute dynamic, responsive consensus score
-        # Base weighted average: Tech (35%), Fund (30%), Macro (20%), Sent (15%)
-        weighted_score = (tech_score * 0.35) + (fund_score * 0.30) + (macro_score * 0.20) + (sent_score * 0.15)
-        
-        # Penalty for explicit traps and conflict
-        trap_penalty = 1.5 if any("CHASE TRAP" in bp for bp in bear_points) else 0.0
-        crowd_penalty = 0.8 if any("OVERCROWDING" in bp for bp in bear_points) else 0.0
-        
-        final_score = weighted_score - conflict_penalty - trap_penalty - crowd_penalty
-        consensus_score = round(max(1.0, min(10.0, final_score)), 1)
+        # Regime Conflict Check
+        is_regime_conflict = ("BEAR" in str(alignment).upper()) and cot_perc >= 70.0
+        if is_regime_conflict:
+            bear_points.append("REGIME DIVERGENCE: Technical Order Flow is Bearish vs COT Speculators at High Bullish Percentile.")
 
         return {
             "symbol": symbol,
-            "consensus_score": consensus_score,
             "bull_points": bull_points,
             "bear_points": bear_points,
             "is_regime_conflict": is_regime_conflict,
-            "institutional_risk_warning": len(bear_points) > 0,
-            "conviction": "HIGH" if consensus_score >= 7.0 else "MEDIUM" if consensus_score >= 5.0 else "LOW",
-            "score_composition": {
-                "technical_score": tech_score,
-                "fundamental_cot_score": fund_score,
-                "macro_score": macro_score,
-                "sentiment_score": sent_score,
-                "conflict_penalty": conflict_penalty,
-                "trap_penalty": trap_penalty
+            "structural_risk_warning": len(bear_points) > 0,
+            "raw_evidence_matrix": {
+                "technical_alignment": alignment,
+                "cot_percentile": cot_perc,
+                "dxy": dxy,
+                "vix": macro.get("vix"),
+                "vader_sentiment": sent.get("vader_compound")
             }
         }
 

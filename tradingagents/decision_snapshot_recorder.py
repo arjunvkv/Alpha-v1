@@ -91,7 +91,10 @@ class PreTradeDecisionRecorder:
         try:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
-            LOG.info(f"Recorded pre-trade decision snapshot for {resolved_symbol} {resolved_side} [{category_tag}] (Conviction: {score}, Fill: {fill}%, Vel: {tick_velocity_tpm} t/m)")
+            LOG.info(
+                f"Recorded pre-trade decision snapshot for {resolved_symbol} {resolved_side} [{category_tag}] "
+                f"(4TF: {four_tf_alignment}, Fill: {fill}%, Vel: {tick_velocity_tpm} t/m, Spread: {spread_pts} pts)"
+            )
         except Exception as e:
             LOG.error(f"Failed to record pre-trade snapshot: {e}")
 

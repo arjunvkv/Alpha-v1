@@ -379,22 +379,21 @@ class OpenCodeCIOEvaluator:
 
     def evaluate_discovery_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         symbol = event.get("symbol", "XAUUSD")
-        score = float(event.get("conviction_score") or event.get("score") or 0.0)
         bull_points = event.get("bull_points", [])
         bear_points = event.get("bear_points", [])
         summary = (
-            f"Discovery evidence update for {symbol}: consensus/conviction score {score}/10. "
-            f"Supporting evidence: {bull_points or 'none supplied'}. "
-            f"Contradictory evidence: {bear_points or 'none supplied'}. "
-            f"This is study evidence only; no score threshold approves, vetoes, or executes a trade."
+            f"Discovery evidence update for {symbol}. "
+            f"Supporting catalysts: {bull_points or 'none supplied'}. "
+            f"Contradictory risks: {bear_points or 'none supplied'}. "
+            f"This is raw market telemetry only; no synthetic score threshold approves, vetoes, or executes a trade."
         )
         log_opencode_said(summary)
         return {
             "decision": "AGENT_REVIEW_REQUIRED",
             "symbol": symbol,
-            "conviction_score": score,
             "supporting_evidence": bull_points,
             "contradictory_evidence": bear_points,
+            "raw_telemetry": event.get("raw_data", {}),
             "review_required": True,
             "decision_authority": "AGENT_ONLY",
             "execution_authority": "AGENT_ONLY"
@@ -465,9 +464,7 @@ class ConsolidatedTradingDaemon:
         except Exception as e_err:
             LOG.debug(f"Error monitor heartbeat error: {e_err}")
 
-        scores = []
         top_symbol = "XAUUSD"
-        top_score = 0.0
         headline = ""
 
         from mcp_server.alpha_mcp_server import mcp_alpha_get_symbol_conviction
@@ -475,16 +472,11 @@ class ConsolidatedTradingDaemon:
             try:
                 conv_json = mcp_alpha_get_symbol_conviction(symbol)
                 conv_data = json.loads(conv_json)
-                score = conv_data.get("conviction_score", 5.0)
-                summary = conv_data.get("summary", f"{symbol} Conviction: {score}/10")
+                summary = conv_data.get("summary", f"{symbol} Raw telemetry active")
             except Exception:
-                score = 5.0
-                summary = f"{symbol} Conviction: 5.0/10"
+                summary = f"{symbol} Telemetry active"
 
-            scores.append(score)
-
-            if score > top_score:
-                top_score = score
+            if symbol == "XAUUSD" or not headline:
                 top_symbol = symbol
                 headline = summary
 
@@ -634,7 +626,7 @@ class ConsolidatedTradingDaemon:
                     f"| {tf_alignment_str} "
                     f"| {fvg_line} | Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
-                    f"| RRR: {rrr_str} | Bull/Bear: {debate.get('consensus_score', 5.0)}/10 | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
+                    f"| RRR: {rrr_str} | Regime Divergence: {'YES' if debate.get('is_regime_conflict') else 'NO'} | Catalysts: {len(debate.get('bull_points', []))} | Risks: {len(debate.get('bear_points', []))} | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
                 )
                 instrument_matrix.append(inst_summary)
 
@@ -643,7 +635,7 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM Technical Analyst", f"[{symbol}] {tech_report.get('thesis', '')} | {fvg_line} | {spread_info} | {velocity.get('ticks_per_min')} t/m")
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
-                    log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Debater LLM Consensus: {debate.get('consensus_score', 5.0)}/10 | Conviction: {debate.get('conviction', 'LOW')} | Institutional Risk: {'WARNING' if debate.get('institutional_risk_warning') else 'CLEAR'}")
+                    log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Bull Points: {debate.get('bull_points', [])} | Bear Points: {debate.get('bear_points', [])} | Structural Risk: {'WARNING' if debate.get('structural_risk_warning') else 'CLEAR'}")
                     log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
