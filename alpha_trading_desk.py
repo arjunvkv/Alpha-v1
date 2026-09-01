@@ -766,13 +766,19 @@ class ConsolidatedTradingDaemon:
         )
 
         execution_blueprint_block = """=== AGENT EXECUTION DIRECTIVE (10/10 EXECUTION RATING) ===
-  1. FULL OCEAN SYNTHESIS: In your evaluation, explicitly synthesize ALL 6 raw layers:
-     [1] Macro/Yields -> [2] COT Speculators (100th pct) vs Commercials -> [3] Volume Profile (POC/VAL) -> [4] 4TF Trend/RSIs -> [5] Micro M5 FVG CE & CVD Delta -> [6] 0.01 Probe Execution.
-  2. DECISIVE 0.01 PROBE: When price reaches M5 FVG 50% CE or rejects a swept level, IMMEDIATELY deploy a 0.01 lot probe (Risk ~$0.30). Do NOT wait for a 5-min candle close to test a level!
-  3. CONFIRM & FULL SCALE (1.0 LOT): Once 0.01 probe confirms structural reaction (+0.5R or M1/M5 momentum expansion), deploy full 1.0 lot order.
-  4. VOLATILITY SL BUFFER: Place Stop Loss behind structural wick extreme + 15-20 pts buffer to avoid noise wicks.
-  5. GRACEFUL TAKE PROFIT: Target nearest local swing high/low liquidity magnet (+1.5R to +2.5R). Never over-aim for faraway zones.
-  6. BREAKEVEN SHIELD: At +1.0R in profit, move SL to Entry + 2 pts to guarantee zero downside risk.
+  MANDATORY OUTPUT REQUIREMENT: In your response, you MUST print the explicit 6-Layer Full Ocean Matrix:
+  🌊 --- FULL OCEAN SYNTHESIS MATRIX ---
+  1. 🏛️ MACRO & REAL YIELDS: [US10Y / Real Yields / DXY / VIX / News Events]
+  2. 📊 CFTC COT POSITIONING: [Speculator % / Net Non-Comm / Net Comm / Commercial Accumulation]
+  3. 📦 VOLUME PROFILE: [POC / VAH 70% / VAL 70% / Distance to Value Area / Value Discount]
+  4. ⏱️ 4TF STRUCTURAL CONFLUENCE: [H4 / H1 / M15 / M5 Trends & Exact RSIs/EMAs]
+  5. 🔬 MICROSTRUCTURE & CVD: [M5 FVG CE / Cumulative Delta / 10-Bar Delta Flow / Tick Velocity / Spread]
+  6. 🎯 TACTICAL VERDICT & ACTION: [0.01 Probe Status / 1.0 Lot Scale Trigger / Breakeven Target]
+
+  EXECUTION PROTOCOL:
+  • 0.01 PROBE: At M5 FVG 50% CE touch, IMMEDIATELY deploy 0.01 probe (Risk ~$0.30). No 5-min candle close delay!
+  • 1.0 LOT SCALE: Scale to full 1.0 lot on +0.5R reaction.
+  • BREAKEVEN SHIELD: Advance SL to Entry + 2 pts at +1.0R in profit.
 """
 
         file_ref_header = (
