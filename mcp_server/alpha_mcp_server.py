@@ -645,6 +645,9 @@ def mcp_alpha_place_probe_grid(
             err_msg = f"retcode {res_try.retcode}: {res_try.comment}" if res_try else f"MT5 error: {last_err}"
             return None, err_msg
 
+        import re
+        clean_tag = re.sub(r'[^A-Za-z0-9_]', '_', str(tag or 'Grid'))[:10]
+
         # Deploy UP Probes
         u_type_clean = up_type.upper().strip()
         u_enum = type_map.get(u_type_clean, mt5.ORDER_TYPE_SELL_LIMIT)
@@ -654,7 +657,7 @@ def mcp_alpha_place_probe_grid(
             target_price = float(p)
             sl = target_price + sl_dist if is_up_sell else target_price - sl_dist
             tp = target_price - tp_dist if is_up_sell else target_price + tp_dist
-            comment = f"Probe:UP_{idx+1}:{tag}"[:31]
+            comment = f"P_UP_{idx+1}_{clean_tag}"[:22]
             req = {
                 "action": mt5.TRADE_ACTION_PENDING,
                 "symbol": sym,
@@ -684,7 +687,7 @@ def mcp_alpha_place_probe_grid(
             target_price = float(p)
             sl = target_price - sl_dist if is_down_buy else target_price + sl_dist
             tp = target_price + tp_dist if is_down_buy else target_price - tp_dist
-            comment = f"Probe:DN_{idx+1}:{tag}"[:31]
+            comment = f"P_DN_{idx+1}_{clean_tag}"[:22]
             req = {
                 "action": mt5.TRADE_ACTION_PENDING,
                 "symbol": sym,
