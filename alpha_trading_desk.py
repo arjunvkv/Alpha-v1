@@ -1054,17 +1054,28 @@ class ConsolidatedTradingDaemon:
                     basket_pnl = 0.0
                     basket_positions = []
 
+                    # Real-time tick evaluation: use both MT5 floating profit and instantaneous tick calculation
                     for p in current_positions:
-                        # Include all desk-managed positions (probes, scale, CIO orders)
-                        basket_pnl += p.profit
+                        tick_info = mt5.symbol_info_tick(p.symbol)
+                        calc_profit = p.profit
+                        if tick_info:
+                            if p.type == mt5.ORDER_TYPE_BUY: # Buy
+                                calc_profit = max(p.profit, (tick_info.bid - p.price_open) * p.volume * 100.0)
+                            elif p.type == mt5.ORDER_TYPE_SELL: # Sell
+                                calc_profit = max(p.profit, (p.price_open - tick_info.ask) * p.volume * 100.0)
+                        basket_pnl += calc_profit
                         basket_positions.append(p)
 
                     # Trigger instant auto-harvest whenever total floating profit reaches or exceeds target profit ($200)
                     if len(basket_positions) > 0 and basket_pnl >= target_profit:
                         closed_summary = []
+                        LOG.info(f"⚡ SPLIT-SECOND AUTO-HARVEST TRIGGERED: Floating PnL +${basket_pnl:.2f} >= Target +${target_profit:.2f}! Sweeping all positions...")
+                        
                         for p in basket_positions:
-                            tick_info = mt5.symbol_info_tick(p.symbol)
-                            if tick_info:
+                            for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                                tick_info = mt5.symbol_info_tick(p.symbol)
+                                if not tick_info:
+                                    break
                                 c_price = tick_info.bid if p.type == 0 else tick_info.ask
                                 c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
                                 close_req = {
@@ -1074,20 +1085,21 @@ class ConsolidatedTradingDaemon:
                                     "volume": p.volume,
                                     "type": c_type,
                                     "price": c_price,
-                                    "deviation": 20,
+                                    "deviation": 50, # High slippage allowance to ensure instant execution
                                     "magic": p.magic,
                                     "comment": "Auto-Harvest Win",
                                     "type_time": mt5.ORDER_TIME_GTC,
-                                    "type_filling": mt5.ORDER_FILLING_IOC
+                                    "type_filling": fill_mode
                                 }
                                 res = mt5.order_send(close_req)
                                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                                     closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
+                                    break
 
-                        # Cancel any remaining pending probe orders on MT5 to guarantee 100% FLAT state
+                        # Cancel all active pending probe orders on MT5 to guarantee 100% FLAT state
                         pending_orders = mt5.orders_get() or []
                         for o in pending_orders:
-                            if o.magic in (234001, 234002):
+                            if o.magic in (234001, 234002, 234000):
                                 mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
 
                         # Update persistent stats & return cleanly to IDLE (NO immediate auto-flip)
@@ -1123,10 +1135,12 @@ class ConsolidatedTradingDaemon:
                         engine_st["down_probes_filled"] = []
                         _save_engine_state(engine_st)
 
-                await asyncio.sleep(0.2) # Fast 200ms sampling loop
+                # High-frequency sampling: 50ms when active positions exist, 200ms when idle
+                sleep_dur = 0.05 if current_positions else 0.2
+                await asyncio.sleep(sleep_dur)
             except Exception as e:
                 LOG.debug(f"AutoProbeHarvestEngine loop error: {e}")
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.2)
 
     async def start_loop(self):
         self.is_running = True

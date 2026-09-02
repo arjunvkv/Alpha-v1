@@ -512,6 +512,25 @@ def mcp_alpha_configure_probe_trigger_engine(
     }, indent=2)
 
 @mcp.tool()
+def mcp_alpha_set_auto_harvest_target(target_profit_usd: float = 200.0) -> str:
+    """Set the exact dollar profit target for split-second auto-closing all positions on MT5.
+    
+    Args:
+        target_profit_usd: Target net profit in USD (e.g. 100.0, 150.0, 200.0, 250.0, 300.0, 500.0). Default is 200.0.
+    """
+    state = _load_engine_state()
+    target_val = float(target_profit_usd)
+    state["target_profit_usd"] = target_val
+    state["enabled"] = True
+    _save_engine_state(state)
+    
+    return json.dumps({
+        "status": "UPDATED",
+        "target_profit_usd": f"${target_val:.2f}",
+        "message": f"Split-second auto-win harvest target successfully set to +${target_val:.2f}. The background engine (<50ms) will auto-close all positions and cancel pending orders the split second floating PnL reaches ${target_val:.2f}."
+    }, indent=2)
+
+@mcp.tool()
 def mcp_alpha_get_probe_trigger_status() -> str:
     """Fetch live status of the 3-Probe Auto-Trigger & System Win-Harvest Engine (staged probes, fill counts, active scale, and basket PnL)."""
     _init_mt5()
