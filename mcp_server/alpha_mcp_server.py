@@ -613,6 +613,22 @@ def mcp_alpha_place_probe_grid(
         down_tickets = []
         errors = []
         
+        # Helper for sending pending orders with robust filling mode fallbacks
+        def _send_robust_pending(order_req):
+            res_try = mt5.order_send(order_req)
+            if res_try and res_try.retcode == mt5.TRADE_RETCODE_DONE:
+                return res_try, None
+            # Retry with alternate filling modes
+            for f_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0]:
+                alt_req = dict(order_req)
+                alt_req["type_filling"] = f_mode
+                alt_res = mt5.order_send(alt_req)
+                if alt_res and alt_res.retcode == mt5.TRADE_RETCODE_DONE:
+                    return alt_res, None
+            last_err = mt5.last_error()
+            err_msg = f"retcode {res_try.retcode}: {res_try.comment}" if res_try else f"MT5 error: {last_err}"
+            return None, err_msg
+
         # Deploy UP Probes
         u_type_clean = up_type.upper().strip()
         u_enum = type_map.get(u_type_clean, mt5.ORDER_TYPE_SELL_LIMIT)
@@ -637,11 +653,11 @@ def mcp_alpha_place_probe_grid(
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_RETURN
             }
-            res = mt5.order_send(req)
-            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                up_tickets.append({"ticket": res.order, "price": target_price, "type": u_type_clean, "sl": sl, "tp": tp})
+            res_obj, err_str = _send_robust_pending(req)
+            if res_obj:
+                up_tickets.append({"ticket": res_obj.order, "price": target_price, "type": u_type_clean, "sl": sl, "tp": tp})
             else:
-                errors.append(f"UP Probe #{idx+1} @ {target_price} failed: {res.comment if res else 'Unknown error'}")
+                errors.append(f"UP Probe #{idx+1} ({u_type_clean} @ {target_price}) failed: {err_str}")
 
         # Deploy DOWN Probes
         d_type_clean = down_type.upper().strip()
@@ -667,11 +683,11 @@ def mcp_alpha_place_probe_grid(
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_RETURN
             }
-            res = mt5.order_send(req)
-            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                down_tickets.append({"ticket": res.order, "price": target_price, "type": d_type_clean, "sl": sl, "tp": tp})
+            res_obj, err_str = _send_robust_pending(req)
+            if res_obj:
+                down_tickets.append({"ticket": res_obj.order, "price": target_price, "type": d_type_clean, "sl": sl, "tp": tp})
             else:
-                errors.append(f"DOWN Probe #{idx+1} @ {target_price} failed: {res.comment if res else 'Unknown error'}")
+                errors.append(f"DOWN Probe #{idx+1} ({d_type_clean} @ {target_price}) failed: {err_str}")
 
         # Update state
         state["symbol"] = sym

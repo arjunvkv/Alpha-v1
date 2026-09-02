@@ -1049,71 +1049,70 @@ class ConsolidatedTradingDaemon:
                                     LOG.info(f"SYSTEM AUTO-SCALED: #{res.order} {scale_side} {scale_volume} lots on {target_sym}")
                                     post_to_opencode_session("OpenCode (CIO)", scale_msg)
 
-                    # 3. Check Auto-Win Harvest Condition ($200 Target Profit)
-                    if scale_active:
-                        target_profit = engine_st.get("target_profit_usd", 200.0)
-                        basket_pnl = 0.0
-                        basket_tickets = []
+                    # 3. Universal Auto-Win Harvest Monitor ($200 Target Profit)
+                    target_profit = float(engine_st.get("target_profit_usd", 200.0))
+                    basket_pnl = 0.0
+                    basket_positions = []
 
-                        for p in current_positions:
-                            if p.magic in (234001, 234002) or p.ticket == scale_ticket:
-                                basket_pnl += p.profit
-                                basket_tickets.append(p)
+                    for p in current_positions:
+                        # Include all desk-managed positions (probes, scale, CIO orders)
+                        basket_pnl += p.profit
+                        basket_positions.append(p)
 
-                        # Check if profit threshold achieved
-                        if basket_pnl >= target_profit:
-                            closed_summary = []
-                            for p in basket_tickets:
-                                tick_info = mt5.symbol_info_tick(p.symbol)
-                                if tick_info:
-                                    c_price = tick_info.bid if p.type == 0 else tick_info.ask
-                                    c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
-                                    close_req = {
-                                        "action": mt5.TRADE_ACTION_DEAL,
-                                        "position": p.ticket,
-                                        "symbol": p.symbol,
-                                        "volume": p.volume,
-                                        "type": c_type,
-                                        "price": c_price,
-                                        "deviation": 20,
-                                        "magic": p.magic,
-                                        "comment": "Auto-Harvest Win",
-                                        "type_time": mt5.ORDER_TIME_GTC,
-                                        "type_filling": mt5.ORDER_FILLING_IOC
-                                    }
-                                    res = mt5.order_send(close_req)
-                                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                                        closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
+                    # Trigger instant auto-harvest whenever total floating profit reaches or exceeds target profit ($200)
+                    if len(basket_positions) > 0 and basket_pnl >= target_profit:
+                        closed_summary = []
+                        for p in basket_positions:
+                            tick_info = mt5.symbol_info_tick(p.symbol)
+                            if tick_info:
+                                c_price = tick_info.bid if p.type == 0 else tick_info.ask
+                                c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
+                                close_req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "position": p.ticket,
+                                    "symbol": p.symbol,
+                                    "volume": p.volume,
+                                    "type": c_type,
+                                    "price": c_price,
+                                    "deviation": 20,
+                                    "magic": p.magic,
+                                    "comment": "Auto-Harvest Win",
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": mt5.ORDER_FILLING_IOC
+                                }
+                                res = mt5.order_send(close_req)
+                                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                    closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
 
-                            # Cancel any remaining pending probe orders on MT5 to guarantee 100% FLAT state
-                            pending_orders = mt5.orders_get() or []
-                            for o in pending_orders:
-                                if o.magic == 234001:
-                                    mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
+                        # Cancel any remaining pending probe orders on MT5 to guarantee 100% FLAT state
+                        pending_orders = mt5.orders_get() or []
+                        for o in pending_orders:
+                            if o.magic in (234001, 234002):
+                                mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
 
-                            # Update persistent stats & return cleanly to IDLE (NO immediate auto-flip)
-                            engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
-                            engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
-                            engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                            engine_st["active_state"] = "IDLE"
-                            engine_st["scale_ticket"] = 0
-                            engine_st["scale_side"] = ""
-                            engine_st["up_probes_placed"] = []
-                            engine_st["down_probes_placed"] = []
-                            engine_st["up_probes_filled"] = []
-                            engine_st["down_probes_filled"] = []
-                            _save_engine_state(engine_st)
+                        # Update persistent stats & return cleanly to IDLE (NO immediate auto-flip)
+                        engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
+                        engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
+                        engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                        engine_st["active_state"] = "IDLE"
+                        engine_st["scale_ticket"] = 0
+                        engine_st["scale_side"] = ""
+                        engine_st["up_probes_placed"] = []
+                        engine_st["down_probes_placed"] = []
+                        engine_st["up_probes_filled"] = []
+                        engine_st["down_probes_filled"] = []
+                        _save_engine_state(engine_st)
 
-                            harvest_msg = (
-                                f"🎉🎉 [SYSTEM AUTO-WIN HARVEST ACHIEVED: +${basket_pnl:.2f}] 🎉🎉\n"
-                                f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
-                                f"• Closed Basket Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
-                                f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
-                                f"• DESK STATUS: 100% FLAT (All trades & pending orders cleared. No auto-flip).\n"
-                                f"• PROBE MANAGER MANDATE: Scout the fresh market structure and deploy your next tight 3 UP & 3 DOWN probe lineups!"
-                            )
-                            LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked! Desk is 100% FLAT.")
-                            post_to_opencode_session("OpenCode (CIO)", harvest_msg)
+                        harvest_msg = (
+                            f"🎉🎉 [SYSTEM AUTO-WIN HARVEST ACHIEVED: +${basket_pnl:.2f}] 🎉🎉\n"
+                            f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
+                            f"• Closed Basket Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
+                            f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
+                            f"• DESK STATUS: 100% FLAT (All trades & pending orders cleared. No auto-flip).\n"
+                            f"• PROBE MANAGER MANDATE: Scout the fresh market structure and deploy your next tight 3 UP & 3 DOWN probe lineups!"
+                        )
+                        LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked! Desk is 100% FLAT.")
+                        post_to_opencode_session("OpenCode (CIO)", harvest_msg)
 
                     elif scale_ticket > 0 and scale_ticket not in current_tickets:
                         # Scale order was closed (e.g. stopped out or exited) -> Reset state cleanly
