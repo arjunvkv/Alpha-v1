@@ -8,6 +8,12 @@
       "args": [
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ]
+    },
+    "proxima": {
+      "command": "node",
+      "args": [
+        "C:/Program Files/Proxima/resources/app.asar.unpacked/src/mcp/index.js"
+      ]
     }
   },
   "mcp": {
@@ -16,6 +22,14 @@
       "command": [
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
+      ],
+      "enabled": true
+    },
+    "proxima": {
+      "type": "local",
+      "command": [
+        "node",
+        "C:/Program Files/Proxima/resources/app.asar.unpacked/src/mcp/index.js"
       ],
       "enabled": true
     }
