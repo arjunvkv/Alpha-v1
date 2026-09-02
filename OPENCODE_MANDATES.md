@@ -280,10 +280,11 @@ Historical strategy documents may be retained as source evidence and archive mat
 
 ## 13. Canonical Dual-Tranche Execution & Active Retrace Harvest Protocol
 
-1. **NO OUTCOME BIAS / NO LAST-TRADE FIXATION**: Never fixate on the last winning or losing trade or wait forever for an identical setup. Every market cycle is an independent, fresh structural opportunity.
-2. **NO PANIC-CUTTING ON 1.0 LOT SCALE**: Once the 1.0 lot scale is placed, NEVER panic-cut on normal intra-move market breathing or minor retracements. Let the wide structural stop and target do their job.
-3. **RETRACE CAPTURE SCALING (SUPERIOR FILL PRICING)**: When the 0.01 probe validates initial reaction, place the 1.0 lot scale when price retraces back into the optimal capture retest zone (e.g. FVG CE / discount floor retest) to capture superior entry pricing before the expansion!
-4. **NO PERPETUAL GATING (PROBE & RETRACE OVER LAG)**: Do NOT gate forever waiting for slow lagging signals like delayed delta flips. Deploy the 0.01 probe immediately at the discount zone, validate absorption, and scale 1.0 lot on the retrace without analysis paralysis.
-5. **EARLY WATCH REGISTRATION (PRE-EVALUATE SETUPS)**: Always call `mcp_alpha_register_watch` early as price approaches key candidate levels (2-3 pts ahead) so the desk pre-evaluates and arms the thesis before price hits the level.
-6. **ACTIVE DOSSIER HARVEST & WIDE SL/TP**: Set wide broker SL/TP (15-20 pts) for room to breathe. Manage actively during 1-min dossier reviews and close both positions via `mcp_alpha_update_position(action='FULL_EXIT')` at +2.0 to +3.0 pts ($200-$300 gain).
+1. **TREND-ALIGNED SHORT PRIORITY IN BEAR REGIMES**: When H4/H1 is BEARISH, SHORT CONTINUATION IS PRIORITY #1. Do NOT buy into a falling knife. In a Bear regime, a 'Retrace Entry' means price rallies UP into overhead supply (Bearish FVG 50% CE / EMA20 resistance) — THAT IS WHERE WE DEPLOY 0.01 SELL PROBE & SCALE 1.0 LOT TO RIDE THE BEAR DOWNWARD! Counter-trend longs are strictly secondary.
+2. **NO OUTCOME BIAS / NO LAST-TRADE FIXATION**: Never fixate on the last winning or losing trade or wait forever for an identical setup. Every market cycle is an independent, fresh structural opportunity.
+3. **NO PANIC-CUTTING ON 1.0 LOT SCALE**: Once the 1.0 lot scale is placed, NEVER panic-cut on normal intra-move market breathing or minor retracements. Let the wide structural stop and target do their job.
+4. **RETRACE CAPTURE SCALING (SUPERIOR FILL PRICING)**: When the 0.01 probe validates initial reaction, place the 1.0 lot scale when price retraces back into the optimal capture retest zone (e.g. Bearish FVG CE / resistance retest for shorts, or Bullish FVG CE / floor retest for longs) to capture superior entry pricing before the expansion!
+5. **NO PERPETUAL GATING (PROBE & RETRACE OVER LAG)**: Do NOT gate forever waiting for slow lagging signals like delayed delta flips. Deploy the 0.01 probe immediately at the structural test zone, validate reaction, and scale 1.0 lot on the retrace without analysis paralysis.
+6. **EARLY WATCH REGISTRATION (PRE-EVALUATE SETUPS)**: Always call `mcp_alpha_register_watch` early as price approaches key candidate levels (2-3 pts ahead) so the desk pre-evaluates and arms the thesis before price hits the level.
+7. **ACTIVE DOSSIER HARVEST & WIDE SL/TP**: Set wide broker SL/TP (15-20 pts) for room to breathe. Manage actively during 1-min dossier reviews and close both positions via `mcp_alpha_update_position(action='FULL_EXIT')` at +2.0 to +3.0 pts ($200-$300 gain).
 
