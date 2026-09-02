@@ -898,14 +898,15 @@ class ConsolidatedTradingDaemon:
                 idle_prompt = (
                     f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({cycle_label}):\n"
                     f"{file_ref_header}"
-                    f"=== CANONICAL EVALUATION ENGINE: file:///C:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md ===\n"
+                    f"=== COGNITIVE NODE GLOBE ENGINE: file:///C:/Trading/Alpha/nng ===\n"
+                    f"=== CANONICAL MASTER COMPENDIUM: file:///C:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md ===\n"
                     f"{world_header}\n"
                     f"{top4_section}"
                     f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"EXECUTIVE ACTION: Evaluate market structure strictly through C:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md (Auction Market Theory, CVD Delta & Absorption, 4TF Structure, Macro Lifecycle, COT Crowding, Volume Profile POC/VAH/VAL, and FVG Fill Rates). Map your Upper Sell Bracket (Tier 1 Limit @ resistance) and Lower Buy Bracket (Tier 1 Limit @ support). For your pre-validated structural bracket(s) with R:R >= 2.5:1 and structural SL, IMMEDIATELY call place_pending_order (volume 0.5-1.0 lot, structural SL, structural TP) to stage the trigger live on MT5 ahead of price! Stand flat with 0 orders ONLY if no valid structural zone exists anywhere on the chart. Dollar-based auto-exit is OFF. "
+                    f"MANDATORY EXECUTIVE ACTION: Consult the Cognitive Node Globe via get_cognitive_globe_reasoning('XAUUSD') or get_nearest_pure_trade('XAUUSD'). Synthesize the multi-dimensional evidential path (Order Flow, 4TF Structure, Macro Real Yields, COT Crowding, Volume Profile, and FVG 50% CE). IMMEDIATELY call place_pending_order with volume=1.0 lot, structural SL, and structural TP (R:R >= 2.5:1) to stage your nearest high-conviction limit trigger live on MT5! Zero analysis paralysis. Zero sitting like a duck. Dollar-based auto-exit is OFF. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)

@@ -564,9 +564,33 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
         return json.dumps({"status": "FAILED", "error": str(err)})
 
 @mcp.tool()
-def update_position(ticket: int, action: str, params_json: str = "{}") -> str:
-    """Update active MT5 trade tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
-    return mcp_alpha_update_position(ticket, action, params_json)
+def mcp_alpha_get_cognitive_globe_reasoning(symbol: str = "XAUUSD") -> str:
+    """Consult the Total O.C.E.A.N. Cognitive Node Globe for multi-dimensional associative reasoning across Order Flow, 4TF Structure, Macro, COT, Volume Profile, and Master Literature."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng import NearestTradeEngine
+        import mcp_server.alpha_mcp_server as current_server
+        engine = NearestTradeEngine()
+        res = engine.resolve_nearest_trade(current_server, symbol=symbol)
+        return json.dumps(res, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)})
+
+@mcp.tool()
+def get_cognitive_globe_reasoning(symbol: str = "XAUUSD") -> str:
+    """Consult the Total O.C.E.A.N. Cognitive Node Globe for multi-dimensional associative reasoning."""
+    return mcp_alpha_get_cognitive_globe_reasoning(symbol)
+
+@mcp.tool()
+def mcp_alpha_get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
+    """Resolve the nearest high-conviction 1.0-lot trade trigger with exact Entry, Hard SL, TP, and R:R >= 2.5:1 via the Cognitive Globe."""
+    return mcp_alpha_get_cognitive_globe_reasoning(symbol)
+
+@mcp.tool()
+def get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
+    """Resolve the nearest high-conviction 1.0-lot trade trigger with exact Entry, Hard SL, TP, and R:R >= 2.5:1 via the Cognitive Globe."""
+    return mcp_alpha_get_cognitive_globe_reasoning(symbol)
 
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
