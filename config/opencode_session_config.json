@@ -1,11 +1,11 @@
 {
   "session_id": "ses_f9ec621f2ffecj0UHYA3UwXEuN",
-  "session_title": "Alpha Granger v10 (3-Probe Auto-Harvest)",
-  "opencode_session_id": "ses_fa231398affep3t2AL8iiaDT4P",
-  "opencode_session_title": "Alpha Granger v9 (Active MCP)",
+  "session_title": "alpha granger v10",
+  "opencode_session_id": "ses_f9ec621f2ffecj0UHYA3UwXEuN",
+  "opencode_session_title": "alpha granger v10",
   "opencode_api_url": "http://127.0.0.1:4096",
   "dossier_interval_seconds": 180,
   "active_trade_interval_seconds": 60,
   "dossier_streaming_enabled": true,
-  "updated_at": "2026-09-02 08:26:17 UTC"
+  "updated_at": "2026-09-02 08:57:00 UTC"
 }
