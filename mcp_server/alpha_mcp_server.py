@@ -1547,7 +1547,10 @@ def list_desk_tools() -> str:
         {"name": "record_decision_snapshot", "description": "Record pre-trade decision context on disk with full experimental metadata."},
         {"name": "record_trade_observation", "description": "Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & ULM."},
         {"name": "record_pattern_observation", "description": "Record pattern evidence in Unified Learning Memory."},
-        {"name": "execute_trade", "description": "Execute direct market buy/sell orders on FTMO MT5 at uniform pilot size (0.10 lots or lower)."},
+        {"name": "execute_trade", "description": "Execute direct instant market buy/sell orders on FTMO MT5."},
+        {"name": "place_pending_order", "description": "Place planned pending triggers (BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP) to stage single or multiple probes in advance."},
+        {"name": "cancel_pending_order", "description": "Cancel / remove an active pending trigger order on MT5."},
+        {"name": "get_pending_orders", "description": "Fetch all active pending trigger orders on MT5."},
         {"name": "update_position", "description": "Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."},
         {"name": "register_watch", "description": "Set dynamic price or sentiment alerts for the local desk to track."},
         {"name": "call_desk_tool", "description": "Universal dynamic dispatcher allowing invocation of any tool by name with arguments."}
@@ -1591,6 +1594,9 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "record_pattern_observation": lambda: mcp_alpha_record_pattern_observation(args.get("symbol", "XAUUSD"), args.get("pattern_name", ""), args.get("observation", ""), args.get("outcome"), args.get("ticket"), args.get("r_value")),
         "record_pattern_outcome": lambda: mcp_alpha_record_pattern_outcome(args.get("symbol", "XAUUSD"), args.get("pattern_name", ""), args.get("outcome", ""), args.get("ticket"), args.get("r_value")),
         "execute_trade": lambda: mcp_alpha_execute_trade(args.get("symbol", "XAUUSD"), args.get("side", "BUY"), args.get("volume", 0.05), args.get("sl", 0.0), args.get("tp", 0.0)),
+        "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol", "XAUUSD"), args.get("order_type", "SELL_LIMIT"), args.get("price", 0.0), args.get("volume", 0.01), args.get("sl", 0.0), args.get("tp", 0.0), args.get("comment", "OpenCode Planned Probe"), args.get("tag", "")),
+        "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket", args.get("ticket", 0))),
+        "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol", "ALL")),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket", 0), args.get("action", "BREAK_EVEN"), args.get("params_json", "")),
         "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol", "XAUUSD"), args.get("condition", ""), args.get("instruction", ""), args.get("target_price"), args.get("reason", ""), args.get("direction", "")),
         "list_desk_tools": list_desk_tools
