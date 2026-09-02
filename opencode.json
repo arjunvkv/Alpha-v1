@@ -70,26 +70,20 @@
         "apiKey": "gemini-proxy-local"
       },
       "models": {
-        "gemini-3.1-pro-preview": {
-          "name": "Gemini 3.1 Pro (Supreme Deep Reasoning)"
-        },
-        "gemini-3.7-flash": {
-          "name": "Gemini 3.7 Flash (Hybrid Extended Thinking)"
-        },
-        "gemini-3.6-flash": {
-          "name": "Gemini 3.6 Flash (High Reasoning)"
-        },
         "gemini-3.5-flash": {
-          "name": "Gemini 3.5 Flash"
+          "name": "Gemini 3.5 Flash (Deep Thinking + Long Rate Limits - RECOMMENDED)"
+        },
+        "gemini-3.1-pro-preview": {
+          "name": "Gemini 3.1 Pro (Supreme Institutional Reasoning)"
+        },
+        "gemini-flash-latest": {
+          "name": "Gemini Flash Latest (Ultra High Rate Limits)"
         },
         "gemini-3.5-flash-lite": {
           "name": "Gemini 3.5 Flash-Lite (Fast Deliberation)"
         },
         "gemini-3.1-flash-lite": {
-          "name": "Gemini 3.1 Flash-Lite"
-        },
-        "gemini-2.5-flash-lite": {
-          "name": "Gemini 2.5 Flash-Lite"
+          "name": "Gemini 3.1 Flash-Lite (Lightweight Fast)"
         }
       }
     }
