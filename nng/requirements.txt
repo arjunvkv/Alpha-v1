@@ -1,0 +1,6 @@
+# nng/requirements.txt - Node Network Globe (NNG 2.0) Stack
+networkx>=3.0
+scipy>=1.10.0
+numpy>=1.24.0
+scikit-learn>=1.2.0
+sentence-transformers>=2.2.0

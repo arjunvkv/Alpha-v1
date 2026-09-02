@@ -583,7 +583,56 @@ def get_cognitive_globe_reasoning(symbol: str = "XAUUSD") -> str:
     return mcp_alpha_get_cognitive_globe_reasoning(symbol)
 
 @mcp.tool()
-def mcp_alpha_get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
+def globe_consult(condition: str) -> str:
+    """Consult the Node Network Globe on a specific market condition (e.g. ABSORPTION_REGIME, VALUE_AREA_ROTATION_REGIME, COT_CROWDING_REGIME) to see mandatory tools, noise to ignore, and action blueprint."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng import GlobeQueries
+        q = GlobeQueries()
+        return json.dumps(q.globe_consult(condition), indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)})
+
+@mcp.tool()
+def globe_full_book() -> str:
+    """Retrieve the complete Node Network Globe Knowledge Book catalog with all tools, usages, conditions, and synergies."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng import GlobeQueries
+        q = GlobeQueries()
+        return json.dumps(q.globe_full_book(), indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)})
+
+@mcp.tool()
+def globe_lookup_tool(tool_name: str) -> str:
+    """Lookup a single trading tool (e.g. CVD_DELTA, FVG_MATRIX, VOLUME_PROFILE, EMA_20_50, RSI_MOMENTUM, COT_REPORT) for its FOR and MUST-NOT rules."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng import GlobeQueries
+        q = GlobeQueries()
+        return json.dumps(q.globe_lookup_tool(tool_name), indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)})
+
+@mcp.tool()
+def globe_conditions_now(symbol: str = "XAUUSD") -> str:
+    """Open the Node Network Globe to the exact active chapter matching current live market telemetry."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng import GlobeQueries
+        import mcp_server.alpha_mcp_server as current_server
+        q = GlobeQueries()
+        return json.dumps(q.globe_conditions_now(current_server, symbol=symbol), indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)})
+
+@mcp.tool()
+def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
     """Resolve the nearest high-conviction 1.0-lot trade trigger with exact Entry, Hard SL, TP, and R:R >= 2.5:1 via the Cognitive Globe."""
     return mcp_alpha_get_cognitive_globe_reasoning(symbol)
 
