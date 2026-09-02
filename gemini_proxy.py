@@ -315,10 +315,19 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
             retry_delay = 1.0
             consecutive_429 = 0
 
-            # Step 3: Pure Google Gemini Execution with Instant 1st-Strike Key Rotation & Proxima Fallback
+            # Step 3: Pure Google Gemini Execution with Instant 1st-Strike Key Rotation & Model Cascade
+            fallback_models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite']
+            current_model_idx = 0
+            
             for attempt in range(max_retries):
                 current_key = get_active_gemini_key()
                 auth_header = f"Bearer {current_key}"
+                
+                # If repeated 429s across keys, cascade to next high-availability model
+                if attempt >= 2 and current_model_idx < len(fallback_models) - 1:
+                    current_model_idx += 1
+                    payload['model'] = fallback_models[current_model_idx]
+                    print(f"🔄 [Gemini Proxy Model-Cascade] Swapping to high-availability model: {payload['model']}", file=sys.stderr)
                 
                 req = urllib.request.Request(
                     GOOGLE_URL,
@@ -335,13 +344,13 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                         # Instant 1st-Strike Rotation: Switch to next API key immediately!
                         new_k = rotate_default_gemini_key()
                         print(f"⚡ [Gemini Proxy Instant-Rotator] Key #{ACTIVE_KEY_INDEX} hit {e.code}. Swapped to Key #{ACTIVE_KEY_INDEX} (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
-                        time.sleep(0.2)
+                        time.sleep(0.8)
                     else:
                         raise e
                 except Exception as e:
                     last_error = e
-                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in 0.5s...", file=sys.stderr)
-                    time.sleep(0.5)
+                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in 1.0s...", file=sys.stderr)
+                    time.sleep(1.0)
 
             # Step 4: Fallback to Port 3210 if all Google keys are exhausted
             if response is None:
