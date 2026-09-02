@@ -765,15 +765,12 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE RETRACE HARVEST PROTOCOL ===
-  1. TREND-ALIGNED SHORT PRIORITY: When H4/H1 is BEARISH, SHORT CONTINUATION IS PRIORITY #1. In a Bear regime, a 'Retrace Entry' means price rallies UP into overhead resistance (Bearish FVG CE / EMA20) — DEPLOY 0.01 SELL PROBE & SCALE 1.0 LOT TO SHORT THE BOUNCE!
-  2. MULTI-PROBE STAGING (4-6+ PROBES): Do NOT limit to 1-2 probes! Stage MULTIPLE 0.01 probes / pending triggers (BUY_LIMIT / SELL_LIMIT) across ALL nearby candidate zones (M5 FVG CE, M15 FVG CE, EMA20, POC, sweeps within 1.5-5.0 pts). When ANY probe fills, the 500ms watcher alerts instantly!
-  3. NO OUTCOME BIAS: Never fixate on last winning or losing trade or wait forever for an identical setup. Every cycle is fresh.
-  4. NO PANIC-CUTTING: Once the 1.0 lot scale is placed, NEVER panic-cut on normal market breathing. Let the trade work.
-  5. RETRACE CAPTURE SCALING: When 0.01 probe validates reaction, place 1.0 lot scale when price retraces back into optimal retest zone (Bearish FVG CE for shorts / Bullish FVG CE for longs) for superior fill pricing!
-  6. NO PERPETUAL GATING: Do NOT gate forever waiting for slow lagging signals (e.g. delta flips). Probe to validate reaction, then scale 1.0 lot on retrace without analysis paralysis.
-  7. EARLY WATCH REGISTRATION: Register dynamic watches (mcp_alpha_register_watch) early (2-3 pts ahead) to pre-evaluate setups before price hits the level.
-  8. ACTIVE DOSSIER HARVEST & WIDE SL/TP: Wide broker SL/TP (15-20 pts) for room to breathe. Close both positions via mcp_alpha_update_position(action='FULL_EXIT') at +2.0 to +3.0 pts ($200-$300 gain).
+        execution_blueprint_block = """=== 3-PROBE AUTO-TRIGGER & DETERMINISTIC WIN-HARVEST PROTOCOL ===
+  1. OPENCODE ROLE: PROBE MANAGER ONLY. Stage tight stacked 3 UP and 3 DOWN 0.01 probe lineups (0.3-0.8 pt spacing) across nearest structural theses (FVG CE, EMA20, liquidity sweep levels). Zero manual trade exits.
+  2. DETERMINISTIC 3-PROBE SCALE: When all 3 probes in a direction fill, the SYSTEM automatically fires the 1.0 Lot Scale Order on MT5 in <100ms.
+  3. AUTOMATIC $200 WIN HARVEST: The system continuously monitors net basket PnL and automatically closes the 1.0 lot + probes at +$200 net profit ($200-$300 gain).
+  4. THESIS INVALIDATION & RESET: If a level is invalidated or price moves away, call invalidate_probe_triggers(direction='...') to reset checkup counters to NONE (0) and stage fresh lineups!
+  5. FULL MT5 TRIGGER ARSENAL: Use place_probe_grid or place_pending_order with BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP to suit pullback or breakout theses.
 """
 
         file_ref_header = (
@@ -907,59 +904,223 @@ class ConsolidatedTradingDaemon:
         return has_active_trades
 
     async def _probe_execution_watcher_task(self):
-        """Ultra-fast 500ms real-time loop tracking MT5 pending orders and live fills to fire instant split-second execution alerts."""
+        """Ultra-fast real-time loop managing 3-Probe Auto-Triggering, 1.0 Lot Deterministic Scaling, and Automatic $200 Win Harvesting."""
         import MetaTrader5 as mt5
         known_positions = set()
-        known_pending = set()
-        
-        # Initialize with currently active positions
+        state_file = PROJECT_ROOT / "data" / "live" / "auto_probe_engine_state.json"
+
+        def _get_engine_state():
+            if state_file.exists():
+                try:
+                    return json.loads(state_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            return {
+                "enabled": True, "symbol": "XAUUSD", "trigger_count": 3,
+                "target_profit_usd": 200.0, "scale_lots": 1.0, "sl_buffer_pts": 15.0,
+                "tp_buffer_pts": 25.0, "active_state": "IDLE",
+                "up_probes_placed": [], "down_probes_placed": [],
+                "up_probes_filled": [], "down_probes_filled": [],
+                "scale_ticket": 0, "scale_side": "", "total_harvested_usd": 0.0, "harvest_count": 0
+            }
+
+        def _save_engine_state(st):
+            try:
+                state_file.parent.mkdir(parents=True, exist_ok=True)
+                state_file.write_text(json.dumps(st, indent=2), encoding="utf-8")
+            except Exception as e:
+                LOG.error(f"Error saving engine state: {e}")
+
+        # Initialize
         try:
             if mt5.initialize():
                 pos = mt5.positions_get()
                 if pos:
                     known_positions = {p.ticket for p in pos}
-                orders = mt5.orders_get()
-                if orders:
-                    known_pending = {o.ticket for o in orders}
         except Exception:
             pass
 
         while self.is_running:
             try:
                 if mt5.initialize():
+                    engine_st = _get_engine_state()
+                    if not engine_st.get("enabled", True):
+                        await asyncio.sleep(0.5)
+                        continue
+
                     current_positions = mt5.positions_get() or []
                     current_pos_map = {p.ticket: p for p in current_positions}
                     current_tickets = set(current_pos_map.keys())
-                    
-                    # Check for newly opened / filled positions (Split-Second Alert!)
+                    target_sym = engine_st.get("symbol", "XAUUSD")
+
+                    # 1. Detect New Fills & Classify Probes
                     new_tickets = current_tickets - known_positions
                     for t in new_tickets:
                         p = current_pos_map[t]
                         side_str = "BUY" if p.type == 0 else "SELL"
-                        is_probe = p.volume <= 0.05
-                        order_category = "0.01 PROBE FILL" if is_probe else f"{p.volume} LOT SCALE POSITION"
-                        alert_msg = (
-                            f"🚨 [SPLIT-SECOND {order_category} ALERT] 🚨\n"
-                            f"• Ticket: #{p.ticket} | {p.symbol} {side_str} {p.volume} lots @ {p.price_open}\n"
-                            f"• Current Price: {p.price_current} | SL: {p.sl} | TP: {p.tp}\n"
-                            f"• Execution Comment: {p.comment}\n"
-                            f"• DUAL-TRANCHE ACTION ARMED: Monitor live reaction (+1.0 to +1.5 pts). "
-                            f"{'Prepare 1.0 LOT SCALE on confirmed retrace retest!' if is_probe else 'Wide SL/TP active. Harvest profit at target (+2.0 to +3.0 pts / $200-$300)!'}"
-                        )
-                        LOG.info(f"Firing Split-Second Probe Execution Alert to OpenCode: Ticket #{p.ticket}")
-                        post_to_opencode_session("OpenCode (CIO)", alert_msg)
-                    
+                        comment = p.comment or ""
+
+                        # Check if it's a planned probe (magic 234001 or volume <= 0.05)
+                        if p.magic == 234001 or p.volume <= 0.05:
+                            is_up = "UP" in comment.upper() or p.ticket in engine_st.get("up_probes_placed", []) or p.type == 1 # Sell
+                            is_down = "DN" in comment.upper() or "DOWN" in comment.upper() or p.ticket in engine_st.get("down_probes_placed", []) or p.type == 0 # Buy
+
+                            if is_up and t not in engine_st.get("up_probes_filled", []):
+                                engine_st.setdefault("up_probes_filled", []).append(t)
+                            elif is_down and t not in engine_st.get("down_probes_filled", []):
+                                engine_st.setdefault("down_probes_filled", []).append(t)
+
+                            filled_up = len(engine_st.get("up_probes_filled", []))
+                            filled_down = len(engine_st.get("down_probes_filled", []))
+                            req_count = engine_st.get("trigger_count", 3)
+
+                            alert_msg = (
+                                f"🚨 [SPLIT-SECOND PROBE FILL ALERT] 🚨\n"
+                                f"• Ticket: #{p.ticket} | {p.symbol} {side_str} {p.volume} lots @ {p.price_open}\n"
+                                f"• Stack Fill Progress: UP Probes [{filled_up}/{req_count}] | DOWN Probes [{filled_down}/{req_count}]\n"
+                                f"• Level Comment: {comment}\n"
+                                f"• NOTE: When all {req_count} probes in a direction fill, the system immediately fires the {engine_st.get('scale_lots', 1.0)} Lot Scale Order!"
+                            )
+                            LOG.info(f"Probe fill detected: Ticket #{t} (UP: {filled_up}/{req_count}, DOWN: {filled_down}/{req_count})")
+                            post_to_opencode_session("OpenCode (CIO)", alert_msg)
+                            _save_engine_state(engine_st)
+
                     known_positions = current_tickets
-                    
-                    # Track pending orders
-                    current_orders = mt5.orders_get() or []
-                    current_pending = {o.ticket for o in current_orders}
-                    known_pending = current_pending
-                    
-                await asyncio.sleep(0.5)
+
+                    # 2. Check 3-Probe Trigger Condition -> Fire 1.0 Lot Scale Order
+                    scale_ticket = engine_st.get("scale_ticket", 0)
+                    scale_active = scale_ticket > 0 and scale_ticket in current_tickets
+                    req_count = engine_st.get("trigger_count", 3)
+
+                    if not scale_active:
+                        up_count = len(engine_st.get("up_probes_filled", []))
+                        down_count = len(engine_st.get("down_probes_filled", []))
+
+                        should_scale = False
+                        scale_side = ""
+
+                        if up_count >= req_count:
+                            should_scale = True
+                            scale_side = "SELL" # UP ceiling test -> Short continuation
+                        elif down_count >= req_count:
+                            should_scale = True
+                            scale_side = "BUY"  # DOWN floor test -> Long bounce
+
+                        if should_scale:
+                            tick_info = mt5.symbol_info_tick(target_sym)
+                            if tick_info:
+                                price = tick_info.bid if scale_side == "SELL" else tick_info.ask
+                                order_type = mt5.ORDER_TYPE_SELL if scale_side == "SELL" else mt5.ORDER_TYPE_BUY
+                                sl_dist = engine_st.get("sl_buffer_pts", 15.0)
+                                tp_dist = engine_st.get("tp_buffer_pts", 25.0)
+                                sl = price + sl_dist if scale_side == "SELL" else price - sl_dist
+                                tp = price - tp_dist if scale_side == "SELL" else price + tp_dist
+                                scale_volume = float(engine_st.get("scale_lots", 1.0))
+
+                                req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "symbol": target_sym,
+                                    "volume": scale_volume,
+                                    "type": order_type,
+                                    "price": price,
+                                    "sl": float(sl),
+                                    "tp": float(tp),
+                                    "deviation": 20,
+                                    "magic": 234002,
+                                    "comment": "AutoProbe 1.0 Scale",
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": mt5.ORDER_FILLING_IOC
+                                }
+                                res = mt5.order_send(req)
+                                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                    engine_st["scale_ticket"] = res.order
+                                    engine_st["scale_side"] = scale_side
+                                    engine_st["scale_open_price"] = price
+                                    engine_st["active_state"] = "SCALED"
+                                    _save_engine_state(engine_st)
+
+                                    scale_msg = (
+                                        f"🚀 [3-PROBE THESIS VALIDATED -> SYSTEM FIRED {scale_volume} LOT SCALE ORDER] 🚀\n"
+                                        f"• Scale Ticket: #{res.order} | {target_sym} {scale_side} {scale_volume} lots @ {price:.2f}\n"
+                                        f"• Hard Broker SL: {sl:.2f} | Broker TP: {tp:.2f}\n"
+                                        f"• Auto-Win Harvest Target: +${engine_st.get('target_profit_usd', 200.0):.2f} Net Basket Profit\n"
+                                        f"• SYSTEM STATUS: Live tick monitor (<100ms) armed to auto-close all positions when target profit is achieved!"
+                                    )
+                                    LOG.info(f"SYSTEM AUTO-SCALED: #{res.order} {scale_side} {scale_volume} lots on {target_sym}")
+                                    post_to_opencode_session("OpenCode (CIO)", scale_msg)
+
+                    # 3. Check Auto-Win Harvest Condition ($200 Target Profit)
+                    if scale_active:
+                        target_profit = engine_st.get("target_profit_usd", 200.0)
+                        basket_pnl = 0.0
+                        basket_tickets = []
+
+                        for p in current_positions:
+                            if p.magic in (234001, 234002) or p.ticket == scale_ticket:
+                                basket_pnl += p.profit
+                                basket_tickets.append(p)
+
+                        # Check if profit threshold achieved
+                        if basket_pnl >= target_profit:
+                            closed_summary = []
+                            for p in basket_tickets:
+                                tick_info = mt5.symbol_info_tick(p.symbol)
+                                if tick_info:
+                                    c_price = tick_info.bid if p.type == 0 else tick_info.ask
+                                    c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
+                                    close_req = {
+                                        "action": mt5.TRADE_ACTION_DEAL,
+                                        "position": p.ticket,
+                                        "symbol": p.symbol,
+                                        "volume": p.volume,
+                                        "type": c_type,
+                                        "price": c_price,
+                                        "deviation": 20,
+                                        "magic": p.magic,
+                                        "comment": "Auto-Harvest Win",
+                                        "type_time": mt5.ORDER_TIME_GTC,
+                                        "type_filling": mt5.ORDER_FILLING_IOC
+                                    }
+                                    res = mt5.order_send(close_req)
+                                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                        closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
+
+                            # Update persistent stats
+                            engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
+                            engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
+                            engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                            engine_st["active_state"] = "IDLE"
+                            engine_st["scale_ticket"] = 0
+                            engine_st["scale_side"] = ""
+                            engine_st["up_probes_placed"] = []
+                            engine_st["down_probes_placed"] = []
+                            engine_st["up_probes_filled"] = []
+                            engine_st["down_probes_filled"] = []
+                            _save_engine_state(engine_st)
+
+                            harvest_msg = (
+                                f"🎉🎉 [SYSTEM AUTO-WIN HARVEST ACHIEVED: +${basket_pnl:.2f}] 🎉🎉\n"
+                                f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
+                                f"• Closed Basket Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
+                                f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
+                                f"• PROBE MANAGER MANDATE: The desk is 100% FLAT. Scout the nearest structural theses and stage your next tight 3 UP & 3 DOWN probe lineups!"
+                            )
+                            LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked!")
+                            post_to_opencode_session("OpenCode (CIO)", harvest_msg)
+
+                    elif scale_ticket > 0 and scale_ticket not in current_tickets:
+                        # Scale order was closed (e.g. stopped out or exited) -> Reset state cleanly
+                        engine_st["active_state"] = "IDLE"
+                        engine_st["scale_ticket"] = 0
+                        engine_st["scale_side"] = ""
+                        engine_st["up_probes_filled"] = []
+                        engine_st["down_probes_filled"] = []
+                        _save_engine_state(engine_st)
+
+                await asyncio.sleep(0.2) # Fast 200ms sampling loop
             except Exception as e:
-                LOG.debug(f"Probe execution watcher error: {e}")
-                await asyncio.sleep(1.0)
+                LOG.debug(f"AutoProbeHarvestEngine loop error: {e}")
+                await asyncio.sleep(0.5)
 
     async def start_loop(self):
         self.is_running = True

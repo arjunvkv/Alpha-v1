@@ -426,6 +426,386 @@ def get_pending_orders(symbol: str = "ALL") -> str:
     """Fetch all active pending trigger orders on MT5."""
     return mcp_alpha_get_pending_orders(symbol)
 
+# ======================================================================
+# AUTO-PROBE TRIGGER & WIN-HARVEST ENGINE MCP TOOLS
+# ======================================================================
+
+ENGINE_STATE_PATH = ALPHA_ROOT / "data" / "live" / "auto_probe_engine_state.json"
+
+def _load_engine_state() -> dict:
+    default_state = {
+        "enabled": True,
+        "symbol": "XAUUSD",
+        "trigger_count": 3,
+        "target_profit_usd": 200.0,
+        "scale_lots": 1.0,
+        "sl_buffer_pts": 15.0,
+        "tp_buffer_pts": 25.0,
+        "active_state": "IDLE",
+        "up_probes_placed": [],
+        "down_probes_placed": [],
+        "up_probes_filled": [],
+        "down_probes_filled": [],
+        "scale_ticket": 0,
+        "scale_side": "",
+        "scale_open_price": 0.0,
+        "last_harvest_time": "",
+        "total_harvested_usd": 0.0,
+        "harvest_count": 0
+    }
+    if not ENGINE_STATE_PATH.exists():
+        ENGINE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        ENGINE_STATE_PATH.write_text(json.dumps(default_state, indent=2), encoding="utf-8")
+        return default_state
+    try:
+        return json.loads(ENGINE_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return default_state
+
+def _save_engine_state(state: dict):
+    try:
+        ENGINE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        ENGINE_STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as e:
+        LOG.error(f"Failed to save engine state: {e}")
+
+@mcp.tool()
+def mcp_alpha_configure_probe_trigger_engine(
+    trigger_count: int = 3,
+    target_profit_usd: float = 200.0,
+    scale_lots: float = 1.0,
+    sl_buffer_pts: float = 15.0,
+    tp_buffer_pts: float = 25.0,
+    symbol: str = "XAUUSD"
+) -> str:
+    """Configure parameters for the Deterministic 3-Probe Auto-Trigger & System Win-Harvest Engine.
+    
+    Args:
+        trigger_count: Number of filled probes in one direction required to trigger the scale order (default: 3).
+        target_profit_usd: Target net profit in USD to automatically close all basket positions (default: 200.0).
+        scale_lots: Lot size for the deterministic production scale order (default: 1.0).
+        sl_buffer_pts: Hard broker SL distance in points for risk protection (default: 15.0).
+        tp_buffer_pts: TP distance in points (default: 25.0).
+        symbol: Target trading symbol (default: 'XAUUSD').
+    """
+    state = _load_engine_state()
+    state["trigger_count"] = int(trigger_count)
+    state["target_profit_usd"] = float(target_profit_usd)
+    state["scale_lots"] = float(scale_lots)
+    state["sl_buffer_pts"] = float(sl_buffer_pts)
+    state["tp_buffer_pts"] = float(tp_buffer_pts)
+    state["symbol"] = _normalize_symbol(symbol)
+    state["enabled"] = True
+    _save_engine_state(state)
+    
+    return json.dumps({
+        "status": "CONFIGURED",
+        "configuration": {
+            "symbol": state["symbol"],
+            "trigger_count": state["trigger_count"],
+            "target_profit_usd": f"${state['target_profit_usd']:.2f}",
+            "scale_lots": state["scale_lots"],
+            "sl_buffer_pts": state["sl_buffer_pts"],
+            "tp_buffer_pts": state["tp_buffer_pts"]
+        },
+        "message": "Auto-Trigger & Win-Harvest Engine parameters updated successfully."
+    }, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_probe_trigger_status() -> str:
+    """Fetch live status of the 3-Probe Auto-Trigger & System Win-Harvest Engine (staged probes, fill counts, active scale, and basket PnL)."""
+    _init_mt5()
+    state = _load_engine_state()
+    
+    live_info = {
+        "engine_state": state.get("active_state", "IDLE"),
+        "config": {
+            "symbol": state.get("symbol", "XAUUSD"),
+            "trigger_count": state.get("trigger_count", 3),
+            "target_profit_usd": state.get("target_profit_usd", 200.0),
+            "scale_lots": state.get("scale_lots", 1.0)
+        },
+        "up_probes_staged": state.get("up_probes_placed", []),
+        "down_probes_staged": state.get("down_probes_placed", []),
+        "up_probes_filled_count": len(state.get("up_probes_filled", [])),
+        "down_probes_filled_count": len(state.get("down_probes_filled", [])),
+        "scale_position_active": state.get("scale_ticket", 0) > 0,
+        "scale_ticket": state.get("scale_ticket", 0),
+        "scale_side": state.get("scale_side", ""),
+        "total_harvested_usd": state.get("total_harvested_usd", 0.0),
+        "harvest_count": state.get("harvest_count", 0)
+    }
+    
+    try:
+        import MetaTrader5 as mt5
+        pos = mt5.positions_get()
+        basket_pnl = 0.0
+        active_basket_tickets = []
+        if pos:
+            for p in pos:
+                if p.magic in (234001, 234002):
+                    basket_pnl += p.profit
+                    active_basket_tickets.append({
+                        "ticket": p.ticket,
+                        "side": "BUY" if p.type == 0 else "SELL",
+                        "volume": p.volume,
+                        "open_price": p.price_open,
+                        "current_price": p.price_current,
+                        "profit": p.profit,
+                        "role": "SCALE_ORDER" if p.magic == 234002 else "PROBE"
+                    })
+        live_info["active_basket_pnl_usd"] = round(basket_pnl, 2)
+        live_info["distance_to_target_usd"] = round(state.get("target_profit_usd", 200.0) - basket_pnl, 2)
+        live_info["active_basket_positions"] = active_basket_tickets
+    except Exception as e:
+        live_info["pnl_error"] = str(e)
+        
+    return json.dumps(live_info, indent=2)
+
+@mcp.tool()
+def mcp_alpha_place_probe_grid(
+    symbol: str = "XAUUSD",
+    up_prices: list = [],
+    down_prices: list = [],
+    up_type: str = "SELL_LIMIT",
+    down_type: str = "BUY_LIMIT",
+    volume: float = 0.01,
+    sl_pts: float = 15.0,
+    tp_pts: float = 20.0,
+    tag: str = "TightLineup"
+) -> str:
+    """Atomically deploy a tight stacked 3 UP and/or 3 DOWN probe lineup across nearby structural zones.
+    
+    Supports ALL MT5 Trigger Types:
+      • Limits (Pullback): SELL_LIMIT (ceiling/FVG CE), BUY_LIMIT (floor/demand)
+      • Stops (Breakouts): BUY_STOP (overhead breakout), SELL_STOP (breakdown momentum)
+    
+    When all 3 probes in either direction fill, the system engine deterministically fires the 1.0 lot scale order
+    and automatically harvests at +$200 net profit!
+    
+    Args:
+        symbol: Symbol (default: 'XAUUSD')
+        up_prices: List of prices for UP probes (e.g. [4325.0, 4325.6, 4326.2])
+        down_prices: List of prices for DOWN probes (e.g. [4319.8, 4319.2, 4318.6])
+        up_type: Order type for UP probes (default: 'SELL_LIMIT'; or 'BUY_STOP')
+        down_type: Order type for DOWN probes (default: 'BUY_LIMIT'; or 'SELL_STOP')
+        volume: Probe size (default: 0.01)
+        sl_pts: Stop loss distance in points (default: 15.0)
+        tp_pts: Take profit distance in points (default: 20.0)
+        tag: Custom descriptive tag for probe identification
+    """
+    _init_mt5()
+    read_logger.log_dossier_read("OpenCode CIO (MCP Probe Grid)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Probe Grid Deploy: UP={up_prices} ({up_type}), DOWN={down_prices} ({down_type}) on {symbol}")
+    
+    try:
+        import MetaTrader5 as mt5
+        sym = _normalize_symbol(symbol)
+        state = _load_engine_state()
+        
+        type_map = {
+            "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
+            "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,
+            "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
+            "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP
+        }
+        
+        up_tickets = []
+        down_tickets = []
+        errors = []
+        
+        # Deploy UP Probes
+        u_type_clean = up_type.upper().strip()
+        u_enum = type_map.get(u_type_clean, mt5.ORDER_TYPE_SELL_LIMIT)
+        is_up_sell = u_enum in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
+        
+        for idx, p in enumerate(up_prices):
+            target_price = float(p)
+            sl = target_price + sl_pts if is_up_sell else target_price - sl_pts
+            tp = target_price - tp_pts if is_up_sell else target_price + tp_pts
+            comment = f"Probe:UP_{idx+1}:{tag}"[:31]
+            req = {
+                "action": mt5.TRADE_ACTION_PENDING,
+                "symbol": sym,
+                "volume": float(volume),
+                "type": u_enum,
+                "price": target_price,
+                "sl": float(sl),
+                "tp": float(tp),
+                "deviation": 20,
+                "magic": 234001,
+                "comment": comment,
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_RETURN
+            }
+            res = mt5.order_send(req)
+            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                up_tickets.append({"ticket": res.order, "price": target_price, "type": u_type_clean, "sl": sl, "tp": tp})
+            else:
+                errors.append(f"UP Probe #{idx+1} @ {target_price} failed: {res.comment if res else 'Unknown error'}")
+
+        # Deploy DOWN Probes
+        d_type_clean = down_type.upper().strip()
+        d_enum = type_map.get(d_type_clean, mt5.ORDER_TYPE_BUY_LIMIT)
+        is_down_buy = d_enum in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
+        
+        for idx, p in enumerate(down_prices):
+            target_price = float(p)
+            sl = target_price - sl_pts if is_down_buy else target_price + sl_pts
+            tp = target_price + tp_pts if is_down_buy else target_price - tp_pts
+            comment = f"Probe:DN_{idx+1}:{tag}"[:31]
+            req = {
+                "action": mt5.TRADE_ACTION_PENDING,
+                "symbol": sym,
+                "volume": float(volume),
+                "type": d_enum,
+                "price": target_price,
+                "sl": float(sl),
+                "tp": float(tp),
+                "deviation": 20,
+                "magic": 234001,
+                "comment": comment,
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_RETURN
+            }
+            res = mt5.order_send(req)
+            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                down_tickets.append({"ticket": res.order, "price": target_price, "type": d_type_clean, "sl": sl, "tp": tp})
+            else:
+                errors.append(f"DOWN Probe #{idx+1} @ {target_price} failed: {res.comment if res else 'Unknown error'}")
+
+        # Update state
+        state["symbol"] = sym
+        state["active_state"] = "PROBING"
+        if up_tickets:
+            state["up_probes_placed"] = [t["ticket"] for t in up_tickets]
+            state["up_probes_filled"] = []
+        if down_tickets:
+            state["down_probes_placed"] = [t["ticket"] for t in down_tickets]
+            state["down_probes_filled"] = []
+        _save_engine_state(state)
+        
+        return json.dumps({
+            "status": "DEPLOYED",
+            "symbol": sym,
+            "up_probes_staged": up_tickets,
+            "down_probes_staged": down_tickets,
+            "errors": errors,
+            "engine_state": "PROBING",
+            "note": f"When any 3 probes fill in a direction, the system automatically fires {state.get('scale_lots', 1.0)} lot scale order and targets +${state.get('target_profit_usd', 200.0):.2f} auto-harvest."
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_invalidate_probe_triggers(
+    direction: str = "ALL",
+    cancel_pending: bool = True,
+    exit_partial_probes: bool = True
+) -> str:
+    """Invalidate active probe setups and cleanly reset the Auto-Trigger Engine.
+    
+    Clears fill checkup counters back to NONE (0 fills), cancels pending orders,
+    and optionally closes partial 0.01 probe positions so the Probe Manager can stage a fresh lineup.
+    
+    Args:
+        direction: 'UP', 'DOWN', or 'ALL' (default: 'ALL')
+        cancel_pending: Cancel outstanding pending orders on MT5 (default: True)
+        exit_partial_probes: Market close partial 0.01 probes from failed level (default: True)
+    """
+    _init_mt5()
+    try:
+        import MetaTrader5 as mt5
+        dir_clean = direction.upper().strip()
+        state = _load_engine_state()
+        
+        cancelled_orders = []
+        closed_positions = []
+        
+        if cancel_pending:
+            orders = mt5.orders_get() or []
+            target_tickets = set()
+            if dir_clean in ("UP", "ALL"):
+                target_tickets.update(state.get("up_probes_placed", []))
+            if dir_clean in ("DOWN", "ALL"):
+                target_tickets.update(state.get("down_probes_placed", []))
+                
+            for o in orders:
+                if o.magic == 234001 or o.ticket in target_tickets:
+                    req = {"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket}
+                    res = mt5.order_send(req)
+                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                        cancelled_orders.append(o.ticket)
+                        
+        if exit_partial_probes:
+            pos = mt5.positions_get() or []
+            for p in pos:
+                if p.magic == 234001 and p.volume <= 0.05:
+                    tick_info = mt5.symbol_info_tick(p.symbol)
+                    if tick_info:
+                        close_price = tick_info.bid if p.type == 0 else tick_info.ask
+                        close_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
+                        req = {
+                            "action": mt5.TRADE_ACTION_DEAL,
+                            "position": p.ticket,
+                            "symbol": p.symbol,
+                            "volume": p.volume,
+                            "type": close_type,
+                            "price": close_price,
+                            "deviation": 20,
+                            "magic": 234001,
+                            "comment": "AutoProbe Invalidation Exit",
+                            "type_time": mt5.ORDER_TIME_GTC,
+                            "type_filling": mt5.ORDER_FILLING_IOC
+                        }
+                        res = mt5.order_send(req)
+                        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                            closed_positions.append(p.ticket)
+                            
+        # Reset state counters
+        if dir_clean in ("UP", "ALL"):
+            state["up_probes_placed"] = []
+            state["up_probes_filled"] = []
+        if dir_clean in ("DOWN", "ALL"):
+            state["down_probes_placed"] = []
+            state["down_probes_filled"] = []
+            
+        if not state.get("up_probes_placed") and not state.get("down_probes_placed"):
+            state["active_state"] = "IDLE"
+            
+        _save_engine_state(state)
+        
+        return json.dumps({
+            "status": "INVALIDATED_AND_RESET",
+            "direction": dir_clean,
+            "cancelled_pending_orders": cancelled_orders,
+            "closed_partial_positions": closed_positions,
+            "engine_state": state.get("active_state", "IDLE"),
+            "message": "Probe trigger counters reset to NONE (0). Ready for new lineup deployment."
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+# Top-level tool aliases
+@mcp.tool()
+def configure_probe_trigger_engine(trigger_count: int = 3, target_profit_usd: float = 200.0, scale_lots: float = 1.0, sl_buffer_pts: float = 15.0, tp_buffer_pts: float = 25.0, symbol: str = "XAUUSD") -> str:
+    """Configure parameters for the Deterministic 3-Probe Auto-Trigger & System Win-Harvest Engine."""
+    return mcp_alpha_configure_probe_trigger_engine(trigger_count, target_profit_usd, scale_lots, sl_buffer_pts, tp_buffer_pts, symbol)
+
+@mcp.tool()
+def get_probe_trigger_status() -> str:
+    """Fetch live status of the 3-Probe Auto-Trigger & System Win-Harvest Engine."""
+    return mcp_alpha_get_probe_trigger_status()
+
+@mcp.tool()
+def place_probe_grid(symbol: str = "XAUUSD", up_prices: list = [], down_prices: list = [], up_type: str = "SELL_LIMIT", down_type: str = "BUY_LIMIT", volume: float = 0.01, sl_pts: float = 15.0, tp_pts: float = 20.0, tag: str = "TightLineup") -> str:
+    """Atomically deploy a tight stacked 3 UP and/or 3 DOWN probe lineup across nearby structural zones."""
+    return mcp_alpha_place_probe_grid(symbol, up_prices, down_prices, up_type, down_type, volume, sl_pts, tp_pts, tag)
+
+@mcp.tool()
+def invalidate_probe_triggers(direction: str = "ALL", cancel_pending: bool = True, exit_partial_probes: bool = True) -> str:
+    """Invalidate active probe setups and cleanly reset the Auto-Trigger Engine."""
+    return mcp_alpha_invalidate_probe_triggers(direction, cancel_pending, exit_partial_probes)
+
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
     """OpenCode fetches live FTMO MT5 account status and active positions."""
@@ -1551,6 +1931,10 @@ def list_desk_tools() -> str:
         {"name": "place_pending_order", "description": "Place planned pending triggers (BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP) to stage single or multiple probes in advance."},
         {"name": "cancel_pending_order", "description": "Cancel / remove an active pending trigger order on MT5."},
         {"name": "get_pending_orders", "description": "Fetch all active pending trigger orders on MT5."},
+        {"name": "configure_probe_trigger_engine", "description": "Configure 3-Probe Auto-Trigger & Win-Harvest Engine parameters (trigger count, $200 target profit, 1.0 lot scale size, SL buffer)."},
+        {"name": "get_probe_trigger_status", "description": "Fetch live status of 3-Probe Auto-Trigger Engine, staged probes, filled counts, active scale order, and basket PnL."},
+        {"name": "place_probe_grid", "description": "Atomically deploy tight stacked 3 UP and/or 3 DOWN probe lineups across nearby structural zones."},
+        {"name": "invalidate_probe_triggers", "description": "Clear probe trigger checkup counters back to NONE (0), cancel pending triggers, and exit partial probes upon thesis invalidation."},
         {"name": "update_position", "description": "Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."},
         {"name": "register_watch", "description": "Set dynamic price or sentiment alerts for the local desk to track."},
         {"name": "call_desk_tool", "description": "Universal dynamic dispatcher allowing invocation of any tool by name with arguments."}
@@ -1597,6 +1981,10 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol", "XAUUSD"), args.get("order_type", "SELL_LIMIT"), args.get("price", 0.0), args.get("volume", 0.01), args.get("sl", 0.0), args.get("tp", 0.0), args.get("comment", "OpenCode Planned Probe"), args.get("tag", "")),
         "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket", args.get("ticket", 0))),
         "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol", "ALL")),
+        "configure_probe_trigger_engine": lambda: mcp_alpha_configure_probe_trigger_engine(args.get("trigger_count", 3), args.get("target_profit_usd", 200.0), args.get("scale_lots", 1.0), args.get("sl_buffer_pts", 15.0), args.get("tp_buffer_pts", 25.0), args.get("symbol", "XAUUSD")),
+        "get_probe_trigger_status": mcp_alpha_get_probe_trigger_status,
+        "place_probe_grid": lambda: mcp_alpha_place_probe_grid(args.get("symbol", "XAUUSD"), args.get("up_prices", []), args.get("down_prices", []), args.get("up_type", "SELL_LIMIT"), args.get("down_type", "BUY_LIMIT"), args.get("volume", 0.01), args.get("sl_pts", 15.0), args.get("tp_pts", 20.0), args.get("tag", "TightLineup")),
+        "invalidate_probe_triggers": lambda: mcp_alpha_invalidate_probe_triggers(args.get("direction", "ALL"), args.get("cancel_pending", True), args.get("exit_partial_probes", True)),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket", 0), args.get("action", "BREAK_EVEN"), args.get("params_json", "")),
         "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol", "XAUUSD"), args.get("condition", ""), args.get("instruction", ""), args.get("target_price"), args.get("reason", ""), args.get("direction", "")),
         "list_desk_tools": list_desk_tools

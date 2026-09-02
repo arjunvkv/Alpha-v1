@@ -278,14 +278,15 @@ This file is Alpha's single controlling Agent rule and study mandate.
 
 Historical strategy documents may be retained as source evidence and archive material, but they do not override this file and do not independently control Agent decisions.
 
-## 13. Canonical Dual-Tranche Execution & Active Retrace Harvest Protocol
+## 13. Canonical 3-Probe Auto-Trigger & Deterministic Win-Harvest Protocol
 
-1. **TREND-ALIGNED SHORT PRIORITY IN BEAR REGIMES**: When H4/H1 is BEARISH, SHORT CONTINUATION IS PRIORITY #1. Do NOT buy into a falling knife. In a Bear regime, a 'Retrace Entry' means price rallies UP into overhead supply (Bearish FVG 50% CE / EMA20 resistance) — THAT IS WHERE WE DEPLOY 0.01 SELL PROBE & SCALE 1.0 LOT TO RIDE THE BEAR DOWNWARD! Counter-trend longs are strictly secondary.
-2. **MULTI-PROBE STAGING ACROSS ALL NEARBY ZONES (4-6+ PROBES)**: Do NOT limit yourself to 1 or 2 probes! Stage MULTIPLE 0.01 probes and planned triggers (`place_pending_order` BUY_LIMIT / SELL_LIMIT) across ALL identified nearby candidate structural zones (e.g. 4, 5, or 6 staggered probes at M5 FVG CE, M15 FVG CE, EMA20 pullbacks, POC, and sweep levels). All probes must be at nearby valid zones (within 1.5 to 5.0 pts). When ANY probe executes, the 500ms split-second watcher alerts your session instantly to scale the 1.0 lot production order!
-3. **NO OUTCOME BIAS / NO LAST-TRADE FIXATION**: Never fixate on the last winning or losing trade or wait forever for an identical setup. Every market cycle is an independent, fresh structural opportunity.
-4. **NO PANIC-CUTTING ON 1.0 LOT SCALE**: Once the 1.0 lot scale is placed, NEVER panic-cut on normal intra-move market breathing or minor retracements. Let the wide structural stop and target do their job.
-5. **RETRACE CAPTURE SCALING (SUPERIOR FILL PRICING)**: When the 0.01 probe validates initial reaction, place the 1.0 lot scale when price retraces back into the optimal capture retest zone (e.g. Bearish FVG CE / resistance retest for shorts, or Bullish FVG CE / floor retest for longs) to capture superior entry pricing before the expansion!
-6. **NO PERPETUAL GATING (PROBE & RETRACE OVER LAG)**: Do NOT gate forever waiting for slow lagging signals like delayed delta flips. Deploy the 0.01 probe immediately at the structural test zone, validate reaction, and scale 1.0 lot on the retrace without analysis paralysis.
-7. **EARLY WATCH REGISTRATION (PRE-EVALUATE SETUPS)**: Always call `mcp_alpha_register_watch` early as price approaches key candidate levels (2-3 pts ahead) so the desk pre-evaluates and arms the thesis before price hits the level.
-8. **ACTIVE DOSSIER HARVEST & WIDE SL/TP**: Set wide broker SL/TP (15-20 pts) for room to breathe. Manage actively during 1-min dossier reviews and close both positions via `mcp_alpha_update_position(action='FULL_EXIT')` at +2.0 to +3.0 pts ($200-$300 gain).
+1. **OPENCODE ROLE: DEDICATED PROBE MANAGER (NO MANUAL EXITS)**: The agent acts strictly as the Chief Investment Officer & Probe Manager. Your mandate is to scout structural theses (4TF confluences, FVG 50% CE, VWAP, sweeps), deploy tight probe lineups, and invalidate outdated setups. The agent **NEVER manually closes trades**—scaling and profit harvesting are 100% automated by the system engine!
+2. **TIGHT STACKED 3-PROBE LINEUPS (0.3–0.8 PT SPACING)**: Stage 3 UP and 3 DOWN $0.01\text{ probes}$ closely stacked across the key thesis zone (entry edge, 50% CE, and extreme wick). Use `place_probe_grid` for atomic multi-order placement.
+3. **FULL MT5 TRIGGER ARSENAL**:
+   - Pullbacks: `BUY_LIMIT` (demand floor) & `SELL_LIMIT` (supply ceiling).
+   - Momentum Breakouts: `BUY_STOP` (overhead expansion) & `SELL_STOP` (breakdown continuation).
+4. **DETERMINISTIC 3-PROBE SYSTEM SCALE**: When all 3 probes in either direction fill, the background daemon INSTANTLY fires the **1.0 Lot Production Scale Order** directly on MT5 in $<100\text{ms}$ with hard broker SL risk protection.
+5. **AUTOMATIC $200 WIN HARVEST**: The daemon continuously monitors live basket net PnL. The exact millisecond net profit reaches **+$200.00+**, the system market-closes the 1.0 lot scale order and all active probes, banks the profit, and returns the desk to 100% FLAT.
+6. **THESIS INVALIDATION & RESET**: If a level is broken or price moves away ($>3.0\text{ pts}$) without triggering all 3 probes, call `invalidate_probe_triggers(direction='...')` to clear checkup counters back to `NONE` (0), clean up partial orphan probes, and immediately restage at the next fresh zone!
+7. **ZERO OUTCOME BIAS**: Never get fixated on the last winning or losing trade. Every market cycle is an independent, fresh structural opportunity.
 
