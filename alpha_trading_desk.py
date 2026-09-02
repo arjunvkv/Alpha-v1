@@ -765,16 +765,16 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== DIRECT 1.0 LOT PRODUCTION TRADING & AUTO-WIN HARVEST PROTOCOL ===
-  1. OPENCODE MANDATE: DIRECT 1.0 LOT PRODUCTION TRADES: You deploy direct 1.0 lot market orders or stage 1.0 lot pending limit/stop orders at key structural boundaries (Supply Ceiling @ FVG CE / Resistance vs Demand Floor @ FVG CE / Support).
-  2. UNIVERSAL $200 AUTO-WIN HARVEST (<50ms): The background engine continuously monitors live tick PnL. The exact split second net profit reaches +$200.00+, the system automatically market-closes all positions, cancels all pending orders, and returns to 100% FLAT (zero auto-flip).
-  3. PRODUCTION MCP TOOLS:
-     • execute_market_order(symbol, side, volume=1.0, sl=0.0, tp=0.0) -> Execute direct 1.0 lot market trade.
-     • place_pending_order(symbol, order_type, price, volume=1.0, sl=0.0, tp=0.0) -> Place 1.0 lot pending limit/stop order.
+        execution_blueprint_block = """=== SEPARATED CONFIGURATION & POINT-BASED EXECUTION PROTOCOL ===
+  1. SEPARATE CONFIGURATION: Use configure_desk_execution(lot_size=1.0, target_profit_usd=200.0, sl_buffer_pts=15.0) to configure lot size and harvest dollar target.
+  2. EXECUTION & PLANNING (POINTS ONLY - NO TP PARAMETERS):
+     • execute_market_order(symbol, side, sl_price=0.0) -> Execute direct market order (draws configured lots, no broker TP set).
+     • place_pending_order(symbol, order_type, price, sl_price=0.0, tag="") -> Stage planned pending limit/stop orders at structural price points (draws configured lots, no broker TP set).
      • cancel_pending_order(order_ticket) -> Cancel active pending orders.
      • update_position(ticket, action) -> Manage active positions (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
-     • set_auto_harvest_target(target_profit_usd) -> Dynamically adjust dollar profit harvest target.
      • get_account_status() -> Fetch live balance, equity, and open positions.
+  3. SPLIT-SECOND AUTO-WIN HARVEST (<50ms): The background engine continuously monitors floating PnL. The split second profit hits configured dollars (+$200.00), it automatically closes all positions, cancels all pending orders, and sets desk 100% FLAT (zero auto-flip).
+  4. ZERO AUTONOMOUS SYSTEM EXECUTION: The daemon NEVER places trades on its own. ONLY OpenCode plans and executes trades.
 """
 
         file_ref_header = (
