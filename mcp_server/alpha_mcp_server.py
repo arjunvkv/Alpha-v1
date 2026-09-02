@@ -471,17 +471,17 @@ def _save_engine_state(state: dict):
 
 @mcp.tool()
 def mcp_alpha_configure_probe_trigger_engine(
-    trigger_count: int = 3,
+    trigger_count: int = 1,
     target_profit_usd: float = 200.0,
     scale_lots: float = 1.0,
     sl_buffer_pts: float = 15.0,
     tp_buffer_pts: float = 25.0,
     symbol: str = "XAUUSD"
 ) -> str:
-    """Configure parameters for the Deterministic 3-Probe Auto-Trigger & System Win-Harvest Engine.
+    """Configure parameters for the Deterministic 1-Probe Auto-Trigger & System Win-Harvest Engine.
     
     Args:
-        trigger_count: Number of filled probes in one direction required to trigger the scale order (default: 3).
+        trigger_count: Number of filled probes in one direction required to trigger the scale order (default: 1).
         target_profit_usd: Target net profit in USD to automatically close all basket positions (default: 200.0).
         scale_lots: Lot size for the deterministic production scale order (default: 1.0).
         sl_buffer_pts: Hard broker SL distance in points for risk protection (default: 15.0).

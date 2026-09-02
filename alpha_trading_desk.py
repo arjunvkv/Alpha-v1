@@ -765,12 +765,11 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== MANDATORY CONTINUOUS PROBING & AUTO-WIN HARVEST PROTOCOL ===
-  1. PROBES ARE ZERO-RISK SENSORS (0.01 LOT = $0.10-$0.50 RISK): Standing flat with ZERO probes on the board is STRICTLY PROHIBITED! Never fear placing 0.01 probes. They are physical sensors, not full-scale trades.
-  2. ALWAYS ARMED IN BOTH DIRECTIONS: Stage 3 UP probes at the Supply Ceiling (e.g. 4312-4316) to short pullbacks AND 3 DOWN probes at the Demand Floor (e.g. 4293-4297) to catch bounces. Continuous probing is mandatory on every cycle!
-  3. DETERMINISTIC 3-PROBE SCALE (<100ms): When all 3 probes in either zone fill, the SYSTEM automatically fires the 1.0 Lot Scale Order.
-  4. UNIVERSAL $200 AUTO-WIN HARVEST: Whenever total basket profit reaches +$200.00+, the system instantly closes all positions and returns to 100% FLAT (zero auto-flip).
-  5. USE place_probe_grid ATOMICALLY: Call place_probe_grid(up_prices=[...], down_prices=[...]) on every cycle to keep the order book armed.
+        execution_blueprint_block = """=== 1-PROBE AUTO-TRIGGER & DETERMINISTIC WIN-HARVEST PROTOCOL ===
+  1. OPENCODE ROLE: PROBE MANAGER (1 PROBE EACH SIDE): Stage 1 UP probe (0.01 lot) at the Supply Ceiling (e.g. FVG CE / Resistance) and 1 DOWN probe (0.01 lot) at the Demand Floor (e.g. FVG CE / Support).
+  2. DETERMINISTIC 1-PROBE AUTO-SCALE (<100ms): The instant 1 probe in either direction fills, the SYSTEM IMMEDIATELY fires the 1.0 Lot Production Scale Order directly on MT5 with hard broker SL/TP protection!
+  3. UNIVERSAL $200 AUTO-WIN HARVEST: The system tick monitor (<50ms) tracks net basket profit. The split second profit reaches +$200.00+, it instantly market-closes all positions (1.0 lot + probes), clears all pending orders, and returns to 100% FLAT (zero auto-flip).
+  4. PROMPT & ATOMIC DEPLOYMENT: Deploy 1 UP and 1 DOWN probe using place_probe_grid(up_prices=[...], down_prices=[...]) or place_pending_order.
 """
 
         file_ref_header = (
@@ -916,7 +915,7 @@ class ConsolidatedTradingDaemon:
                 except Exception:
                     pass
             return {
-                "enabled": True, "symbol": "XAUUSD", "trigger_count": 3,
+                "enabled": True, "symbol": "XAUUSD", "trigger_count": 1,
                 "target_profit_usd": 200.0, "scale_lots": 1.0, "sl_buffer_pts": 15.0,
                 "tp_buffer_pts": 25.0, "active_state": "IDLE",
                 "up_probes_placed": [], "down_probes_placed": [],
