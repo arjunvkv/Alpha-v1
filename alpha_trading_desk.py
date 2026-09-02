@@ -765,12 +765,12 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== 3-PROBE AUTO-TRIGGER & DETERMINISTIC WIN-HARVEST PROTOCOL ===
-  1. OPENCODE ROLE: PROBE MANAGER ONLY. Stage tight stacked 3 UP and 3 DOWN 0.01 probe lineups (0.3-0.8 pt spacing) across nearest structural theses (FVG CE, EMA20, liquidity sweep levels). Zero manual trade exits.
-  2. DETERMINISTIC 3-PROBE SCALE: When all 3 probes in a direction fill, the SYSTEM automatically fires the 1.0 Lot Scale Order on MT5 in <100ms.
-  3. AUTOMATIC $200 WIN HARVEST: The system continuously monitors net basket PnL and automatically closes the 1.0 lot + probes at +$200 net profit ($200-$300 gain).
-  4. THESIS INVALIDATION & RESET: If a level is invalidated or price moves away, call invalidate_probe_triggers(direction='...') to reset checkup counters to NONE (0) and stage fresh lineups!
-  5. FULL MT5 TRIGGER ARSENAL: Use place_probe_grid or place_pending_order with BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP to suit pullback or breakout theses.
+        execution_blueprint_block = """=== MANDATORY CONTINUOUS PROBING & AUTO-WIN HARVEST PROTOCOL ===
+  1. PROBES ARE ZERO-RISK SENSORS (0.01 LOT = $0.10-$0.50 RISK): Standing flat with ZERO probes on the board is STRICTLY PROHIBITED! Never fear placing 0.01 probes. They are physical sensors, not full-scale trades.
+  2. ALWAYS ARMED IN BOTH DIRECTIONS: Stage 3 UP probes at the Supply Ceiling (e.g. 4312-4316) to short pullbacks AND 3 DOWN probes at the Demand Floor (e.g. 4293-4297) to catch bounces. Continuous probing is mandatory on every cycle!
+  3. DETERMINISTIC 3-PROBE SCALE (<100ms): When all 3 probes in either zone fill, the SYSTEM automatically fires the 1.0 Lot Scale Order.
+  4. UNIVERSAL $200 AUTO-WIN HARVEST: Whenever total basket profit reaches +$200.00+, the system instantly closes all positions and returns to 100% FLAT (zero auto-flip).
+  5. USE place_probe_grid ATOMICALLY: Call place_probe_grid(up_prices=[...], down_prices=[...]) on every cycle to keep the order book armed.
 """
 
         file_ref_header = (

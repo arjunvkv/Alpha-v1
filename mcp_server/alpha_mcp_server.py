@@ -700,14 +700,16 @@ def mcp_alpha_place_probe_grid(
             state["down_probes_filled"] = []
         _save_engine_state(state)
         
-        corridor_width = round(min(up_prices) - max(down_prices), 2) if up_prices and down_prices else 0.0
+        up_floats = [float(p) for p in up_prices] if up_prices else []
+        down_floats = [float(p) for p in down_prices] if down_prices else []
+        corridor_width = round(min(up_floats) - max(down_floats), 2) if up_floats and down_floats else 0.0
         
         return json.dumps({
             "status": "DEPLOYED",
             "symbol": sym,
             "inter_zone_corridor_width_pts": corridor_width,
-            "supply_ceiling_zone": {"min": min(up_prices), "max": max(up_prices)} if up_prices else None,
-            "demand_floor_zone": {"min": min(down_prices), "max": max(down_prices)} if down_prices else None,
+            "supply_ceiling_zone": {"min": min(up_floats), "max": max(up_floats)} if up_floats else None,
+            "demand_floor_zone": {"min": min(down_floats), "max": max(down_floats)} if down_floats else None,
             "up_probes_staged": up_tickets,
             "down_probes_staged": down_tickets,
             "errors": errors,
