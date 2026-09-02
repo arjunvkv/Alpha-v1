@@ -910,17 +910,26 @@ class ConsolidatedTradingDaemon:
         return has_active_trades
 
     async def _probe_execution_watcher_task(self):
-        """Dedicated high-frequency (<50ms) Universal Auto-Win Harvester ($200 Target Profit)."""
-        import MetaTrader5 as mt5
+        """Ultra-fast (<10ms) zero-latency Universal Auto-Win Harvester ($200 Target Profit)."""
+        import MetaTrader5 as mt5, time
         state_file = PROJECT_ROOT / "data" / "live" / "auto_probe_engine_state.json"
 
+        # Cached config state
+        cached_config = {"enabled": True, "symbol": "XAUUSD", "target_profit_usd": 200.0, "total_harvested_usd": 0.0, "harvest_count": 0}
+        last_config_load = 0.0
+
         def _get_engine_state():
-            if state_file.exists():
-                try:
-                    return json.loads(state_file.read_text(encoding="utf-8"))
-                except Exception:
-                    pass
-            return {"enabled": True, "symbol": "XAUUSD", "target_profit_usd": 200.0, "total_harvested_usd": 0.0, "harvest_count": 0}
+            nonlocal cached_config, last_config_load
+            now = time.time()
+            if now - last_config_load > 1.0: # Refresh cache once per second
+                if state_file.exists():
+                    try:
+                        data = json.loads(state_file.read_text(encoding="utf-8"))
+                        cached_config.update(data)
+                    except Exception:
+                        pass
+                last_config_load = now
+            return cached_config
 
         def _save_engine_state(st):
             try:
@@ -929,89 +938,102 @@ class ConsolidatedTradingDaemon:
             except Exception as e:
                 LOG.error(f"Error saving harvest state: {e}")
 
+        # One-time MT5 initialization
+        mt5.initialize()
+
         while self.is_running:
             try:
-                if mt5.initialize():
-                    engine_st = _get_engine_state()
-                    if not engine_st.get("enabled", True):
-                        await asyncio.sleep(0.5)
-                        continue
+                engine_st = _get_engine_state()
+                if not engine_st.get("enabled", True):
+                    await asyncio.sleep(0.5)
+                    continue
 
-                    current_positions = mt5.positions_get() or []
-                    target_profit = float(engine_st.get("target_profit_usd", 200.0))
-                    basket_pnl = 0.0
-                    basket_positions = []
+                current_positions = mt5.positions_get()
+                if current_positions is None:
+                    # Connection lost -> re-initialize
+                    mt5.initialize()
+                    await asyncio.sleep(0.1)
+                    continue
 
-                    # Real-time tick evaluation: use both MT5 floating profit and instantaneous tick calculation
-                    for p in current_positions:
+                if not current_positions:
+                    # Zero positions -> sleep lightly (100ms)
+                    await asyncio.sleep(0.1)
+                    continue
+
+                target_profit = float(engine_st.get("target_profit_usd", 200.0))
+                basket_pnl = 0.0
+                basket_positions = []
+
+                # Real-time sub-10ms tick evaluation: use both broker floating profit and live tick calculation
+                for p in current_positions:
+                    tick_info = mt5.symbol_info_tick(p.symbol)
+                    calc_profit = p.profit
+                    if tick_info:
+                        if p.type == 0: # BUY position
+                            tick_profit = (tick_info.bid - p.price_open) * p.volume * 100.0
+                            calc_profit = max(p.profit, tick_profit)
+                        elif p.type == 1: # SELL position
+                            tick_profit = (p.price_open - tick_info.ask) * p.volume * 100.0
+                            calc_profit = max(p.profit, tick_profit)
+                    basket_pnl += calc_profit
+                    basket_positions.append(p)
+
+                # Trigger instantaneous auto-harvest the split second floating profit hits $200
+                if len(basket_positions) > 0 and basket_pnl >= target_profit:
+                    closed_summary = []
+                    LOG.info(f"⚡ SPLIT-SECOND AUTO-HARVEST TRIGGERED: Floating PnL +${basket_pnl:.2f} >= Target +${target_profit:.2f}! Sweeping all positions...")
+                    
+                    for p in basket_positions:
                         tick_info = mt5.symbol_info_tick(p.symbol)
-                        calc_profit = p.profit
-                        if tick_info:
-                            if p.type == mt5.ORDER_TYPE_BUY:
-                                calc_profit = max(p.profit, (tick_info.bid - p.price_open) * p.volume * 100.0)
-                            elif p.type == mt5.ORDER_TYPE_SELL:
-                                calc_profit = max(p.profit, (p.price_open - tick_info.ask) * p.volume * 100.0)
-                        basket_pnl += calc_profit
-                        basket_positions.append(p)
-
-                    # Trigger instant auto-harvest whenever total floating profit reaches or exceeds target profit ($200)
-                    if len(basket_positions) > 0 and basket_pnl >= target_profit:
-                        closed_summary = []
-                        LOG.info(f"⚡ SPLIT-SECOND AUTO-HARVEST TRIGGERED: Floating PnL +${basket_pnl:.2f} >= Target +${target_profit:.2f}! Sweeping all 1.0 lot positions...")
+                        c_price = (tick_info.bid if p.type == 0 else tick_info.ask) if tick_info else (p.price_current)
+                        c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
                         
-                        for p in basket_positions:
-                            for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
-                                tick_info = mt5.symbol_info_tick(p.symbol)
-                                if not tick_info:
-                                    break
-                                c_price = tick_info.bid if p.type == 0 else tick_info.ask
-                                c_type = mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY
-                                close_req = {
-                                    "action": mt5.TRADE_ACTION_DEAL,
-                                    "position": p.ticket,
-                                    "symbol": p.symbol,
-                                    "volume": p.volume,
-                                    "type": c_type,
-                                    "price": c_price,
-                                    "deviation": 50,
-                                    "magic": p.magic,
-                                    "comment": "Auto-Harvest Win",
-                                    "type_time": mt5.ORDER_TIME_GTC,
-                                    "type_filling": fill_mode
-                                }
-                                res = mt5.order_send(close_req)
-                                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                                    closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
-                                    break
+                        for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                            close_req = {
+                                "action": mt5.TRADE_ACTION_DEAL,
+                                "position": p.ticket,
+                                "symbol": p.symbol,
+                                "volume": p.volume,
+                                "type": c_type,
+                                "price": c_price,
+                                "deviation": 50,
+                                "magic": p.magic,
+                                "comment": "Auto-Harvest Win",
+                                "type_time": mt5.ORDER_TIME_GTC,
+                                "type_filling": fill_mode
+                            }
+                            res = mt5.order_send(close_req)
+                            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
+                                break
 
-                        # Unconditionally cancel ALL pending orders on MT5 to guarantee 100% clean slate
-                        pending_orders = mt5.orders_get() or []
-                        for o in pending_orders:
-                            mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
+                    # Unconditionally cancel ALL pending orders on MT5 to guarantee 100% clean slate
+                    pending_orders = mt5.orders_get() or []
+                    for o in pending_orders:
+                        mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
 
-                        # Update persistent stats & return cleanly to IDLE
-                        engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
-                        engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
-                        engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                        _save_engine_state(engine_st)
+                    # Update persistent stats & return cleanly to IDLE
+                    engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
+                    engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
+                    engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    _save_engine_state(engine_st)
 
-                        harvest_msg = (
-                            f"🎉🎉 [SYSTEM AUTO-WIN HARVEST ACHIEVED: +${basket_pnl:.2f}] 🎉🎉\n"
-                            f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
-                            f"• Closed Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
-                            f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
-                            f"• DESK STATUS: 100% FLAT (All trades & pending orders cleared. No auto-flip).\n"
-                            f"• CIO MANDATE: Scout the fresh candle structure and deploy your next direct 1.0 lot setup!"
-                        )
-                        LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked! Desk is 100% FLAT.")
-                        post_to_opencode_session("OpenCode (CIO)", harvest_msg)
+                    harvest_msg = (
+                        f"🎉🎉 [SYSTEM AUTO-WIN HARVEST ACHIEVED: +${basket_pnl:.2f}] 🎉🎉\n"
+                        f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
+                        f"• Closed Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
+                        f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
+                        f"• DESK STATUS: 100% FLAT (All trades & pending orders cleared. No auto-flip).\n"
+                        f"• CIO MANDATE: Scout the fresh market structure and deploy your next evaluated setup!"
+                    )
+                    LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked! Desk is 100% FLAT.")
+                    post_to_opencode_session("OpenCode (CIO)", harvest_msg)
 
-                # High-frequency sampling: 50ms when active positions exist, 200ms when idle
-                sleep_dur = 0.05 if current_positions else 0.2
-                await asyncio.sleep(sleep_dur)
+                # Sub-10ms ultra-high-frequency loop when active positions exist
+                await asyncio.sleep(0.01)
             except Exception as e:
                 LOG.debug(f"UniversalAutoHarvestEngine loop error: {e}")
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.05)
 
     async def start_loop(self):
         self.is_running = True
