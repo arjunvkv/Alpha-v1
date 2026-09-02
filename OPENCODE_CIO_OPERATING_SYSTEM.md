@@ -131,3 +131,9 @@ In **EVERY market evaluation**, you synthesize all 5 pillars of **O.C.E.A.N.**:
 * Broker Take-Profit (`tp_price`) is set normally during order placement at structural levels (e.g. opposite Value Area level, FVG CE, or Liquidity Pool).
 * Dollar-based auto-exit is **OFF**. Trades run to their structural TP / SL target or are managed dynamically via `update_position(ticket, action)`.
 * When an exit occurs or price moves away, cancel outdated orders via `cancel_pending_order()` and restage fresh setups at the next validated zone.
+
+---
+
+## 6. CANONICAL MASTER REFERENCE COMPENDIUM
+* For the exhaustive empirical treatise on Auction Market Theory, Order Book Microstructure, 4TF Fractals, Real Yields, COT Positioning, and FVG/Volume Profile Ontology, refer to:
+  👉 **[`OCEAN_MARKET_REALITY_COMPENDIUM.md`](file:///c:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md)**
