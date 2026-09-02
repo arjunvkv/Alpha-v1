@@ -602,6 +602,22 @@ def mcp_alpha_place_probe_grid(
         sym = _normalize_symbol(symbol)
         state = _load_engine_state()
         
+        # Parse inputs safely against string/json encoding
+        if isinstance(up_prices, str):
+            try:
+                up_prices = json.loads(up_prices)
+            except Exception:
+                up_prices = [float(x.strip()) for x in up_prices.split(",") if x.strip()]
+        if isinstance(down_prices, str):
+            try:
+                down_prices = json.loads(down_prices)
+            except Exception:
+                down_prices = [float(x.strip()) for x in down_prices.split(",") if x.strip()]
+
+        sl_dist = float(sl_pts)
+        tp_dist = float(tp_pts)
+        vol = float(volume)
+
         type_map = {
             "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
             "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,
@@ -634,15 +650,15 @@ def mcp_alpha_place_probe_grid(
         u_enum = type_map.get(u_type_clean, mt5.ORDER_TYPE_SELL_LIMIT)
         is_up_sell = u_enum in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
         
-        for idx, p in enumerate(up_prices):
+        for idx, p in enumerate(up_prices or []):
             target_price = float(p)
-            sl = target_price + sl_pts if is_up_sell else target_price - sl_pts
-            tp = target_price - tp_pts if is_up_sell else target_price + tp_pts
+            sl = target_price + sl_dist if is_up_sell else target_price - sl_dist
+            tp = target_price - tp_dist if is_up_sell else target_price + tp_dist
             comment = f"Probe:UP_{idx+1}:{tag}"[:31]
             req = {
                 "action": mt5.TRADE_ACTION_PENDING,
                 "symbol": sym,
-                "volume": float(volume),
+                "volume": vol,
                 "type": u_enum,
                 "price": target_price,
                 "sl": float(sl),
@@ -664,15 +680,15 @@ def mcp_alpha_place_probe_grid(
         d_enum = type_map.get(d_type_clean, mt5.ORDER_TYPE_BUY_LIMIT)
         is_down_buy = d_enum in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
         
-        for idx, p in enumerate(down_prices):
+        for idx, p in enumerate(down_prices or []):
             target_price = float(p)
-            sl = target_price - sl_pts if is_down_buy else target_price + sl_pts
-            tp = target_price + tp_pts if is_down_buy else target_price - tp_pts
+            sl = target_price - sl_dist if is_down_buy else target_price + sl_dist
+            tp = target_price + tp_dist if is_down_buy else target_price - tp_dist
             comment = f"Probe:DN_{idx+1}:{tag}"[:31]
             req = {
                 "action": mt5.TRADE_ACTION_PENDING,
                 "symbol": sym,
-                "volume": float(volume),
+                "volume": vol,
                 "type": d_enum,
                 "price": target_price,
                 "sl": float(sl),
