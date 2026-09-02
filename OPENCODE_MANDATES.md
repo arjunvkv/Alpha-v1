@@ -278,11 +278,12 @@ This file is Alpha's single controlling Agent rule and study mandate.
 
 Historical strategy documents may be retained as source evidence and archive material, but they do not override this file and do not independently control Agent decisions.
 
-## 13. Canonical Dual-Tranche Execution & Active Dossier Harvest Protocol
+## 13. Canonical Dual-Tranche Execution & Active Retrace Harvest Protocol
 
-1. **LARGE SL & TP ON BROKER (ROOM TO BREATHE)**: Set wide broker Stop Loss and Take Profit (e.g. 15-20 pts safety buffer) so price has plenty of room to run around and breathe without getting clipped by noise wicks. Zero trailing stops.
-2. **ACTIVE AGENT DOSSIER HARVESTING**: The Agent actively manages and closes the trade during 1-minute / 3-minute dossier reviews. When the trade reaches target profit (+2.0 to +3.0 pts / $200-$300 profit on 1.0 lot) or completes its expansion, call `mcp_alpha_update_position(action='FULL_EXIT')` to close both positions and bank the win!
-3. **INSTITUTIONAL DISCOUNT ENTRY**: Enter at the structural discount point (e.g. below VAL for longs / above VAH for shorts, or M5 FVG 50% CE).
-4. **NO OVER-THINKING / NO GATING**: Deploy 0.01 probe immediately at the discount point without hesitating. The instant the probe confirms reaction (+1.0 to +1.5 pts / +$1.00-$1.50 gain), deploy the 1.0 lot scale order without over-gating!
-5. **NEXT NEAREST THESIS REPEAT**: Once closed in profit, stand flat -> scan for the next nearest thesis FVG / discount level -> repeat the cycle.
+1. **NO OUTCOME BIAS / NO LAST-TRADE FIXATION**: Never fixate on the last winning or losing trade or wait forever for an identical setup. Every market cycle is an independent, fresh structural opportunity.
+2. **NO PANIC-CUTTING ON 1.0 LOT SCALE**: Once the 1.0 lot scale is placed, NEVER panic-cut on normal intra-move market breathing or minor retracements. Let the wide structural stop and target do their job.
+3. **RETRACE CAPTURE SCALING (SUPERIOR FILL PRICING)**: When the 0.01 probe validates initial reaction, place the 1.0 lot scale when price retraces back into the optimal capture retest zone (e.g. FVG CE / discount floor retest) to capture superior entry pricing before the expansion!
+4. **NO PERPETUAL GATING (PROBE & RETRACE OVER LAG)**: Do NOT gate forever waiting for slow lagging signals like delayed delta flips. Deploy the 0.01 probe immediately at the discount zone, validate absorption, and scale 1.0 lot on the retrace without analysis paralysis.
+5. **EARLY WATCH REGISTRATION (PRE-EVALUATE SETUPS)**: Always call `mcp_alpha_register_watch` early as price approaches key candidate levels (2-3 pts ahead) so the desk pre-evaluates and arms the thesis before price hits the level.
+6. **ACTIVE DOSSIER HARVEST & WIDE SL/TP**: Set wide broker SL/TP (15-20 pts) for room to breathe. Manage actively during 1-min dossier reviews and close both positions via `mcp_alpha_update_position(action='FULL_EXIT')` at +2.0 to +3.0 pts ($200-$300 gain).
 

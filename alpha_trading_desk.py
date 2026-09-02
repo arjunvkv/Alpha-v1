@@ -765,11 +765,13 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE DOSSIER HARVEST PROTOCOL ===
-  1. LARGE SL & TP ON BROKER (ROOM TO BREATHE): Set wide broker SL/TP (e.g. 15-20 pts safety buffer) so price has room to run around without getting clipped by noise wicks. Zero trailing stops.
-  2. ACTIVE AGENT DOSSIER HARVESTING: In your 1-min active reviews, when the trade reaches target profit (+2.0 to +3.0 pts / $200-$300 on 1.0 lot) or completes expansion, CALL mcp_alpha_update_position(action='FULL_EXIT') to close both positions and bank the win!
-  3. DISCOUNT ENTRY & PROBE VALIDATION: Enter at institutional discount (below VAL for longs / above VAH for shorts, or M5 FVG 50% CE). Deploy 0.01 probe immediately -> validate with probe reaction (+1.0 to +1.5 pts) -> deploy 1.0 lot scale order without over-gating!
-  4. REPEAT CYCLE: Once closed in profit, stand flat, scan for next nearest thesis FVG/discount level, and repeat.
+        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE RETRACE HARVEST PROTOCOL ===
+  1. NO OUTCOME BIAS: Never fixate on last winning or losing trade or wait forever for an identical setup. Every cycle is fresh.
+  2. NO PANIC-CUTTING: Once the 1.0 lot scale is placed, NEVER panic-cut on normal market breathing. Let the trade work.
+  3. RETRACE CAPTURE SCALING: When 0.01 probe validates reaction, place 1.0 lot scale when price retraces back into optimal retest zone (FVG CE / discount floor) for superior fill pricing before expansion!
+  4. NO PERPETUAL GATING: Do NOT gate forever waiting for slow lagging signals (e.g. delta flips). Probe to validate absorption, then scale 1.0 lot on retrace without analysis paralysis.
+  5. EARLY WATCH REGISTRATION: Register dynamic watches (mcp_alpha_register_watch) early (2-3 pts ahead) to pre-evaluate setups before price hits the level.
+  6. ACTIVE DOSSIER HARVEST & WIDE SL/TP: Wide broker SL/TP (15-20 pts) for room to breathe. Close both positions via mcp_alpha_update_position(action='FULL_EXIT') at +2.0 to +3.0 pts ($200-$300 gain).
 """
 
         file_ref_header = (
