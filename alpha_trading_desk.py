@@ -902,7 +902,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. Evaluate directional bias and stage 1 planned trigger (or execute 1 market order) in your chosen direction. If confluence is especially strong and you are confident, you may stage up to 2 orders (e.g. 2 tiered pending limits across supply/demand tiers). You are NOT forced to place both sides. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
+                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. Confirm your directional bias using Volume Profile (POC/VAH/VAL via get_full_institutional_profile) and FVG Fill Rate (<30% Fresh vs 50% CE via get_fvg_matrix). Stage 1 planned trigger (or execute 1 market order) in your chosen direction. If confluence is especially strong and you are confident, you may stage up to 2 orders (e.g. 2 tiered pending limits across supply/demand tiers). You are NOT forced to place both sides. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)

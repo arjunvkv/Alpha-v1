@@ -62,10 +62,10 @@
     "In EVERY single market evaluation, you MUST actively weave all 6 layers into your rationale:",
     "• [Layer 1 - Macro]: Explicitly evaluate US10Y Real Yields (+2.39%), DXY, and geopolitical news pressure.",
     "• [Layer 2 - COT]: Explicitly evaluate CFTC 100th percentile Speculator crowding vs Commercial hedging.",
-    "• [Layer 3 - Volume Profile]: Explicitly evaluate price distance from VAL (4321) / POC (4327) (Value Buyer Discount vs Premium Expansion).",
+    "• [Layer 3 - Volume Profile Confirmation]: Explicitly evaluate price location relative to POC, VAH, and VAL (Value Buyer Discount vs Premium Expansion vs Value Area Re-acceptance via get_full_institutional_profile).",
     "• [Layer 4 - 4TF Confluence]: Explicitly evaluate H4/H1/M15/M5 structural alignment and exact RSIs/EMAs.",
-    "• [Layer 5 - Microstructure & CVD]: Explicitly evaluate M5 FVG 50% CE, live measured CVD delta, and tick velocity.",
-    "• [Layer 6 - Execution Blueprint]: Explicitly state your planned/market entry price, structural SL, and confirm $200 harvest target.",
+    "• [Layer 5 - Microstructure & FVG Fill Rate]: Explicitly evaluate nearest FVG 50% CE, live FVG fill_pct (<30% Fresh vs 30-60% CE vs >60% Exhausted via get_fvg_matrix), live measured CVD delta, and tick velocity.",
+    "• [Layer 6 - Execution Blueprint]: Explicitly state your planned/market entry price (aligned with POC/VAH/VAL and Fresh FVG CE), structural SL, and confirm $200 harvest target.",
     "REFER TO C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md FOR YOUR COMPLETE MASTER OPERATING PROTOCOL."
   ],
   "provider": {
