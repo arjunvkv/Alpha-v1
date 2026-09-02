@@ -154,22 +154,30 @@ def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str 
     }, indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_active_watches() -> str:
+def mcp_alpha_get_active_watches(symbol: str = None) -> str:
     """Fetch currently registered dynamic watches on the trading desk."""
     try:
         state_path = ALPHA_ROOT / "data" / "live" / "discovery_state.json"
         if state_path.exists():
             with open(state_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return json.dumps(data.get("active_watches", []), indent=2)
+                watches = data.get("active_watches", [])
+                if symbol:
+                    sym_clean = _normalize_symbol(symbol)
+                    watches = [w for w in watches if w.get("symbol", "").upper() == sym_clean.upper()]
+                return json.dumps(watches, indent=2)
     except Exception:
         pass
-    return json.dumps(list(_active_watches.values()), indent=2)
+    watches = list(_active_watches.values())
+    if symbol:
+        sym_clean = _normalize_symbol(symbol)
+        watches = [w for w in watches if w.get("symbol", "").upper() == sym_clean.upper()]
+    return json.dumps(watches, indent=2)
 
 @mcp.tool()
-def get_active_watches() -> str:
+def get_active_watches(symbol: str = None) -> str:
     """Fetch currently registered dynamic watches on the trading desk."""
-    return mcp_alpha_get_active_watches()
+    return mcp_alpha_get_active_watches(symbol)
 
 @mcp.tool()
 def mcp_alpha_execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
@@ -775,12 +783,13 @@ def mcp_alpha_get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: 
         return json.dumps({"status": "ERROR", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD") -> str:
+def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD", symbol: Any = None) -> str:
     """Query granular post-trade forensics and entry market context for closed MT5 deals (accepts ticket number int/str or symbol str e.g. 'XAUUSD')."""
+    resolved_target = symbol if symbol is not None else target
     from tradingagents.trade_forensics import TradeForensicsEngine
-    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for {target}")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for {resolved_target}")
     forensics = TradeForensicsEngine()
-    return json.dumps(forensics.get_trade_forensics(target), indent=2)
+    return json.dumps(forensics.get_trade_forensics(resolved_target), indent=2)
 
 @mcp.tool()
 def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
