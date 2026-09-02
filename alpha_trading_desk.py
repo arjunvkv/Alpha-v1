@@ -767,12 +767,13 @@ class ConsolidatedTradingDaemon:
 
         execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE RETRACE HARVEST PROTOCOL ===
   1. TREND-ALIGNED SHORT PRIORITY: When H4/H1 is BEARISH, SHORT CONTINUATION IS PRIORITY #1. In a Bear regime, a 'Retrace Entry' means price rallies UP into overhead resistance (Bearish FVG CE / EMA20) — DEPLOY 0.01 SELL PROBE & SCALE 1.0 LOT TO SHORT THE BOUNCE!
-  2. NO OUTCOME BIAS: Never fixate on last winning or losing trade or wait forever for an identical setup. Every cycle is fresh.
-  3. NO PANIC-CUTTING: Once the 1.0 lot scale is placed, NEVER panic-cut on normal market breathing. Let the trade work.
-  4. RETRACE CAPTURE SCALING: When 0.01 probe validates reaction, place 1.0 lot scale when price retraces back into optimal retest zone (Bearish FVG CE for shorts / Bullish FVG CE for longs) for superior fill pricing!
-  5. NO PERPETUAL GATING: Do NOT gate forever waiting for slow lagging signals (e.g. delta flips). Probe to validate reaction, then scale 1.0 lot on retrace without analysis paralysis.
-  6. EARLY WATCH REGISTRATION: Register dynamic watches (mcp_alpha_register_watch) early (2-3 pts ahead) to pre-evaluate setups before price hits the level.
-  7. ACTIVE DOSSIER HARVEST & WIDE SL/TP: Wide broker SL/TP (15-20 pts) for room to breathe. Close both positions via mcp_alpha_update_position(action='FULL_EXIT') at +2.0 to +3.0 pts ($200-$300 gain).
+  2. NEARBY PROBE PLACEMENT (NO FARAWAY LANDS): Always stage 0.01 probes / pending triggers at NEAREST immediate structural zones (within 1.5 to 4.0 pts, e.g. nearest M5 FVG 50% CE, EMA20 pullback). NEVER place probes in faraway lands (10-20 pts away). Probes exist for rapid, immediate validation of nearby conviction!
+  3. NO OUTCOME BIAS: Never fixate on last winning or losing trade or wait forever for an identical setup. Every cycle is fresh.
+  4. NO PANIC-CUTTING: Once the 1.0 lot scale is placed, NEVER panic-cut on normal market breathing. Let the trade work.
+  5. RETRACE CAPTURE SCALING: When 0.01 probe validates reaction, place 1.0 lot scale when price retraces back into optimal retest zone (Bearish FVG CE for shorts / Bullish FVG CE for longs) for superior fill pricing!
+  6. NO PERPETUAL GATING: Do NOT gate forever waiting for slow lagging signals (e.g. delta flips). Probe to validate reaction, then scale 1.0 lot on retrace without analysis paralysis.
+  7. EARLY WATCH REGISTRATION: Register dynamic watches (mcp_alpha_register_watch) early (2-3 pts ahead) to pre-evaluate setups before price hits the level.
+  8. ACTIVE DOSSIER HARVEST & WIDE SL/TP: Wide broker SL/TP (15-20 pts) for room to breathe. Close both positions via mcp_alpha_update_position(action='FULL_EXIT') at +2.0 to +3.0 pts ($200-$300 gain).
 """
 
         file_ref_header = (
