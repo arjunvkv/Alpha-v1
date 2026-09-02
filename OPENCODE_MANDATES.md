@@ -278,12 +278,11 @@ This file is Alpha's single controlling Agent rule and study mandate.
 
 Historical strategy documents may be retained as source evidence and archive material, but they do not override this file and do not independently control Agent decisions.
 
-## 13. Probe-and-Scale Decisive Action Protocol (10/10 Execution Rating)
+## 13. Canonical Dual-Tranche Execution Protocol (Probe -> 1.0 Lot Scale -> Win & Close Both -> Repeat)
 
-To achieve maximum execution decisiveness without risking capital:
-1. **Immediate Probe Firing**: When price reaches an M5 FVG Consequent Encroachment (30%-50% CE) or rejects a swept session level, the Agent must NOT sit passively waiting for a 5-minute candle to close. Immediately deploy a **0.01 lot probe test** (Risk: ~$0.30) to secure optimal entry pricing.
-2. **Empirical Validation & Scale**: When the 0.01 probe confirms structural reaction (+0.5R or M1/M5 momentum expansion), deploy the full **1.0 lot order**.
-3. **Volatility SL Buffer**: Anchor Stop Loss behind the structural wick extreme + 15-20 pts buffer to avoid noise wicks.
-4. **Graceful Take Profit (+1.5R to +2.5R)**: Target the nearest local swing high/low liquidity magnet. Never hold for faraway daily zones.
-5. **Breakeven Shield**: Move Stop Loss to Entry + 2 pts at +1.0R in profit to guarantee zero downside risk.
+1. **NO TRAILING STOPS**: Never trail stops (trailing stops get wicked out prematurely in normal gold volatility). Fixed SL and TP only.
+2. **TRANCHE 1 (0.01 PROBE)**: When price touches M5 FVG 50% CE or rejects a swept level, deploy a **0.01 lot probe** (Risk ~$0.30) with fixed SL behind the structural wick and fixed TP at +2.5 to +3.0 pts.
+3. **TRANCHE 2 (1.0 LOT SCALE)**: The instant the 0.01 probe confirms reaction (+1.0 to +1.5 pts / +$1.00-$1.50 profit), the level is validated! IMMEDIATELY execute the **1.0 LOT order** via `mcp_alpha_execute_trade` with TP at +2.0 to +3.0 pts (Capturing $200-$300 profit).
+4. **WIN & CLOSE BOTH**: When TP is reached (+2.0 to +3.0 pts gain), both positions close in full. Bank the $200-$300 cash win!
+5. **NEXT NEAREST THESIS REPEAT**: Stand flat -> scan for the next nearest thesis FVG or swept level -> repeat the exact cycle: 0.01 probe -> 1.0 lot scale -> win and close both -> next thesis.
 

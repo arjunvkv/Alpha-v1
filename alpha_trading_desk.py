@@ -765,14 +765,12 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== DECISIVE 1.0 LOT SCALING & BREAKEVEN HARVEST MANDATE ===
-  1. CONCRETE 1.0 LOT SCALE TRIGGER (+$1.50 to +$2.00 GAIN):
-     • When a 0.01 probe reaches +$1.50 to +$2.00 in floating profit (or +15-20 pts / +0.3R), the trade thesis is PROVEN!
-     • You MUST IMMEDIATELY deploy the 1.0 LOT SCALE ORDER via mcp_alpha_execute_trade to capture the $200-$300 profit!
-     • NEVER sit idly monitoring a profitable probe at 0.01 lot without scaling!
-  2. SIMULTANEOUS BREAKEVEN SHIELD:
-     • The instant the 1.0 lot scale order is fired, advance SL to Entry + 1 pt (mcp_alpha_update_position action='BREAK_EVEN') to make the entire 1.01 lot position 100% risk-free.
-  3. MANDATORY 6-DIMENSIONAL SYNTHESIS: In your written rationale, synthesize Macro, COT, Volume Profile, 4TF, CVD Delta, and the 1.0 Lot Scale Action.
+        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION PROTOCOL (PROBE -> 1.0 LOT SCALE -> WIN & CLOSE BOTH) ===
+  1. NO TRAILING STOPS: Never trail stops (trailing stops get wicked out prematurely). Fixed SL and TP only.
+  2. TRANCHE 1 (0.01 PROBE): At M5 FVG 50% CE or swept level rejection, deploy 0.01 probe (Risk ~$0.30) with fixed SL and TP at +2.5 to +3.0 pts.
+  3. TRANCHE 2 (1.0 LOT SCALE): The instant the 0.01 probe shows reaction (+1.0 to +1.5 pts / +$1.00-$1.50 gain), IMMEDIATELY fire the 1.0 LOT SCALE ORDER via mcp_alpha_execute_trade with TP at +2.0 to +3.0 pts ($200-$300 profit).
+  4. WIN & CLOSE BOTH: When TP is hit (+2.0 to +3.0 pts gain), both positions close in full. Bank the profit!
+  5. NEXT NEAREST THESIS: Stand flat -> scan for next nearest thesis FVG/level -> repeat: 0.01 probe -> 1.0 lot scale -> win and close both -> next thesis.
 """
 
         file_ref_header = (
