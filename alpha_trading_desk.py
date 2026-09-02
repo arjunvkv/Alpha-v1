@@ -904,7 +904,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Use the 10-Point Pre-Validation Checklist to map your structural trade geometry (1. Macro Lifecycle, 2. COT Positioning, 3. Volume Profile POC/VAH/VAL, 4. 4TF Confluence, 5. Nearest Fresh FVG 50% CE, 6. Microstructure Baseline, 7. Liquidity Magnets, 8. ULM Winning Precedents, 9. Analyst Debate, 10. Execution Blueprint). Do NOT sit flat in fear-based gating or wait for real-time unicorn metrics while price approaches support/resistance. IMMEDIATELY call place_pending_order to arm your 1.0-lot planned limit trigger in advance with structural SL and TP! If confluence is especially strong, stage up to 2 tiered limit orders. Dollar-based auto-exit is OFF. "
+                    f"MANDATORY EXECUTIVE ACTION: Audit the 3-Pillar Structural Confirmation Matrix (Pillar 1: Location at Fresh FVG 50% CE/VAL/VAH/POC/Sweep, Pillar 2: Regime & Trend/Mean-Reversion Alignment, Pillar 3: Risk Asymmetry R:R >= 2.5:1 with hard SL beyond zone). If ALL 3 Pillars PASS, IMMEDIATELY call place_pending_order to arm your 1.0-lot planned limit trigger in advance with structural SL and TP! If any Pillar FAILS, STAND FLAT with an explicit 3-pillar breakdown (do NOT force trades). Dollar-based auto-exit is OFF. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
