@@ -765,11 +765,13 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== SEPARATED CONFIGURATION & POINT-BASED EXECUTION PROTOCOL ===
+        execution_blueprint_block = """=== DIRECTIONAL EVALUATION & POINT-BASED EXECUTION PROTOCOL ===
   1. SEPARATE CONFIGURATION: Use configure_desk_execution(lot_size=1.0, target_profit_usd=200.0, sl_buffer_pts=15.0) to configure lot size and harvest dollar target.
-  2. EXECUTION & PLANNING (POINTS ONLY - NO TP PARAMETERS):
-     • execute_market_order(symbol, side, sl_price=0.0) -> Execute direct market order (draws configured lots, no broker TP set).
-     • place_pending_order(symbol, order_type, price, sl_price=0.0, tag="") -> Stage planned pending limit/stop orders at structural price points (draws configured lots, no broker TP set).
+  2. DIRECTIONAL EXECUTION (1 OR UP TO 2 ORDERS):
+     • Evaluate market structure and place 1 planned trigger (or 1 market order) in your evaluated direction.
+     • If highly confident / high conviction, you are authorized to place up to 2 orders (e.g. 2 tiered pending limits).
+     • execute_market_order(symbol, side, sl_price=0.0) -> Execute direct market order.
+     • place_pending_order(symbol, order_type, price, sl_price=0.0, tag="") -> Stage planned limit/stop orders at structural price points.
      • cancel_pending_order(order_ticket) -> Cancel active pending orders.
      • update_position(ticket, action) -> Manage active positions (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
      • get_account_status() -> Fetch live balance, equity, and open positions.
@@ -900,7 +902,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. You MUST stage 1.0 Lot Planned Triggers on BOTH SIDES (1.0 Lot SELL_LIMIT at Supply Ceiling and 1.0 Lot BUY_LIMIT at Demand Floor via place_pending_order) or execute direct 1.0 Lot market order via execute_market_order. Do NOT place 0.01 probes. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
+                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. Evaluate directional bias and stage 1 planned trigger (or execute 1 market order) in your chosen direction. If confluence is especially strong and you are confident, you may stage up to 2 orders (e.g. 2 tiered pending limits across supply/demand tiers). You are NOT forced to place both sides. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
