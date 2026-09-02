@@ -278,11 +278,11 @@ This file is Alpha's single controlling Agent rule and study mandate.
 
 Historical strategy documents may be retained as source evidence and archive material, but they do not override this file and do not independently control Agent decisions.
 
-## 13. Canonical Dual-Tranche Execution Protocol (Probe -> 1.0 Lot Scale -> Win & Close Both -> Repeat)
+## 13. Canonical Dual-Tranche Execution & Active Dossier Harvest Protocol
 
-1. **NO TRAILING STOPS**: Never trail stops (trailing stops get wicked out prematurely in normal gold volatility). Fixed SL and TP only.
-2. **TRANCHE 1 (0.01 PROBE)**: When price touches M5 FVG 50% CE or rejects a swept level, deploy a **0.01 lot probe** (Risk ~$0.30) with fixed SL behind the structural wick and fixed TP at +2.5 to +3.0 pts.
-3. **TRANCHE 2 (1.0 LOT SCALE)**: The instant the 0.01 probe confirms reaction (+1.0 to +1.5 pts / +$1.00-$1.50 profit), the level is validated! IMMEDIATELY execute the **1.0 LOT order** via `mcp_alpha_execute_trade` with TP at +2.0 to +3.0 pts (Capturing $200-$300 profit).
-4. **WIN & CLOSE BOTH**: When TP is reached (+2.0 to +3.0 pts gain), both positions close in full. Bank the $200-$300 cash win!
-5. **NEXT NEAREST THESIS REPEAT**: Stand flat -> scan for the next nearest thesis FVG or swept level -> repeat the exact cycle: 0.01 probe -> 1.0 lot scale -> win and close both -> next thesis.
+1. **LARGE SL & TP ON BROKER (ROOM TO BREATHE)**: Set wide broker Stop Loss and Take Profit (e.g. 15-20 pts safety buffer) so price has plenty of room to run around and breathe without getting clipped by noise wicks. Zero trailing stops.
+2. **ACTIVE AGENT DOSSIER HARVESTING**: The Agent actively manages and closes the trade during 1-minute / 3-minute dossier reviews. When the trade reaches target profit (+2.0 to +3.0 pts / $200-$300 profit on 1.0 lot) or completes its expansion, call `mcp_alpha_update_position(action='FULL_EXIT')` to close both positions and bank the win!
+3. **INSTITUTIONAL DISCOUNT ENTRY**: Enter at the structural discount point (e.g. below VAL for longs / above VAH for shorts, or M5 FVG 50% CE).
+4. **NO OVER-THINKING / NO GATING**: Deploy 0.01 probe immediately at the discount point without hesitating. The instant the probe confirms reaction (+1.0 to +1.5 pts / +$1.00-$1.50 gain), deploy the 1.0 lot scale order without over-gating!
+5. **NEXT NEAREST THESIS REPEAT**: Once closed in profit, stand flat -> scan for the next nearest thesis FVG / discount level -> repeat the cycle.
 

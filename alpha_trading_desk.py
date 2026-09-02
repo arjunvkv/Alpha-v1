@@ -765,12 +765,11 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION PROTOCOL (PROBE -> 1.0 LOT SCALE -> WIN & CLOSE BOTH) ===
-  1. NO TRAILING STOPS: Never trail stops (trailing stops get wicked out prematurely). Fixed SL and TP only.
-  2. TRANCHE 1 (0.01 PROBE): At M5 FVG 50% CE or swept level rejection, deploy 0.01 probe (Risk ~$0.30) with fixed SL and TP at +2.5 to +3.0 pts.
-  3. TRANCHE 2 (1.0 LOT SCALE): The instant the 0.01 probe shows reaction (+1.0 to +1.5 pts / +$1.00-$1.50 gain), IMMEDIATELY fire the 1.0 LOT SCALE ORDER via mcp_alpha_execute_trade with TP at +2.0 to +3.0 pts ($200-$300 profit).
-  4. WIN & CLOSE BOTH: When TP is hit (+2.0 to +3.0 pts gain), both positions close in full. Bank the profit!
-  5. NEXT NEAREST THESIS: Stand flat -> scan for next nearest thesis FVG/level -> repeat: 0.01 probe -> 1.0 lot scale -> win and close both -> next thesis.
+        execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE DOSSIER HARVEST PROTOCOL ===
+  1. LARGE SL & TP ON BROKER (ROOM TO BREATHE): Set wide broker SL/TP (e.g. 15-20 pts safety buffer) so price has room to run around without getting clipped by noise wicks. Zero trailing stops.
+  2. ACTIVE AGENT DOSSIER HARVESTING: In your 1-min active reviews, when the trade reaches target profit (+2.0 to +3.0 pts / $200-$300 on 1.0 lot) or completes expansion, CALL mcp_alpha_update_position(action='FULL_EXIT') to close both positions and bank the win!
+  3. DISCOUNT ENTRY & PROBE VALIDATION: Enter at institutional discount (below VAL for longs / above VAH for shorts, or M5 FVG 50% CE). Deploy 0.01 probe immediately -> validate with probe reaction (+1.0 to +1.5 pts) -> deploy 1.0 lot scale order without over-gating!
+  4. REPEAT CYCLE: Once closed in profit, stand flat, scan for next nearest thesis FVG/discount level, and repeat.
 """
 
         file_ref_header = (
