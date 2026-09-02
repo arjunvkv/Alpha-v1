@@ -905,9 +905,9 @@ class ConsolidatedTradingDaemon:
                     f"{full_4tf_reveal_block}"
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
-                    f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Consult the Cognitive Node Globe via get_cognitive_globe_reasoning('XAUUSD') or get_nearest_pure_trade('XAUUSD'). Synthesize the multi-dimensional evidential path (Order Flow, 4TF Structure, Macro Real Yields, COT Crowding, Volume Profile, and FVG 50% CE). IMMEDIATELY call place_pending_order with volume=1.0 lot, structural SL, and structural TP (R:R >= 2.5:1) to stage your nearest high-conviction limit trigger live on MT5! Zero analysis paralysis. Zero sitting like a duck. Dollar-based auto-exit is OFF. "
+                    f"MANDATORY EXECUTIVE ACTION: Call mcp_alpha_get_nearest_pure_trade('XAUUSD') to retrieve the 52-condition quantitative brain verdict and exact structural geometry. If trade_valid is TRUE, IMMEDIATELY call mcp_alpha_place_pending_order with volume=1.0 lot, entry, SL, and TP to stage your trigger live on MT5! If your existing pending order is stale or out-of-position, cancel it with mcp_alpha_cancel_pending_order. Zero analysis paralysis. Zero sitting like a duck. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
+
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
 

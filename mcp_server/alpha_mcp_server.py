@@ -715,6 +715,17 @@ def get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
     """Alias for globe_get_nearest_trade. Full 9-module quantitative regime brain."""
     return globe_get_nearest_trade(symbol)
 
+@mcp.tool()
+def mcp_alpha_get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
+    """Canonical MCP tool for OpenCode CIO: Returns real quantitative condition-matched trade geometry."""
+    return globe_get_nearest_trade(symbol)
+
+@mcp.tool()
+def mcp_alpha_globe_conditions_now(symbol: str = "XAUUSD") -> str:
+    """Canonical MCP tool for OpenCode CIO: Classifies live market conditions across 52 quantitative conditions."""
+    return globe_conditions_now(symbol)
+
+
 
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
