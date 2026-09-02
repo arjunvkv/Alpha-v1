@@ -684,14 +684,19 @@ def mcp_alpha_place_probe_grid(
             state["down_probes_filled"] = []
         _save_engine_state(state)
         
+        corridor_width = round(min(up_prices) - max(down_prices), 2) if up_prices and down_prices else 0.0
+        
         return json.dumps({
             "status": "DEPLOYED",
             "symbol": sym,
+            "inter_zone_corridor_width_pts": corridor_width,
+            "supply_ceiling_zone": {"min": min(up_prices), "max": max(up_prices)} if up_prices else None,
+            "demand_floor_zone": {"min": min(down_prices), "max": max(down_prices)} if down_prices else None,
             "up_probes_staged": up_tickets,
             "down_probes_staged": down_tickets,
             "errors": errors,
             "engine_state": "PROBING",
-            "note": f"When any 3 probes fill in a direction, the system automatically fires {state.get('scale_lots', 1.0)} lot scale order and targets +${state.get('target_profit_usd', 200.0):.2f} auto-harvest."
+            "note": f"Dual-Zone Grid Active (Corridor: {corridor_width} pts). When all 3 probes in either zone fill, system fires {state.get('scale_lots', 1.0)} lot scale order and targets +${state.get('target_profit_usd', 200.0):.2f} auto-harvest. Upon exit, desk returns 100% FLAT (no auto-flip)."
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)

@@ -281,12 +281,12 @@ Historical strategy documents may be retained as source evidence and archive mat
 ## 13. Canonical 3-Probe Auto-Trigger & Deterministic Win-Harvest Protocol
 
 1. **OPENCODE ROLE: DEDICATED PROBE MANAGER (NO MANUAL EXITS)**: The agent acts strictly as the Chief Investment Officer & Probe Manager. Your mandate is to scout structural theses (4TF confluences, FVG 50% CE, VWAP, sweeps), deploy tight probe lineups, and invalidate outdated setups. The agent **NEVER manually closes trades**—scaling and profit harvesting are 100% automated by the system engine!
-2. **TIGHT STACKED 3-PROBE LINEUPS (0.3–0.8 PT SPACING)**: Stage 3 UP and 3 DOWN $0.01\text{ probes}$ closely stacked across the key thesis zone (entry edge, 50% CE, and extreme wick). Use `place_probe_grid` for atomic multi-order placement.
+2. **DUAL-ZONE INTER-RANGE LINEUPS (DEMAND FLOOR VS SUPPLY CEILING)**: Anchor 3 BUY probes strictly at the true Demand Floor (FVG CE / swept low) and 3 SELL probes strictly at the true Supply Ceiling (FVG CE / EMA20 resistance). Maintain a proper 3.0–6.0 pt corridor. **NEVER place probes in at-the-money midpoint chop!**
 3. **FULL MT5 TRIGGER ARSENAL**:
    - Pullbacks: `BUY_LIMIT` (demand floor) & `SELL_LIMIT` (supply ceiling).
    - Momentum Breakouts: `BUY_STOP` (overhead expansion) & `SELL_STOP` (breakdown continuation).
 4. **DETERMINISTIC 3-PROBE SYSTEM SCALE**: When all 3 probes in either direction fill, the background daemon INSTANTLY fires the **1.0 Lot Production Scale Order** directly on MT5 in $<100\text{ms}$ with hard broker SL risk protection.
-5. **AUTOMATIC $200 WIN HARVEST**: The daemon continuously monitors live basket net PnL. The exact millisecond net profit reaches **+$200.00+**, the system market-closes the 1.0 lot scale order and all active probes, banks the profit, and returns the desk to 100% FLAT.
-6. **THESIS INVALIDATION & RESET**: If a level is broken or price moves away ($>3.0\text{ pts}$) without triggering all 3 probes, call `invalidate_probe_triggers(direction='...')` to clear checkup counters back to `NONE` (0), clean up partial orphan probes, and immediately restage at the next fresh zone!
+5. **AUTOMATIC $200 WIN HARVEST & 100% FLAT EXIT**: The daemon continuously monitors live basket net PnL. The exact millisecond net profit reaches **+$200.00+** (or opposing boundary is reached), the system market-closes the 1.0 lot scale order and all active probes, cancels all pending orders, and returns the desk to **100% FLAT (ZERO immediate auto-flip)**.
+6. **THESIS INVALIDATION & CLEAN RESTAGING**: If a level is broken or price moves away ($>3.0\text{ pts}$) without triggering all 3 probes, call `invalidate_probe_triggers(direction='...')` to clear checkup counters back to `NONE` (0), clean up partial orphan probes, and immediately restage at the next fresh zone!
 7. **ZERO OUTCOME BIAS**: Never get fixated on the last winning or losing trade. Every market cycle is an independent, fresh structural opportunity.
 

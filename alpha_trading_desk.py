@@ -1085,7 +1085,13 @@ class ConsolidatedTradingDaemon:
                                     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                                         closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
 
-                            # Update persistent stats
+                            # Cancel any remaining pending probe orders on MT5 to guarantee 100% FLAT state
+                            pending_orders = mt5.orders_get() or []
+                            for o in pending_orders:
+                                if o.magic == 234001:
+                                    mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
+
+                            # Update persistent stats & return cleanly to IDLE (NO immediate auto-flip)
                             engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
                             engine_st["harvest_count"] = engine_st.get("harvest_count", 0) + 1
                             engine_st["last_harvest_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -1103,9 +1109,10 @@ class ConsolidatedTradingDaemon:
                                 f"• Realized Net Profit: +${basket_pnl:.2f} (Target: ${target_profit:.2f})\n"
                                 f"• Closed Basket Positions: {len(closed_summary)}\n  • " + "\n  • ".join(closed_summary) + "\n"
                                 f"• Lifetime Harvested Total: ${engine_st['total_harvested_usd']:.2f} ({engine_st['harvest_count']} wins)\n"
-                                f"• PROBE MANAGER MANDATE: The desk is 100% FLAT. Scout the nearest structural theses and stage your next tight 3 UP & 3 DOWN probe lineups!"
+                                f"• DESK STATUS: 100% FLAT (All trades & pending orders cleared. No auto-flip).\n"
+                                f"• PROBE MANAGER MANDATE: Scout the fresh market structure and deploy your next tight 3 UP & 3 DOWN probe lineups!"
                             )
-                            LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked!")
+                            LOG.info(f"AUTO-WIN HARVEST SUCCESS: +${basket_pnl:.2f} banked! Desk is 100% FLAT.")
                             post_to_opencode_session("OpenCode (CIO)", harvest_msg)
 
                     elif scale_ticket > 0 and scale_ticket not in current_tickets:
