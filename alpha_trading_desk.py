@@ -591,7 +591,7 @@ class ConsolidatedTradingDaemon:
                 try:
                     lib_payload = self.librarian.run_librarian_cycle({
                         "symbol": symbol,
-                        "fvg_type": near_fvg.get("type") or ("M5_BEAR_FVG" if "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG"),
+                        "fvg_type": near_fvg.get("type") or ("M5_BEAR_FVG" if "BEAR" in mtf.get("h4_trend", "").upper() or "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG"),
                         "fvg_top": near_fvg.get("top"),
                         "fvg_bottom": near_fvg.get("bottom"),
                         "fvg_ce": near_fvg.get("consequent_encroachment"),
