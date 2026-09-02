@@ -181,114 +181,33 @@ def get_active_watches(symbol: str = None) -> str:
 # CONFIGURATION STATE HELPER
 # ======================================================================
 
-DESK_CONFIG_PATH = ALPHA_ROOT / "data" / "live" / "auto_probe_engine_state.json"
-
-def _get_desk_config() -> dict:
-    defaults = {
-        "enabled": True,
-        "symbol": "XAUUSD",
-        "lot_size": 1.0,
-        "target_profit_usd": 200.0,
-        "sl_buffer_pts": 15.0,
-        "total_harvested_usd": 0.0,
-        "harvest_count": 0
-    }
-    if not DESK_CONFIG_PATH.exists():
-        DESK_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        DESK_CONFIG_PATH.write_text(json.dumps(defaults, indent=2), encoding="utf-8")
-        return defaults
-    try:
-        data = json.loads(DESK_CONFIG_PATH.read_text(encoding="utf-8"))
-        defaults.update(data)
-        return defaults
-    except Exception:
-        return defaults
-
-def _save_desk_config(cfg: dict):
-    try:
-        DESK_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        DESK_CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    except Exception as e:
-        LOG.error(f"Error saving desk config: {e}")
-
 # ======================================================================
-# 1. SEPARATE DESK CONFIGURATION TOOL (LOTS & DOLLAR TARGET)
-# ======================================================================
-
-@mcp.tool()
-def mcp_alpha_configure_desk_execution(
-    lot_size: float = 1.0,
-    target_profit_usd: float = 200.0,
-    sl_buffer_pts: float = 15.0,
-    symbol: str = "XAUUSD"
-) -> str:
-    """Configure desk execution parameters: lot size, auto-harvest dollar target, and default SL buffer points.
-    
-    The agent uses this tool to configure trade size and profit target separately from placing/planning orders.
-    
-    Args:
-        lot_size: Default trade volume in lots (default: 1.0).
-        target_profit_usd: Dollar profit target to split-second auto-close and bank the win (default: 200.0).
-        sl_buffer_pts: Default stop loss distance in points (default: 15.0).
-        symbol: Primary trading symbol (default: 'XAUUSD').
-    """
-    cfg = _get_desk_config()
-    cfg["lot_size"] = float(lot_size)
-    cfg["target_profit_usd"] = float(target_profit_usd)
-    cfg["sl_buffer_pts"] = float(sl_buffer_pts)
-    cfg["symbol"] = _normalize_symbol(symbol)
-    cfg["enabled"] = True
-    _save_desk_config(cfg)
-    
-    return json.dumps({
-        "status": "CONFIGURED",
-        "symbol": cfg["symbol"],
-        "lot_size": cfg["lot_size"],
-        "target_profit_usd": f"${cfg['target_profit_usd']:.2f}",
-        "sl_buffer_pts": cfg["sl_buffer_pts"],
-        "message": f"Desk parameters updated! All market and planned orders will execute at {cfg['lot_size']} lots. Background engine (<50ms) will split-second auto-close at +${cfg['target_profit_usd']:.2f}."
-    }, indent=2)
-
-@mcp.tool()
-def configure_desk_execution(lot_size: float = 1.0, target_profit_usd: float = 200.0, sl_buffer_pts: float = 15.0, symbol: str = "XAUUSD") -> str:
-    """Configure desk execution parameters: lot size, auto-harvest dollar target, and default SL buffer points."""
-    return mcp_alpha_configure_desk_execution(lot_size, target_profit_usd, sl_buffer_pts, symbol)
-
-@mcp.tool()
-def mcp_alpha_set_auto_harvest_target(target_profit_usd: float = 200.0) -> str:
-    """Set the dollar profit target for split-second auto-closing all positions on MT5."""
-    return mcp_alpha_configure_desk_execution(target_profit_usd=target_profit_usd)
-
-@mcp.tool()
-def set_auto_harvest_target(target_profit_usd: float = 200.0) -> str:
-    """Set the dollar profit target for split-second auto-closing all positions on MT5."""
-    return mcp_alpha_configure_desk_execution(target_profit_usd=target_profit_usd)
-
-# ======================================================================
-# 2. DIRECT MARKET EXECUTION (NO TP SET, VOLUME FROM CONFIG)
+# 1. DIRECT MARKET EXECUTION (VOLUME & STRUCTURAL SL/TP DIRECTLY SET)
 # ======================================================================
 
 @mcp.tool()
 def mcp_alpha_execute_market_order(
     symbol: str = "XAUUSD",
     side: str = "BUY",
+    volume: float = 1.0,
     sl_price: float = 0.0,
+    tp_price: float = 0.0,
     comment: str = "OpenCode Market Order"
 ) -> str:
-    """Execute direct market order on FTMO MT5. Lot size is drawn from desk config; TP is omitted as trade is driven to configured dollar target.
+    """Execute direct market order on FTMO MT5 with custom volume, stop loss, and take profit.
     
     Args:
         symbol: Instrument symbol (default: 'XAUUSD')
         side: 'BUY' or 'SELL'
-        sl_price: Specific stop loss price level (if 0.0, auto-calculated using configured SL buffer points)
+        volume: Trade lot size (default: 1.0)
+        sl_price: Specific stop loss price level (if 0.0, auto-calculated using 15-pt buffer)
+        tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
         comment: Order comment tag
     """
-    cfg = _get_desk_config()
-    vol = float(cfg.get("lot_size", 1.0))
-    sl_buf = float(cfg.get("sl_buffer_pts", 15.0))
-    target_usd = float(cfg.get("target_profit_usd", 200.0))
+    vol = float(volume) if volume and float(volume) > 0 else 1.0
+    sl_buf = 15.0
     
-    read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {sl_price})")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {sl_price}, TP: {tp_price})")
     
     # Weekend Guardrail
     try:
@@ -315,12 +234,13 @@ def mcp_alpha_execute_market_order(
         price = tick_info.ask if s_side == "buy" else tick_info.bid
         order_type = mt5.ORDER_TYPE_BUY if s_side == "buy" else mt5.ORDER_TYPE_SELL
         
-        # Calculate auto SL if omitted (sl_buffer_pts from entry)
-        sl_val = float(sl_price)
+        # Calculate auto SL if omitted (15 pts buffer)
+        sl_val = float(sl_price) if sl_price else 0.0
         if sl_val <= 0:
             sl_val = round(price - sl_buf, 2) if s_side == "buy" else round(price + sl_buf, 2)
             
-        # TP is explicitly 0.0 (NO broker TP set, exit is driven to configured dollar target by split-second harvester)
+        tp_val = float(tp_price) if tp_price and float(tp_price) > 0 else 0.0
+        
         req = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": sym,
@@ -328,7 +248,7 @@ def mcp_alpha_execute_market_order(
             "type": order_type,
             "price": price,
             "sl": sl_val,
-            "tp": 0.0,
+            "tp": tp_val,
             "deviation": 30,
             "magic": 234000,
             "comment": comment[:31],
@@ -346,7 +266,7 @@ def mcp_alpha_execute_market_order(
                     break
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} (Ticket #{res.order}).")
+            log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} | SL: {sl_val} | TP: {tp_val} (Ticket #{res.order}).")
             return json.dumps({
                 "status": "EXECUTED",
                 "symbol": sym,
@@ -354,10 +274,10 @@ def mcp_alpha_execute_market_order(
                 "volume": vol,
                 "price": price,
                 "sl": sl_val,
-                "tp": "NONE (Auto-Win Harvester @ +$" + f"{target_usd:.2f})",
+                "tp": tp_val,
                 "ticket": res.order,
                 "retcode": res.retcode,
-                "note": f"Position active! Universal harvester (<50ms) will split-second auto-close when net profit hits +${target_usd:.2f}."
+                "message": f"Market order filled! Active ticket #{res.order} is live on MT5."
             }, indent=2)
             
         err_comment = res.comment if res else "Unknown MT5 error"
@@ -366,17 +286,17 @@ def mcp_alpha_execute_market_order(
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def execute_market_order(symbol: str = "XAUUSD", side: str = "BUY", sl_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
-    """Execute direct market order on FTMO MT5."""
-    return mcp_alpha_execute_market_order(symbol, side, sl_price, comment)
+def execute_market_order(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
+    """Execute direct market order on FTMO MT5 with custom volume, SL, and TP."""
+    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, comment)
 
 @mcp.tool()
-def execute_trade(symbol: str = "XAUUSD", side: str = "BUY", sl_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
-    """Execute direct market trade on FTMO MT5."""
-    return mcp_alpha_execute_market_order(symbol, side, sl_price, comment)
+def execute_trade(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
+    """Execute direct market trade on FTMO MT5 with custom volume, SL, and TP."""
+    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, comment)
 
 # ======================================================================
-# 3. PLANNED PENDING ORDER (NO TP SET, VOLUME FROM CONFIG)
+# 2. PLANNED PENDING ORDER (VOLUME & STRUCTURAL SL/TP DIRECTLY SET)
 # ======================================================================
 
 @mcp.tool()
@@ -384,12 +304,12 @@ def mcp_alpha_place_pending_order(
     symbol: str = "XAUUSD",
     order_type: str = "SELL_LIMIT",
     price: float = 0.0,
+    volume: float = 1.0,
     sl_price: float = 0.0,
+    tp_price: float = 0.0,
     tag: str = ""
 ) -> str:
-    """Place planned pending limit or stop order on MT5 at key structural points.
-    
-    Volume is drawn from desk config; TP is omitted as position is driven to configured dollar target when filled.
+    """Place planned pending limit or stop order on MT5 at key structural points with custom volume, SL, and TP.
     
     Supports:
       • Limits: SELL_LIMIT (Supply Ceiling / FVG CE), BUY_LIMIT (Demand Floor / Support)
@@ -399,16 +319,16 @@ def mcp_alpha_place_pending_order(
         symbol: Instrument symbol (default: 'XAUUSD')
         order_type: 'SELL_LIMIT', 'BUY_LIMIT', 'BUY_STOP', 'SELL_STOP'
         price: Planned entry price level
-        sl_price: Specific stop loss price level (if 0.0, auto-calculated using configured SL buffer points)
+        volume: Order lot size (default: 1.0)
+        sl_price: Specific stop loss price level (if 0.0, auto-calculated using 15-pt buffer)
+        tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
         tag: Custom tag / structural description (e.g. 'Supply_Ceiling_4318')
     """
-    cfg = _get_desk_config()
-    vol = float(cfg.get("lot_size", 1.0))
-    sl_buf = float(cfg.get("sl_buffer_pts", 15.0))
-    target_usd = float(cfg.get("target_profit_usd", 200.0))
+    vol = float(volume) if volume and float(volume) > 0 else 1.0
+    sl_buf = 15.0
     
     _init_mt5()
-    read_logger.log_dossier_read("OpenCode CIO (MCP Pending Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Pending Order requested: {order_type.upper()} {vol} lots on {symbol} @ {price} (SL: {sl_price}, Tag: {tag})")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pending Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Pending Order requested: {order_type.upper()} {vol} lots on {symbol} @ {price} (SL: {sl_price}, TP: {tp_price}, Tag: {tag})")
     
     try:
         import MetaTrader5 as mt5, re
@@ -436,13 +356,13 @@ def mcp_alpha_place_pending_order(
             }, indent=2)
             
         is_buy = ot_clean in ("BUY_LIMIT", "BUY_STOP")
-        sl_val = float(sl_price)
+        sl_val = float(sl_price) if sl_price else 0.0
         if sl_val <= 0:
             sl_val = round(target_price - sl_buf, 2) if is_buy else round(target_price + sl_buf, 2)
             
+        tp_val = float(tp_price) if tp_price and float(tp_price) > 0 else 0.0
         clean_tag = re.sub(r'[^A-Za-z0-9_]', '_', str(tag or 'PlannedOrder'))[:20]
         
-        # TP is explicitly 0.0 (NO broker TP set, exit is driven to configured dollar target by split-second harvester)
         req = {
             "action": mt5.TRADE_ACTION_PENDING,
             "symbol": sym,
@@ -450,7 +370,7 @@ def mcp_alpha_place_pending_order(
             "type": type_map[ot_clean],
             "price": target_price,
             "sl": sl_val,
-            "tp": 0.0,
+            "tp": tp_val,
             "deviation": 30,
             "magic": 234000,
             "comment": clean_tag,
@@ -468,7 +388,7 @@ def mcp_alpha_place_pending_order(
                     break
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} (Order #{res.order}).")
+            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {sl_val} | TP: {tp_val} (Order #{res.order}).")
             return json.dumps({
                 "status": "PLACED",
                 "order_ticket": res.order,
@@ -477,10 +397,10 @@ def mcp_alpha_place_pending_order(
                 "price": target_price,
                 "volume": vol,
                 "sl": sl_val,
-                "tp": "NONE (Auto-Win Harvester @ +$" + f"{target_usd:.2f})",
+                "tp": tp_val,
                 "tag": clean_tag,
                 "retcode": res.retcode,
-                "note": f"Planned order staged! When filled, position will be driven to +${target_usd:.2f} and split-second auto-closed."
+                "message": f"Pending order staged on MT5! Order ticket #{res.order} active."
             }, indent=2)
             
         err_msg = res.comment if res else f"MT5 error: {mt5.last_error()}"
@@ -496,15 +416,9 @@ def mcp_alpha_place_pending_order(
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def place_pending_order(
-    symbol: str = "XAUUSD",
-    order_type: str = "SELL_LIMIT",
-    price: float = 0.0,
-    sl_price: float = 0.0,
-    tag: str = ""
-) -> str:
-    """Place planned pending limit or stop orders on MT5."""
-    return mcp_alpha_place_pending_order(symbol, order_type, price, sl_price, tag)
+def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", price: float = 0.0, volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, tag: str = "") -> str:
+    """Place planned pending limit or stop order on MT5 at key structural points with custom volume, SL, and TP."""
+    return mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl_price, tp_price, tag)
 
 # ======================================================================
 # 4. ORDER & POSITION MANAGEMENT

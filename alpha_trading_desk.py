@@ -765,17 +765,19 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== DIRECTIONAL EVALUATION & POINT-BASED EXECUTION PROTOCOL ===
-  1. SEPARATE CONFIGURATION: Use configure_desk_execution(lot_size=1.0, target_profit_usd=200.0, sl_buffer_pts=15.0) to configure lot size and harvest dollar target.
-  2. DIRECTIONAL EXECUTION (1 OR UP TO 2 ORDERS):
-     • Evaluate market structure and place 1 planned trigger (or 1 market order) in your evaluated direction.
-     • If highly confident / high conviction, you are authorized to place up to 2 orders (e.g. 2 tiered pending limits).
-     • execute_market_order(symbol, side, sl_price=0.0) -> Execute direct market order.
-     • place_pending_order(symbol, order_type, price, sl_price=0.0, tag="") -> Stage planned limit/stop orders at structural price points.
+        execution_blueprint_block = """=== CONSOLIDATED EXECUTION & STRUCTURAL TP/SL PROTOCOL ===
+  1. CONSOLIDATED EXECUTION (VOLUME & STRUCTURAL SL/TP DIRECTLY SET):
+     • execute_market_order(symbol, side, volume=1.0, sl_price=0.0, tp_price=0.0) -> Execute direct market order with custom volume, SL, and TP.
+     • place_pending_order(symbol, order_type, price, volume=1.0, sl_price=0.0, tp_price=0.0, tag="") -> Stage planned limit/stop orders with custom volume, SL, and TP.
      • cancel_pending_order(order_ticket) -> Cancel active pending orders.
      • update_position(ticket, action) -> Manage active positions (BREAK_EVEN, TRAIL_SL, FULL_EXIT).
      • get_account_status() -> Fetch live balance, equity, and open positions.
-  3. SPLIT-SECOND AUTO-WIN HARVEST (<50ms): The background engine continuously monitors floating PnL. The split second profit hits configured dollars (+$200.00), it automatically closes all positions, cancels all pending orders, and sets desk 100% FLAT (zero auto-flip).
+  2. DIRECTIONAL EVALUATION (1 OR UP TO 2 ORDERS):
+     • Evaluate market structure objectively. Stage 1 planned trigger (or execute 1 market trade) in your evaluated direction.
+     • If highly confident / high conviction, you may stage up to 2 orders (e.g. 2 tiered pending limits).
+  3. STRUCTURAL EXITS (DOLLAR EXIT OFF):
+     • TP is set normally during placement at structural targets (e.g., VAH/VAL or FVG CE).
+     • Dollar-based auto exit is OFF. Positions are managed to structural TP/SL levels or proactively via update_position.
   4. ZERO AUTONOMOUS SYSTEM EXECUTION: The daemon NEVER places trades on its own. ONLY OpenCode plans and executes trades.
 """
 
@@ -887,7 +889,7 @@ class ConsolidatedTradingDaemon:
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
                     f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Manage active position with update_position(ticket, action) or adjust pending orders. "
-                    f"MANDATE: Sizing is 1.0 lot and auto-harvest is +$200.00. The daemon is strictly a READ-ONLY scanner & $<50ms win harvester. ONLY OPENCODE EXECUTES TRADES."
+                    f"MANDATE: The daemon is strictly a READ-ONLY scanner. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
 
@@ -902,7 +904,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. Confirm your directional bias using Volume Profile (POC/VAH/VAL via get_full_institutional_profile) and FVG Fill Rate (<30% Fresh vs 50% CE via get_fvg_matrix). Stage 1 planned trigger (or execute 1 market order) in your chosen direction. If confluence is especially strong and you are confident, you may stage up to 2 orders (e.g. 2 tiered pending limits across supply/demand tiers). You are NOT forced to place both sides. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
+                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. Confirm your directional bias using Volume Profile (POC/VAH/VAL via get_full_institutional_profile) and FVG Fill Rate (<30% Fresh vs 50% CE via get_fvg_matrix). Stage 1 planned trigger (or execute 1 market order) in your chosen direction with custom volume (default: 1.0), structural SL, and structural TP. If confluence is especially strong and you are confident, you may stage up to 2 orders (e.g. 2 tiered pending limits across supply/demand tiers). You are NOT forced to place both sides. Dollar-based auto-exit is OFF. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
@@ -910,18 +912,18 @@ class ConsolidatedTradingDaemon:
         return has_active_trades
 
     async def _probe_execution_watcher_task(self):
-        """Ultra-fast (<10ms) zero-latency Universal Auto-Win Harvester ($200 Target Profit)."""
+        """Watcher task (Dollar-based auto exit is OFF)."""
         import MetaTrader5 as mt5, time
         state_file = PROJECT_ROOT / "data" / "live" / "auto_probe_engine_state.json"
 
-        # Cached config state
-        cached_config = {"enabled": True, "symbol": "XAUUSD", "target_profit_usd": 200.0, "total_harvested_usd": 0.0, "harvest_count": 0}
+        # Cached config state (Dollar-based auto exit OFF)
+        cached_config = {"enabled": False, "symbol": "XAUUSD", "target_profit_usd": 0.0, "total_harvested_usd": 203.79, "harvest_count": 1}
         last_config_load = 0.0
 
         def _get_engine_state():
             nonlocal cached_config, last_config_load
             now = time.time()
-            if now - last_config_load > 1.0: # Refresh cache once per second
+            if now - last_config_load > 2.0:
                 if state_file.exists():
                     try:
                         data = json.loads(state_file.read_text(encoding="utf-8"))
@@ -931,21 +933,15 @@ class ConsolidatedTradingDaemon:
                 last_config_load = now
             return cached_config
 
-        def _save_engine_state(st):
-            try:
-                state_file.parent.mkdir(parents=True, exist_ok=True)
-                state_file.write_text(json.dumps(st, indent=2), encoding="utf-8")
-            except Exception as e:
-                LOG.error(f"Error saving harvest state: {e}")
-
         # One-time MT5 initialization
         mt5.initialize()
 
         while self.is_running:
             try:
                 engine_st = _get_engine_state()
-                if not engine_st.get("enabled", True):
-                    await asyncio.sleep(0.5)
+                if not engine_st.get("enabled", False):
+                    # Dollar-based exit disabled
+                    await asyncio.sleep(2.0)
                     continue
 
                 current_positions = mt5.positions_get()
