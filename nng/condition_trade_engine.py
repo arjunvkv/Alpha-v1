@@ -103,55 +103,170 @@ def extract_trade(condition_result: Dict[str, Any], telemetry: Dict[str, Any]) -
         target = round(poc if poc > 0 else vah, 2)
         order_type = "BUY_LIMIT"
 
-    # ===== VWAP 2SD SHORT =====
+    # ===== VWAP 2SD SHORT — Entry at current price (at 2sd extreme), stop above price, target VWAP =====
     elif cid == "VWAP_2SD_MEAN_REVERSION_SHORT":
-        entry = round(fvg_ce if fvg_ce > price else price, 2)
-        stop = round(vwap_2sd_upper + BUFFER_PTS, 2)
-        target = round(vwap, 2)
+        entry = round(price, 2)
+        stop = round(price + BUFFER_PTS + 2.0, 2)   # Stop above current extreme price
+        target = round(vwap, 2)                       # Target: mean reversion to VWAP/POC
         order_type = "SELL_LIMIT"
 
-    # ===== VWAP 2SD LONG =====
+    # ===== VWAP 2SD LONG — Entry at current price (at -2sd extreme), stop below price, target VWAP =====
     elif cid == "VWAP_2SD_MEAN_REVERSION_LONG":
-        entry = round(fvg_ce if 0 < fvg_ce < price else price, 2)
-        stop = round(vwap_2sd_lower - BUFFER_PTS, 2)
+        entry = round(price, 2)
+        stop = round(price - BUFFER_PTS - 2.0, 2)   # Stop below current extreme price
         target = round(vwap, 2)
         order_type = "BUY_LIMIT"
 
-    # ===== WYCKOFF SPRING (LONG) =====
-    elif cid == "WYCKOFF_SPRING_REVERSAL":
-        spring_low = float(telemetry.get("swing_low", val - 2))
-        entry = round(val + 0.5, 2)          # First close back inside VA
-        stop = round(spring_low - BUFFER_PTS, 2)
+
+    # ===== TSMOM LONG — Pullback to M15 EMA20 in trending market =====
+    elif cid == "TSMOM_LONG_SIGNAL":
+        m15_ema20 = float(telemetry.get("m15_ema20", vah))
+        entry = round(m15_ema20, 2) if m15_ema20 > val else round(vah, 2)
+        stop = round(swing_low - BUFFER_PTS, 2)
+        target = round(vah + (vah - val), 2)  # Measured move above VAH
+        order_type = "BUY_LIMIT"
+
+    # ===== TSMOM SHORT — Pullback to M15 EMA20 from below in downtrend =====
+    elif cid == "TSMOM_SHORT_SIGNAL":
+        m15_ema20 = float(telemetry.get("m15_ema20", val))
+        entry = round(m15_ema20, 2) if m15_ema20 < vah else round(val, 2)
+        stop = round(swing_high + BUFFER_PTS, 2)
+        target = round(val - (vah - val), 2)  # Measured move below VAL
+        order_type = "SELL_LIMIT"
+
+    # ===== REGULAR DIVERGENCE LONG =====
+    elif cid == "REGULAR_DIVERGENCE_REVERSAL_LONG":
+        entry = round(fvg_ce if fvg_ce > 0 and fvg_ce > val else val, 2)
+        stop = round(swing_low - BUFFER_PTS, 2)
+        target = round(swing_high, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== REGULAR DIVERGENCE SHORT =====
+    elif cid == "REGULAR_DIVERGENCE_REVERSAL_SHORT":
+        entry = round(fvg_ce if 0 < fvg_ce < vah else vah, 2)
+        stop = round(swing_high + BUFFER_PTS, 2)
+        target = round(swing_low, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== HIDDEN DIVERGENCE LONG (trend continuation) =====
+    elif cid == "HIDDEN_DIVERGENCE_CONTINUATION_LONG":
+        m15_ema20 = float(telemetry.get("m15_ema20", price))
+        entry = round(max(m15_ema20, fvg_ce) if fvg_ce > 0 else m15_ema20, 2)
+        stop = round(swing_low - BUFFER_PTS, 2)
+        target = round(swing_high, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== HIDDEN DIVERGENCE SHORT (trend continuation) =====
+    elif cid == "HIDDEN_DIVERGENCE_CONTINUATION_SHORT":
+        m15_ema20 = float(telemetry.get("m15_ema20", price))
+        entry = round(min(m15_ema20, fvg_ce) if fvg_ce > 0 else m15_ema20, 2)
+        stop = round(swing_high + BUFFER_PTS, 2)
+        target = round(swing_low, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== ICT LONDON SWEEP LONG =====
+    elif cid == "ICT_LONDON_SWEEP_LONG":
+        asian_low = float(telemetry.get("asian_low", val - 3))
+        asian_high = float(telemetry.get("asian_high", vah + 3))
+        entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+        stop = round(asian_low - BUFFER_PTS, 2)
+        target = round(asian_high, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== ICT LONDON SWEEP SHORT =====
+    elif cid == "ICT_LONDON_SWEEP_SHORT":
+        asian_high = float(telemetry.get("asian_high", vah + 3))
+        asian_low = float(telemetry.get("asian_low", val - 3))
+        entry = round(fvg_ce if 0 < fvg_ce < asian_high else vah, 2)
+        stop = round(asian_high + BUFFER_PTS, 2)
+        target = round(asian_low, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== ICT NY REVERSAL LONG =====
+    elif cid == "ICT_NY_REVERSAL_LONG":
+        entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+        stop = round(swing_low - BUFFER_PTS, 2)
+        target = round(vah + 3, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== ICT NY REVERSAL SHORT =====
+    elif cid == "ICT_NY_REVERSAL_SHORT":
+        entry = round(fvg_ce if 0 < fvg_ce < price else vah, 2)
+        stop = round(swing_high + BUFFER_PTS, 2)
+        target = round(val - 3, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== COT COMMERCIAL EXTREME LONG =====
+    elif cid == "COT_COMMERCIAL_EXTREME_LONG":
+        entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+        stop = round(val - BUFFER_PTS - 2.0, 2)
+        target = round(vah + (vah - val), 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== COT COMMERCIAL EXTREME SHORT =====
+    elif cid == "COT_COMMERCIAL_EXTREME_SHORT":
+        entry = round(fvg_ce if 0 < fvg_ce < price else vah, 2)
+        stop = round(vah + BUFFER_PTS + 2.0, 2)
+        target = round(val - (vah - val), 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== STATISTICAL EXTREME LONG =====
+    elif cid == "STATISTICAL_EXTREME_REVERSAL_LONG":
+        poc = float(telemetry.get("poc", price + 5))
+        entry = round(price, 2)
+        stop = round(swing_low - BUFFER_PTS, 2)
+        target = round(poc, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== STATISTICAL EXTREME SHORT =====
+    elif cid == "STATISTICAL_EXTREME_REVERSAL_SHORT":
+        poc = float(telemetry.get("poc", price - 5))
+        entry = round(price, 2)
+        stop = round(swing_high + BUFFER_PTS, 2)
+        target = round(poc, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== PDARRAY TRIPLE CONFLUENCE LONG =====
+    elif cid == "PDARRAY_TRIPLE_CONFLUENCE_LONG":
+        entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+        stop = round(val - BUFFER_PTS - 1.0, 2)
         target = round(vah, 2)
         order_type = "BUY_LIMIT"
 
-    # ===== WYCKOFF UTAD (SHORT) =====
-    elif cid == "WYCKOFF_UTAD_REVERSAL":
-        utad_high = float(telemetry.get("swing_high", vah + 2))
-        entry = round(vah - 0.5, 2)          # First close back inside VA
-        stop = round(utad_high + BUFFER_PTS, 2)
+    # ===== PDARRAY TRIPLE CONFLUENCE SHORT =====
+    elif cid == "PDARRAY_TRIPLE_CONFLUENCE_SHORT":
+        entry = round(fvg_ce if 0 < fvg_ce < price else vah, 2)
+        stop = round(vah + BUFFER_PTS + 1.0, 2)
         target = round(val, 2)
         order_type = "SELL_LIMIT"
 
-    # ===== COMPRESSION BREAKOUT LONG =====
-    elif cid == "COMPRESSION_BREAKOUT_LONG":
-        range_high = float(telemetry.get("compression_range_high", vah))
-        range_low = float(telemetry.get("compression_range_low", val))
-        range_width = range_high - range_low
-        entry = round(range_high, 2)
-        stop = round(range_high - range_width * 0.5, 2)
-        target = round(range_high + range_width, 2)
-        order_type = "BUY_STOP"
+    # ===== KYLE LAMBDA INFORMED FLOW =====
+    elif cid == "KYLE_LAMBDA_INFORMED_FLOW":
+        # Follow the informed flow direction (from OFI)
+        cvd = float(telemetry.get("cvd_10b", 0.0))
+        if cvd > 0:
+            entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+            stop = round(swing_low - BUFFER_PTS, 2)
+            target = round(swing_high, 2)
+            order_type = "BUY_LIMIT"
+        else:
+            entry = round(fvg_ce if 0 < fvg_ce < price else vah, 2)
+            stop = round(swing_high + BUFFER_PTS, 2)
+            target = round(swing_low, 2)
+            order_type = "SELL_LIMIT"
 
-    # ===== COMPRESSION BREAKOUT SHORT =====
-    elif cid == "COMPRESSION_BREAKOUT_SHORT":
-        range_high = float(telemetry.get("compression_range_high", vah))
-        range_low = float(telemetry.get("compression_range_low", val))
-        range_width = range_high - range_low
-        entry = round(range_low, 2)
-        stop = round(range_low + range_width * 0.5, 2)
-        target = round(range_low - range_width, 2)
-        order_type = "SELL_STOP"
+    # ===== VOLATILITY EXPANSION CONTINUATION =====
+    elif cid == "VOLATILITY_EXPANSION_CONTINUATION":
+        if "BEARISH" in fvg_type or price < vah:
+            entry = round(fvg_ce if fvg_ce > 0 else val, 2)
+            stop = round(fvg_bottom - BUFFER_PTS if fvg_bottom > 0 else swing_low - BUFFER_PTS, 2)
+            target = round(swing_high, 2)
+            order_type = "BUY_LIMIT"
+        else:
+            entry = round(fvg_ce if 0 < fvg_ce < price else vah, 2)
+            stop = round(fvg_top + BUFFER_PTS if fvg_top > 0 else swing_high + BUFFER_PTS, 2)
+            target = round(swing_low, 2)
+            order_type = "SELL_LIMIT"
 
     else:
         return _no_trade(cid, f"No geometry defined for condition {cid}")
@@ -189,7 +304,7 @@ def extract_trade(condition_result: Dict[str, Any], telemetry: Dict[str, Any]) -
         "condition_name": condition_result.get("condition_name", ""),
         "literature": condition_result.get("literature", ""),
         "why": condition_result.get("when_description", ""),
-        "brain_layers": condition_result.get("brain_layers", {}),
+        "brain_modules": condition_result.get("brain_modules", condition_result.get("brain_layers", {})),
     }
 
 
@@ -208,3 +323,4 @@ def _no_trade(cid: str, reason: str) -> Dict[str, Any]:
         "lot_size": 0,
         "reason": reason,
     }
+

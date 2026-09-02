@@ -621,18 +621,21 @@ def globe_lookup_tool(tool_name: str) -> str:
 @mcp.tool()
 def globe_conditions_now(symbol: str = "XAUUSD") -> str:
     """
-    Read the live market and classify it into its exact named condition
-    using real quantitative models (Hurst, OFI, Wyckoff, AMT, VWAP-sigma).
-    Returns: active condition, literature source, and what to expect next.
+    Full 9-module quantitative regime brain. Classifies live market using:
+    Hurst R/S (Peters 1994), OFI (Cont-Kukanov 2014), Kyle Lambda (1985),
+    Garman-Klass Volatility (1980), TSMOM (Moskowitz 2012), RSI Divergence (Elder 1995),
+    ICT AMD/Killzones (Huddleston), COT Index (Briese 2008), Dalton AMT (1990),
+    VWAP sigma (Harris 2003), OU half-life (Chan 2013), NR7 (Crabel 1990).
+    Returns: active condition from 32 named conditions with literature source.
     """
     try:
         import sys, os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from nng.regime_brain import RegimeBrain
+        from nng.regime_brain_v2 import RegimeBrainV2
         from nng.telemetry_bridge import get_live_telemetry
         import mcp_server.alpha_mcp_server as current_server
         tel = get_live_telemetry(current_server, symbol)
-        brain = RegimeBrain()
+        brain = RegimeBrainV2()
         result = brain.classify(tel)
         return json.dumps({
             "symbol": symbol,
@@ -654,23 +657,25 @@ def globe_conditions_now(symbol: str = "XAUUSD") -> str:
 @mcp.tool()
 def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
     """
-    REAL BRAIN TRADE RESOLVER. Reads live market conditions using published
-    quantitative models (Hurst exponent, OFI/Cont-Kukanov, Wyckoff phases,
-    Dalton AMT day-type, VWAP sigma-deviation), identifies the exact active
-    market condition, then extracts the trade that BELONGS to that condition
-    from its own structural geometry. No heuristics. No scoring gates.
-    Returns: condition, direction, exact entry/stop/target, and the why.
+    FULL BRAIN TRADE RESOLVER — 9 Quantitative Modules, 32 Conditions.
+    Runs: Hurst R/S (Peters 1994) + OFI/Kyle Lambda (Cont 2014, Kyle 1985) +
+    Garman-Klass Volatility (1980) + TSMOM (Moskowitz 2012) +
+    RSI Divergence (Elder 1995) + ICT AMD/Killzones (Huddleston IPDA) +
+    COT Index (Briese 2008) + Dalton AMT (1990) + VWAP-2sigma (Harris 2003) +
+    OU Half-Life (Chan 2013) + NR7 Crabel (1990) + Z-Score Stats.
+    Identifies the ONE active condition and returns the trade that belongs to it.
+    No invented heuristics. No scoring. Pure condition-to-trade geometry.
     """
     try:
         import sys, os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from nng.regime_brain import RegimeBrain
+        from nng.regime_brain_v2 import RegimeBrainV2
         from nng.condition_trade_engine import extract_trade
         from nng.telemetry_bridge import get_live_telemetry
         import mcp_server.alpha_mcp_server as current_server
 
         tel = get_live_telemetry(current_server, symbol)
-        brain = RegimeBrain()
+        brain = RegimeBrainV2()
         condition = brain.classify(tel)
         trade = extract_trade(condition, tel)
 
@@ -682,7 +687,7 @@ def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
             "literature": condition.get("literature"),
             "why_this_trade": condition.get("when_description"),
             "trade": trade,
-            "brain_layers": condition.get("brain_layers", {}),
+            "brain_modules": condition.get("brain_modules", {}),
         }, indent=2)
     except Exception as err:
         import traceback
@@ -690,8 +695,9 @@ def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
 
 @mcp.tool()
 def get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
-    """Alias for globe_get_nearest_trade. Uses real quantitative regime brain."""
+    """Alias for globe_get_nearest_trade. Full 9-module quantitative regime brain."""
     return globe_get_nearest_trade(symbol)
+
 
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
