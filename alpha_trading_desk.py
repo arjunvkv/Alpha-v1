@@ -884,8 +884,8 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
-                    f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
+                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Manage active position with update_position(ticket, action) or adjust pending orders. "
+                    f"MANDATE: Sizing is 1.0 lot and auto-harvest is +$200.00. The daemon is strictly a READ-ONLY scanner & $<50ms win harvester. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
 
@@ -900,8 +900,8 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Analyze 6-instrument findings matrix above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Review relevant Pattern Book / Unified Learning evidence as mandatory study context; historical learning has no independent decision authority. "
-                    f"MANDATE: The daemon is strictly a READ-ONLY scanner & dossier streamer. ONLY THE OPENCODE BRAIN (OPENCODE CIO) HAS THE AUTHORITY TO EXECUTE LIVE TRADES."
+                    f"MANDATORY EXECUTIVE ACTION: Analyze market structure above. You MUST stage 1.0 Lot Planned Triggers on BOTH SIDES (1.0 Lot SELL_LIMIT at Supply Ceiling and 1.0 Lot BUY_LIMIT at Demand Floor via place_pending_order) or execute direct 1.0 Lot market order via execute_market_order. Do NOT place 0.01 probes. Sizing is automatically 1.0 lot and win harvest target is +$200.00. "
+                    f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
 
