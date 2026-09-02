@@ -904,7 +904,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
                     f"{matrix_formatted}\n"
                     f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Audit the 3-Pillar Structural Confirmation Matrix (Pillar 1: Location at Fresh FVG 50% CE/VAL/VAH/POC/Sweep, Pillar 2: Regime & Trend/Mean-Reversion Alignment, Pillar 3: Risk Asymmetry R:R >= 2.5:1 with hard SL beyond zone). If ALL 3 Pillars PASS, IMMEDIATELY call place_pending_order to arm your 1.0-lot planned limit trigger in advance with structural SL and TP! If any Pillar FAILS, STAND FLAT with an explicit 3-pillar breakdown (do NOT force trades). Dollar-based auto-exit is OFF. "
+                    f"MANDATORY EXECUTIVE ACTION: Synthesize the 5-Element O.C.E.A.N. Framework ([O] Order Flow & CVD, [C] 4TF Confluence, [E] Macro Lifecycle, [A] COT & ULM Precedents, [N] Volume Profile POC/VAH/VAL & FVG Geometry) and audit the 3-Pillar Confirmation Matrix (Pillar 1: Structural Anchor at Fresh FVG 50% CE/VAL/VAH/POC, Pillar 2: Regime & Trend/Mean-Reversion Alignment, Pillar 3: Risk Asymmetry R:R >= 2.5:1 with hard SL beyond zone). If ALL 3 Pillars PASS, IMMEDIATELY call place_pending_order to arm your 1.0-lot planned limit trigger in advance with structural SL and TP! If any Pillar FAILS, STAND FLAT with an explicit 3-pillar breakdown (do NOT force trades). Dollar-based auto-exit is OFF. "
                     f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
                 )
                 post_to_opencode_session("OpenCode (CIO)", idle_prompt)
