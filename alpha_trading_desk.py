@@ -767,7 +767,7 @@ class ConsolidatedTradingDaemon:
 
         execution_blueprint_block = """=== CANONICAL DUAL-TRANCHE EXECUTION & ACTIVE RETRACE HARVEST PROTOCOL ===
   1. TREND-ALIGNED SHORT PRIORITY: When H4/H1 is BEARISH, SHORT CONTINUATION IS PRIORITY #1. In a Bear regime, a 'Retrace Entry' means price rallies UP into overhead resistance (Bearish FVG CE / EMA20) — DEPLOY 0.01 SELL PROBE & SCALE 1.0 LOT TO SHORT THE BOUNCE!
-  2. NEARBY PROBE PLACEMENT (NO FARAWAY LANDS): Always stage 0.01 probes / pending triggers at NEAREST immediate structural zones (within 1.5 to 4.0 pts, e.g. nearest M5 FVG 50% CE, EMA20 pullback). NEVER place probes in faraway lands (10-20 pts away). Probes exist for rapid, immediate validation of nearby conviction!
+  2. MULTI-PROBE STAGING (4-6+ PROBES): Do NOT limit to 1-2 probes! Stage MULTIPLE 0.01 probes / pending triggers (BUY_LIMIT / SELL_LIMIT) across ALL nearby candidate zones (M5 FVG CE, M15 FVG CE, EMA20, POC, sweeps within 1.5-5.0 pts). When ANY probe fills, the 500ms watcher alerts instantly!
   3. NO OUTCOME BIAS: Never fixate on last winning or losing trade or wait forever for an identical setup. Every cycle is fresh.
   4. NO PANIC-CUTTING: Once the 1.0 lot scale is placed, NEVER panic-cut on normal market breathing. Let the trade work.
   5. RETRACE CAPTURE SCALING: When 0.01 probe validates reaction, place 1.0 lot scale when price retraces back into optimal retest zone (Bearish FVG CE for shorts / Bullish FVG CE for longs) for superior fill pricing!
