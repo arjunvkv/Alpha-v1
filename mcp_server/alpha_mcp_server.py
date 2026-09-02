@@ -620,26 +620,78 @@ def globe_lookup_tool(tool_name: str) -> str:
 
 @mcp.tool()
 def globe_conditions_now(symbol: str = "XAUUSD") -> str:
-    """Open the Node Network Globe to the exact active chapter matching current live market telemetry."""
+    """
+    Read the live market and classify it into its exact named condition
+    using real quantitative models (Hurst, OFI, Wyckoff, AMT, VWAP-sigma).
+    Returns: active condition, literature source, and what to expect next.
+    """
     try:
         import sys, os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from nng import GlobeQueries
+        from nng.regime_brain import RegimeBrain
+        from nng.telemetry_bridge import get_live_telemetry
         import mcp_server.alpha_mcp_server as current_server
-        q = GlobeQueries()
-        return json.dumps(q.globe_conditions_now(current_server, symbol=symbol), indent=2)
+        tel = get_live_telemetry(current_server, symbol)
+        brain = RegimeBrain()
+        result = brain.classify(tel)
+        return json.dumps({
+            "symbol": symbol,
+            "live_price": tel.get("live_price"),
+            "condition": result,
+            "telemetry_snapshot": {
+                "vah": tel.get("vah"), "val": tel.get("val"), "poc": tel.get("poc"),
+                "cvd_10b": tel.get("cvd_10b"), "velocity_tpm": tel.get("velocity_tpm"),
+                "mtf_alignment": tel.get("mtf_alignment"),
+                "displacement": tel.get("displacement"),
+                "nearest_fvg_ce": tel.get("nearest_fvg", {}).get("consequent_encroachment"),
+                "fvg_fill_pct": tel.get("nearest_fvg", {}).get("fill_pct"),
+            }
+        }, indent=2)
     except Exception as err:
-        return json.dumps({"status": "FAILED", "error": str(err)})
+        import traceback
+        return json.dumps({"status": "FAILED", "error": str(err), "trace": traceback.format_exc()})
 
 @mcp.tool()
 def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
-    """Resolve the nearest high-conviction 1.0-lot trade trigger with exact Entry, Hard SL, TP, and R:R >= 2.5:1 via the Cognitive Globe."""
-    return mcp_alpha_get_cognitive_globe_reasoning(symbol)
+    """
+    REAL BRAIN TRADE RESOLVER. Reads live market conditions using published
+    quantitative models (Hurst exponent, OFI/Cont-Kukanov, Wyckoff phases,
+    Dalton AMT day-type, VWAP sigma-deviation), identifies the exact active
+    market condition, then extracts the trade that BELONGS to that condition
+    from its own structural geometry. No heuristics. No scoring gates.
+    Returns: condition, direction, exact entry/stop/target, and the why.
+    """
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from nng.regime_brain import RegimeBrain
+        from nng.condition_trade_engine import extract_trade
+        from nng.telemetry_bridge import get_live_telemetry
+        import mcp_server.alpha_mcp_server as current_server
+
+        tel = get_live_telemetry(current_server, symbol)
+        brain = RegimeBrain()
+        condition = brain.classify(tel)
+        trade = extract_trade(condition, tel)
+
+        return json.dumps({
+            "symbol": symbol,
+            "live_price": tel.get("live_price"),
+            "condition_active": condition.get("condition_id"),
+            "condition_name": condition.get("condition_name"),
+            "literature": condition.get("literature"),
+            "why_this_trade": condition.get("when_description"),
+            "trade": trade,
+            "brain_layers": condition.get("brain_layers", {}),
+        }, indent=2)
+    except Exception as err:
+        import traceback
+        return json.dumps({"status": "FAILED", "error": str(err), "trace": traceback.format_exc()})
 
 @mcp.tool()
 def get_nearest_pure_trade(symbol: str = "XAUUSD") -> str:
-    """Resolve the nearest high-conviction 1.0-lot trade trigger with exact Entry, Hard SL, TP, and R:R >= 2.5:1 via the Cognitive Globe."""
-    return mcp_alpha_get_cognitive_globe_reasoning(symbol)
+    """Alias for globe_get_nearest_trade. Uses real quantitative regime brain."""
+    return globe_get_nearest_trade(symbol)
 
 @mcp.tool()
 def mcp_alpha_get_account_status() -> str:
