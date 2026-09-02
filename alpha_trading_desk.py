@@ -1096,11 +1096,10 @@ class ConsolidatedTradingDaemon:
                                     closed_summary.append(f"Ticket #{p.ticket} ({p.volume} lots) profit: +${p.profit:.2f}")
                                     break
 
-                        # Cancel all active pending probe orders on MT5 to guarantee 100% FLAT state
+                        # Unconditionally cancel ALL pending probe & limit orders on MT5 to guarantee 100% clean slate
                         pending_orders = mt5.orders_get() or []
                         for o in pending_orders:
-                            if o.magic in (234001, 234002, 234000):
-                                mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
+                            mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket})
 
                         # Update persistent stats & return cleanly to IDLE (NO immediate auto-flip)
                         engine_st["total_harvested_usd"] = round(engine_st.get("total_harvested_usd", 0.0) + basket_pnl, 2)
