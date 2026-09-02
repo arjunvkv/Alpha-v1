@@ -905,6 +905,61 @@ class ConsolidatedTradingDaemon:
 
         return has_active_trades
 
+    async def _probe_execution_watcher_task(self):
+        """Ultra-fast 500ms real-time loop tracking MT5 pending orders and live fills to fire instant split-second execution alerts."""
+        import MetaTrader5 as mt5
+        known_positions = set()
+        known_pending = set()
+        
+        # Initialize with currently active positions
+        try:
+            if mt5.initialize():
+                pos = mt5.positions_get()
+                if pos:
+                    known_positions = {p.ticket for p in pos}
+                orders = mt5.orders_get()
+                if orders:
+                    known_pending = {o.ticket for o in orders}
+        except Exception:
+            pass
+
+        while self.is_running:
+            try:
+                if mt5.initialize():
+                    current_positions = mt5.positions_get() or []
+                    current_pos_map = {p.ticket: p for p in current_positions}
+                    current_tickets = set(current_pos_map.keys())
+                    
+                    # Check for newly opened / filled positions (Split-Second Alert!)
+                    new_tickets = current_tickets - known_positions
+                    for t in new_tickets:
+                        p = current_pos_map[t]
+                        side_str = "BUY" if p.type == 0 else "SELL"
+                        is_probe = p.volume <= 0.05
+                        order_category = "0.01 PROBE FILL" if is_probe else f"{p.volume} LOT SCALE POSITION"
+                        alert_msg = (
+                            f"🚨 [SPLIT-SECOND {order_category} ALERT] 🚨\n"
+                            f"• Ticket: #{p.ticket} | {p.symbol} {side_str} {p.volume} lots @ {p.price_open}\n"
+                            f"• Current Price: {p.price_current} | SL: {p.sl} | TP: {p.tp}\n"
+                            f"• Execution Comment: {p.comment}\n"
+                            f"• DUAL-TRANCHE ACTION ARMED: Monitor live reaction (+1.0 to +1.5 pts). "
+                            f"{'Prepare 1.0 LOT SCALE on confirmed retrace retest!' if is_probe else 'Wide SL/TP active. Harvest profit at target (+2.0 to +3.0 pts / $200-$300)!'}"
+                        )
+                        LOG.info(f"Firing Split-Second Probe Execution Alert to OpenCode: Ticket #{p.ticket}")
+                        post_to_opencode_session("OpenCode (CIO)", alert_msg)
+                    
+                    known_positions = current_tickets
+                    
+                    # Track pending orders
+                    current_orders = mt5.orders_get() or []
+                    current_pending = {o.ticket for o in current_orders}
+                    known_pending = current_pending
+                    
+                await asyncio.sleep(0.5)
+            except Exception as e:
+                LOG.debug(f"Probe execution watcher error: {e}")
+                await asyncio.sleep(1.0)
+
     async def start_loop(self):
         self.is_running = True
         dossier_mins = max(1, int(round(get_dossier_interval_seconds() / 60.0)))
@@ -917,32 +972,21 @@ class ConsolidatedTradingDaemon:
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Briefing cadence: {active_mins}-Min active trade / {dossier_mins}-Min idle\n\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Probe Watcher: 500ms Split-Second Alert | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
             f"=== AGENT AUTHORITY & CONSTITUTIONAL GUARANTEES (§10.2) ===\n"
             f"YOU are the sole interpreter of evidence and the sole trading decision-maker.\n"
             f"• Zero Data Concealment: No layer compresses, filters, or hides raw market numbers behind opaque labels.\n"
             f"• Zero Automatic Gates: Backtests and pattern records inform conviction, but NEVER veto your trade decisions.\n"
             f"• Automatic Audit Trail: All evidence requested via MCP is automatically audited and logged on disk.\n\n"
-            f"=== COMPLETE FAST-MCP TOOL SUITE (14 TOOLS AVAILABLE) ===\n"
-            f"  1. mcp_alpha_get_full_institutional_profile(symbol) — Fetch Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), Dark Pool DIX/GEX, Treasury Yields (US10Y/US2Y/DXY/VIX), FTMO Contract Specs, and 4TF EMAs/RSI.\n"
-            f"  2. mcp_alpha_backtest_thesis(query, symbol, timeframe, bars) — Natural live MT5 candle-table replay (Zero hardcoded rules). Replays setup trajectory, empirical win rate %, realized R, and failure clusters.\n"
-            f"  3. mcp_alpha_ask_librarian(query, symbol) — Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research (Port 3210, 65s cascade).\n"
-            f"  4. mcp_alpha_query_analyst_desk(query, symbol) — Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear).\n"
-            f"  5. mcp_alpha_get_measured_cvd(symbol) — Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5.\n"
-            f"  6. mcp_alpha_get_symbol_conviction(symbol) — Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles.\n"
-            f"  7. mcp_alpha_get_account_status() — Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states.\n"
-            f"  8. mcp_alpha_record_decision_snapshot(symbol, side, conviction, notes, volume, sl, tp) — Record pre-trade decision context on disk (s4.137 Process vs Outcome).\n"
-            f"  9. mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct market buy/sell order on FTMO MT5.\n"
-            f"  10. mcp_alpha_update_position(ticket, action, params_json) — Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT).\n"
-            f"  11. mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple) — Commit verified trade outcomes & lessons into Pattern Book & ULM.\n"
-            f"  12. mcp_alpha_get_trade_forensics(symbol) — Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution.\n"
-            f"  13. mcp_alpha_get_ledger_decomposition(symbol) — Decompose 134-trade history into condition base rates (Session x Direction x Spread x FVG Fill%).\n"
-            f"  14. mcp_alpha_register_watch(symbol, condition, target_price) — Set a dynamic price or sentiment alert for the local desk to track.\n\n"
-            f"=== STARTUP ORIENTATION ===\n"
-            f"The first full Initial Review is being collected now and will arrive shortly.\n"
-            f"On that review: study current conditions against accumulated evidence, learn continuously (including from mistakes), and record meaningful observations or corrections into Pattern Book / ULM.\n"
-            f"Detailed persistent files are the source evidence; the inline briefing is a current-cycle guide, not a replacement."
+            f"=== FAST-MCP PLANNED TRIGGER & EXECUTION TOOLS ===\n"
+            f"  • mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl, tp, tag) — Place BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP triggers (stagger multiple probes in advance!).\n"
+            f"  • mcp_alpha_cancel_pending_order(order_ticket) — Cancel / remove planned pending orders.\n"
+            f"  • mcp_alpha_get_pending_orders(symbol) — List all active pending triggers.\n"
+            f"  • mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct instant market order.\n"
+            f"  • mcp_alpha_update_position(ticket, action) — Manage active tickets (BREAK_EVEN, FULL_EXIT).\n"
         )
+        # Start ultra-fast 500ms split-second execution watcher task
+        asyncio.create_task(self._probe_execution_watcher_task())
         await asyncio.sleep(2.0)
         while self.is_running:
             try:

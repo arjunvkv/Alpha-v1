@@ -251,6 +251,182 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
         return json.dumps({"status": "FAILED", "error": str(err)})
 
 @mcp.tool()
+def mcp_alpha_place_pending_order(
+    symbol: str = "XAUUSD",
+    order_type: str = "SELL_LIMIT",
+    price: float = 0.0,
+    volume: float = 0.01,
+    sl: float = 0.0,
+    tp: float = 0.0,
+    comment: str = "OpenCode Planned Probe",
+    tag: str = ""
+) -> str:
+    """Place planned pending orders / triggers on MT5: BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP.
+    
+    Allows OpenCode CIO to pre-plan and place single or multiple staggered probes at key structural levels
+    (e.g. Bearish FVG CE, EMA20 resistance, or discount sweeps).
+    When the probe executes, a split-second execution alert is immediately fired into the OpenCode session!
+    
+    Args:
+        symbol: Instrument symbol (default: 'XAUUSD')
+        order_type: 'BUY_LIMIT', 'SELL_LIMIT', 'BUY_STOP', 'SELL_STOP'
+        price: Trigger / entry price level
+        volume: Probe size (default: 0.01)
+        sl: Stop loss level (wide breathing room)
+        tp: Take profit level (wide buffer)
+        comment: Order comment tag
+        tag: Optional custom description (e.g. 'H1 Bear FVG CE Probe')
+    """
+    _init_mt5()
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pending Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Pending Order requested: {order_type.upper()} {volume} lots on {symbol} @ {price} (SL: {sl}, TP: {tp}, Tag: {tag})")
+    
+    try:
+        import MetaTrader5 as mt5
+        sym = _normalize_symbol(symbol)
+        ot_clean = order_type.upper().strip()
+        
+        type_map = {
+            "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
+            "BUY_LIMIT_PROBE": mt5.ORDER_TYPE_BUY_LIMIT,
+            "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,
+            "SELL_LIMIT_PROBE": mt5.ORDER_TYPE_SELL_LIMIT,
+            "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
+            "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP
+        }
+        
+        if ot_clean not in type_map:
+            return json.dumps({
+                "status": "INVALID_ORDER_TYPE",
+                "error": f"Invalid order_type '{order_type}'. Supported: {list(type_map.keys())}"
+            }, indent=2)
+            
+        target_price = float(price)
+        if target_price <= 0:
+            return json.dumps({
+                "status": "INVALID_PRICE",
+                "error": "Price must be a positive number greater than 0."
+            }, indent=2)
+            
+        order_comment = f"Probe:{tag}" if tag else comment
+        order_comment = order_comment[:31]  # MT5 comment length limit
+        
+        req = {
+            "action": mt5.TRADE_ACTION_PENDING,
+            "symbol": sym,
+            "volume": float(volume),
+            "type": type_map[ot_clean],
+            "price": target_price,
+            "sl": float(sl),
+            "tp": float(tp),
+            "deviation": 20,
+            "magic": 234001,
+            "comment": order_comment,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_RETURN
+        }
+        
+        res = mt5.order_send(req)
+        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {volume} lots on {sym} @ {target_price} (Order #{res.order}).")
+            return json.dumps({
+                "status": "PLACED",
+                "order_ticket": res.order,
+                "symbol": sym,
+                "order_type": ot_clean,
+                "price": target_price,
+                "volume": float(volume),
+                "sl": float(sl),
+                "tp": float(tp),
+                "tag": tag,
+                "retcode": res.retcode,
+                "note": "When this probe fills, a split-second execution alert will be sent directly to your session."
+            }, indent=2)
+            
+        err_msg = res.comment if res else "Unknown MT5 error"
+        return json.dumps({
+            "status": "FAILED",
+            "symbol": sym,
+            "order_type": ot_clean,
+            "price": target_price,
+            "error": err_msg,
+            "retcode": getattr(res, 'retcode', None)
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_cancel_pending_order(order_ticket: int) -> str:
+    """Cancel / remove an active pending order on MT5."""
+    _init_mt5()
+    try:
+        import MetaTrader5 as mt5
+        req = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": int(order_ticket)
+        }
+        res = mt5.order_send(req)
+        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            return json.dumps({"status": "CANCELLED", "order_ticket": order_ticket}, indent=2)
+        return json.dumps({"status": "FAILED", "order_ticket": order_ticket, "error": res.comment if res else "Unknown error"}, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
+    """Fetch all active pending trigger orders on MT5."""
+    _init_mt5()
+    try:
+        import MetaTrader5 as mt5
+        orders = mt5.orders_get()
+        orders_data = []
+        sym_clean = symbol.upper().strip() if symbol else "ALL"
+        
+        type_names = {
+            mt5.ORDER_TYPE_BUY_LIMIT: "BUY_LIMIT",
+            mt5.ORDER_TYPE_SELL_LIMIT: "SELL_LIMIT",
+            mt5.ORDER_TYPE_BUY_STOP: "BUY_STOP",
+            mt5.ORDER_TYPE_SELL_STOP: "SELL_STOP"
+        }
+        
+        for o in orders or []:
+            if sym_clean != "ALL" and o.symbol.upper() != sym_clean:
+                continue
+            orders_data.append({
+                "ticket": o.ticket,
+                "symbol": o.symbol,
+                "type": type_names.get(o.type, f"TYPE_{o.type}"),
+                "volume_initial": o.volume_initial,
+                "volume_current": o.volume_current,
+                "price_open": o.price_open,
+                "sl": o.sl,
+                "tp": o.tp,
+                "comment": o.comment,
+                "magic": o.magic
+            })
+        return json.dumps({
+            "status": "SUCCESS",
+            "total_pending_orders": len(orders_data),
+            "pending_orders": orders_data
+        }, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+@mcp.tool()
+def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", price: float = 0.0, volume: float = 0.01, sl: float = 0.0, tp: float = 0.0, comment: str = "OpenCode Planned Probe", tag: str = "") -> str:
+    """Place planned pending orders (triggers) on MT5: BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP."""
+    return mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl, tp, comment, tag)
+
+@mcp.tool()
+def cancel_pending_order(order_ticket: int) -> str:
+    """Cancel / remove an active pending order on MT5."""
+    return mcp_alpha_cancel_pending_order(order_ticket)
+
+@mcp.tool()
+def get_pending_orders(symbol: str = "ALL") -> str:
+    """Fetch all active pending trigger orders on MT5."""
+    return mcp_alpha_get_pending_orders(symbol)
+
+@mcp.tool()
 def mcp_alpha_get_account_status() -> str:
     """OpenCode fetches live FTMO MT5 account status and active positions."""
     _init_mt5()
