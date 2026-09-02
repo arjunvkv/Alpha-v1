@@ -672,12 +672,27 @@ def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
         from nng.regime_brain_v2 import RegimeBrainV2
         from nng.condition_trade_engine import extract_trade
         from nng.telemetry_bridge import get_live_telemetry
+        from nng.safety_guards import run_full_safety_audit
         import mcp_server.alpha_mcp_server as current_server
 
         tel = get_live_telemetry(current_server, symbol)
         brain = RegimeBrainV2()
         condition = brain.classify(tel)
         trade = extract_trade(condition, tel)
+
+        # Run Institutional Blind-Spot Safety Audit
+        live_spread = float(tel.get("live_spread_pts", 3.5))
+        bid = float(tel.get("bid", tel.get("live_price", 0.0)))
+        ask = float(tel.get("ask", tel.get("live_price", 0.0)))
+        ot = trade.get("order_type") if trade.get("trade_valid") else None
+        entry_p = trade.get("entry") if trade.get("trade_valid") else None
+
+        safety = run_full_safety_audit(symbol, ot, entry_p, live_spread, bid, ask)
+        if trade.get("trade_valid") and not safety.get("all_guards_passed", True):
+            trade["trade_valid"] = False
+            trade["blocked_by_safety"] = safety.get("blocked_by", [])
+            trade["safety_reasons"] = safety.get("block_reasons", [])
+            trade["reason"] = f"SAFETY_GUARD_TRIPPED: {', '.join(safety.get('block_reasons', []))}"
 
         return json.dumps({
             "symbol": symbol,
@@ -687,8 +702,10 @@ def globe_get_nearest_trade(symbol: str = "XAUUSD") -> str:
             "literature": condition.get("literature"),
             "why_this_trade": condition.get("when_description"),
             "trade": trade,
+            "safety_audit": safety,
             "brain_modules": condition.get("brain_modules", {}),
         }, indent=2)
+
     except Exception as err:
         import traceback
         return json.dumps({"status": "FAILED", "error": str(err), "trace": traceback.format_exc()})
