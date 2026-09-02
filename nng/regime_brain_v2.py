@@ -32,6 +32,34 @@ from nng.intermarket import cot_regime, dxy_correlation_bias, real_yields_bias, 
 from nng.structure_analytics import structure_analysis
 from nng.statistical_analytics import statistical_analysis
 
+# New modules — imported with fallback so brain works even while modules are being written
+try:
+    from nng.order_block_engine import find_order_blocks, find_breaker_blocks, get_nearest_ob, ob_confluence
+    _HAS_OB = True
+except ImportError:
+    _HAS_OB = False
+
+try:
+    from nng.liquidity_map import (find_equal_highs_lows, detect_bsl_ssl_sweep,
+                                    fibonacci_levels, find_fibonacci_confluence,
+                                    detect_abcd_harmonic, find_multi_tf_fvg_stack,
+                                    full_liquidity_analysis)
+    _HAS_LIQUIDITY = True
+except ImportError:
+    _HAS_LIQUIDITY = False
+
+try:
+    from nng.wyckoff_full import classify_wyckoff_phase_full
+    _HAS_WYCKOFF_FULL = True
+except ImportError:
+    _HAS_WYCKOFF_FULL = False
+
+try:
+    from nng.elliott_wave import elliott_wave_analysis
+    _HAS_ELLIOTT = True
+except ImportError:
+    _HAS_ELLIOTT = False
+
 
 # ===================================================================
 # FULL CONDITION CATALOG - 32 Named Conditions
@@ -231,6 +259,199 @@ FULL_CONDITIONS = {
         "target_anchor": "ROLLING_MEAN_OR_POC",
     },
 
+
+    # ---- ORDER BLOCK CONDITIONS ----
+    "OB_BULLISH_MITIGATION": {
+        "name": "Bullish Order Block Mitigation Long",
+        "literature": "ICT/Huddleston Order Block Theory - Last bearish candle before bullish impulse",
+        "when": "Price retesting a fresh bullish order block zone (last bearish candle before up-impulse). High-probability bounce expected.",
+        "direction": "LONG",
+        "entry_anchor": "OB_TOP_OR_CE",
+        "stop_anchor": "BELOW_OB_BOTTOM",
+        "target_anchor": "NEXT_BEARISH_OB_OR_SWING_HIGH",
+    },
+    "OB_BEARISH_MITIGATION": {
+        "name": "Bearish Order Block Mitigation Short",
+        "literature": "ICT/Huddleston Order Block Theory - Last bullish candle before bearish impulse",
+        "when": "Price retesting a fresh bearish order block zone (last bullish candle before down-impulse). High-probability rejection expected.",
+        "direction": "SHORT",
+        "entry_anchor": "OB_BOTTOM_OR_CE",
+        "stop_anchor": "ABOVE_OB_TOP",
+        "target_anchor": "NEXT_BULLISH_OB_OR_SWING_LOW",
+    },
+    "BREAKER_BLOCK_LONG": {
+        "name": "Bearish Order Block Broken - Breaker Block Long",
+        "literature": "ICT/Huddleston Breaker Block - broken OB flips to support",
+        "when": "A bearish OB was violated by price (broken). Price returns to test the former OB zone as support. Flip = bullish breaker.",
+        "direction": "LONG",
+        "entry_anchor": "BREAKER_ZONE_TOP",
+        "stop_anchor": "BELOW_BREAKER_ZONE_BOTTOM",
+        "target_anchor": "NEXT_RESISTANCE_OR_SWING_HIGH",
+    },
+    "BREAKER_BLOCK_SHORT": {
+        "name": "Bullish Order Block Broken - Breaker Block Short",
+        "literature": "ICT/Huddleston Breaker Block - broken OB flips to resistance",
+        "when": "A bullish OB was violated by price (broken). Price returns to test the former OB zone as resistance. Flip = bearish breaker.",
+        "direction": "SHORT",
+        "entry_anchor": "BREAKER_ZONE_BOTTOM",
+        "stop_anchor": "ABOVE_BREAKER_ZONE_TOP",
+        "target_anchor": "NEXT_SUPPORT_OR_SWING_LOW",
+    },
+
+    # ---- LIQUIDITY CONDITIONS ----
+    "BSL_SWEEP_REVERSAL": {
+        "name": "Buyside Liquidity (Equal Highs) Sweep Reversal Short",
+        "literature": "ICT/Huddleston BSL/SSL - Equal highs = resting stop orders above",
+        "when": "Equal highs swept (BSL taken). Market swept stop orders above equal highs. Reversal expected short into range.",
+        "direction": "SHORT",
+        "entry_anchor": "NEAREST_BEARISH_FVG_OR_OB_AFTER_SWEEP",
+        "stop_anchor": "ABOVE_EQUAL_HIGH_LEVEL",
+        "target_anchor": "EQUAL_LOWS_OR_VAL",
+    },
+    "SSL_SWEEP_REVERSAL": {
+        "name": "Sellside Liquidity (Equal Lows) Sweep Reversal Long",
+        "literature": "ICT/Huddleston BSL/SSL - Equal lows = resting stop orders below",
+        "when": "Equal lows swept (SSL taken). Market swept stop orders below equal lows. Reversal expected long into range.",
+        "direction": "LONG",
+        "entry_anchor": "NEAREST_BULLISH_FVG_OR_OB_AFTER_SWEEP",
+        "stop_anchor": "BELOW_EQUAL_LOW_LEVEL",
+        "target_anchor": "EQUAL_HIGHS_OR_VAH",
+    },
+    "FVG_MULTI_TF_STACK_LONG": {
+        "name": "Balanced Price Range (Multi-TF FVG Stack) Long",
+        "literature": "ICT Balanced Price Range (BPR) - overlapping FVGs from multiple timeframes",
+        "when": "FVGs from M15 and H1 overlap (Balanced Price Range). Institutional reference confluence. Highest probability support zone.",
+        "direction": "LONG",
+        "entry_anchor": "BPR_BOTTOM_CE",
+        "stop_anchor": "BELOW_BPR_BOTTOM",
+        "target_anchor": "BPR_TOP_PLUS_MEASURED_MOVE",
+    },
+    "FVG_MULTI_TF_STACK_SHORT": {
+        "name": "Balanced Price Range (Multi-TF FVG Stack) Short",
+        "literature": "ICT Balanced Price Range (BPR) - overlapping FVGs from multiple timeframes",
+        "when": "FVGs from M15 and H1 overlap above price (Balanced Price Range). Institutional reference confluence. Highest probability resistance zone.",
+        "direction": "SHORT",
+        "entry_anchor": "BPR_TOP_CE",
+        "stop_anchor": "ABOVE_BPR_TOP",
+        "target_anchor": "BPR_BOTTOM_MINUS_MEASURED_MOVE",
+    },
+
+    # ---- FIBONACCI CONDITIONS ----
+    "FIBONACCI_GOLDEN_ZONE_LONG": {
+        "name": "Fibonacci Golden Zone 61.8-78.6 Retracement Long",
+        "literature": "Pesavento 'Fibonacci Ratios with Pattern Recognition' (1997) + Carney harmonic context",
+        "when": "Price retracing into 61.8%-78.6% Fibonacci zone of prior bullish swing with confluence (FVG/OB/VA level). Golden pocket = highest reversal probability.",
+        "direction": "LONG",
+        "entry_anchor": "FIBONACCI_61_8_LEVEL",
+        "stop_anchor": "BELOW_78_6_LEVEL",
+        "target_anchor": "PRIOR_SWING_HIGH_OR_127_EXTENSION",
+    },
+    "FIBONACCI_GOLDEN_ZONE_SHORT": {
+        "name": "Fibonacci Golden Zone 61.8-78.6 Retracement Short",
+        "literature": "Pesavento 'Fibonacci Ratios with Pattern Recognition' (1997)",
+        "when": "Price retracing up into 61.8%-78.6% Fibonacci zone of prior bearish swing with confluence. Highest reversal probability zone.",
+        "direction": "SHORT",
+        "entry_anchor": "FIBONACCI_61_8_LEVEL",
+        "stop_anchor": "ABOVE_78_6_LEVEL",
+        "target_anchor": "PRIOR_SWING_LOW_OR_127_EXTENSION",
+    },
+
+    # ---- HARMONIC CONDITIONS ----
+    "HARMONIC_ABCD_LONG": {
+        "name": "AB=CD Harmonic Completion Long",
+        "literature": "Carney 'Harmonic Trading Vol 1' (2010) - AB=CD the most fundamental harmonic",
+        "when": "AB=CD completion at D point in discount (below VAL or at key support). CD leg equals AB leg. Price has completed the pattern. Reversal up expected.",
+        "direction": "LONG",
+        "entry_anchor": "ABCD_D_POINT",
+        "stop_anchor": "BELOW_D_POINT_BY_BUFFER",
+        "target_anchor": "A_POINT_OR_B_RETRACEMENT",
+    },
+    "HARMONIC_ABCD_SHORT": {
+        "name": "AB=CD Harmonic Completion Short",
+        "literature": "Carney 'Harmonic Trading Vol 1' (2010)",
+        "when": "AB=CD completion at D point in premium (above VAH or at key resistance). Reversal down expected.",
+        "direction": "SHORT",
+        "entry_anchor": "ABCD_D_POINT",
+        "stop_anchor": "ABOVE_D_POINT_BY_BUFFER",
+        "target_anchor": "A_POINT_OR_B_RETRACEMENT",
+    },
+
+    # ---- WYCKOFF FULL PHASE CONDITIONS ----
+    "WYCKOFF_PHASE_C_SECONDARY_TEST_LONG": {
+        "name": "Wyckoff Phase C Secondary Test of Spring Long",
+        "literature": "Wyckoff (1930), Pruden (2007) - Phase C secondary test = lower-risk Spring re-entry",
+        "when": "After Spring (Phase C), price returns to test the Spring low at higher low (secondary test). Lower risk entry than the Spring itself. Accumulation confirmed.",
+        "direction": "LONG",
+        "entry_anchor": "SECONDARY_TEST_LOW_PLUS_BUFFER",
+        "stop_anchor": "BELOW_SPRING_LOW",
+        "target_anchor": "VAH_OR_RESISTANCE",
+    },
+    "WYCKOFF_PHASE_C_SECONDARY_TEST_SHORT": {
+        "name": "Wyckoff Phase C Secondary Test of UTAD Short",
+        "literature": "Wyckoff (1930), Pruden (2007) - Phase C secondary test of UTAD = lower-risk distribution entry",
+        "when": "After UTAD (Phase C), price rallies to test UTAD high at lower high (secondary test). Distribution confirmed. Short into markup failure.",
+        "direction": "SHORT",
+        "entry_anchor": "SECONDARY_TEST_HIGH_MINUS_BUFFER",
+        "stop_anchor": "ABOVE_UTAD_HIGH",
+        "target_anchor": "VAL_OR_SUPPORT",
+    },
+    "WYCKOFF_PHASE_D_MARKUP_LONG": {
+        "name": "Wyckoff Phase D Sign of Strength (SOS) Pullback Long",
+        "literature": "Wyckoff (1930) - Phase D SOS = first impulsive move up from accumulation. Pull back to Last Point of Support (LPS).",
+        "when": "Phase D markup begun (SOS BOS confirmed). Price pulling back to Last Point of Support. Enter long on LPS retest.",
+        "direction": "LONG",
+        "entry_anchor": "LAST_POINT_OF_SUPPORT_LPS",
+        "stop_anchor": "BELOW_LPS",
+        "target_anchor": "MEASURED_MOVE_EQUAL_TO_CAUSE",
+    },
+    "WYCKOFF_PHASE_D_MARKDOWN_SHORT": {
+        "name": "Wyckoff Phase D Sign of Weakness (SOW) Pullback Short",
+        "literature": "Wyckoff (1930) - Phase D SOW = first impulsive move down from distribution. Pull back to Last Point of Supply (LPSY).",
+        "when": "Phase D markdown begun (SOW BOS confirmed). Price pulling back up to Last Point of Supply. Enter short on LPSY retest.",
+        "direction": "SHORT",
+        "entry_anchor": "LAST_POINT_OF_SUPPLY_LPSY",
+        "stop_anchor": "ABOVE_LPSY",
+        "target_anchor": "MEASURED_MOVE_DOWN_EQUAL_TO_CAUSE",
+    },
+
+    # ---- ELLIOTT WAVE CONDITIONS ----
+    "ELLIOTT_WAVE3_LONG": {
+        "name": "Elliott Wave 3 Long - Strongest Wave",
+        "literature": "Prechter & Frost 'Elliott Wave Principle' (2005) - Wave 3 = extended impulse, never shortest",
+        "when": "Wave 3 of bullish impulse identified. Wave 3 is the strongest, fastest wave. Enter after Wave 2 correction completes at Fibonacci retracement.",
+        "direction": "LONG",
+        "entry_anchor": "WAVE2_BOTTOM_OR_FIB_RETRACEMENT",
+        "stop_anchor": "BELOW_WAVE1_TOP",
+        "target_anchor": "WAVE3_PROJECTION_161_EXTENSION",
+    },
+    "ELLIOTT_WAVE3_SHORT": {
+        "name": "Elliott Wave 3 Short - Strongest Bearish Wave",
+        "literature": "Prechter & Frost (2005) - Wave 3 bearish impulse",
+        "when": "Wave 3 of bearish impulse identified. Strongest move down. Enter after Wave 2 correction at Fibonacci retracement.",
+        "direction": "SHORT",
+        "entry_anchor": "WAVE2_TOP_OR_FIB_RETRACEMENT",
+        "stop_anchor": "ABOVE_WAVE1_BOTTOM",
+        "target_anchor": "WAVE3_PROJECTION_161_EXTENSION",
+    },
+    "ELLIOTT_WAVE_C_COMPLETION_LONG": {
+        "name": "Elliott Wave C Completion - Corrective End Long",
+        "literature": "Prechter & Frost (2005) - Wave C = final leg of A-B-C correction, reversal follows",
+        "when": "Wave C of A-B-C corrective structure completing at support. End of correction = new impulse beginning long.",
+        "direction": "LONG",
+        "entry_anchor": "WAVE_C_COMPLETION_LEVEL",
+        "stop_anchor": "BELOW_WAVE_C_BY_BUFFER",
+        "target_anchor": "PRIOR_WAVE_A_HIGH_OR_EQUIVALENT",
+    },
+    "ELLIOTT_WAVE_C_COMPLETION_SHORT": {
+        "name": "Elliott Wave C Completion - Corrective End Short",
+        "literature": "Prechter & Frost (2005)",
+        "when": "Wave C of bearish A-B-C corrective structure completing at resistance. End of correction = new impulse beginning short.",
+        "direction": "SHORT",
+        "entry_anchor": "WAVE_C_COMPLETION_LEVEL",
+        "stop_anchor": "ABOVE_WAVE_C_BY_BUFFER",
+        "target_anchor": "PRIOR_WAVE_A_LOW_OR_EQUIVALENT",
+    },
+
     # ---- LEGACY V1 CONDITIONS (enhanced) ----
     "TREND_BOS_PULLBACK": V1_CONDITIONS["TREND_BOS_PULLBACK"],
     "LIQUIDITY_SWEEP_REVERSAL": V1_CONDITIONS["LIQUIDITY_SWEEP_REVERSAL"],
@@ -372,10 +593,101 @@ class RegimeBrainV2:
         # 9. Statistical
         stats = statistical_analysis(price, price_history, velocity_tpm)
 
+        # 10. Order Blocks & Breakers (Real OHLC rates)
+        rates_list = []
+        opens = telemetry.get("open_history", [])
+        highs = telemetry.get("high_history", [])
+        lows = telemetry.get("low_history", [])
+        closes = telemetry.get("price_history", [])
+        vols = telemetry.get("volume_history", [])
+        for k in range(min(len(opens), len(highs), len(lows), len(closes))):
+            rates_list.append({
+                "open": opens[k], "high": highs[k], "low": lows[k], "close": closes[k],
+                "tick_volume": vols[k] if k < len(vols) else 100
+            })
+
+        order_blocks = find_order_blocks(rates_list, price) if _HAS_OB and rates_list else []
+        breaker_blocks = find_breaker_blocks(order_blocks, price) if _HAS_OB else []
+        nearest_bull_ob, nearest_bear_ob = get_nearest_ob(order_blocks, price) if _HAS_OB else (None, None)
+
+        # 11. Liquidity & Fibonacci Map
+        all_fvgs = telemetry.get("all_fvgs", [])
+        liq_map = full_liquidity_analysis(price_history, price, all_fvgs, vah, val, poc, last_sh, last_sl) if _HAS_LIQUIDITY else {}
+        swept_eq = liq_map.get("sweeps", {})
+        fib_conf = liq_map.get("fib_confluence", {})
+        bpr_stacks = liq_map.get("bpr_stacks", [])
+
+        # 12. Full Wyckoff Analysis (Phases A-E)
+        wyckoff_full = classify_wyckoff_phase_full(
+            price_history, highs, lows, vah, val, poc, cvd_10b, velocity_tpm, displacement, choch, last_sh, last_sl
+        ) if _HAS_WYCKOFF_FULL else {}
+
+        # 13. Elliott Wave Structure
+        ew_analysis = elliott_wave_analysis(price_history) if _HAS_ELLIOTT else {}
+
         # ============================================================
         # CONDITION RESOLUTION TREE — 32 Conditions, Priority Order
         # ============================================================
         cid = None
+
+        # === TIER 0: LIQUIDITY SWEEP & BREAKER REVERSALS (Highest Confluence Stops Run) ===
+        if _HAS_LIQUIDITY and swept_eq.get("is_swept", False):
+            for sw in swept_eq.get("swept_details", []):
+                if sw["type"] == "BSL_SWEPT" and (strong_sell_ofi or cvd_10b < -50):
+                    cid = "BSL_SWEEP_REVERSAL"
+                    break
+                elif sw["type"] == "SSL_SWEPT" and (strong_buy_ofi or cvd_10b > 50):
+                    cid = "SSL_SWEEP_REVERSAL"
+                    break
+
+        # Breaker Block Reclaims
+        elif _HAS_OB and breaker_blocks:
+            for brk in breaker_blocks:
+                if brk["type"] == "BULLISH_BREAKER" and abs(price - brk["support_level"]) <= 2.5 and not strong_sell_ofi:
+                    cid = "BREAKER_BLOCK_LONG"
+                    break
+                elif brk["type"] == "BEARISH_BREAKER" and abs(price - brk["resistance_level"]) <= 2.5 and not strong_buy_ofi:
+                    cid = "BREAKER_BLOCK_SHORT"
+                    break
+
+        # Balanced Price Range (Multi-TF FVG Stack)
+        elif _HAS_LIQUIDITY and bpr_stacks and not cid:
+            for bpr in bpr_stacks:
+                if abs(price - bpr["ce_avg"]) <= 3.0:
+                    cid = "FVG_MULTI_TF_STACK_LONG" if price >= bpr["ce_avg"] else "FVG_MULTI_TF_STACK_SHORT"
+                    break
+
+        # Order Block Mitigation
+        elif _HAS_OB and nearest_bull_ob and abs(price - nearest_bull_ob["top"]) <= 2.0 and not strong_sell_ofi:
+            cid = "OB_BULLISH_MITIGATION"
+        elif _HAS_OB and nearest_bear_ob and abs(price - nearest_bear_ob["bottom"]) <= 2.0 and not strong_buy_ofi:
+            cid = "OB_BEARISH_MITIGATION"
+
+        # Full Wyckoff Phase C & D
+        elif _HAS_WYCKOFF_FULL and wyckoff_full.get("phase") == "PHASE_C_SPRING":
+            cid = "WYCKOFF_SPRING_REVERSAL"
+        elif _HAS_WYCKOFF_FULL and wyckoff_full.get("phase") == "PHASE_C_UTAD":
+            cid = "WYCKOFF_UTAD_REVERSAL"
+        elif _HAS_WYCKOFF_FULL and wyckoff_full.get("phase") == "PHASE_D_MARKUP":
+            cid = "WYCKOFF_PHASE_D_MARKUP_LONG"
+        elif _HAS_WYCKOFF_FULL and wyckoff_full.get("phase") == "PHASE_D_MARKDOWN":
+            cid = "WYCKOFF_PHASE_D_MARKDOWN_SHORT"
+
+        # Elliott Wave Impulse / Correction
+        elif _HAS_ELLIOTT and ew_analysis.get("is_wave3_opportunity", False) and ew_analysis.get("direction") == "BULLISH" and not strong_sell_ofi:
+            cid = "ELLIOTT_WAVE3_LONG"
+        elif _HAS_ELLIOTT and ew_analysis.get("is_wave3_opportunity", False) and ew_analysis.get("direction") == "BEARISH" and not strong_buy_ofi:
+            cid = "ELLIOTT_WAVE3_SHORT"
+        elif _HAS_ELLIOTT and ew_analysis.get("is_wave_c_complete", False) and price < val and not strong_sell_ofi:
+            cid = "ELLIOTT_WAVE_C_COMPLETION_LONG"
+        elif _HAS_ELLIOTT and ew_analysis.get("is_wave_c_complete", False) and price > vah and not strong_buy_ofi:
+            cid = "ELLIOTT_WAVE_C_COMPLETION_SHORT"
+
+        # Fibonacci Golden Zone (61.8% - 78.6%)
+        elif _HAS_LIQUIDITY and fib_conf.get("in_golden_zone", False) and price < val and not strong_sell_ofi:
+            cid = "FIBONACCI_GOLDEN_ZONE_LONG"
+        elif _HAS_LIQUIDITY and fib_conf.get("in_golden_zone", False) and price > vah and not strong_buy_ofi:
+            cid = "FIBONACCI_GOLDEN_ZONE_SHORT"
 
         # === TIER 1: ICT SESSION (highest intraday specificity) ===
         london_kz = "LONDON" in kz

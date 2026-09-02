@@ -255,6 +255,118 @@ def extract_trade(condition_result: Dict[str, Any], telemetry: Dict[str, Any]) -
             target = round(swing_low, 2)
             order_type = "SELL_LIMIT"
 
+    # ===== ORDER BLOCK BULLISH MITIGATION =====
+    elif cid == "OB_BULLISH_MITIGATION":
+        entry = round(price, 2)
+        stop = round(val - BUFFER_PTS - 1.0, 2)
+        target = round(vah, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== ORDER BLOCK BEARISH MITIGATION =====
+    elif cid == "OB_BEARISH_MITIGATION":
+        entry = round(price, 2)
+        stop = round(vah + BUFFER_PTS + 1.0, 2)
+        target = round(val, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== BREAKER BLOCK LONG =====
+    elif cid == "BREAKER_BLOCK_LONG":
+        entry = round(price, 2)
+        stop = round(val - BUFFER_PTS, 2)
+        target = round(vah + (vah - val), 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== BREAKER BLOCK SHORT =====
+    elif cid == "BREAKER_BLOCK_SHORT":
+        entry = round(price, 2)
+        stop = round(vah + BUFFER_PTS, 2)
+        target = round(val - (vah - val), 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== BSL SWEEP REVERSAL (Equal Highs Swept -> Short) =====
+    elif cid == "BSL_SWEEP_REVERSAL":
+        entry = round(price, 2)
+        stop = round(price + BUFFER_PTS + 1.5, 2)
+        target = round(poc if poc > 0 else val, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== SSL SWEEP REVERSAL (Equal Lows Swept -> Long) =====
+    elif cid == "SSL_SWEEP_REVERSAL":
+        entry = round(price, 2)
+        stop = round(price - BUFFER_PTS - 1.5, 2)
+        target = round(poc if poc > 0 else vah, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== FVG MULTI TF STACK LONG (Balanced Price Range) =====
+    elif cid == "FVG_MULTI_TF_STACK_LONG":
+        entry = round(price, 2)
+        stop = round(val - BUFFER_PTS, 2)
+        target = round(vah, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== FVG MULTI TF STACK SHORT (Balanced Price Range) =====
+    elif cid == "FVG_MULTI_TF_STACK_SHORT":
+        entry = round(price, 2)
+        stop = round(vah + BUFFER_PTS, 2)
+        target = round(val, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== FIBONACCI GOLDEN ZONE LONG =====
+    elif cid == "FIBONACCI_GOLDEN_ZONE_LONG":
+        entry = round(price, 2)
+        stop = round(val - BUFFER_PTS - 1.0, 2)
+        target = round(vah, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== FIBONACCI GOLDEN ZONE SHORT =====
+    elif cid == "FIBONACCI_GOLDEN_ZONE_SHORT":
+        entry = round(price, 2)
+        stop = round(vah + BUFFER_PTS + 1.0, 2)
+        target = round(val, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== WYCKOFF PHASE D MARKUP LONG =====
+    elif cid == "WYCKOFF_PHASE_D_MARKUP_LONG":
+        entry = round(vah, 2) if price > vah else round(price, 2)
+        stop = round(poc - BUFFER_PTS, 2) if poc > 0 else round(val - BUFFER_PTS, 2)
+        target = round(vah + (vah - val) * 1.5, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== WYCKOFF PHASE D MARKDOWN SHORT =====
+    elif cid == "WYCKOFF_PHASE_D_MARKDOWN_SHORT":
+        entry = round(val, 2) if price < val else round(price, 2)
+        stop = round(poc + BUFFER_PTS, 2) if poc > 0 else round(vah + BUFFER_PTS, 2)
+        target = round(val - (vah - val) * 1.5, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== ELLIOTT WAVE 3 LONG =====
+    elif cid == "ELLIOTT_WAVE3_LONG":
+        entry = round(price, 2)
+        stop = round(val - BUFFER_PTS, 2)
+        target = round(vah + (vah - val) * 2.0, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== ELLIOTT WAVE 3 SHORT =====
+    elif cid == "ELLIOTT_WAVE3_SHORT":
+        entry = round(price, 2)
+        stop = round(vah + BUFFER_PTS, 2)
+        target = round(val - (vah - val) * 2.0, 2)
+        order_type = "SELL_LIMIT"
+
+    # ===== ELLIOTT WAVE C COMPLETION LONG =====
+    elif cid == "ELLIOTT_WAVE_C_COMPLETION_LONG":
+        entry = round(price, 2)
+        stop = round(price - BUFFER_PTS - 1.5, 2)
+        target = round(vah, 2)
+        order_type = "BUY_LIMIT"
+
+    # ===== ELLIOTT WAVE C COMPLETION SHORT =====
+    elif cid == "ELLIOTT_WAVE_C_COMPLETION_SHORT":
+        entry = round(price, 2)
+        stop = round(price + BUFFER_PTS + 1.5, 2)
+        target = round(val, 2)
+        order_type = "SELL_LIMIT"
+
     # ===== VOLATILITY EXPANSION CONTINUATION =====
     elif cid == "VOLATILITY_EXPANSION_CONTINUATION":
         if "BEARISH" in fvg_type or price < vah:
