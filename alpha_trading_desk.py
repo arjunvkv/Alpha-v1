@@ -765,12 +765,14 @@ class ConsolidatedTradingDaemon:
             for name, status in update_status
         )
 
-        execution_blueprint_block = """=== FULL OCEAN INSTITUTIONAL SYNTHESIS & ANTI-OVERGATING MANDATE ===
-  1. ANTI-OVERGATING (ELIMINATE ANALYSIS PARALYSIS):
-     • Do NOT invent extreme gates (e.g. requiring delta <= -5000 or 10-indicator alignment). A 0.01 probe only risks ~$0.30!
-     • When price reaches M5 FVG 50% CE or rejects a swept level with moderate flow (10-bar delta < -1000 for short / > 0 for long), DEPLOY 0.01 PROBE IMMEDIATELY.
-  2. MANDATORY 6-DIMENSIONAL REASONING: In your written rationale, you MUST synthesize ALL 6 layers:
-     [1] Macro Real Yields -> [2] COT Speculators vs Commercials -> [3] Volume Profile VAL/POC -> [4] 4TF Alignment -> [5] CVD Delta & M5 FVG CE -> [6] 0.01 Probe & Scale Plan.
+        execution_blueprint_block = """=== DECISIVE 1.0 LOT SCALING & BREAKEVEN HARVEST MANDATE ===
+  1. CONCRETE 1.0 LOT SCALE TRIGGER (+$1.50 to +$2.00 GAIN):
+     • When a 0.01 probe reaches +$1.50 to +$2.00 in floating profit (or +15-20 pts / +0.3R), the trade thesis is PROVEN!
+     • You MUST IMMEDIATELY deploy the 1.0 LOT SCALE ORDER via mcp_alpha_execute_trade to capture the $200-$300 profit!
+     • NEVER sit idly monitoring a profitable probe at 0.01 lot without scaling!
+  2. SIMULTANEOUS BREAKEVEN SHIELD:
+     • The instant the 1.0 lot scale order is fired, advance SL to Entry + 1 pt (mcp_alpha_update_position action='BREAK_EVEN') to make the entire 1.01 lot position 100% risk-free.
+  3. MANDATORY 6-DIMENSIONAL SYNTHESIS: In your written rationale, synthesize Macro, COT, Volume Profile, 4TF, CVD Delta, and the 1.0 Lot Scale Action.
 """
 
         file_ref_header = (
