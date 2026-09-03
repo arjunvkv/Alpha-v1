@@ -32,6 +32,8 @@ def test_gdelt_adds_provenance():
     assert item["news_id"]
     assert item["first_seen_at"] == item["retrieved_at"]
     assert item["discovered_via"] == "gdelt"
+    assert item["published_at"] is None
+    assert item["discovered_at"] == "20260101000000"
 
 def test_rss_registry_adds_stable_provenance():
     xml=b"<rss><channel><item><title>Headline</title><link>https://example.com/x#frag</link><pubDate>Tue, 01 Jan 2026 00:00:00 GMT</pubDate></item></channel></rss>"
