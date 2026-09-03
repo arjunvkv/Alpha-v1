@@ -8,8 +8,10 @@ Usage:
     python main.py
 """
 
+import json
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Make all Alpha packages importable when run from anywhere
@@ -21,10 +23,25 @@ logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 log = logging.getLogger("alpha.main")
 
 
+def _write_startup_capabilities():
+    from sensors.evidence_sources import capability_snapshot
+    path = Path(__file__).parent / "data" / "live" / "startup_capabilities.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "daemon_started_at": datetime.now(timezone.utc).isoformat(),
+        "adapter_states": capability_snapshot(),
+    }
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp.replace(path)
+    return payload
+
 def main():
+    capabilities = _write_startup_capabilities()
     log.info("=" * 60)
     log.info("ALPHA starting — daemon mode (body only; AI decides)")
     log.info("=" * 60)
+    log.info("Optional evidence capabilities: %s", capabilities["adapter_states"])
 
     from daemon.daemon import AlphaDaemon
     daemon = AlphaDaemon()
