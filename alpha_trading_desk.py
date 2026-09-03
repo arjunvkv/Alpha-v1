@@ -877,9 +877,16 @@ class ConsolidatedTradingDaemon:
                 f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
                 f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
                 f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
-                f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis."
+                f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
+                f"MANDATORY EVIDENCE-FIRST QUESTIONNAIRE PROTOCOL:\n"
+                f"1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).\n"
+                f"2. FORMULATE HIGHEST-VALUE QUESTION: State the specific market question that determines your action.\n"
+                f"3. SELECT & CALL TARGETED MCP TOOL: Auto-select and call the relevant MCP evidence tool (e.g. get_symbol_conviction, get_measured_cvd, get_fvg_matrix, get_full_institutional_profile, get_direct_news, search_market_news, get_fred_observations, backtest_thesis, ask_librarian, get_account_status).\n"
+                f"4. TEST CONTRADICTION: Check strongest material fact that could invalidate the thesis.\n"
+                f"5. RESOLVE ACTION: If conditional -> WAIT (via register_watch); if no opportunity -> NO TRADE; if executing -> complete pre-execution gate with explicit volume, SL, and TP."
             )
             post_to_opencode_session("Alpha Daemon", prompt)
+
 
         return has_active_trades
 
