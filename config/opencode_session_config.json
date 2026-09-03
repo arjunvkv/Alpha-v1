@@ -4,7 +4,7 @@
   "opencode_session_id": "ses_f9a2c101bffe582pNZqLaJybyK",
   "opencode_session_title": "Alpha v13",
   "opencode_api_url": "http://127.0.0.1:4096",
-  "dossier_interval_seconds": 180,
+  "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "dossier_streaming_enabled": true
 }
