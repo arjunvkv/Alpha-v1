@@ -152,7 +152,7 @@ def post_to_opencode_session(speaker: str, message: str):
                 LOG.warning(f"Could not query sessions list: {e}")
 
         payload = json.dumps({
-            "parts": [{"type": "text", "text": f"[{speaker}] {message}"}]
+            "parts": [{"type": "text", "text": message}]
         }).encode("utf-8")
 
         for target_sid in target_sids:
