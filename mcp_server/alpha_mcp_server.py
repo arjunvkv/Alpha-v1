@@ -1536,6 +1536,26 @@ def get_direct_news(max_items: int = 20) -> str:
 def lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
     return mcp_alpha_lookup_common_crawl(url, index, limit)
 
+@mcp.tool()
+def register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
+    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id)
+
+@mcp.tool()
+def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
+    return mcp_alpha_get_active_watches(symbol, include_closed)
+
+@mcp.tool()
+def update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
+    return mcp_alpha_update_watch(watch_id, status, condition, instruction, target_price, reason)
+
+@mcp.tool()
+def mark_watches_observed(watch_ids: List[str]) -> str:
+    return mcp_alpha_mark_watches_observed(watch_ids)
+
+@mcp.tool()
+def mark_evidence_read(evidence_ids: List[str]) -> str:
+    return mcp_alpha_mark_evidence_read(evidence_ids)
+
 # ======================================================================
 # DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
 # ======================================================================
