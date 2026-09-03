@@ -85,13 +85,14 @@ class GDELTAdapter:
             for article in articles:
                 url = article.get("url", "")
                 title = article.get("title", "")
-                published = article.get("seendate") or article.get("date")
+                published = article.get("date")
+                discovered_at = article.get("seendate")
                 canonical = url.split("#", 1)[0]
                 items.append({"news_id": hashlib.sha256((canonical or title).encode("utf-8")).hexdigest()[:24],
                               "canonical_url": canonical, "source_id": "gdelt",
                               "publisher": article.get("domain"),
                               "headline": title, "published_at": published,
-                              "retrieved_at": retrieved, "first_seen_at": retrieved,
+                              "discovered_at": discovered_at, "retrieved_at": retrieved, "first_seen_at": retrieved,
                               "discovered_via": "gdelt", "language": article.get("language"),
                               "data": article})
             observed = items[0].get("published_at") if items else None
