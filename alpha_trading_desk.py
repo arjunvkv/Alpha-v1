@@ -446,6 +446,7 @@ class ConsolidatedTradingDaemon:
         self.cycle_count = 0
         self.dispatch_count = 0
         self.last_dispatch_time = 0.0
+        self.last_brainstorm_dispatch_time = 0.0
         self.last_reversal_dispatch_time = 0.0
 
         # Wire live error monitoring into Desk Daemon (H4)
@@ -840,12 +841,26 @@ class ConsolidatedTradingDaemon:
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
             self.dispatch_count += 1
-            # Evidence-first wake: the daemon reports only the trigger and current factual
-            # state. OpenCode chooses the next question and fetches evidence through MCP.
             trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if open_tickets else "SCHEDULED_REASSESSMENT")
             
-            if self.dispatch_count % 2 == 1:
-                # Turn A: Standard Cadence-Tiered Market Evaluation Wake
+            # Brainstorm message arrives every 6 minutes (360s), replacing dossier for that cycle
+            brainstorm_interval = 360.0
+            time_since_brainstorm = now_ts - self.last_brainstorm_dispatch_time
+            
+            if is_startup:
+                self.last_brainstorm_dispatch_time = now_ts
+                is_brainstorm_turn = False
+            elif time_since_brainstorm >= brainstorm_interval:
+                self.last_brainstorm_dispatch_time = now_ts
+                is_brainstorm_turn = True
+            else:
+                is_brainstorm_turn = False
+                
+            if is_brainstorm_turn:
+                # 6-minute Brainstorm turn replacing dossier
+                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
+            else:
+                # 3-minute Standard Evidence Wake / Dossier turn
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
                     f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
@@ -879,10 +894,7 @@ class ConsolidatedTradingDaemon:
                     f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
                     f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
                 )
-            else:
-                # Turn B: Simple verbatim brainstorm prompt requested by user
-                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
-            post_to_opencode_session("Alpha Daemon", prompt)
+            post_to_opencode_session("", prompt)
 
 
 
