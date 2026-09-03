@@ -1526,42 +1526,52 @@ def mcp_alpha_lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limi
 
 @mcp.tool()
 def get_evidence_capabilities() -> str:
+    """Check status and availability of optional evidence adapters (FRED, GDELT, RSS, Common Crawl) without fetching bulk data."""
     return mcp_alpha_get_evidence_capabilities()
 
 @mcp.tool()
 def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
+    """Retrieve factual vintage-aware Federal Reserve economic observations (e.g. series 'DGS10', 'T10YIE', 'DFII10') for macroeconomic interest rate analysis."""
     return mcp_alpha_get_fred_observations(series_id, limit, vintage_date)
 
 @mcp.tool()
 def search_market_news(query: str, max_records: int = 25, timespan: str = "") -> str:
+    """Search global news and historical intelligence via Original GDELT DOC 2.0 API with provenance timestamps."""
     return mcp_alpha_search_market_news(query, max_records, timespan)
 
 @mcp.tool()
 def get_direct_news(max_items: int = 20) -> str:
+    """Fetch live breaking financial headlines from direct RSS/Atom feeds (MarketWatch, Yahoo Finance, Investing.com) with first-seen timestamps."""
     return mcp_alpha_get_direct_news(max_items)
 
 @mcp.tool()
 def lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
+    """On-demand historical URL capture recovery from Common Crawl index. Use only when historical article verification is needed."""
     return mcp_alpha_lookup_common_crawl(url, index, limit)
 
 @mcp.tool()
 def register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
+    """Create or update an objective persistent watch for the trading desk daemon to monitor (condition, target_price, direction, reason)."""
     return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id)
 
 @mcp.tool()
 def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
+    """Fetch all active persistent watches currently tracked by the trading desk."""
     return mcp_alpha_get_active_watches(symbol, include_closed)
 
 @mcp.tool()
 def update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
+    """Update status (ACTIVE/TRIGGERED/CANCELLED), target_price, condition, or notes on an existing watch."""
     return mcp_alpha_update_watch(watch_id, status, condition, instruction, target_price, reason)
 
 @mcp.tool()
 def mark_watches_observed(watch_ids: List[str]) -> str:
+    """Batch-mark one or more objective watch alerts as observed."""
     return mcp_alpha_mark_watches_observed(watch_ids)
 
 @mcp.tool()
 def mark_evidence_read(evidence_ids: List[str]) -> str:
+    """Batch-mark one or more persistent news/evidence items as read."""
     return mcp_alpha_mark_evidence_read(evidence_ids)
 
 # ======================================================================
