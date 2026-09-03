@@ -865,50 +865,21 @@ class ConsolidatedTradingDaemon:
 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
-            dossier_mins = max(1, int(round(dossier_interval / 60.0)))
-            active_mins = max(1, int(round(active_trade_interval / 60.0)))
-
-            if open_tickets:
-                cycle_label = "Initial Review" if is_startup else f"{active_mins}-Min Active Trade Review"
-                pos_details_formatted = "\n  • ".join(detailed_positions)
-
-                reversal_section = ""
-                if reversal_alerts:
-                    alerts_text = "\n  ⚠️ ".join([alert[1] for alert in reversal_alerts])
-                    reversal_section = f"\n⚠️ HIGH-PRIORITY DRAWDOWN & REVERSAL ALERTS:\n  ⚠️ {alerts_text}\n"
-
-                scheduled_prompt = (
-                    f"OPENCODE CIO EXECUTIVE POSITION REVIEW ({cycle_label}):\n"
-                    f"{file_ref_header}"
-                    f"{world_header}\n"
-                    f"ACTIVE FTMO MT5 TRADES ({len(open_tickets)}):\n  • {pos_details_formatted}\n"
-                    f"{reversal_section}\n"
-                    f"{top4_section}"
-                    f"{full_4tf_reveal_block}"
-                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                    f"{matrix_formatted}\n"
-                    f"===========================================================\n"
-                    f"MANDATORY EXECUTIVE ACTION: Review findings above. Tail file:///C:/Trading/Alpha/logs/full_desk_dossier.md#{fnd_rng} for reasoning. Manage active position with update_position(ticket, action) or adjust pending orders. "
-                    f"MANDATE: The daemon is strictly a READ-ONLY scanner. ONLY OPENCODE EXECUTES TRADES."
-                )
-                post_to_opencode_session("OpenCode (CIO)", scheduled_prompt)
-
-            else:
-                cycle_label = "Initial Review" if is_startup else f"{dossier_mins}-Min Scheduled Cycle"
-                idle_prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({cycle_label}):\n"
-                    f"{file_ref_header}"
-                    f"=== CANONICAL EVALUATION ENGINE: file:///C:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md ===\n"
-                    f"{world_header}\n"
-                    f"{top4_section}"
-                    f"{full_4tf_reveal_block}"
-                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                    f"{matrix_formatted}\n"
-                    f"===========================================================\n"
-                    f"EXECUTIVE ACTION: Evaluate market structure strictly through C:/Trading/Alpha/OCEAN_MARKET_REALITY_COMPENDIUM.md (Auction Market Theory, CVD Delta & Absorption, 4TF Structure, Macro Lifecycle, COT Crowding, Volume Profile POC/VAH/VAL, and FVG Fill Rates). Map your Upper Sell Bracket (Tier 1 Limit @ resistance) and Lower Buy Bracket (Tier 1 Limit @ support). For your pre-validated structural bracket(s) with R:R >= 2.5:1 and structural SL, IMMEDIATELY call place_pending_order (volume 0.5-1.0 lot, structural SL, structural TP) to stage the trigger live on MT5 ahead of price! Stand flat with 0 orders ONLY if no valid structural zone exists anywhere on the chart. Dollar-based auto-exit is OFF. "
-                    f"MANDATE: The daemon NEVER executes trades autonomously. ONLY OPENCODE EXECUTES TRADES."
-                )
-                post_to_opencode_session("OpenCode (CIO)", idle_prompt)
+            # Evidence-first wake: the daemon reports only the trigger and current factual
+            # state. OpenCode chooses the next question and fetches evidence through MCP.
+            trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if open_tickets else "SCHEDULED_REASSESSMENT")
+            prompt = (
+                f"ALPHA EVIDENCE WAKE — {trigger}\n"
+                f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
+                f"Active instruments: {', '.join(get_active_instruments())}\n"
+                f"Open positions: {len(open_tickets)}\n"
+                f"Reason: periodic state changed or review interval elapsed.\n\n"
+                f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
+                f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
+                f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
+                f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis."
+            )
+            post_to_opencode_session("Alpha Daemon", prompt)
 
         return has_active_trades
 
@@ -1045,20 +1016,12 @@ class ConsolidatedTradingDaemon:
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             f"Daemon: ONLINE | Tick ingestion: 2s | Probe Watcher: 500ms Split-Second Alert | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
-            f"=== AGENT AUTHORITY & CONSTITUTIONAL GUARANTEES (§10.2) ===\n"
-            f"YOU are the sole interpreter of evidence and the sole trading decision-maker.\n"
-            f"• Zero Data Concealment: No layer compresses, filters, or hides raw market numbers behind opaque labels.\n"
-            f"• Zero Automatic Gates: Backtests and pattern records inform conviction, but NEVER veto your trade decisions.\n"
-            f"• Automatic Audit Trail: All evidence requested via MCP is automatically audited and logged on disk.\n\n"
-            f"=== FAST-MCP PLANNED TRIGGER & EXECUTION TOOLS ===\n"
-            f"  • mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl, tp, tag) — Place BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP triggers (stagger multiple probes in advance!).\n"
-            f"  • mcp_alpha_cancel_pending_order(order_ticket) — Cancel / remove planned pending orders.\n"
-            f"  • mcp_alpha_get_pending_orders(symbol) — List all active pending triggers.\n"
-            f"  • mcp_alpha_execute_trade(symbol, side, volume, sl, tp) — Execute direct instant market order.\n"
-            f"  • mcp_alpha_update_position(ticket, action) — Manage active tickets (BREAK_EVEN, FULL_EXIT).\n"
+            f"=== EVIDENCE-FIRST AUTHORITY ===\n"
+            f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
+            f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n"
+            f"Use atomic MCP evidence, ask the highest-value next question, and execute only after explicit current-state validation.\n"
         )
-        # Start ultra-fast 500ms split-second execution watcher task
-        asyncio.create_task(self._probe_execution_watcher_task())
+        # The daemon is observation-only. It must never run an autonomous execution watcher.
         await asyncio.sleep(2.0)
         while self.is_running:
             try:
