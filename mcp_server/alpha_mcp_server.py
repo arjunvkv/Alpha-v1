@@ -27,6 +27,7 @@ from logs.story_logger import log_opencode_said, log_local_llm_replied, log_stor
 from tradingagents.read_logger import DossierReadLogger
 read_logger = DossierReadLogger()
 from tradingagents.world_events import LiveWorldEventsEngine
+from sensors.evidence_sources import FREDAdapter, GDELTAdapter, RSSRegistry, CommonCrawlAdapter, capability_snapshot
 world_events_engine = LiveWorldEventsEngine()
 
 from config import (
@@ -75,6 +76,10 @@ _mtf_analyst = MultiTimeframeAnalyst()
 _librarian_agent = AutonomousLibrarianAgent()
 _desk = TradingAgentsDesk()
 _active_watches: Dict[str, Dict[str, Any]] = {}
+_fred_adapter = FREDAdapter()
+_gdelt_adapter = GDELTAdapter()
+_rss_registry = RSSRegistry()
+_common_crawl_adapter = CommonCrawlAdapter()
 
 class AlphaMCPServer:
     def __init__(self):
@@ -1524,6 +1529,33 @@ def mcp_alpha_get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
     except Exception as err:
         return json.dumps({"status": "ERROR", "symbol": sym, "error": str(err)}, indent=2)
 
+
+@mcp.tool()
+def mcp_alpha_get_evidence_capabilities() -> str:
+    """Return startup/on-demand states for free evidence capabilities without fetching bulk data."""
+    return json.dumps({"status": "SUCCESS", "source": "Alpha capability registry",
+                       "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                       "data": capability_snapshot()}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
+    """Retrieve factual FRED/ALFRED observations; unavailable credentials never produce fallback values."""
+    return json.dumps(_fred_adapter.observations(series_id, limit, vintage_date or None), indent=2)
+
+@mcp.tool()
+def mcp_alpha_search_market_news(query: str, max_records: int = 25, timespan: str = "") -> str:
+    """Search Original GDELT for global/historical news context with provenance."""
+    return json.dumps(_gdelt_adapter.search(query, max_records, timespan or None), indent=2)
+
+@mcp.tool()
+def mcp_alpha_get_direct_news(max_items: int = 20) -> str:
+    """Fetch configured direct RSS/Atom sources with canonical IDs and first-seen timestamps."""
+    return json.dumps(_rss_registry.fetch(max_items), indent=2)
+
+@mcp.tool()
+def mcp_alpha_lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
+    """On-demand historical URL capture lookup. Not intended for routine live-news polling."""
+    return json.dumps(_common_crawl_adapter.lookup(url, index, limit), indent=2)
 
 # ======================================================================
 # DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
