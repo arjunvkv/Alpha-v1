@@ -1,0 +1,22 @@
+{
+  "sources": {
+    "kitco": {
+      "url": "https://www.kitco.com/rss/gold.xml",
+      "official_or_secondary": "secondary",
+      "topics": ["metals", "gold", "silver"],
+      "enabled": true
+    },
+    "marketwatch": {
+      "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+      "official_or_secondary": "secondary",
+      "topics": ["markets", "macro"],
+      "enabled": true
+    },
+    "reuters_business": {
+      "url": "https://www.reutersagency.com/feed/?best-topics=business-finance",
+      "official_or_secondary": "secondary",
+      "topics": ["markets", "macro", "business"],
+      "enabled": true
+    }
+  }
+}
