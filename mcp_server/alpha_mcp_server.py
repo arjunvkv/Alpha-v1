@@ -156,6 +156,8 @@ def mcp_alpha_execute_market_order(
     volume: float = 1.0,
     sl_price: float = 0.0,
     tp_price: float = 0.0,
+    sl: float = 0.0,
+    tp: float = 0.0,
     comment: str = "OpenCode Market Order"
 ) -> str:
     """Execute direct market order on FTMO MT5 with custom volume, stop loss, and take profit.
@@ -164,18 +166,22 @@ def mcp_alpha_execute_market_order(
         symbol: Instrument symbol (default: 'XAUUSD')
         side: 'BUY' or 'SELL'
         volume: Trade lot size (default: 1.0)
-        sl_price: Specific stop loss price level (if 0.0, auto-calculated using 15-pt buffer)
-        tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
+        sl_price: Specific stop loss price level (alias: sl)
+        tp_price: Specific take profit price level (alias: tp)
+        sl: Stop loss price level (alias for sl_price)
+        tp: Take profit price level (alias for tp_price)
         comment: Order comment tag
     """
+    final_sl = float(sl_price) if sl_price and float(sl_price) > 0 else (float(sl) if sl and float(sl) > 0 else 0.0)
+    final_tp = float(tp_price) if tp_price and float(tp_price) > 0 else (float(tp) if tp and float(tp) > 0 else 0.0)
+    
     if not volume or float(volume) <= 0:
         return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit positive volume is required; no fallback volume is permitted."}, indent=2)
-    if not sl_price or float(sl_price) <= 0:
+    if not final_sl or float(final_sl) <= 0:
         return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit stop loss is required; no automatic fallback is permitted."}, indent=2)
     vol = float(volume)
-    sl_buf = 15.0
     
-    read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {sl_price}, TP: {tp_price})")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {final_sl}, TP: {final_tp})")
     
     # Weekend Guardrail
     try:
@@ -195,73 +201,95 @@ def mcp_alpha_execute_market_order(
         import MetaTrader5 as mt5
         sym = _normalize_symbol(symbol)
         s_side = side.lower().strip()
+        
+        # Ensure symbol is selected in Market Watch
+        mt5.symbol_select(sym, True)
+        
+        sym_info = mt5.symbol_info(sym)
+        if not sym_info:
+            return json.dumps({"status": "FAILED", "error": f"Symbol {sym} not found in MT5 terminal"}, indent=2)
+            
         tick_info = mt5.symbol_info_tick(sym)
         if not tick_info:
-            return json.dumps({"status": "FAILED", "error": f"No tick info for {sym}"}, indent=2)
+            return json.dumps({"status": "FAILED", "error": f"No live tick info for {sym}"}, indent=2)
             
         price = tick_info.ask if s_side == "buy" else tick_info.bid
         order_type = mt5.ORDER_TYPE_BUY if s_side == "buy" else mt5.ORDER_TYPE_SELL
         
-        # Calculate auto SL if omitted (15 pts buffer)
-        sl_val = float(sl_price) if sl_price else 0.0
-        if sl_val <= 0:
-            sl_val = round(price - sl_buf, 2) if s_side == "buy" else round(price + sl_buf, 2)
-            
-        tp_val = float(tp_price) if tp_price and float(tp_price) > 0 else 0.0
+        # Normalize volume to broker step and bounds
+        step = sym_info.volume_step if sym_info.volume_step > 0 else 0.01
+        vol = round(round(vol / step) * step, 2)
+        vol = max(sym_info.volume_min, min(sym_info.volume_max, vol))
         
+        # Determine valid filling mode from broker capability (FTMO accepts IOC or FOK)
+        filling_mode = mt5.ORDER_FILLING_IOC
+        if sym_info.filling_mode & 1:  # FOK mask or IOC
+            filling_mode = mt5.ORDER_FILLING_IOC
+        elif sym_info.filling_mode & 2:
+            filling_mode = mt5.ORDER_FILLING_FOK
+            
         req = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": sym,
             "volume": vol,
             "type": order_type,
             "price": price,
-            "sl": sl_val,
-            "tp": tp_val,
-            "deviation": 30,
+            "sl": float(final_sl),
+            "tp": float(final_tp),
+            "deviation": 50,
             "magic": 234000,
             "comment": comment[:31],
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC
+            "type_filling": filling_mode
         }
         
         res = mt5.order_send(req)
-        # Robust filling mode retries
-        if not res or res.retcode != mt5.TRADE_RETCODE_DONE:
-            for f_mode in [mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
-                req["type_filling"] = f_mode
-                res = mt5.order_send(req)
-                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                    break
-                    
+        # If filling mode rejected (10030), retry with alternate filling mode
+        if not res or res.retcode == 10030:
+            req["type_filling"] = mt5.ORDER_FILLING_FOK if filling_mode != mt5.ORDER_FILLING_FOK else mt5.ORDER_FILLING_IOC
+            res = mt5.order_send(req)
+            
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} | SL: {sl_val} | TP: {tp_val} (Ticket #{res.order}).")
+            log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} | SL: {final_sl} | TP: {final_tp} (Ticket #{res.order}).")
             return json.dumps({
                 "status": "EXECUTED",
                 "symbol": sym,
                 "side": s_side.upper(),
                 "volume": vol,
                 "price": price,
-                "sl": sl_val,
-                "tp": tp_val,
+                "sl": final_sl,
+                "tp": final_tp,
                 "ticket": res.order,
                 "retcode": res.retcode,
                 "message": f"Market order filled! Active ticket #{res.order} is live on MT5."
             }, indent=2)
             
-        err_comment = res.comment if res else "Unknown MT5 error"
-        return json.dumps({"status": "FAILED", "symbol": sym, "error": err_comment, "retcode": getattr(res, 'retcode', None)}, indent=2)
+        # Detailed diagnostics
+        if res:
+            err_comment = f"MT5 Retcode {res.retcode}: {res.comment}"
+        else:
+            last_err = mt5.last_error()
+            err_comment = f"MT5 order_send returned None (Last Error: {last_err})"
+            
+        return json.dumps({
+            "status": "FAILED",
+            "symbol": sym,
+            "error": err_comment,
+            "retcode": getattr(res, 'retcode', None),
+            "last_error": mt5.last_error() if not res else None
+        }, indent=2)
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def execute_market_order(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
+def execute_market_order(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, sl: float = 0.0, tp: float = 0.0, comment: str = "OpenCode Market Order") -> str:
     """Execute direct market order on FTMO MT5 with custom volume, SL, and TP."""
-    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, comment)
+    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, sl, tp, comment)
 
 @mcp.tool()
-def execute_trade(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, comment: str = "OpenCode Market Order") -> str:
+def execute_trade(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, sl: float = 0.0, tp: float = 0.0, comment: str = "OpenCode Market Order") -> str:
     """Execute direct market trade on FTMO MT5 with custom volume, SL, and TP."""
-    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, comment)
+    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, sl, tp, comment)
 
 # ======================================================================
 # 2. PLANNED PENDING ORDER (VOLUME & STRUCTURAL SL/TP DIRECTLY SET)
@@ -275,6 +303,8 @@ def mcp_alpha_place_pending_order(
     volume: float = 1.0,
     sl_price: float = 0.0,
     tp_price: float = 0.0,
+    sl: float = 0.0,
+    tp: float = 0.0,
     tag: str = ""
 ) -> str:
     """Place planned pending limit or stop order on MT5 at key structural points with custom volume, SL, and TP.
@@ -288,25 +318,33 @@ def mcp_alpha_place_pending_order(
         order_type: 'SELL_LIMIT', 'BUY_LIMIT', 'BUY_STOP', 'SELL_STOP'
         price: Planned entry price level
         volume: Order lot size (default: 1.0)
-        sl_price: Specific stop loss price level (if 0.0, auto-calculated using 15-pt buffer)
-        tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
+        sl_price: Specific stop loss price level (alias: sl)
+        tp_price: Specific take profit price level (alias: tp)
+        sl: Stop loss price level (alias for sl_price)
+        tp: Take profit price level (alias for tp_price)
         tag: Custom tag / structural description (e.g. 'Supply_Ceiling_4318')
     """
+    final_sl = float(sl_price) if sl_price and float(sl_price) > 0 else (float(sl) if sl and float(sl) > 0 else 0.0)
+    final_tp = float(tp_price) if tp_price and float(tp_price) > 0 else (float(tp) if tp and float(tp) > 0 else 0.0)
+    
     if not volume or float(volume) <= 0:
         return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit positive volume is required; no fallback volume is permitted."}, indent=2)
-    if not sl_price or float(sl_price) <= 0:
+    if not final_sl or float(final_sl) <= 0:
         return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit stop loss is required; no automatic fallback is permitted."}, indent=2)
     vol = float(volume)
-    sl_buf = 15.0
     
     _init_mt5()
-    read_logger.log_dossier_read("OpenCode CIO (MCP Pending Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Pending Order requested: {order_type.upper()} {vol} lots on {symbol} @ {price} (SL: {sl_price}, TP: {tp_price}, Tag: {tag})")
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pending Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Pending Order requested: {order_type.upper()} {vol} lots on {symbol} @ {price} (SL: {final_sl}, TP: {final_tp}, Tag: {tag})")
     
     try:
         import MetaTrader5 as mt5, re
         sym = _normalize_symbol(symbol)
+        mt5.symbol_select(sym, True)
+        sym_info = mt5.symbol_info(sym)
+        if not sym_info:
+            return json.dumps({"status": "FAILED", "error": f"Symbol {sym} not found in MT5"}, indent=2)
+            
         ot_clean = order_type.upper().strip()
-        
         type_map = {
             "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
             "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,
@@ -327,12 +365,9 @@ def mcp_alpha_place_pending_order(
                 "error": "Price must be a positive number greater than 0."
             }, indent=2)
             
-        is_buy = ot_clean in ("BUY_LIMIT", "BUY_STOP")
-        sl_val = float(sl_price) if sl_price else 0.0
-        if sl_val <= 0:
-            sl_val = round(target_price - sl_buf, 2) if is_buy else round(target_price + sl_buf, 2)
-            
-        tp_val = float(tp_price) if tp_price and float(tp_price) > 0 else 0.0
+        step = sym_info.volume_step if sym_info.volume_step > 0 else 0.01
+        vol = round(round(vol / step) * step, 2)
+        vol = max(sym_info.volume_min, min(sym_info.volume_max, vol))
         clean_tag = re.sub(r'[^A-Za-z0-9_]', '_', str(tag or 'PlannedOrder'))[:20]
         
         req = {
@@ -341,9 +376,9 @@ def mcp_alpha_place_pending_order(
             "volume": vol,
             "type": type_map[ot_clean],
             "price": target_price,
-            "sl": sl_val,
-            "tp": tp_val,
-            "deviation": 30,
+            "sl": float(final_sl),
+            "tp": float(final_tp),
+            "deviation": 50,
             "magic": 234000,
             "comment": clean_tag,
             "type_time": mt5.ORDER_TIME_GTC,
@@ -352,7 +387,7 @@ def mcp_alpha_place_pending_order(
         
         res = mt5.order_send(req)
         # Robust filling mode retries
-        if not res or res.retcode != mt5.TRADE_RETCODE_DONE:
+        if not res or res.retcode == 10030:
             for f_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0]:
                 req["type_filling"] = f_mode
                 res = mt5.order_send(req)
@@ -360,7 +395,7 @@ def mcp_alpha_place_pending_order(
                     break
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {sl_val} | TP: {tp_val} (Order #{res.order}).")
+            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {final_sl} | TP: {final_tp} (Order #{res.order}).")
             return json.dumps({
                 "status": "PLACED",
                 "order_ticket": res.order,
@@ -368,29 +403,30 @@ def mcp_alpha_place_pending_order(
                 "order_type": ot_clean,
                 "price": target_price,
                 "volume": vol,
-                "sl": sl_val,
-                "tp": tp_val,
+                "sl": final_sl,
+                "tp": final_tp,
                 "tag": clean_tag,
                 "retcode": res.retcode,
                 "message": f"Pending order staged on MT5! Order ticket #{res.order} active."
             }, indent=2)
             
-        err_msg = res.comment if res else f"MT5 error: {mt5.last_error()}"
+        err_msg = f"MT5 Retcode {res.retcode}: {res.comment}" if res else f"MT5 error: {mt5.last_error()}"
         return json.dumps({
             "status": "FAILED",
             "symbol": sym,
             "order_type": ot_clean,
             "price": target_price,
             "error": err_msg,
-            "retcode": getattr(res, 'retcode', None)
+            "retcode": getattr(res, 'retcode', None),
+            "last_error": mt5.last_error() if not res else None
         }, indent=2)
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", price: float = 0.0, volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, tag: str = "") -> str:
+def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", price: float = 0.0, volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, sl: float = 0.0, tp: float = 0.0, tag: str = "") -> str:
     """Place planned pending limit or stop order on MT5 at key structural points with custom volume, SL, and TP."""
-    return mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl_price, tp_price, tag)
+    return mcp_alpha_place_pending_order(symbol, order_type, price, volume, sl_price, tp_price, sl, tp, tag)
 
 # ======================================================================
 # 4. ORDER & POSITION MANAGEMENT
@@ -1587,11 +1623,6 @@ def get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
 def get_account_status() -> str:
     """Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states."""
     return mcp_alpha_get_account_status()
-
-@mcp.tool()
-def execute_trade(symbol: str, side: str, volume: float, sl: float, tp: float) -> str:
-    """Execute direct market buy/sell order on FTMO MT5."""
-    return mcp_alpha_execute_trade(symbol, side, volume, sl, tp)
 
 @mcp.tool()
 def update_position(ticket: int, action: str, params_json: str = "") -> str:
