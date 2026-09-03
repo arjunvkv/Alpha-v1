@@ -155,7 +155,7 @@ class CommonCrawlAdapter:
 def capability_snapshot():
     return {"FRED/ALFRED": {"required":False,"state": SUCCESS if os.getenv("FRED_API_KEY") else UNAVAILABLE,
                              "on_demand":True,"reason": None if os.getenv("FRED_API_KEY") else "FRED_API_KEY not configured"},
-            "Original GDELT": {"required":False,"state":READY if False else SUCCESS,"on_demand":True},
+            "Original GDELT": {"required":False,"state":SUCCESS,"on_demand":True},
             "Direct RSS/Atom": {"required":False,"state":SUCCESS,"on_demand":True},
             "RSSHub": {"required":False,"state":UNAVAILABLE,"on_demand":True,"reason":"self-hosted endpoint not configured"},
             "Common Crawl": {"required":False,"state":SUCCESS,"on_demand":True}}
