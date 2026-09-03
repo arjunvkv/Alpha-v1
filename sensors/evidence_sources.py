@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib, json, os, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from tradingagents.evidence_state import EvidenceStateStore
 
 SUCCESS, STALE, UNAVAILABLE, ERROR = "SUCCESS", "STALE", "UNAVAILABLE", "ERROR"
 
@@ -78,8 +79,9 @@ class FREDAdapter:
 class GDELTAdapter:
     source = "Original GDELT DOC 2.0"
     base = "https://api.gdeltproject.org/api/v2/doc/doc"
-    def __init__(self, http=None):
+    def __init__(self, http=None, state_store=None):
         self.http = http or HttpJson()
+        self.state_store = state_store or EvidenceStateStore()
     def search(self, query, max_records=25, timespan=None):
         retrieved = _iso()
         params = {"query": query, "mode": "ArtList", "format": "json",
@@ -104,6 +106,7 @@ class GDELTAdapter:
                               "discovered_at": discovered_at, "retrieved_at": retrieved, "first_seen_at": retrieved,
                               "discovered_via": "gdelt", "language": article.get("language"),
                               "data": article})
+            items = self.state_store.upsert_news(items) if items else []
             observed = items[0].get("published_at") if items else None
             return envelope(SUCCESS, self.source, {"items": items}, observed_at=observed, retrieved_at=retrieved)
         except Exception as exc:
@@ -111,8 +114,9 @@ class GDELTAdapter:
 
 class RSSRegistry:
     """Direct public feeds with provenance. RSSHub routes are opt-in and self-host only."""
-    def __init__(self, sources=None, http=None):
+    def __init__(self, sources=None, http=None, state_store=None):
         self.http = http or HttpJson()
+        self.state_store = state_store or EvidenceStateStore()
         self.sources = sources or {
             "kitco": {"url": "https://www.kitco.com/rss/gold.xml", "official_or_secondary": "secondary"},
             "marketwatch": {"url": "https://feeds.content.dowjones.io/public/rss/mw_topstories", "official_or_secondary": "secondary"},
@@ -146,6 +150,7 @@ class RSSRegistry:
                     count+=1
             except Exception as exc:
                 failures.append({"source_id":source_id,"error":str(exc)})
+        items = self.state_store.upsert_news(items) if items else []
         status = SUCCESS if items else (ERROR if failures else UNAVAILABLE)
         latest_observed = next((item.get("observed_at") for item in items if item.get("observed_at")), None)
         return envelope(status, "Direct RSS/Atom registry",
