@@ -9,8 +9,8 @@ Learning review state is kept in the existing unified learning surface.
 
 import sys
 import os
-import json
 import logging
+logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
@@ -1625,29 +1625,9 @@ def get_account_status() -> str:
     return mcp_alpha_get_account_status()
 
 @mcp.tool()
-def update_position(ticket: int, action: str, params_json: str = "") -> str:
-    """Manage active tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
-    return mcp_alpha_update_position(ticket, action, params_json)
-
-@mcp.tool()
 def get_symbol_conviction(symbol: str = "XAUUSD") -> str:
     """Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."""
     return mcp_alpha_get_symbol_conviction(symbol)
-
-@mcp.tool()
-def query_analyst_desk(query: str = "", symbol: str = "XAUUSD") -> str:
-    """Deep 7-layer local LLM multi-source debate (Technical, COT, Macro, Bull vs Bear)."""
-    return mcp_alpha_query_analyst_desk(query, symbol)
-
-@mcp.tool()
-def ask_librarian(query: str = "", symbol: str = "XAUUSD") -> str:
-    """Search 364 ULM Precedents + Mandatory Proxima Quantitative Microstructure Research."""
-    return mcp_alpha_ask_librarian(query, symbol)
-
-@mcp.tool()
-def backtest_thesis(query: str = "", symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 500) -> str:
-    """Natural live MT5 candle-table replay (Zero hardcoded rules)."""
-    return mcp_alpha_backtest_thesis(query, symbol, timeframe, bars)
 
 @mcp.tool()
 def get_measured_cvd(symbol: str = "XAUUSD") -> str:
