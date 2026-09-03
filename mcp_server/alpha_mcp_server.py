@@ -9,6 +9,7 @@ Learning review state is kept in the existing unified learning surface.
 
 import sys
 import os
+import json
 import logging
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 from datetime import datetime, timezone, timedelta
