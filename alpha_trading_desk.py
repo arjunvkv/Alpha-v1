@@ -873,7 +873,7 @@ class ConsolidatedTradingDaemon:
 
             if is_brainstorm_turn:
                 # Brainstorm turn replacing dossier
-                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
+                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools. For planning the next trade"
             else:
                 # Standard Evidence Wake / Dossier turn
                 prompt = (
