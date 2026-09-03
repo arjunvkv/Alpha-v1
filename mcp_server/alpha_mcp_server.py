@@ -1557,6 +1557,26 @@ def mcp_alpha_lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limi
     """On-demand historical URL capture lookup. Not intended for routine live-news polling."""
     return json.dumps(_common_crawl_adapter.lookup(url, index, limit), indent=2)
 
+@mcp.tool()
+def get_evidence_capabilities() -> str:
+    return mcp_alpha_get_evidence_capabilities()
+
+@mcp.tool()
+def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
+    return mcp_alpha_get_fred_observations(series_id, limit, vintage_date)
+
+@mcp.tool()
+def search_market_news(query: str, max_records: int = 25, timespan: str = "") -> str:
+    return mcp_alpha_search_market_news(query, max_records, timespan)
+
+@mcp.tool()
+def get_direct_news(max_items: int = 20) -> str:
+    return mcp_alpha_get_direct_news(max_items)
+
+@mcp.tool()
+def lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
+    return mcp_alpha_lookup_common_crawl(url, index, limit)
+
 # ======================================================================
 # DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
 # ======================================================================
