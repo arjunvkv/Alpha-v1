@@ -1738,8 +1738,8 @@ def list_desk_tools() -> str:
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."}
     ]
-    ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
+
 
 @mcp.tool()
 def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
@@ -1785,9 +1785,9 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[]))
     }
-    }
 
     if name in fn_map:
+
         try:
             return fn_map[name]()
         except Exception as e:

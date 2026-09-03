@@ -23,9 +23,11 @@ def test_fred_vintage_request_preserves_observations():
     assert result["data"]["vintage_date"] == "2024-02-01"
     assert result["data"]["observations"][0]["value"] == "4.00"
 
-def test_gdelt_adds_provenance():
+def test_gdelt_adds_provenance(tmp_path):
+    from tradingagents.evidence_state import EvidenceStateStore
+    store = EvidenceStateStore(tmp_path / "state.json")
     payload=json.dumps({"articles":[{"url":"https://example.com/a","title":"Gold event","domain":"example.com","seendate":"20260101000000"}]}).encode()
-    result=GDELTAdapter(http=FakeHttp([payload])).search("gold")
+    result=GDELTAdapter(http=FakeHttp([payload]), state_store=store).search("gold")
     item=result["data"]["items"][0]
     assert result["status"] == SUCCESS
     assert item["canonical_url"] == "https://example.com/a"
@@ -35,14 +37,17 @@ def test_gdelt_adds_provenance():
     assert item["published_at"] is None
     assert item["discovered_at"] == "20260101000000"
 
-def test_rss_registry_adds_stable_provenance():
+def test_rss_registry_adds_stable_provenance(tmp_path):
+    from tradingagents.evidence_state import EvidenceStateStore
+    store = EvidenceStateStore(tmp_path / "state.json")
     xml=b"<rss><channel><item><title>Headline</title><link>https://example.com/x#frag</link><pubDate>Tue, 01 Jan 2026 00:00:00 GMT</pubDate></item></channel></rss>"
-    result=RSSRegistry({"test":{"url":"https://feed.test/rss"}}, http=FakeHttp([xml])).fetch()
+    result=RSSRegistry({"test":{"url":"https://feed.test/rss"}}, http=FakeHttp([xml]), state_store=store).fetch()
     item=result["data"]["items"][0]
     assert result["status"] == SUCCESS
     assert item["canonical_url"] == "https://example.com/x"
     assert item["news_id"]
     assert item["discovered_via"] == "direct_rss"
+
 
 def test_truth_envelope_never_invents_data():
     result=envelope(UNAVAILABLE, "test", error="offline")
