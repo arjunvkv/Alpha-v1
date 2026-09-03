@@ -168,7 +168,11 @@ def mcp_alpha_execute_market_order(
         tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
         comment: Order comment tag
     """
-    vol = float(volume) if volume and float(volume) > 0 else 1.0
+    if not volume or float(volume) <= 0:
+        return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit positive volume is required; no fallback volume is permitted."}, indent=2)
+    if not sl_price or float(sl_price) <= 0:
+        return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit stop loss is required; no automatic fallback is permitted."}, indent=2)
+    vol = float(volume)
     sl_buf = 15.0
     
     read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {sl_price}, TP: {tp_price})")
@@ -288,7 +292,11 @@ def mcp_alpha_place_pending_order(
         tp_price: Specific take profit price level (if 0.0, open-ended structural hold)
         tag: Custom tag / structural description (e.g. 'Supply_Ceiling_4318')
     """
-    vol = float(volume) if volume and float(volume) > 0 else 1.0
+    if not volume or float(volume) <= 0:
+        return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit positive volume is required; no fallback volume is permitted."}, indent=2)
+    if not sl_price or float(sl_price) <= 0:
+        return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit stop loss is required; no automatic fallback is permitted."}, indent=2)
+    vol = float(volume)
     sl_buf = 15.0
     
     _init_mt5()
