@@ -444,6 +444,7 @@ class ConsolidatedTradingDaemon:
         self.instruments = INSTRUMENTS
         self.is_running = False
         self.cycle_count = 0
+        self.dispatch_count = 0
         self.last_dispatch_time = 0.0
         self.last_reversal_dispatch_time = 0.0
 
@@ -838,42 +839,61 @@ class ConsolidatedTradingDaemon:
 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
+            self.dispatch_count += 1
             # Evidence-first wake: the daemon reports only the trigger and current factual
             # state. OpenCode chooses the next question and fetches evidence through MCP.
             trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if open_tickets else "SCHEDULED_REASSESSMENT")
-            prompt = (
-                f"ALPHA EVIDENCE WAKE — {trigger}\n"
-                f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
-                f"Active instruments: {', '.join(get_active_instruments())}\n"
-                f"Open positions: {len(open_tickets)}\n"
-                f"Reason: periodic state changed or review interval elapsed.\n\n"
-                f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
-                f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
-                f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
-                f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
-                f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
-                f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
-                f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
-                f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
-                f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
-                f"• Q7 [Order Flow CVD]: get_measured_cvd (M5 tick CVD, 10-bar delta velocity, absorption)\n"
-                f"• Q8 [Microstructure Friction]: get_live_microstructure (Spread pts, M1 tick velocity t/m)\n"
-                f"• Q10 [Trade Staging & Watch]: place_pending_order, execute_trade, update_position, register_watch\n\n"
-                f"🕒 TIER 2 (PERIODIC / EVENT-DRIVEN REFRESH - On Cadence, Event, or New Trade Formulations):\n"
-                f"• Q2 [Breaking News]: get_direct_news, search_market_news (Macro release times or breaking news)\n"
-                f"• Q3 [Macro Rates]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields)\n"
-                f"• Q4 [4TF Trend & COT]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, COT Managed Money %)\n"
-                f"• Q5 [Volume Profile]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP bands)\n"
-                f"• Q9 [Proxima Validation]: backtest_thesis, ask_librarian (Mandatory before new trade entry; R:R >= 2.5:1)\n\n"
-                f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
-                f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
-                f"• NO TRAILING: Mechanical trailing stops are OFF. TP is a fixed structural target; SL is an objective invalidation anchor.\n"
-                f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
-                f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
-                f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
-                f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
-                f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
-            )
+            
+            if self.dispatch_count % 2 == 1:
+                # Turn A: Standard Cadence-Tiered Market Evaluation Wake
+                prompt = (
+                    f"ALPHA EVIDENCE WAKE — {trigger}\n"
+                    f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
+                    f"Active instruments: {', '.join(get_active_instruments())}\n"
+                    f"Open positions: {len(open_tickets)}\n"
+                    f"Reason: periodic state changed or review interval elapsed.\n\n"
+                    f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
+                    f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
+                    f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
+                    f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
+                    f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
+                    f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
+                    f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
+                    f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
+                    f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
+                    f"• Q7 [Order Flow CVD]: get_measured_cvd (M5 tick CVD, 10-bar delta velocity, absorption)\n"
+                    f"• Q8 [Microstructure Friction]: get_live_microstructure (Spread pts, M1 tick velocity t/m)\n"
+                    f"• Q10 [Trade Staging & Watch]: place_pending_order, execute_trade, update_position, register_watch\n\n"
+                    f"🕒 TIER 2 (PERIODIC / EVENT-DRIVEN REFRESH - On Cadence, Event, or New Trade Formulations):\n"
+                    f"• Q2 [Breaking News]: get_direct_news, search_market_news (Macro release times or breaking news)\n"
+                    f"• Q3 [Macro Rates]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields)\n"
+                    f"• Q4 [4TF Trend & COT]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, COT Managed Money %)\n"
+                    f"• Q5 [Volume Profile]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP bands)\n"
+                    f"• Q9 [Proxima Validation]: backtest_thesis, ask_librarian (Mandatory before new trade entry; R:R >= 2.5:1)\n\n"
+                    f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
+                    f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
+                    f"• NO TRAILING: Mechanical trailing stops are OFF. TP is a fixed structural target; SL is an objective invalidation anchor.\n"
+                    f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
+                    f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
+                    f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
+                    f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
+                    f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
+                )
+            else:
+                # Turn B: 5-Question News & Macro Repricing Evaluation (News + FRED + Proxima)
+                prompt = (
+                    f"ALPHA 5-QUESTION NEWS & MACRO REPRICING EVALUATION — {trigger}\n"
+                    f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
+                    f"Active instruments: {', '.join(get_active_instruments())}\n"
+                    f"Open positions: {len(open_tickets)}\n"
+                    f"Reason: Alternate news & macro repricing evaluation turn.\n\n"
+                    f"MANDATORY EVALUATION OF CURRENT MARKET CONDITIONS INVOLVING ALL NEW NEWS (NEWS + FRED + PROXIMA):\n"
+                    f"1. Q-NEWS-1 [Breaking Catalysts & Provenance]: What breaking geopolitical or macroeconomic headlines (CPI, NFP, FOMC, central bank commentary, geopolitical escalations) have hit the wire in the last 1–4 hours, and what is their verified publication provenance? -> get_direct_news, search_market_news\n"
+                    f"2. Q-NEWS-2 [Real Rates & Yields Transference]: How are nominal US Treasury yields (10Y/2Y), TIPS 10Y real yields (DFII10), and 10Y breakeven inflation expectations (T10YIE) responding to the latest news catalysts, and does the macro rate shift support or contradict current price action? -> get_fred_observations\n"
+                    f"3. Q-NEWS-3 [Intermarket Narrative Divergence]: Is there a material divergence between the headline narrative (risk-on vs risk-off) and the bond market / currency yield trajectory, and does this divergence create an institutional trap or genuine trend continuation? -> get_direct_news, get_fred_observations\n"
+                    f"4. Q-NEWS-4 [Quantitative Microstructure Replay (Proxima)]: When similar news catalysts and yield curve repricing events occurred historically, what was the empirical candle replay behavior (win rate %, initial fake-out wick depth, and target distribution)? -> backtest_thesis, ask_librarian\n"
+                    f"5. Q-NEWS-5 [News Invalidation & Asymmetric Gate]: Given the combined news velocity, rate shifts, and Proxima failure scenarios, what is the exact objective price shelf that invalidates the narrative, and does the setup offer an asymmetric risk-reward entry without exposing the FTMO account to high-impact slippage or headline whipsaws (R:R >= 2.5:1)? -> get_direct_news, get_fred_observations, backtest_thesis"
+                )
             post_to_opencode_session("Alpha Daemon", prompt)
 
 
