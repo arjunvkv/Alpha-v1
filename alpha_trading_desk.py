@@ -878,14 +878,28 @@ class ConsolidatedTradingDaemon:
                 f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
                 f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
                 f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
-                f"MANDATORY EVIDENCE-FIRST QUESTIONNAIRE PROTOCOL:\n"
-                f"1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).\n"
-                f"2. FORMULATE HIGHEST-VALUE QUESTION: State the specific market question that determines your action.\n"
-                f"3. SELECT & CALL TARGETED MCP TOOL: Auto-select and call the relevant MCP evidence tool (e.g. get_symbol_conviction, get_measured_cvd, get_fvg_matrix, get_full_institutional_profile, get_direct_news, search_market_news, get_fred_observations, backtest_thesis, ask_librarian, get_account_status).\n"
-                f"4. TEST CONTRADICTION: Check strongest material fact that could invalidate the thesis.\n"
-                f"5. RESOLVE ACTION: If conditional -> WAIT (via register_watch); if no opportunity -> NO TRADE; if executing -> complete pre-execution gate with explicit volume, SL, and TP."
+                f"MANDATORY 10-QUESTION MASTER MARKET ANALYSIS PROTOCOL (THE WHOLE MARKET PICTURE):\n"
+                f"Execute full 10-question debate before trade entry across atomic FastMCP tools (excluding book dumps / forensic ledgers). Pause and think between each question:\n"
+                f"1. Q1 [Account Risk & Limits]: get_account_status, get_pending_orders (Equity, margin, pending limits, open tickets)\n"
+                f"2. Q2 [Breaking News & Geopolitics]: get_direct_news, search_market_news (Direct RSS breaking headlines & GDELT provenance)\n"
+                f"3. Q3 [Macro Rates & Yields]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields, T10YIE inflation expectations)\n"
+                f"4. Q4 [4TF Trend & COT Crowding]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, CFTC COT Managed Money %)\n"
+                f"5. Q5 [Volume Profile & Value Area]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP sigma bands)\n"
+                f"6. Q6 [Fair Value Gap Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE levels, fill %)\n"
+                f"7. Q7 [Order Flow Delta & Absorption]: get_measured_cvd (M5 tick CVD, 10-bar delta acceleration, absorption signatures)\n"
+                f"8. Q8 [Microstructure Friction]: get_live_microstructure (Spread pts, M1 tick velocity t/m, order book depth imbalance)\n"
+                f"9. Q9 [Proxima Quantitative Validation]: backtest_thesis, ask_librarian (Validate thesis via Proxima candle replay & failure traps; R:R >= 2.5:1)\n"
+                f"10. Q10 [Trade Staging / Management / Watch]: place_pending_order, execute_trade, update_position, register_watch, cancel_pending_order\n\n"
+                f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
+                f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
+                f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
+                f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
+                f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
+                f"• EXTEND TP FOR MAXIMUM R:R: When momentum accelerates in our favor, trail/extend TP to deeper institutional liquidity targets.\n"
+                f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
             )
             post_to_opencode_session("Alpha Daemon", prompt)
+
 
 
         return has_active_trades
