@@ -10,6 +10,7 @@ Learning review state is kept in the existing unified learning surface.
 import sys
 import os
 import json
+import re
 import logging
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 from datetime import datetime, timezone, timedelta
@@ -229,6 +230,7 @@ def mcp_alpha_execute_market_order(
         elif sym_info.filling_mode & 2:
             filling_mode = mt5.ORDER_FILLING_FOK
             
+        clean_comment = re.sub(r'[^A-Za-z0-9_\- ]', '', str(comment or "Alpha"))[:25]
         req = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": sym,
@@ -239,7 +241,7 @@ def mcp_alpha_execute_market_order(
             "tp": float(final_tp),
             "deviation": 50,
             "magic": 234000,
-            "comment": comment[:31],
+            "comment": clean_comment,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": filling_mode
         }
@@ -249,6 +251,13 @@ def mcp_alpha_execute_market_order(
         if not res or res.retcode == 10030:
             req["type_filling"] = mt5.ORDER_FILLING_FOK if filling_mode != mt5.ORDER_FILLING_FOK else mt5.ORDER_FILLING_IOC
             res = mt5.order_send(req)
+            
+        # If still failed due to comment / argument error (-2), retry with minimal comment
+        if not res:
+            last_err = mt5.last_error()
+            if last_err and last_err[0] == -2:
+                req["comment"] = "Alpha"
+                res = mt5.order_send(req)
             
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} | SL: {final_sl} | TP: {final_tp} (Ticket #{res.order}).")
@@ -394,6 +403,13 @@ def mcp_alpha_place_pending_order(
                 res = mt5.order_send(req)
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                     break
+                    
+        # If still failed due to comment / argument error (-2), retry with minimal comment
+        if not res:
+            last_err = mt5.last_error()
+            if last_err and last_err[0] == -2:
+                req["comment"] = "Alpha"
+                res = mt5.order_send(req)
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {final_sl} | TP: {final_tp} (Order #{res.order}).")
