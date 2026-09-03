@@ -587,20 +587,8 @@ class ConsolidatedTradingDaemon:
                 rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
 
                 # Autonomous Librarian & Proxima Precedent Research
-                lib_payload = {}
-                try:
-                    lib_payload = self.librarian.run_librarian_cycle({
-                        "symbol": symbol,
-                        "fvg_type": near_fvg.get("type") or ("M5_BEAR_FVG" if "BEAR" in mtf.get("h4_trend", "").upper() or "BEAR" in mtf.get("m5_trend", "").upper() else "M5_BULL_FVG"),
-                        "fvg_top": near_fvg.get("top"),
-                        "fvg_bottom": near_fvg.get("bottom"),
-                        "fvg_ce": near_fvg.get("consequent_encroachment"),
-                        "sweep_status": liq_data.get("sweep_status", "IN_RANGE"),
-                        "h4_bias": mtf.get("h4_trend", "NEUTRAL"),
-                        "m5_bias": mtf.get("m5_trend", "NEUTRAL")
-                    })
-                except Exception as l_err:
-                    LOG.debug(f"Librarian cycle for {symbol} skipped: {l_err}")
+                # Autonomous Librarian & Pattern Book research paused
+                lib_payload = {"top_4_precedents": [], "status": "PAUSED", "proxima_status": "STANDBY", "proxima_research_synthesis": "Pattern Book suspended"}
 
                 # Volume Profile Metrics (POC, VAH 70%, VAL 70%)
                 vp_data = {}
@@ -830,24 +818,9 @@ class ConsolidatedTradingDaemon:
             "m5_bias": primary_inst_data.get("mtf", {}).get("m5_trend", "NEUTRAL"),
             "velocity_tpm": primary_inst_data.get("velocity", {}).get("ticks_per_min", 0)
         }
-        librarian_payload = self.librarian.run_librarian_cycle(primary_market_state)
-        top4_cards = librarian_payload.get("top_4_precedents", [])
-        top4_formatted_lines = []
-        for c in top4_cards:
-            top4_formatted_lines.append(
-                f"  [{c['role']}] {c['pattern_id']} - {c['name']} (Win Rate: {c['win_rate']})\n"
-                f"    • Trigger: {c['execution_trigger']} | RRR: {c.get('rrr', '1:2.0')}\n"
-                f"    • Focus: {c['testing_objective']}\n"
-                f"    • Invalidation: {c['invalidation']}"
-            )
-        top4_section = (
-            f"=== LIBRARIAN TOP 4 REPRODUCIBLE PRECEDENTS (REVOLVED AROUND ACTIVE LIVE THESIS) ===\n"
-            f"  • Reference Truth Ledger: file:///C:/Trading/Alpha/logs/pattern_reality_check.md\n"
-            f"  • Dynamic Pattern Queue: file:///C:/Trading/Alpha/logs/top4_reproducible_patterns.json\n"
-            f"  • Active Thesis Footprint: {librarian_payload.get('live_thesis_revolved', '')}\n\n"
-            + "\n\n".join(top4_formatted_lines)
-            + "\n\n"
-        )
+        # Pattern Book lookups suspended for live market analysis
+        librarian_payload = {"top_4_precedents": [], "live_thesis_revolved": "PAUSED"}
+        top4_section = ""
 
         # DYNAMIC DISPATCH CADENCE (Configurable via opencode_session_config.json)
         now_ts = time.time()
