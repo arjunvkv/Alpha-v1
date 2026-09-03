@@ -17,15 +17,24 @@ def _iso(value=None):
     value = value or _now()
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
+def _parse_observed(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+    except Exception:
+        try:
+            return parsedate_to_datetime(str(value)).astimezone(timezone.utc)
+        except Exception:
+            return None
+
 def envelope(status, source, data=None, observed_at=None, retrieved_at=None, error=None, max_age_seconds=None):
     retrieved_at = retrieved_at or _iso()
     age = None
     if observed_at:
-        try:
-            observed = datetime.fromisoformat(str(observed_at).replace("Z", "+00:00"))
-            age = max(0.0, (_now() - observed.astimezone(timezone.utc)).total_seconds())
-        except Exception:
-            pass
+        observed = _parse_observed(observed_at)
+        if observed is not None:
+            age = max(0.0, (_now() - observed).total_seconds())
     if status == SUCCESS and max_age_seconds is not None and age is not None and age > max_age_seconds:
         status = STALE
     result = {"status": status, "source": source, "observed_at": observed_at,
@@ -129,6 +138,8 @@ class RSSRegistry:
                     news_id=hashlib.sha256((canonical or source_id+"|"+title+"|"+pub).encode("utf-8")).hexdigest()[:24]
                     items.append({"news_id":news_id,"canonical_url":canonical,"source_id":source_id,
                                   "publisher":source_id,"headline":title,"published_at":pub or None,
+                                  "observed_at": _iso(_parse_observed(pub)) if _parse_observed(pub) else None,
+                                  "age_seconds": max(0.0, (_now() - _parse_observed(pub)).total_seconds()) if _parse_observed(pub) else None,
                                   "retrieved_at":retrieved,"first_seen_at":retrieved,
                                   "discovered_via":"direct_rss","freshness_state":SUCCESS,
                                   "official_or_secondary":meta.get("official_or_secondary","secondary")})
@@ -136,8 +147,9 @@ class RSSRegistry:
             except Exception as exc:
                 failures.append({"source_id":source_id,"error":str(exc)})
         status = SUCCESS if items else (ERROR if failures else UNAVAILABLE)
+        latest_observed = next((item.get("observed_at") for item in items if item.get("observed_at")), None)
         return envelope(status, "Direct RSS/Atom registry",
-                        {"items":items,"failures":failures}, retrieved_at=retrieved,
+                        {"items":items,"failures":failures}, observed_at=latest_observed, retrieved_at=retrieved,
                         error=None if items else "No RSS items available from configured sources.")
 
 class CommonCrawlAdapter:
