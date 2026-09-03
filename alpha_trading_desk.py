@@ -6,12 +6,12 @@ Project Root: C:\Trading\Alpha
 OpenCode Session: Alpha v1 (ses_fd5d79a76ffeWi4umW2PMa4MCe)
 Target Terminal: FTMO MetaTrader 5 (C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe)
 
-Integrates:
-1. StoryLogger — Thread-safe natural language story narration (live_story.log)
-2. StatefulDiscoveryLatch — Thesis latching state store (discovery_state.json)
-3. OpenCodeCIOEvaluator — Autonomous CIO evaluation & R:R risk validation
-4. OrderRouter & Executor — FTMO MT5 direct execution with Max 1 Position Guard
-5. IntelligentDaemon — 24/7 continuous market scanner across 6 instruments
+Runtime model:
+1. StoryLogger — factual daemon/session audit narration.
+2. Objective observation and MT5 state collection.
+3. OpenCode — sole market reasoner and trade decision-maker.
+4. MT5 execution — deterministic validation and explicit order routing only.
+5. ConsolidatedTradingDaemon — wake delivery and observation scheduling.
 ======================================================================
 """
 
@@ -429,7 +429,7 @@ def kill_all_daemons() -> int:
 # 6. Main 24/7 Intelligent Trading Daemon
 # ----------------------------------------------------------------------
 class ConsolidatedTradingDaemon:
-    """Runs 24/7 continuous multi-agent market scanning & position management."""
+    """Runs observation scheduling and factual wake delivery; it does not reason or decide trades."""
 
     def __init__(self):
         from tradingagents.agent_graph import TradingAgentsDesk
