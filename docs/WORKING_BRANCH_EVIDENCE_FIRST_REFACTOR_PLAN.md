@@ -805,6 +805,127 @@ original official source where relevant
 
 No source should be queried merely because it exists. OpenCode selects a source only when the current unresolved question makes that evidence decision-relevant.
 
+# 12C. Daemon and startup refactor
+
+The existing daemon/startup flow must be refactored as part of the evidence-first architecture, but startup must remain lightweight.
+
+The daemon must not build a trade dossier, crawl the news universe, fetch historical archives, calculate every market feature, or pre-answer the OpenCode questionnaire at startup.
+
+## Startup responsibilities
+
+Startup should perform only deterministic readiness work:
+
+1. Load configuration and persistent daemon state.
+2. Validate required local configuration and source registry structure.
+3. Initialize and verify MT5 execution connectivity.
+4. Subscribe/validate configured instruments required for daemon operation.
+5. Register evidence adapters and their declared capabilities.
+6. Restore persistent observation/watch state.
+7. Start the lightweight trigger/watch loops.
+8. Publish a structured startup capability snapshot.
+
+Startup should not block on optional external evidence sources.
+
+## Source lifecycle model
+
+Every adapter must declare:
+
+- required or optional
+- startup validation level
+- on-demand capability
+- timeout
+- freshness policy
+- retry/backoff policy
+- failure classification
+
+Use explicit states:
+
+READY
+DEGRADED
+UNAVAILABLE
+ERROR
+
+MT5/execution readiness is a required startup dependency.
+
+External research/evidence sources such as FRED/ALFRED, GDELT, direct RSS feeds, RSSHub, and Common Crawl are optional evidence capabilities. Their temporary failure must not prevent the daemon from starting.
+
+## Startup capability snapshot
+
+After initialization, persist and expose a small structured snapshot containing:
+
+daemon_started_at
+daemon_version
+config_version
+mt5_state
+instrument_states
+adapter_states
+enabled_capabilities
+disabled_capabilities
+startup_errors
+
+Do not populate this snapshot with market conclusions, news summaries, calculated trade bias, or a prebuilt dossier.
+
+## Lazy evidence initialization
+
+Optional adapters should use lazy/on-demand initialization where practical:
+
+OpenCode asks a question
+-> MCP identifies the required capability
+-> adapter validates availability if needed
+-> evidence is retrieved
+-> provenance and freshness are returned
+
+Do not continuously preload external data merely to claim readiness.
+
+## Trigger model
+
+The daemon should remain responsible for cheap deterministic triggers and observation management, including:
+
+- market/session transitions
+- configured price or structure triggers
+- observation due/expiry
+- position/account state changes
+- execution safety events
+
+A trigger should wake or notify the investigation layer. It must not force the daemon to perform the entire reasoning investigation itself.
+
+## Separation of responsibilities
+
+Daemon:
+- lifecycle
+- MT5 connectivity
+- observation/watch state
+- cheap triggers
+- scheduling
+- persistence coordination
+
+Evidence adapters:
+- retrieve atomic evidence
+- classify freshness and failure
+- attach provenance
+
+MCP:
+- expose small question-answering capabilities
+
+OpenCode:
+- decide what question matters
+- decide whether more evidence is needed
+- reason about conflicting evidence
+- decide execute / wait / no trade subject to deterministic execution safeguards
+
+## Startup refactor acceptance criteria
+
+1. A cold start reaches operational readiness without fetching a full dossier.
+2. Optional evidence-source outages do not prevent daemon startup.
+3. Required MT5/execution failures are explicit and prevent false readiness.
+4. Startup output contains structured capability state rather than only free-form logs.
+5. No fake fallback market values are inserted during startup.
+6. No historical/news bulk fetch occurs during startup.
+7. Restored watches preserve timestamps and state provenance.
+8. Every daemon-owned trigger has a bounded cost and clear ownership.
+9. OpenCode remains the reasoner; daemon startup does not precompute conclusions for it.
+10. Restarting the daemon cannot silently erase first_seen, observed_at, or observation-state history.
+
 # 13. File-level audit
 
 Classify every major file as:
