@@ -718,6 +718,93 @@ Require OpenCode to:
 - avoid large context dumps
 - stop when more evidence is unlikely to change the action
 
+# 12A. Free-source evidence expansion
+
+The refactor may add only sources genuinely usable without requiring a paid production upgrade for the planned capability.
+
+## Macro and point-in-time research
+
+Add a FRED/ALFRED evidence adapter for historical macro-series research, vintage-aware observations, revision-aware reconstruction, and point-in-time macro validation. The existing free live calendar feed remains available for scheduled/live calendar context.
+
+## Whole-news architecture
+
+Do not add a single commercial news API as the whole-news dependency.
+
+### 1. Direct RSS/Atom source registry
+
+Expand the current crawler into a source registry for public publisher and primary-source feeds. Each source should carry source_id, source_name, feed_url, feed_type, official_or_secondary, market_topics, instrument_relevance, poll_interval, publisher_timezone, and enabled.
+
+Prefer direct feeds over intermediaries.
+
+### 2. Original GDELT
+
+Add Original GDELT as a global discovery and historical event/news-context source for global news discovery, geopolitical events, entity/topic searches, historical context, cross-language discovery, and comparable-event investigation.
+
+GDELT discovery is evidence discovery, not final article authority. Preserve the discovered URL and retrieve the original publisher page when needed.
+
+Do not make GDELT a mandatory call for every decision.
+
+### 3. Self-hosted RSSHub fallback
+
+Where a relevant source has no usable direct feed, support a self-hosted RSSHub route as a fallback.
+
+Priority:
+
+direct official/public RSS or Atom
+-> direct publisher feed
+-> self-hosted RSSHub route
+-> GDELT discovery
+
+Do not make a public shared RSSHub instance a production dependency.
+
+### 4. Common Crawl historical recovery
+
+Add Common Crawl only as an offline/on-demand historical evidence recovery path. Use it when a historical candidate URL or source page must be recovered and the original publisher/archive is unavailable.
+
+Do not use Common Crawl as a live-news source or routine reasoning MCP.
+
+## News provenance contract
+
+Every persisted news item must be capable of carrying:
+
+news_id, canonical_url, source_id, publisher, headline, summary_or_excerpt, published_at, retrieved_at, first_seen_at, discovered_via, language, instrument_tags, topic_tags, content_hash, duplicate_cluster_id, freshness_state.
+
+first_seen_at means when Alpha first obtained the evidence, not the publisher publication timestamp.
+
+Historical reasoning must distinguish publisher publication time, third-party ingestion/discovery time when available, Alpha retrieval time, and Alpha first-seen time.
+
+## Explicitly rejected as architectural dependencies
+
+Do not plan paid Trading Economics production capability, development-only NewsAPI access, quota-limited free tiers requiring paid access for the needed historical capability, commercial historical news archives, or paid order-flow feeds as required dependencies.
+
+These may be reconsidered only after research demonstrates a concrete capability gap that the free architecture cannot fill.
+
+# 12B. Source priority model
+
+EXECUTION REALITY
+MT5
+
+LIVE MARKET / DERIVED EVIDENCE
+MT5 + existing Alpha calculations
+
+LIVE NEWS
+direct RSS/Atom registry + existing crawler
+-> self-hosted RSSHub fallback
+
+GLOBAL / HISTORICAL NEWS CONTEXT
+Original GDELT
+
+HISTORICAL PAGE RECOVERY
+Common Crawl on demand
+
+MACRO HISTORY / VINTAGES
+FRED / ALFRED
+
+CRITICAL FACT VERIFICATION
+original official source where relevant
+
+No source should be queried merely because it exists. OpenCode selects a source only when the current unresolved question makes that evidence decision-relevant.
+
 # 13. File-level audit
 
 Classify every major file as:
@@ -871,6 +958,7 @@ The branch refactor is complete when:
 17. OpenCode is not forced to query every tool or consume a heavy dossier before every trade.
 18. One runtime path owns each responsibility.
 19. `opencode.json` uses a conditional question-driven investigation protocol rather than a fixed MCP/tool checklist.
+19A. New external evidence dependencies are restricted to the free-source architecture in Sections 12A–12B unless a later audit proves a concrete unmet capability.
 20. OpenCode explicitly identifies the most important unresolved question before broadening evidence collection.
 21. OpenCode performs materially relevant contradiction checks.
 22. EXECUTE / WAIT / NO TRADE have explicit decision gates.
