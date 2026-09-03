@@ -9,6 +9,7 @@ import re
 import urllib.request
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any
+from sensors.evidence_sources import RSSRegistry
 
 LOG = logging.getLogger("alpha.sensors.news")
 
@@ -21,35 +22,26 @@ class GlobalNewsCrawler:
         }
 
     def fetch_rss_headlines(self, max_items: int = 15) -> List[Dict[str, str]]:
-        """Fetch real-time headlines across global RSS news streams."""
-        headlines = []
-        for name, url in self.rss_sources.items():
-            try:
-                req = urllib.request.Request(
-                    url,
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                )
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    xml_data = response.read()
-                    root = ET.fromstring(xml_data)
-                    for item in root.findall(".//item")[:max_items]:
-                        title = item.findtext("title") or ""
-                        link = item.findtext("link") or ""
-                        pub_date = item.findtext("pubDate") or ""
-                        clean_title = re.sub(r"<[^>]+>", "", title).strip()
-                        if clean_title:
-                            headlines.append({
-                                "source": name,
-                                "title": clean_title,
-                                "link": link,
-                                "pub_date": pub_date
-                            })
-            except Exception as e:
-                LOG.debug(f"RSS fetch for {name} failed: {e}")
-        if not headlines:
-            # Explicitly empty list - NEVER fabricate synthetic news headlines
-            LOG.debug("No live RSS headlines returned from external feeds.")
-        return headlines
+        """Fetch direct RSS evidence with publication/retrieval provenance.
+
+        Compatibility returns the historical headline shape, while the underlying
+        registry keeps canonical IDs and first-seen timestamps for persistence.
+        """
+        registry = RSSRegistry({name: {"url": url} for name, url in self.rss_sources.items()})
+        result = registry.fetch(max_items=max_items)
+        if result["status"] not in ("SUCCESS", "STALE"):
+            LOG.debug("RSS registry unavailable: %s", result.get("error"))
+            return []
+        return [{
+            "source": item["source_id"],
+            "title": item["headline"],
+            "link": item["canonical_url"],
+            "pub_date": item.get("published_at") or "",
+            "retrieved_at": item.get("retrieved_at"),
+            "first_seen_at": item.get("first_seen_at"),
+            "news_id": item.get("news_id"),
+            "discovered_via": item.get("discovered_via"),
+        } for item in result["data"]["items"][:max_items]]
 
     def search_live_web(self, query: str, max_results: int = 5) -> List[Dict[str, str]]:
         """Live web search via DuckDuckGo search or truthful empty response."""
