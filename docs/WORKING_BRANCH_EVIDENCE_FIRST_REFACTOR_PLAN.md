@@ -548,7 +548,177 @@ Replace mandatory giant-checklist behavior with:
 
 The 2-minute evidence state is a lightweight background observation layer. It does not decide which evidence should be assembled for OpenCode.
 
-# 12. File-level audit
+# 12. OpenCode questionnaire and instruction refactor
+
+The OpenCode instructions must be rewritten to match this architecture. Replace the current fixed investigation checklist with a conditional, question-driven reasoning protocol.
+
+OpenCode is the investigator. Persistent 2-minute observations provide available evidence; MCP tools provide additional or fresher facts. OpenCode decides what question to ask next.
+
+## Core rules
+
+Do not require:
+- all-tool sweeps
+- mandatory full-market dossiers
+- fixed analyst checklists
+- conviction or analyst conclusions as trade authority
+- interpretation of missing evidence as confirmation
+- treating periodic observations as live execution state
+
+## Required reasoning loop
+
+```
+OBSERVE
+ -> DEFINE THE ACTUAL DECISION
+ -> IDENTIFY WHAT IS UNKNOWN
+ -> ASK THE MOST VALUABLE NEXT QUESTION
+ -> GET RELEVANT EVIDENCE
+ -> UPDATE THE HYPOTHESIS
+ -> REPEAT ONLY WHILE THE ANSWER CAN CHANGE THE DECISION
+ -> EXECUTE / WAIT / NO TRADE
+```
+
+Stop investigating when further evidence is unlikely to materially change the action.
+
+## Conditional questionnaire
+
+### 1. What is happening now?
+- What triggered this evaluation?
+- What objective change or observation is present?
+- How old is it?
+- What is the current live market state?
+- Has the market materially changed since the observation?
+
+### 2. What is the actual decision?
+Before searching broadly:
+- Is there an actionable opportunity now?
+- What scenario is being considered?
+- What would invalidate it?
+- What information is missing?
+
+Do not search for confirmation before defining the uncertainty.
+
+### 3. What is the most important unresolved question?
+Examples:
+- sweep or continuation?
+- acceptance or rejection?
+- flow confirmation or divergence?
+- external event explanation?
+- active move or exhaustion?
+- sufficient structural room?
+- portfolio/risk constraint?
+- checkable assumption?
+
+Select only the question that matters now.
+
+### 4. Which evidence can answer it?
+Use only relevant evidence:
+- current market/changes
+- bars
+- reference levels/structure
+- FVG
+- CVD/microstructure
+- macro/calendar/event surprise
+- news
+- cross-asset changes
+- historical precedents
+- account/portfolio risk
+
+### 5. What changed after the answer?
+After each material query:
+- Was the uncertainty resolved?
+- Was the scenario strengthened?
+- Was it weakened or invalidated?
+- Did a more important uncertainty appear?
+- Can another query genuinely change the action?
+
+## Mandatory pre-execution questions
+
+Immediately before preview/execution:
+1. Is the thesis still valid at current price?
+2. Has price materially changed since the evidence was obtained?
+3. Is the entry still structurally valid?
+4. Is invalidation explicit and justified?
+5. Is target explicit and justified?
+6. Is volume/risk explicit?
+7. Does current portfolio state permit the trade?
+8. Does reward/risk remain acceptable at executable price?
+9. Is critical evidence stale or unavailable?
+10. Is WAIT better than execution now?
+
+Refresh live market and account/portfolio state before preview.
+
+## Contradiction handling
+
+When a thesis forms, search for the strongest materially relevant disconfirming evidence. Do not run artificial bull/bear debates; resolve the contradiction most capable of changing the decision.
+
+## Missing and stale evidence
+
+- UNAVAILABLE is not bullish or bearish.
+- STALE is not current.
+- Missing confirmation is not confirmation.
+- Failed sources must not create invented context.
+- Incomplete evidence is acceptable only when missing evidence is not decision-critical.
+- If a critical uncertainty cannot be resolved safely, choose WAIT or NO TRADE.
+
+## Historical evidence
+
+Use memory/forensics when historical comparison can answer a current uncertainty. Check:
+- comparability
+- sample size
+- regime mismatch
+- uncertainty
+
+Historical outcomes are evidence, not direct signals.
+
+## Watches
+
+If a trade is not valid now but could become investigable after an objective event, define that event and create a daemon-backed watch.
+
+Bad: `Watch until market looks bullish.`
+
+Good: a precise, machine-evaluable price/time/structure condition.
+
+A watch trigger starts a new reasoning cycle; the previous thesis is not automatically preserved.
+
+## Decision outcomes
+
+### EXECUTE
+Only when thesis is current, critical uncertainty is resolved sufficiently, invalidation/target/risk are explicit, and live preview validates execution.
+
+### WAIT
+Use when a specific condition has not occurred, evidence is temporarily insufficient, or location is premature. State the exact reason and objective watch condition where possible.
+
+### NO TRADE
+Use when the scenario is invalidated, reward/risk is insufficient, contradictions remain material, risk constraints prohibit execution, or no clear edge remains.
+
+## Instruction structure in opencode.json
+
+Organize instructions around:
+1. authority and role
+2. evidence/freshness rules
+3. persistent observation usage
+4. dynamic questionnaire
+5. hypothesis and contradiction handling
+6. historical evidence
+7. EXECUTE / WAIT / NO TRADE
+8. pre-execution validation
+9. watches
+10. decision recording
+
+Describe questions and decision gates, not a mandatory MCP tool sequence.
+
+## Prompt-size and tool-efficiency rules
+
+Require OpenCode to:
+- read only relevant persistent observations
+- prefer targeted MCP calls
+- avoid repeating sufficiently fresh queries
+- refresh only data whose age matters
+- avoid full memory/book loads unless necessary
+- avoid large context dumps
+- stop when more evidence is unlikely to change the action
+
+# 13. File-level audit
 
 Classify every major file as:
 
@@ -584,7 +754,7 @@ The existing 2-minute dossier/observation implementation and every file particip
 
 Legacy and duplicate entry points must also be explicitly classified.
 
-# 13. Implementation order
+# 14. Implementation order
 
 ## Phase 1: Truth and dossier-path audit
 
@@ -653,9 +823,11 @@ Connect MCP watch CRUD to the actual daemon evaluator.
 
 Implement preview-first execution and remove silent risk defaults.
 
-## Phase 9: OpenCode protocol
+## Phase 9: OpenCode questionnaire and instruction rewrite
 
-Rewrite OpenCode instructions around direct reading of persistent observations and dynamic uncertainty-driven MCP investigation.
+Rewrite `opencode.json` around the conditional question-driven investigation model in Section 12.
+
+Replace fixed all-tool checklists with unresolved-question selection, targeted evidence, contradiction checks, decision gates, and explicit EXECUTE / WAIT / NO TRADE outcomes.
 
 Do not require a system-generated dossier for each reasoning cycle.
 
@@ -676,7 +848,7 @@ lightweight 2-minute observation
  -> decision snapshot
 ```
 
-# 14. Acceptance criteria
+# 15. Acceptance criteria
 
 The branch refactor is complete when:
 
@@ -698,6 +870,11 @@ The branch refactor is complete when:
 16. Current market can be compared with trigger-time or stored observation state.
 17. OpenCode is not forced to query every tool or consume a heavy dossier before every trade.
 18. One runtime path owns each responsibility.
+19. `opencode.json` uses a conditional question-driven investigation protocol rather than a fixed MCP/tool checklist.
+20. OpenCode explicitly identifies the most important unresolved question before broadening evidence collection.
+21. OpenCode performs materially relevant contradiction checks.
+22. EXECUTE / WAIT / NO TRADE have explicit decision gates.
+23. WAIT conditions are objective and can become daemon-backed watches.
 
 # Final target
 
