@@ -29,8 +29,17 @@ def _write_startup_capabilities():
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "daemon_started_at": datetime.now(timezone.utc).isoformat(),
+        "daemon_version": "evidence-first",
+        "config_version": "1",
+        "mt5_state": "PENDING_DAEMON_INITIALIZATION",
+        "instrument_states": {},
         "adapter_states": capability_snapshot(),
+        "enabled_capabilities": [],
+        "disabled_capabilities": [],
+        "startup_errors": [],
     }
+    for name, state in payload["adapter_states"].items():
+        (payload["enabled_capabilities"] if state.get("state") in ("SUCCESS", "READY") else payload["disabled_capabilities"]).append(name)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     tmp.replace(path)
