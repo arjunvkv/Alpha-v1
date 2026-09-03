@@ -64,25 +64,91 @@ class FREDAdapter:
     def __init__(self, api_key=None, http=None):
         self.api_key = api_key or os.getenv("FRED_API_KEY", "").strip()
         self.http = http or HttpJson()
+
+    def _fetch_treasury_direct(self, series_id, limit=100, vintage_date=None):
+        """Free fallback to official US Department of the Treasury XML feed (zero API key required)."""
+        sid = (series_id or "DGS10").upper().strip()
+        year = datetime.now(timezone.utc).year
+        
+        if sid == "T10YIE":
+            nom = {x["date"]: float(x["value"]) for x in self._fetch_treasury_direct("DGS10", limit, vintage_date)}
+            real = {x["date"]: float(x["value"]) for x in self._fetch_treasury_direct("DFII10", limit, vintage_date)}
+            obs = []
+            for dt, n_val in nom.items():
+                if dt in real:
+                    obs.append({"date": dt, "value": f"{(n_val - real[dt]):.2f}"})
+            return obs
+
+        is_real = sid in ("DFII10", "DFII5", "DFII20", "DFII30", "TC_10YEAR")
+        data_type = "daily_treasury_real_yield_curve" if is_real else "daily_treasury_yield_curve"
+        url = f"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data={data_type}&field_tdr_date_value={year}"
+        
+        tag_map = {
+            "DGS10": "BC_10YEAR",
+            "DGS2": "BC_2YEAR",
+            "DGS5": "BC_5YEAR",
+            "DGS30": "BC_30YEAR",
+            "DGS1": "BC_1YEAR",
+            "DGS3MO": "BC_3MONTH",
+            "DGS6MO": "BC_6MONTH",
+            "DFII10": "TC_10YEAR",
+            "DFII5": "TC_5YEAR",
+            "DFII30": "TC_30YEAR",
+        }
+        if sid not in tag_map:
+            return []
+        tag_name = tag_map[sid]
+        raw_xml = self.http.get(url)
+        root = ET.fromstring(raw_xml)
+        entries = root.findall("{http://www.w3.org/2005/Atom}entry")
+        observations = []
+        for entry in reversed(entries):
+            content = entry.find("{http://www.w3.org/2005/Atom}content")
+            if content is None: continue
+            props = content.find("{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
+            if props is None: continue
+            val_elem = props.find(f"{{http://schemas.microsoft.com/ado/2007/08/dataservices}}{tag_name}")
+            date_elem = props.find("{http://schemas.microsoft.com/ado/2007/08/dataservices}NEW_DATE")
+            if val_elem is not None and val_elem.text and date_elem is not None and date_elem.text:
+                dt = date_elem.text.split("T")[0]
+                if vintage_date and dt > vintage_date:
+                    continue
+                observations.append({"date": dt, "value": val_elem.text})
+                if len(observations) >= int(limit):
+                    break
+        return observations
+
     def observations(self, series_id, limit=100, vintage_date=None):
         retrieved = _iso()
-        if not self.api_key:
-            return envelope(UNAVAILABLE, self.source, retrieved_at=retrieved,
-                            error="FRED_API_KEY is not configured; source is optional and no fallback value was used.")
-        params = {"series_id": series_id, "api_key": self.api_key, "file_type": "json",
-                  "limit": int(limit), "sort_order": "desc"}
-        if vintage_date:
-            params["vintage_dates"] = vintage_date
-        url = self.base + "/series/observations?" + urllib.parse.urlencode(params)
+        if self.api_key:
+            params = {"series_id": series_id, "api_key": self.api_key, "file_type": "json",
+                      "limit": int(limit), "sort_order": "desc"}
+            if vintage_date:
+                params["vintage_dates"] = vintage_date
+            url = self.base + "/series/observations?" + urllib.parse.urlencode(params)
+            try:
+                payload = json.loads(self.http.get(url).decode("utf-8"))
+                observations = payload.get("observations", [])
+                observed_at = observations[0].get("date") if observations else None
+                return envelope(SUCCESS, self.source, {"series_id": series_id,
+                                "vintage_date": vintage_date, "observations": observations},
+                                observed_at=observed_at, retrieved_at=retrieved)
+            except Exception:
+                pass  # Fall through to US Treasury Direct free feed
+        
+        # Free source fallback: Official US Treasury Direct XML Feed (zero key required)
         try:
-            payload = json.loads(self.http.get(url).decode("utf-8"))
-            observations = payload.get("observations", [])
-            observed_at = observations[0].get("date") if observations else None
-            return envelope(SUCCESS, self.source, {"series_id": series_id,
-                            "vintage_date": vintage_date, "observations": observations},
-                            observed_at=observed_at, retrieved_at=retrieved)
+            observations = self._fetch_treasury_direct(series_id, limit, vintage_date)
+            if observations:
+                observed_at = observations[0].get("date")
+                return envelope(SUCCESS, "US_Department_of_Treasury_Direct", {"series_id": series_id,
+                                "vintage_date": vintage_date, "observations": observations,
+                                "provenance": "Official US Department of the Treasury Direct XML Feed (Free)"},
+                                observed_at=observed_at, retrieved_at=retrieved)
+            return envelope(UNAVAILABLE, "US_Department_of_Treasury_Direct", retrieved_at=retrieved,
+                            error=f"Series '{series_id}' not found on US Treasury Direct and FRED_API_KEY is not configured.")
         except Exception as exc:
-            return envelope(ERROR, self.source, retrieved_at=retrieved, error=str(exc))
+            return envelope(ERROR, "US_Department_of_Treasury_Direct", retrieved_at=retrieved, error=str(exc))
 
 class GDELTAdapter:
     source = "Original GDELT DOC 2.0"

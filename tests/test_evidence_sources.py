@@ -9,12 +9,19 @@ class FakeHttp:
         if isinstance(value, Exception): raise value
         return value
 
-def test_fred_without_key_never_fabricates_value(monkeypatch):
+def test_fred_without_key_uses_free_treasury_direct(monkeypatch):
     monkeypatch.delenv("FRED_API_KEY", raising=False)
-    result=FREDAdapter(api_key="").observations("DGS10")
+    # When no key is provided, official US Treasury Direct XML feed is used seamlessly
+    result = FREDAdapter(api_key="").observations("DGS10", limit=2)
+    assert result["status"] == SUCCESS
+    assert result["source"] == "US_Department_of_Treasury_Direct"
+    assert len(result["data"]["observations"]) > 0
+
+def test_fred_unknown_series_without_key_returns_unavailable(monkeypatch):
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+    result = FREDAdapter(api_key="").observations("UNKNOWN_SERIES_XYZ")
     assert result["status"] == UNAVAILABLE
     assert result["data"] == {}
-    assert "fallback" in result["error"].lower()
 
 def test_fred_vintage_request_preserves_observations():
     payload=json.dumps({"observations":[{"date":"2024-01-01","value":"4.00"}]}).encode()
