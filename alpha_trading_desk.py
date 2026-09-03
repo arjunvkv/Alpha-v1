@@ -880,20 +880,8 @@ class ConsolidatedTradingDaemon:
                     f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
                 )
             else:
-                # Turn B: 5-Question News & Macro Repricing Evaluation (News + FRED + Proxima)
-                prompt = (
-                    f"ALPHA 5-QUESTION NEWS & MACRO REPRICING EVALUATION — {trigger}\n"
-                    f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
-                    f"Active instruments: {', '.join(get_active_instruments())}\n"
-                    f"Open positions: {len(open_tickets)}\n"
-                    f"Reason: Alternate news & macro repricing evaluation turn.\n\n"
-                    f"MANDATORY EVALUATION OF CURRENT MARKET CONDITIONS INVOLVING ALL NEW NEWS (NEWS + FRED + PROXIMA):\n"
-                    f"1. Q-NEWS-1 [Breaking Catalysts & Provenance]: What breaking geopolitical or macroeconomic headlines (CPI, NFP, FOMC, central bank commentary, geopolitical escalations) have hit the wire in the last 1–4 hours, and what is their verified publication provenance? -> get_direct_news, search_market_news\n"
-                    f"2. Q-NEWS-2 [Real Rates & Yields Transference]: How are nominal US Treasury yields (10Y/2Y), TIPS 10Y real yields (DFII10), and 10Y breakeven inflation expectations (T10YIE) responding to the latest news catalysts, and does the macro rate shift support or contradict current price action? -> get_fred_observations\n"
-                    f"3. Q-NEWS-3 [Intermarket Narrative Divergence]: Is there a material divergence between the headline narrative (risk-on vs risk-off) and the bond market / currency yield trajectory, and does this divergence create an institutional trap or genuine trend continuation? -> get_direct_news, get_fred_observations\n"
-                    f"4. Q-NEWS-4 [Quantitative Microstructure Replay (Proxima)]: When similar news catalysts and yield curve repricing events occurred historically, what was the empirical candle replay behavior (win rate %, initial fake-out wick depth, and target distribution)? -> backtest_thesis, ask_librarian\n"
-                    f"5. Q-NEWS-5 [News Invalidation & Asymmetric Gate]: Given the combined news velocity, rate shifts, and Proxima failure scenarios, what is the exact objective price shelf that invalidates the narrative, and does the setup offer an asymmetric risk-reward entry without exposing the FTMO account to high-impact slippage or headline whipsaws (R:R >= 2.5:1)? -> get_direct_news, get_fred_observations, backtest_thesis"
-                )
+                # Turn B: Simple verbatim brainstorm prompt requested by user
+                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
             post_to_opencode_session("Alpha Daemon", prompt)
 
 
