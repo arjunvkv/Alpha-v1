@@ -117,11 +117,15 @@ class RSSRegistry:
     def __init__(self, sources=None, http=None, state_store=None):
         self.http = http or HttpJson()
         self.state_store = state_store or EvidenceStateStore()
-        self.sources = sources or {
-            "kitco": {"url": "https://www.kitco.com/rss/gold.xml", "official_or_secondary": "secondary"},
-            "marketwatch": {"url": "https://feeds.content.dowjones.io/public/rss/mw_topstories", "official_or_secondary": "secondary"},
-            "reuters_business": {"url": "https://www.reutersagency.com/feed/?best-topics=business-finance", "official_or_secondary": "secondary"},
-        }
+        if sources is not None:
+            self.sources = sources
+        else:
+            config_path = Path(__file__).resolve().parent.parent / "config" / "evidence_sources.json"
+            try:
+                loaded = json.loads(config_path.read_text(encoding="utf-8"))
+                self.sources = {k:v for k,v in loaded.get("sources", {}).items() if v.get("enabled", True)}
+            except Exception:
+                self.sources = {}
     def fetch(self, max_items=20):
         retrieved = _iso(); items=[]; failures=[]
         for source_id, meta in self.sources.items():
@@ -160,8 +164,22 @@ class RSSRegistry:
 class CommonCrawlAdapter:
     source="Common Crawl Index"
     def __init__(self, http=None): self.http=http or HttpJson()
-    def lookup(self, url, index="CC-MAIN-2026-30", limit=10):
+    def available_indexes(self):
+        raw=self.http.get("https://index.commoncrawl.org/collinfo.json")
+        return json.loads(raw.decode("utf-8"))
+    def _resolve_index(self, index):
+        if index and index != "latest":
+            return index
+        indexes=self.available_indexes()
+        if not indexes:
+            raise RuntimeError("No Common Crawl indexes available")
+        return indexes[0].get("id") or indexes[0].get("name")
+    def lookup(self, url, index="latest", limit=10):
         retrieved=_iso()
+        try:
+            index=self._resolve_index(index)
+        except Exception as exc:
+            return envelope(ERROR,self.source,retrieved_at=retrieved,error=f"index discovery failed: {exc}")
         endpoint=f"https://index.commoncrawl.org/{index}-index?"+urllib.parse.urlencode({"url":url,"output":"json","limit":int(limit)})
         try:
             raw=self.http.get(endpoint)
