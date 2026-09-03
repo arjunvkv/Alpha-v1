@@ -1110,3 +1110,23 @@ many strong existing data engines
 ```
 
 The refactor preserves the expensive infrastructure already built in this branch, keeps the useful 2-minute collection path lightweight, and removes the layers that pre-decide what the evidence means or repeatedly decide how evidence should be packaged for the reasoner.
+
+
+# 16. Completion audit — implemented evidence lifecycle
+
+## Completed in this branch
+- Persistent evidence identity and first_seen_at store.
+- Canonical URL persistence across RSS/GDELT retrieval.
+- Batch evidence read marking.
+- Persistent watch IDs and lifecycle.
+- Batch watch observation marking.
+- Watch restoration from persistent state.
+- Unified watch MCP surface replacing discovery_state dual-shape ownership.
+- Explicit execution validation for volume and stop loss; no automatic fallback.
+- Structured startup capability snapshot expanded to the planned fields.
+
+## Deliberately retained for a separate destructive cleanup pass
+The repository still contains legacy multi-agent/score/deep-book components and multiple daemon generations. They must not be silently deleted without tracing their runtime entrypoints and compatibility dependencies. The evidence-first architecture treats them as evidence producers only; OpenCode remains the reasoner.
+
+## Remaining runtime verification
+Run the repository suite and live MT5 integration on the Windows Alpha runtime, then audit the actual launched entrypoint from start_trading_system.ps1/alpha_trading_desk.py. GitHub-side changes cannot prove MT5 process behavior or OpenCode wake delivery.
