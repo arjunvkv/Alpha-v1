@@ -843,24 +843,14 @@ class ConsolidatedTradingDaemon:
             self.dispatch_count += 1
             trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if open_tickets else "SCHEDULED_REASSESSMENT")
             
-            # Brainstorm message arrives every 6 minutes (360s), replacing dossier for that cycle
-            brainstorm_interval = 360.0
-            time_since_brainstorm = now_ts - self.last_brainstorm_dispatch_time
-            
-            if is_startup:
-                self.last_brainstorm_dispatch_time = now_ts
-                is_brainstorm_turn = False
-            elif time_since_brainstorm >= brainstorm_interval:
-                self.last_brainstorm_dispatch_time = now_ts
-                is_brainstorm_turn = True
-            else:
-                is_brainstorm_turn = False
+            # 3-Step Cadence: Dossier (3m) -> Dossier (3m) -> Message (every 3rd dispatch replaces dossier)
+            is_brainstorm_turn = (self.dispatch_count % 3 == 0) and not is_startup
                 
             if is_brainstorm_turn:
-                # 6-minute Brainstorm turn replacing dossier
+                # 3rd cycle: Brainstorm turn replacing dossier
                 prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
             else:
-                # 3-minute Standard Evidence Wake / Dossier turn
+                # 1st & 2nd cycles: Standard Evidence Wake / Dossier turn
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
                     f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
