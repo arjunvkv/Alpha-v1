@@ -448,6 +448,8 @@ class ConsolidatedTradingDaemon:
         self.last_dispatch_time = 0.0
         self.last_brainstorm_dispatch_time = 0.0
         self.last_reversal_dispatch_time = 0.0
+        self.active_burst_step = 0
+        self.just_sent_active_brainstorm = False
 
         # Wire live error monitoring into Desk Daemon (H4)
         from monitor.error_monitor import error_monitor
@@ -830,7 +832,20 @@ class ConsolidatedTradingDaemon:
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
         dossier_interval = get_dossier_interval_seconds()
         active_trade_interval = get_active_trade_interval_seconds()
-        required_interval = float(active_trade_interval) if open_tickets else float(dossier_interval)
+        has_active_trades = len(open_tickets) > 0
+
+        # Calculate required interval based on active vs idle state
+        if has_active_trades:
+            # Active trade cadence: 1m -> 1m -> 1m -> Brainstorm -> 5m gap
+            if self.just_sent_active_brainstorm:
+                required_interval = 300.0  # 5 min gap after brainstorm message
+            else:
+                required_interval = float(active_trade_interval)  # 60.0s (1m)
+        else:
+            # Idle cadence: 4m (240s)
+            self.active_burst_step = 0
+            self.just_sent_active_brainstorm = False
+            required_interval = float(dossier_interval)
 
         ready_for_dispatch = False
         if is_startup:
@@ -841,16 +856,26 @@ class ConsolidatedTradingDaemon:
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
             self.dispatch_count += 1
-            trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if open_tickets else "SCHEDULED_REASSESSMENT")
-            
-            # Cadence: 4-Min Dossier with 8-Min Brainstorm Message replacing dossier
-            is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
-                
+            trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if has_active_trades else "SCHEDULED_REASSESSMENT")
+
+            if has_active_trades:
+                # Active trade pattern: 1m dossier -> 1m dossier -> 1m dossier -> brainstorm message -> 5m gap
+                self.just_sent_active_brainstorm = False
+                self.active_burst_step = (self.active_burst_step % 4) + 1
+                if self.active_burst_step == 4:
+                    is_brainstorm_turn = True
+                    self.just_sent_active_brainstorm = True
+                else:
+                    is_brainstorm_turn = False
+            else:
+                # Idle pattern: 4m dossier -> 8m brainstorm message
+                is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
+
             if is_brainstorm_turn:
-                # 8-minute cycle: Brainstorm turn replacing dossier
+                # Brainstorm turn replacing dossier
                 prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools"
             else:
-                # 4-minute cycle: Standard Evidence Wake / Dossier turn
+                # Standard Evidence Wake / Dossier turn
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
                     f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
