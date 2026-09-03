@@ -4,7 +4,7 @@ All adapters return the same truth contract. Optional sources never fabricate da
 and callers can distinguish SUCCESS, STALE, UNAVAILABLE and ERROR.
 """
 from __future__ import annotations
-import hashlib, json, os, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+import hashlib, json, os, ssl, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -48,8 +48,15 @@ def envelope(status, source, data=None, observed_at=None, retrieved_at=None, err
 class HttpJson:
     def get(self, url, timeout=10, headers=None):
         req = urllib.request.Request(url, headers={"User-Agent": "Alpha/1.0 evidence adapter", **(headers or {})})
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return response.read()
+        try:
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+                return response.read()
+        except Exception:
+            ctx = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+                return response.read()
+
 
 class FREDAdapter:
     source = "FRED/ALFRED"

@@ -1,22 +1,23 @@
 {
   "sources": {
-    "kitco": {
-      "url": "https://www.kitco.com/rss/gold.xml",
-      "official_or_secondary": "secondary",
-      "topics": ["metals", "gold", "silver"],
-      "enabled": true
-    },
     "marketwatch": {
       "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
       "official_or_secondary": "secondary",
       "topics": ["markets", "macro"],
       "enabled": true
     },
-    "reuters_business": {
-      "url": "https://www.reutersagency.com/feed/?best-topics=business-finance",
+    "yahoo_finance": {
+      "url": "https://finance.yahoo.com/news/rssindex",
       "official_or_secondary": "secondary",
-      "topics": ["markets", "macro", "business"],
+      "topics": ["macro", "commodities", "gold"],
+      "enabled": true
+    },
+    "investing_commodities": {
+      "url": "https://www.investing.com/rss/commodities.rss",
+      "official_or_secondary": "secondary",
+      "topics": ["commodities", "gold", "oil"],
       "enabled": true
     }
   }
 }
+
