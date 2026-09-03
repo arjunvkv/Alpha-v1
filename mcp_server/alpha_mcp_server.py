@@ -25,7 +25,9 @@ if str(ALPHA_ROOT) not in sys.path:
 from mcp.server.fastmcp import FastMCP
 from logs.story_logger import log_opencode_said, log_local_llm_replied, log_story
 from tradingagents.read_logger import DossierReadLogger
+from tradingagents.evidence_state import EvidenceStateStore
 read_logger = DossierReadLogger()
+evidence_state = EvidenceStateStore()
 from tradingagents.world_events import LiveWorldEventsEngine
 from sensors.evidence_sources import FREDAdapter, GDELTAdapter, RSSRegistry, CommonCrawlAdapter, capability_snapshot
 world_events_engine = LiveWorldEventsEngine()
@@ -104,84 +106,41 @@ def _normalize_symbol(symbol: str) -> str:
     return s.upper()
 
 @mcp.tool()
-def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "") -> str:
-    """OpenCode assigns a dynamic smart watch to the local desk and registers active thesis with the Librarian."""
+def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
+    """Create or update a persistent objective watch. The daemon may trigger it; it never decides the trade."""
     sym = _normalize_symbol(symbol)
     desc = condition or instruction or reason or f"Watching {sym} @ {target_price}"
-    log_opencode_said(f"Watch {sym}: {desc}")
-    log_local_llm_replied(f"Understood CIO! Registered dynamic watch for {sym}: {desc}.")
-    
-    watch_payload = {
-        "symbol": sym,
-        "condition": desc,
-        "instruction": instruction,
-        "target_price": target_price,
-        "direction": direction,
-        "reason": reason,
-        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    }
-    _active_watches[sym] = watch_payload
-
-    # Save to discovery state for Librarian ingestion and persistent desk reload
-    try:
-        state_path = ALPHA_ROOT / "data" / "live" / "discovery_state.json"
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        state_data = {}
-        if state_path.exists():
-            try:
-                with open(state_path, "r", encoding="utf-8-sig") as f:
-                    state_data = json.load(f)
-            except Exception as read_err:
-                LOG.warning(f"Could not read existing discovery_state.json: {read_err}")
-                state_data = {}
-
-        state_data["active_watch"] = watch_payload
-        watches_map = state_data.get("active_watches", {})
-        if not isinstance(watches_map, dict):
-            watches_map = {}
-        watches_map[sym] = watch_payload
-        state_data["active_watches"] = watches_map
-
-        with open(state_path, "w", encoding="utf-8") as f:
-            json.dump(state_data, f, indent=2)
-        LOG.info(f"Persisted active watch for {sym} to {state_path}")
-    except Exception as err:
-        LOG.error(f"register_watch persist failed: {err}")
-
-    return json.dumps({
-        "status": "REGISTERED",
-        "symbol": sym,
-        "condition": condition,
-        "instruction": instruction,
-        "target_price": target_price,
-        "direction": direction,
-        "active_watch": watch_payload
-    }, indent=2)
+    watch = evidence_state.upsert_watch({"id": watch_id or None, "symbol": sym, "condition": desc,
+        "instruction": instruction, "target_price": target_price, "direction": direction, "reason": reason})
+    _active_watches[watch["id"]] = watch
+    return json.dumps({"status": "REGISTERED", "watch": watch}, indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_active_watches(symbol: str = None) -> str:
-    """Fetch currently registered dynamic watches on the trading desk."""
-    try:
-        state_path = ALPHA_ROOT / "data" / "live" / "discovery_state.json"
-        if state_path.exists():
-            with open(state_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                watches = data.get("active_watches", [])
-                if symbol:
-                    sym_clean = _normalize_symbol(symbol)
-                    watches = [w for w in watches if w.get("symbol", "").upper() == sym_clean.upper()]
-                return json.dumps(watches, indent=2)
-    except Exception:
-        pass
-    watches = list(_active_watches.values())
-    if symbol:
-        sym_clean = _normalize_symbol(symbol)
-        watches = [w for w in watches if w.get("symbol", "").upper() == sym_clean.upper()]
-    return json.dumps(watches, indent=2)
+def mcp_alpha_get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
+    """Fetch persistent watches restored across MCP/daemon restarts."""
+    return json.dumps(evidence_state.get_watches(_normalize_symbol(symbol) if symbol else None, include_closed), indent=2)
 
 @mcp.tool()
-def get_active_watches(symbol: str = None) -> str:
-    """Fetch currently registered dynamic watches on the trading desk."""
+def mcp_alpha_update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
+    changes={"status": status or None, "condition": condition or None, "instruction": instruction or None,
+             "target_price": target_price, "reason": reason or None}
+    watch=evidence_state.update_watch(watch_id, **changes)
+    if not watch: return json.dumps({"status":"NOT_FOUND","watch_id":watch_id})
+    _active_watches[watch_id]=watch
+    return json.dumps({"status":"UPDATED","watch":watch}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_mark_watches_observed(watch_ids: List[str]) -> str:
+    """Mark one or many watches observed in one MCP call."""
+    changed=evidence_state.mark_watches_observed(watch_ids)
+    return json.dumps({"status":"UPDATED","count":len(changed),"watches":changed}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_mark_evidence_read(evidence_ids: List[str]) -> str:
+    """Mark one or many persistent news/evidence records read in one MCP call."""
+    changed=evidence_state.mark_read(evidence_ids)
+    return json.dumps({"status":"UPDATED","count":len(changed),"items":changed}, indent=2)
+
 # ======================================================================
 # CONFIGURATION STATE HELPER
 # ======================================================================
