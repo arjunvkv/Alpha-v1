@@ -875,10 +875,20 @@ class ConsolidatedTradingDaemon:
                 # Brainstorm turn replacing dossier
                 prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools. For planning the next trade"
             else:
-                # Standard Evidence Wake / Dossier turn
+                try:
+                    from tradingagents.time_helper import get_market_time_context
+                    _t_ctx = get_market_time_context()
+                    _utc_fmt = _t_ctx["current_clocks"]["utc"]["formatted"]
+                    _ny_fmt = _t_ctx["current_clocks"]["new_york_et"]["formatted"]
+                    _lon_fmt = _t_ctx["current_clocks"]["london_bst"]["formatted"]
+                    _sess = _t_ctx["active_session"]
+                    _time_str = f"UTC: {_utc_fmt} | NY (ET): {_ny_fmt} | London: {_lon_fmt} | Active Session: {_sess}"
+                except Exception:
+                    _time_str = f"UTC: {datetime.now(timezone.utc).isoformat()}"
+
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
-                    f"UTC: {datetime.now(timezone.utc).isoformat()}\n"
+                    f"{_time_str}\n"
                     f"Active instruments: {', '.join(get_active_instruments())}\n"
                     f"Open positions: {len(open_tickets)}\n"
                     f"Reason: periodic state changed or review interval elapsed.\n\n"

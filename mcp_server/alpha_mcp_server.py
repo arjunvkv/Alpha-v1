@@ -143,6 +143,20 @@ def mcp_alpha_mark_evidence_read(evidence_ids: List[str]) -> str:
     changed=evidence_state.mark_read(evidence_ids)
     return json.dumps({"status":"UPDATED","count":len(changed),"items":changed}, indent=2)
 
+@mcp.tool()
+def mcp_alpha_get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
+    """General market time and session helper.
+    Returns live synchronized clocks for all global financial centers (UTC, New York ET, London BST, Tokyo JST),
+    current active trading session (Asian, London, London/NY Overlap, NY), session rollover countdowns,
+    and converts/calculates exact countdowns for any target time query (e.g. '8:30 AM ET', '12:30 UTC', '14:00').
+    """
+    try:
+        from tradingagents.time_helper import get_market_time_context
+        ctx = get_market_time_context(target_time=target_time, target_timezone=target_timezone)
+        return json.dumps(ctx, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "ERROR", "error": str(err)})
+
 # ======================================================================
 # CONFIGURATION STATE HELPER
 # ======================================================================
