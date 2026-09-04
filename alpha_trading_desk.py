@@ -847,8 +847,50 @@ class ConsolidatedTradingDaemon:
             self.just_sent_active_brainstorm = False
             required_interval = float(dossier_interval)
 
+        # Evaluate active persistent watches against live tick price
+        triggered_watch = None
+        try:
+            from tradingagents.evidence_state import EvidenceStateStore
+            _ev_store = EvidenceStateStore()
+            _active_watches = _ev_store.get_watches(include_closed=False)
+            for w in _active_watches:
+                w_sym = w.get("symbol", "XAUUSD")
+                w_target = w.get("target_price")
+                if w_target is not None:
+                    try:
+                        w_target_val = float(w_target)
+                        w_tick = mt5.symbol_info_tick(w_sym) if mt5_online else None
+                        if w_tick:
+                            w_bid = float(getattr(w_tick, "bid", 0.0))
+                            w_ask = float(getattr(w_tick, "ask", 0.0))
+                            w_dir = str(w.get("direction", "")).upper()
+                            w_cond = str(w.get("condition", "")).upper()
+
+                            is_triggered = False
+                            if "BUY" in w_dir or "LONG" in w_dir or "ABOVE" in w_cond:
+                                if w_bid >= w_target_val:
+                                    is_triggered = True
+                            elif "SELL" in w_dir or "SHORT" in w_dir or "BELOW" in w_cond:
+                                if w_ask <= w_target_val:
+                                    is_triggered = True
+                            else:
+                                if abs(w_bid - w_target_val) <= 0.5 or w_bid >= w_target_val:
+                                    is_triggered = True
+
+                            if is_triggered:
+                                triggered_watch = w
+                                _ev_store.update_watch(w["id"], status="TRIGGERED")
+                                LOG.info(f"⚡ WATCH TRIGGERED: {w['id']} @ {w_target_val} (Live bid: {w_bid})")
+                                break
+                    except Exception as _w_err:
+                        LOG.debug(f"Watch check err: {_w_err}")
+        except Exception as _w_store_err:
+            LOG.debug(f"Watch store err: {_w_store_err}")
+
         ready_for_dispatch = False
-        if is_startup:
+        if triggered_watch is not None:
+            ready_for_dispatch = True
+        elif is_startup:
             ready_for_dispatch = True
         elif elapsed_since_dispatch >= required_interval:
             ready_for_dispatch = True
@@ -856,7 +898,10 @@ class ConsolidatedTradingDaemon:
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
             self.dispatch_count += 1
-            trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if has_active_trades else "SCHEDULED_REASSESSMENT")
+            if triggered_watch is not None:
+                trigger = f"WATCH_TRIGGER — {triggered_watch['id']} (Target: {triggered_watch.get('target_price')})"
+            else:
+                trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if has_active_trades else "SCHEDULED_REASSESSMENT")
 
             if has_active_trades:
                 # Active trade pattern: 1m dossier -> 1m dossier -> 1m dossier -> brainstorm message -> 5m gap
@@ -873,7 +918,18 @@ class ConsolidatedTradingDaemon:
 
             is_rule_turn = (self.dispatch_count % 10 == 0) and not is_startup
 
-            if is_rule_turn:
+            if triggered_watch is not None:
+                prompt = (
+                    f"⚡ ALPHA EVIDENCE WAKE — WATCH_TRIGGER\n"
+                    f"WATCH ALERT: {triggered_watch['id']} TRIGGERED at target price {triggered_watch.get('target_price')}!\n"
+                    f"Condition: {triggered_watch.get('condition')}\n"
+                    f"Instruction: {triggered_watch.get('instruction')}\n"
+                    f"Reason: {triggered_watch.get('reason')}\n\n"
+                    f"Action Required: Execute immediate pre-execution validation (get_live_microstructure, get_measured_cvd, get_account_status). "
+                    f"If order flow and breakout conditions confirm, execute trade immediately (execute_trade) with defined structural SL/TP and calibrated 0.1-1.0 lots. "
+                    f"If conditions are invalidated, cancel and register updated watch."
+                )
+            elif is_rule_turn:
                 # Rule reminder turn replacing dossier every 10th dispatch
                 prompt = (
                     "=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
