@@ -1646,6 +1646,11 @@ def mark_evidence_read(evidence_ids: List[str]) -> str:
 # ======================================================================
 
 @mcp.tool()
+def get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
+    """Retrieve synchronized market clocks across UTC, New York (EDT/EST), London (BST/GMT), Tokyo (JST), Sydney (AEST), live trading sessions, or calculate exact countdowns to any target time."""
+    return mcp_alpha_get_market_time_context(target_time, target_timezone)
+
+@mcp.tool()
 def get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
     """Fetch complete institutional profile (POC/VAH/VAL, VWAP, DIX/GEX, Treasuries, Contract Specs, 4TF EMAs/RSI)."""
     return mcp_alpha_get_full_institutional_profile(symbol)
