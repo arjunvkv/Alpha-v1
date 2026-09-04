@@ -871,7 +871,31 @@ class ConsolidatedTradingDaemon:
                 # Idle pattern: 4m dossier -> 8m brainstorm message
                 is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
 
-            if is_brainstorm_turn:
+            is_rule_turn = (self.dispatch_count % 10 == 0) and not is_startup
+
+            if is_rule_turn:
+                # Rule reminder turn replacing dossier every 10th dispatch
+                prompt = (
+                    "=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
+                    "You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514395146). Review and strictly adhere to these core principles:\n\n"
+                    "1. ADAPTIVE STAGING & LIQUIDITY SWEEPS:\n"
+                    "• When price conducts a liquidity sweep into an active unmitigated structural zone (FVG, Order Block, Value Area boundary) and CVD/microstructure shows an exhaustion flip, DO NOT anchor pending limits deep in unreachable stale space.\n"
+                    "• Stage pending limits directly at the zone Consequent Encroachment (50% CE) or reaction boundary, OR execute a direct market order (execute_trade) with 0.1-1.0 lot size scaled to catalyst magnitude and defined structural SL behind the invalidation shelf.\n\n"
+                    "2. ACTIVE POSITION RESILIENCE & PROFIT PROTECTION:\n"
+                    "• NO TRAILING STOPS.\n"
+                    "• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
+                    "• Manage strictly via structural SL/TP adjustments (update_position). If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor while strictly observing FTMO drawdown limits.\n"
+                    "• Extend TP for higher R:R (>= 2.5:1) as momentum accelerates toward deeper institutional liquidity targets.\n\n"
+                    "3. MACRO VOLATILITY SWEEPS & PRE-EVENT DISCIPLINE:\n"
+                    "• Scheduled economic releases, rate decisions, and geopolitical shocks cause fast volatility sweeps into institutional discount/premium zones. Do not succumb to volatility paralysis.\n"
+                    "• When multi-timeframe structural confluence aligns at an institutional level with order-flow exhaustion, capture the entry actively with calibrated 0.1-1.0 lot sizing and clear structural invalidation.\n\n"
+                    "4. GENERAL TIME & ATOMIC MCP TOOLS:\n"
+                    "• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
+                    "• Always use targeted atomic tools: get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_measured_cvd, get_live_microstructure, backtest_thesis, ask_librarian, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
+                    "• Always replan pending orders whenever new news is retrieved.\n\n"
+                    "Confirm current market state, active/pending orders, and strict adherence to these rules."
+                )
+            elif is_brainstorm_turn:
                 # Brainstorm turn replacing dossier
                 prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools. For planning the next trade . you have 0.1 - 1.0 lot area to place the lots based the the power of news. always pull latest and the closes news possible . always replan any pending orders each time you pull the news. Always check the timezone mcp to verify we are on right track."
             else:
