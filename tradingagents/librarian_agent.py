@@ -137,8 +137,14 @@ class LibrarianPatternDatabase:
             try:
                 with open(UNIFIED_MEMORY_PATH, "r", encoding="utf-8", errors="ignore") as f:
                     data = json.load(f)
-                    self.experiences = data.get("experiences", {})
-                    self.patterns = data.get("patterns", {})
+                    exp = data.get("experiences", {})
+                    pat = data.get("patterns", {})
+                    if isinstance(exp, list):
+                        exp = {e.get("experience_id", str(i)): e for i, e in enumerate(exp) if isinstance(e, dict)}
+                    if isinstance(pat, list):
+                        pat = {p.get("pattern_id", str(i)): p for i, p in enumerate(pat) if isinstance(p, dict)}
+                    self.experiences = exp if isinstance(exp, dict) else {}
+                    self.patterns = pat if isinstance(pat, dict) else {}
             except Exception as e:
                 LOG.error(f"Failed to load {UNIFIED_MEMORY_PATH}: {e}")
 

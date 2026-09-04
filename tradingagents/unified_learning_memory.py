@@ -83,6 +83,10 @@ class UnifiedLearningMemory:
                     data = json.load(f)
                     if not isinstance(data, dict) or "patterns" not in data:
                         raise ValueError("Store is not a valid UnifiedLearningMemory dictionary structure")
+                    if isinstance(data.get("patterns"), list):
+                        data["patterns"] = {p.get("pattern_id", str(i)): p for i, p in enumerate(data["patterns"]) if isinstance(p, dict)}
+                    if isinstance(data.get("experiences"), list):
+                        data["experiences"] = {e.get("experience_id", str(i)): e for i, e in enumerate(data["experiences"]) if isinstance(e, dict)}
                     return data
             except (PermissionError, OSError) as exc:
                 last_err = exc
