@@ -873,7 +873,7 @@ class ConsolidatedTradingDaemon:
 
             if is_brainstorm_turn:
                 # Brainstorm turn replacing dossier
-                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools. For planning the next trade . you have 0.1 - 1.0 lot area to place the lots based the the power of news. always pull latest and the closes news possible . always replan any pending orders each time you pull the news."
+                prompt = "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. With proxima research tool and fred tools and news tools. For planning the next trade . you have 0.1 - 1.0 lot area to place the lots based the the power of news. always pull latest and the closes news possible . always replan any pending orders each time you pull the news. Always check the timezone mcp to verify we are on right track."
             else:
                 try:
                     from tradingagents.time_helper import get_market_time_context
