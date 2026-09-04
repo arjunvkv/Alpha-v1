@@ -111,6 +111,17 @@ def _normalize_symbol(symbol: str) -> str:
 def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
     """Create or update a persistent objective watch. The daemon may trigger it; it never decides the trade."""
     sym = _normalize_symbol(symbol)
+    if target_price is None:
+        combined_text = f"{condition} {instruction} {reason} {watch_id}"
+        # Search for explicit price patterns (e.g. 4476.41, 4480.0, 4460)
+        matches = re.findall(r'(?:above|below|at|target|breaks|break|price|level|fvg)?\s*([1-9][0-9]{2,4}(?:\.[0-9]+)?)', combined_text, re.IGNORECASE)
+        if not matches:
+            matches = re.findall(r'\b([1-9][0-9]{3}(?:\.[0-9]+)?)\b', combined_text)
+        if matches:
+            try:
+                target_price = float(matches[0])
+            except Exception:
+                pass
     desc = condition or instruction or reason or f"Watching {sym} @ {target_price}"
     watch = evidence_state.upsert_watch({"id": watch_id or None, "symbol": sym, "condition": desc,
         "instruction": instruction, "target_price": target_price, "direction": direction, "reason": reason})
