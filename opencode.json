@@ -23,7 +23,8 @@
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ],
-      "enabled": true
+      "enabled": true,
+      "timeout": 300000
     },
     "proxima": {
       "type": "local",
@@ -31,7 +32,11 @@
         "node",
         "C:/Program Files/Proxima/resources/app.asar.unpacked/src/mcp/index.js"
       ],
-      "enabled": true
+      "enabled": true,
+      "timeout": 300000,
+      "env": {
+        "AGENT_HUB_IDLE_TIMEOUT_MS": "300000"
+      }
     }
   },
   "instructions": [
