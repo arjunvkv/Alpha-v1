@@ -60,9 +60,28 @@ class DeepDossierLogger:
         md_lines.append(f"**FTMO Account Health**: Balance `${account_health.get('balance')}` | Equity `${account_health.get('equity')}` | Free Margin `${account_health.get('free_margin')}` | Margin Level `{account_health.get('margin_level_pct')}%` | Floating PnL `${account_health.get('floating_pnl')}`")
         md_lines.append(f"**Macro Matrix**: GSR `{gsr_data.get('gsr')}` [{gsr_data.get('status')}] | US Real Yield `{real_yields.get('us_real_yield_posture')}` (US10Y `{real_yields.get('us10y_nominal_yield')}`) | USD `{currency_strength.get('usd_index_posture')}` | EUR `{currency_strength.get('eur_strength')}` | JPY `{currency_strength.get('jpy_strength')}`\n")
         
+        # Live Catalyst Arbiter & Microstructure Block
+        try:
+            from tradingagents.catalyst_arbiter import CatalystArbiterEngine
+            arb_data = CatalystArbiterEngine().get_market_regime("XAUUSD")
+            raw_m = arb_data.get("raw_metrics", {})
+            var_b = raw_m.get("econometric_variance_breakdown", {})
+            cross_a = raw_m.get("cross_asset_5m_deltas", {})
+            auc_m = raw_m.get("structural_auction", {})
+            md_lines.append(f"## ⚡ Live Regime & Microstructure State (XAUUSD)")
+            md_lines.append(f"- **Regime**: `{arb_data.get('regime')}` | **Pricing Power**: `{arb_data.get('pricing_power')}`")
+            md_lines.append(f"- **Variance Share**: Macro Yield `{var_b.get('macro_yield_share_pct')}%` | Event Shock `{var_b.get('event_shock_share_pct')}%` | Tape `{var_b.get('tape_momentum_share_pct')}%` | Technicals `{var_b.get('technical_structure_share_pct')}%`")
+            md_lines.append(f"- **Tape Kinetics**: Velocity `{raw_m.get('tick_velocity_tpm')} t/m` | Spread `{raw_m.get('live_spread_pts')} pts` | CVD Ratio `{raw_m.get('cvd_5m_ratio')}` | 4m Disp `{raw_m.get('interval_4m_displacement_pts')} pts` (Rng `{raw_m.get('interval_4m_range_pts')}`)")
+            md_lines.append(f"- **Cross-Asset Leads**: EURUSD 5m `{cross_a.get('eurusd_pct')}%` | XAGUSD 5m `{cross_a.get('xagusd_pct')}%` | Real Yield `{raw_m.get('macro_yields', {}).get('dfii10_real_yield_pct')}%`")
+            md_lines.append(f"- **Structural Auction**: POC `{auc_m.get('poc_price')}` | Air Pockets: Below `{auc_m.get('nearest_air_pocket_below')}` / Above `{auc_m.get('nearest_air_pocket_above')}` | PDL `{auc_m.get('pdl_price')}` | PDH `{auc_m.get('pdh_price')}`")
+            md_lines.append(f"- **Directive**: {arb_data.get('actionable_directive')}\n")
+        except Exception as _arb_dossier_err:
+            LOG.debug(f"Arbiter dossier block error: {_arb_dossier_err}")
+
         md_lines.append(f"## 📋 Cadence-Tiered Market Analysis Protocol (OpenCode CIO Mandate)")
         md_lines.append(f"### ⚡ Tier 1: High-Frequency Dynamic Core (Every Wake / Price Movement)")
-        md_lines.append(f"1. **Q1 (Account Risk)**: `get_account_status`, `get_pending_orders` — Live equity, margin, drawdown budget & active tickets.")
+        md_lines.append(f"0. **Q0 (Regime & Microstructure - MANDATORY)**: `get_market_regime_context` — Macro vs Tech pricing power share, tape velocity, CVD ratio, 4m interval displacement, cross-asset lead, and volume air pockets.")
+
         md_lines.append(f"2. **Q6 (FVG Matrix)**: `get_fvg_matrix` — Unmitigated H4/H1/M15/M5 FVGs, 50% Consequent Encroachment (CE), fill %.")
         md_lines.append(f"3. **Q7 (Order Flow CVD)**: `get_measured_cvd` — Measured Cumulative Volume Delta (CVD), 10-bar delta velocity, absorption.")
         md_lines.append(f"4. **Q8 (Microstructure)**: `get_live_microstructure` — Real-time spread (pts), M1 tick velocity (t/m), order book depth imbalance.")

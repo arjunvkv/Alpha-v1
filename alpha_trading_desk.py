@@ -918,66 +918,76 @@ class ConsolidatedTradingDaemon:
 
             is_rule_turn = (self.dispatch_count % 10 == 0) and not is_startup
 
+            try:
+                from tradingagents.time_helper import get_market_time_context
+                _t_ctx = get_market_time_context()
+                _utc_fmt = _t_ctx["current_clocks"]["utc"]["formatted"]
+                _ny_fmt = _t_ctx["current_clocks"]["new_york_et"]["formatted"]
+                _lon_fmt = _t_ctx["current_clocks"]["london_bst"]["formatted"]
+                _sess = _t_ctx["active_session"]
+                _time_str = f"UTC: {_utc_fmt} | NY (ET): {_ny_fmt} | London: {_lon_fmt} | Active Session: {_sess}"
+            except Exception:
+                _time_str = f"UTC: {datetime.now(timezone.utc).isoformat()}"
+
+            try:
+                from tradingagents.catalyst_arbiter import CatalystArbiterEngine
+                _regime_info = CatalystArbiterEngine().get_market_regime("XAUUSD")
+                _regime_badge = _regime_info.get("compact_prompt_badge", "")
+            except Exception as _reg_err:
+                _regime_badge = ""
+
             if triggered_watch is not None:
                 prompt = (
                     f"⚡ ALPHA EVIDENCE WAKE — WATCH_TRIGGER\n"
+                    f"{_time_str}\n"
+                    f"{_regime_badge}\n"
                     f"WATCH ALERT: {triggered_watch['id']} TRIGGERED at target price {triggered_watch.get('target_price')}!\n"
                     f"Condition: {triggered_watch.get('condition')}\n"
                     f"Instruction: {triggered_watch.get('instruction')}\n"
                     f"Reason: {triggered_watch.get('reason')}\n\n"
-                    f"Action Required: Execute immediate pre-execution validation (get_live_microstructure, get_measured_cvd, get_account_status). "
+                    f"Action Required: Audit raw metrics via get_market_regime_context and execute pre-execution validation (get_live_microstructure, get_measured_cvd, get_account_status). "
                     f"If order flow and breakout conditions confirm, execute trade immediately (execute_trade) with defined structural SL/TP and calibrated 0.1-1.0 lots. "
                     f"If conditions are invalidated, cancel and register updated watch."
                 )
             elif is_rule_turn:
                 # Rule reminder turn replacing dossier every 10th dispatch
                 prompt = (
-                    "=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
-                    "You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514395146). Review and strictly adhere to these core principles:\n\n"
-                    "1. BIFURCATED ADAPTIVE STAGING (MANDATORY DUAL-PRONGED ARCHITECTURE):\n"
-                    "• When preparing for directional expansion or trading within compression regimes, NEVER rely exclusively on a one-sided deep limit order that risks being left behind if price expands directly away.\n"
-                    "• Establish dual-pronged coverage: (a) Discount/Retracement Prong: Stage a pending limit order directly at the active institutional structural boundary (FVG 50% CE, Order Block, Value Area boundary) to absorb liquidity sweep pullbacks. (b) Expansion/Breakout Trigger Prong: Concurrently register an active persistent watch (register_watch) at the immediate structural breakout boundary (range high/low, session pivot, unmitigated opposite FVG) with order-flow confirmation, ensuring immediate daemon wake-up and market execution (execute_trade) if price launches directly without retracing.\n\n"
-                    "2. ACTIVE POSITION RESILIENCE & PROFIT PROTECTION:\n"
-                    "• NO TRAILING STOPS.\n"
-                    "• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
-                    "• Manage strictly via structural SL/TP adjustments (update_position). If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor while strictly observing FTMO drawdown limits.\n"
-                    "• Extend TP for higher R:R (>= 2.5:1) as momentum accelerates toward deeper institutional liquidity targets.\n\n"
-                    "3. VOLATILITY EXPANSIONS & ANTI-PARALYSIS:\n"
-                    "• Market repricing and volatility shocks produce two distinct behaviors: (i) an initial liquidity shakeout/sweep followed by reversal, OR (ii) an immediate direct momentum breakout without pullbacks. Actively prepare for BOTH paths via bifurcated staging (discount limit + breakout watch).\n"
-                    "• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
-                    "4. GENERAL TIME & ATOMIC MCP TOOLS:\n"
-                    "• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
-                    "• Always use targeted atomic tools: get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_measured_cvd, get_live_microstructure, backtest_thesis, ask_librarian, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
-                    "• Always replan pending orders whenever new news is retrieved.\n\n"
-                    "Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
+                    f"=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
+                    f"{_time_str}\n"
+                    f"{_regime_badge}\n"
+                    f"You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514395146). Review and strictly adhere to these core principles:\n\n"
+                    f"1. MANDATORY REAL-TIME REGIME & RAW MICROSTRUCTURE AUDIT (EVERY WAKE):\n"
+                    f"• On EVERY wake, review get_market_regime_context(symbol='XAUUSD') before acting or deciding to wait.\n"
+                    f"• Purpose: (a) Verify macro yield vs technical pricing power shares. (b) Audit raw tape velocity, CVD ratio (-1 to +1), and 4m interval displacement to avoid standing in front of violent kinetic air pockets. (c) Anchor invalidations and targets to raw volume POC, Low Volume Air Pockets, and PDH/PDL.\n\n"
+                    f"2. BIFURCATED ADAPTIVE STAGING (MANDATORY DUAL-PRONGED ARCHITECTURE):\n"
+                    f"• When preparing for directional expansion or trading within compression regimes, NEVER rely exclusively on a one-sided deep limit order that risks being left behind if price expands directly away.\n"
+                    f"• Establish dual-pronged coverage: (a) Discount/Retracement Prong: Stage a pending limit order directly at the active institutional structural boundary (FVG 50% CE, Order Block, Value Area boundary) to absorb liquidity sweep pullbacks. (b) Expansion/Breakout Trigger Prong: Concurrently register an active persistent watch (register_watch) at the immediate structural breakout boundary (range high/low, session pivot, unmitigated opposite FVG) with order-flow confirmation, ensuring immediate daemon wake-up and market execution (execute_trade) if price launches directly without retracing.\n\n"
+                    f"3. ACTIVE POSITION RESILIENCE & PROFIT PROTECTION:\n"
+                    f"• NO TRAILING STOPS.\n"
+                    f"• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
+                    f"• Manage strictly via structural SL/TP adjustments (update_position). If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor while strictly observing FTMO drawdown limits.\n"
+                    f"• Extend TP for higher R:R (>= 2.5:1) as momentum accelerates toward deeper institutional liquidity targets.\n\n"
+                    f"4. VOLATILITY EXPANSIONS & ANTI-PARALYSIS:\n"
+                    f"• Market repricing and volatility shocks produce two distinct behaviors: (i) an initial liquidity shakeout/sweep followed by reversal, OR (ii) an immediate direct momentum breakout without pullbacks. Actively prepare for BOTH paths via bifurcated staging (discount limit + breakout watch).\n"
+                    f"• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
+                    f"5. GENERAL TIME & ATOMIC MCP TOOLS:\n"
+                    f"• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
+                    f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_measured_cvd, get_live_microstructure, backtest_thesis, ask_librarian, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
+                    f"• Always replan pending orders whenever new news is retrieved.\n\n"
+                    f"Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
                 )
             elif is_brainstorm_turn:
                 # Brainstorm turn replacing dossier
                 prompt = (
-                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. "
-                    "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query) and fred tools and news tools. "
-                    "You have 0.1 - 1.0 lot area to place the lots based on the power of news. "
-                    "Always pull latest and the closest news possible. Always replan any pending orders each time you pull the news. Always check the timezone mcp to verify we are on right track."
+                    f"⚡ ALPHA EVIDENCE WAKE — BRAINSTORM TURN\n"
+                    f"{_time_str}\n"
+                    f"{_regime_badge}\n"
+                    f"Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. "
+                    f"With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query) and fred tools and news tools. "
+                    f"You have 0.1 - 1.0 lot area to place the lots based on the power of news. "
+                    f"Always pull latest and the closest news possible. Always replan any pending orders each time you pull the news. Always check the timezone mcp to verify we are on right track."
                 )
             else:
-                try:
-                    from tradingagents.time_helper import get_market_time_context
-                    _t_ctx = get_market_time_context()
-                    _utc_fmt = _t_ctx["current_clocks"]["utc"]["formatted"]
-                    _ny_fmt = _t_ctx["current_clocks"]["new_york_et"]["formatted"]
-                    _lon_fmt = _t_ctx["current_clocks"]["london_bst"]["formatted"]
-                    _sess = _t_ctx["active_session"]
-                    _time_str = f"UTC: {_utc_fmt} | NY (ET): {_ny_fmt} | London: {_lon_fmt} | Active Session: {_sess}"
-                except Exception:
-                    _time_str = f"UTC: {datetime.now(timezone.utc).isoformat()}"
-
-                try:
-                    from tradingagents.catalyst_arbiter import CatalystArbiterEngine
-                    _regime_info = CatalystArbiterEngine().get_market_regime("XAUUSD")
-                    _regime_badge = _regime_info.get("compact_prompt_badge", "")
-                except Exception as _reg_err:
-                    _regime_badge = ""
-
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
                     f"{_time_str}\n"
@@ -988,6 +998,7 @@ class ConsolidatedTradingDaemon:
                     f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
                     f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
                     f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
+
                     f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
                     f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
                     f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"

@@ -167,11 +167,23 @@ class CatalystArbiterEngine:
         high_impact_today = [e for e in events_today if e.get("impact") == "High"]
         is_holiday_today = any("HOLIDAY" in e.get("title", "").upper() or e.get("impact") == "Holiday" for e in events_today)
 
-        # 2. Raw Tape Metrics from MT5
+        # 2. Raw Tape & Microstructure Metrics from MT5
         tick_velocity_tpm = 0.0
         live_spread_pts = 0
         cvd_10b_pressure = 0.0
         cvd_divergence = "NO_DIVERGENCE"
+        cvd_5m_ratio = 0.0
+        disp_4m_pts = 0.0
+        range_4m_pts = 0.0
+        eurusd_5m_pct = 0.0
+        xagusd_5m_pct = 0.0
+        poc_price = 0.0
+        air_pocket_below = []
+        air_pocket_above = []
+        pdh_price = 0.0
+        pdl_price = 0.0
+        dist_pdh_pts = 0.0
+        dist_pdl_pts = 0.0
 
         try:
             from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
@@ -183,6 +195,71 @@ class CatalystArbiterEngine:
             cvd_divergence = cvd_res.get("exhaustion_signal", "NO_DIVERGENCE")
         except Exception as err:
             LOG.debug(f"Tape sensor read error: {err}")
+
+        # Extract 4m displacement, CVD 5m ratio, cross-asset deltas, POC & air pockets
+        try:
+            import numpy as np
+            if mt5.terminal_info() is not None or mt5.initialize():
+                # 4-minute displacement on target symbol (M1)
+                r_m1 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M1, 0, 10)
+                if r_m1 is not None and len(r_m1) >= 5:
+                    disp_4m_pts = round(float(r_m1[-1]['close'] - r_m1[-5]['open']), 2)
+                    range_4m_pts = round(float(max(r['high'] for r in r_m1[-5:]) - min(r['low'] for r in r_m1[-5:])), 2)
+                    
+                    # CVD 5m signed ratio (-1.0 to +1.0)
+                    deltas_5m = [r['tick_volume'] * ((r['close'] - r['open']) / max(r['high'] - r['low'], 1e-6)) for r in r_m1[-5:]]
+                    sum_v_5m = sum(r['tick_volume'] for r in r_m1[-5:])
+                    cvd_5m_ratio = round(sum(deltas_5m) / max(sum_v_5m, 1.0), 2)
+
+                # Cross-asset 5m % deltas (EURUSD & XAGUSD)
+                r_eur = mt5.copy_rates_from_pos("EURUSD", mt5.TIMEFRAME_M5, 0, 3)
+                if r_eur is not None and len(r_eur) >= 2:
+                    eurusd_5m_pct = round(float((r_eur[-1]['close'] - r_eur[-2]['close']) / r_eur[-2]['close'] * 100.0), 3)
+
+                r_xag = mt5.copy_rates_from_pos("XAGUSD", mt5.TIMEFRAME_M5, 0, 3)
+                if r_xag is not None and len(r_xag) >= 2:
+                    xagusd_5m_pct = round(float((r_xag[-1]['close'] - r_xag[-2]['close']) / r_xag[-2]['close'] * 100.0), 3)
+
+                # PDH & PDL from D1 rates
+                d1_rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_D1, 0, 3)
+                if d1_rates is not None and len(d1_rates) >= 2:
+                    pdh_price = round(float(d1_rates[-2]['high']), 2)
+                    pdl_price = round(float(d1_rates[-2]['low']), 2)
+                    curr_tick = mt5.symbol_info_tick(sym)
+                    if curr_tick and getattr(curr_tick, "bid", 0) > 0:
+                        dist_pdh_pts = round(pdh_price - curr_tick.bid, 2)
+                        dist_pdl_pts = round(curr_tick.bid - pdl_price, 2)
+
+                # Volume POC and Low Volume Nodes (Air Pockets) from M5 distribution
+                r_m5 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M5, 0, 150)
+                if r_m5 is not None and len(r_m5) >= 20:
+                    p_points, v_points = [], []
+                    for r in r_m5:
+                        steps = 5
+                        prices = np.linspace(r['low'], r['high'], steps)
+                        v_step = r['tick_volume'] / steps
+                        p_points.extend(prices)
+                        v_points.extend([v_step] * steps)
+                    p_arr, v_arr = np.array(p_points), np.array(v_points)
+                    bins = np.linspace(p_arr.min(), p_arr.max(), 35)
+                    hist, bin_edges = np.histogram(p_arr, bins=bins, weights=v_arr)
+                    poc_idx = np.argmax(hist)
+                    poc_price = round(float((bin_edges[poc_idx] + bin_edges[poc_idx+1]) / 2.0), 2)
+                    
+                    # Low Volume Nodes (< 35% median volume)
+                    med_v = np.median(hist[hist > 0])
+                    c_price = float(r_m5[-1]['close'])
+                    for i, h in enumerate(hist):
+                        b_mid = (bin_edges[i] + bin_edges[i+1]) / 2.0
+                        if h < 0.35 * med_v:
+                            pocket = [round(float(bin_edges[i]), 2), round(float(bin_edges[i+1]), 2)]
+                            if b_mid < c_price and not air_pocket_below:
+                                air_pocket_below = pocket
+                            elif b_mid > c_price and not air_pocket_above:
+                                air_pocket_above = pocket
+        except Exception as _detail_err:
+            LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
+
 
         # 3. Macro Yields & Dominant Anchor (Live Real Yields from Official FREDAdapter with 5-minute cache)
         now_epoch = time.time()
@@ -314,12 +391,16 @@ class CatalystArbiterEngine:
             actionable_directive = "RANGE BOUND COMPRESSION: Expect technical equilibrium until release window. Target modest intraday targets (1:2 R:R)."
             pricing_power = f"ANTICIPATION_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Construct concise 2-line prompt badge (zero bloat)
-        next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None this week"
+        # Construct comprehensive, ultra-compact 3-line prompt badge (zero bloat, pure raw stats)
+        next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
+        air_below_str = f"[{air_pocket_below[0]}-{air_pocket_below[1]}]" if air_pocket_below else "None"
+        air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
+        
         badge_line1 = f"⚡ REGIME: {regime} | Pricing Power: {pricing_power}"
-        badge_line2 = f"• Raw Basis: Events Today: {len(high_impact_today)} | Tape: {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts}) | Real Yield: {dfii10_yield}% | Next: {next_ev_str}"
-        badge_line3 = f"• Directive: {actionable_directive}"
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}"
+        badge_line2 = f"• Tape & Cross-Asset: Velocity {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts} pts) | CVD Ratio {cvd_5m_ratio:+.2f} | 4m Disp {disp_4m_pts:+.2f} pts (Rng {range_4m_pts:.2f}) | EURUSD 5m {eurusd_5m_pct:+.3f}% | XAGUSD 5m {xagusd_5m_pct:+.3f}%"
+        badge_line3 = f"• Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
+        badge_line4 = f"• Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}"
 
         return {
             "symbol": sym,
@@ -331,19 +412,37 @@ class CatalystArbiterEngine:
             "raw_metrics": {
                 "high_impact_events_today_count": len(high_impact_today),
                 "is_holiday_today": is_holiday_today,
+                "interval_4m_displacement_pts": disp_4m_pts,
+                "interval_4m_range_pts": range_4m_pts,
                 "tick_velocity_tpm": tick_velocity_tpm,
                 "live_spread_pts": live_spread_pts,
+                "cvd_5m_ratio": cvd_5m_ratio,
                 "cvd_10b_pressure_pct": cvd_10b_pressure,
                 "cvd_divergence": cvd_divergence,
-                "dfii10_real_yield_pct": dfii10_yield,
-                "us10y_yield_pct": us10y,
-                "dxy_index": dxy,
+                "cross_asset_5m_deltas": {
+                    "eurusd_pct": eurusd_5m_pct,
+                    "xagusd_pct": xagusd_5m_pct
+                },
+                "structural_auction": {
+                    "poc_price": poc_price,
+                    "nearest_air_pocket_below": air_pocket_below,
+                    "nearest_air_pocket_above": air_pocket_above,
+                    "pdh_price": pdh_price,
+                    "pdl_price": pdl_price,
+                    "distance_to_pdh_pts": dist_pdh_pts,
+                    "distance_to_pdl_pts": dist_pdl_pts
+                },
+                "macro_yields": {
+                    "dfii10_real_yield_pct": dfii10_yield,
+                    "us10y_yield_pct": us10y,
+                    "dxy_index": dxy,
+                    "real_yield_z_score": round(z_macro, 2)
+                },
                 "econometric_variance_breakdown": {
                     "macro_yield_share_pct": pct_macro,
                     "event_shock_share_pct": pct_event,
                     "tape_momentum_share_pct": pct_tape,
                     "technical_structure_share_pct": pct_tech,
-                    "real_yield_z_score": round(z_macro, 2),
                     "tape_force_scalar": round(tape_force, 2)
                 },
                 "next_scheduled_event": next_event,
