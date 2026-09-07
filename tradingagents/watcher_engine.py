@@ -442,9 +442,10 @@ class UniversalWatcherEngine:
             f"• Rationale: {watch.get('reason', 'N/A')}\n"
             f"{tape_summary}\n\n"
             f"=== ACTION REQUIRED ===\n"
-            f"1. OpenCode is the sole decision maker. Validate current order flow: `get_live_microstructure(symbol='{sym}')`.\n"
-            f"2. Distinguish liquidity probe trap vs genuine expansion.\n"
-            f"3. If confirmed, execute trade (`execute_trade` or `update_position`). If invalidated, update watch status."
+            f"1. MANDATORY FIRST CALL (STEP 0): `get_market_regime_context(symbol='{sym}')` to verify live pricing power and auction air pockets.\n"
+            f"2. Validate order flow absorption via `get_live_microstructure(symbol='{sym}')`.\n"
+            f"3. Distinguish liquidity probe trap vs genuine expansion.\n"
+            f"4. If confirmed, execute trade (`execute_trade` or `update_position`). If invalidated, cancel or update watch status."
         )
 
         return {
