@@ -453,6 +453,11 @@ class ConsolidatedTradingDaemon:
         self.error_monitor = error_monitor
         self.error_monitor.install_global_handlers()
 
+        # Initialize Universal High-Speed Watcher Engine (500ms multi-trigger)
+        from tradingagents.watcher_engine import UniversalWatcherEngine
+        self.watcher_engine = UniversalWatcherEngine()
+        self.watcher_task = None
+
     async def run_cycle(self):
         self.cycle_count += 1
         self.instruments = get_active_instruments()
@@ -1120,7 +1125,93 @@ class ConsolidatedTradingDaemon:
                 await asyncio.sleep(0.01)
             except Exception as e:
                 LOG.debug(f"UniversalAutoHarvestEngine loop error: {e}")
-                await asyncio.sleep(0.05)
+    async def _realtime_watcher_task(self):
+        """Ultra-fast 500ms real-time loop tracking MT5 pending order fills, price triggers, and tape kinetics."""
+        import MetaTrader5 as mt5
+        from tradingagents.evidence_state import EvidenceStateStore
+        from tradingagents.tape_metrics import CumulativeVolumeDeltaEngine
+
+        LOG.info("🚀 Starting 500ms Universal Real-Time Watcher Task...")
+        ev_store = EvidenceStateStore()
+        cvd_engine = CumulativeVolumeDeltaEngine()
+
+        while self.is_running:
+            try:
+                mt5_ok = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+                if mt5_ok:
+                    current_positions = mt5.positions_get() or []
+                    current_pending = mt5.orders_get() or []
+                    active_watches = ev_store.get_watches(include_closed=False)
+
+                    # Gather high-speed live tape snapshot for XAUUSD
+                    live_tape = {}
+                    try:
+                        flow = cvd_engine.get_cvd_metrics("XAUUSD")
+                        live_tape = {
+                            "velocity": flow.get("delta_velocity", 0.0),
+                            "spread": flow.get("spread_points", 0.0),
+                            "cvd_10b": flow.get("net_delta", 0.0)
+                        }
+                    except Exception:
+                        pass
+
+                    # 1. Evaluate pending order fills (Split-Second Alert!)
+                    fill_alerts = self.watcher_engine.check_pending_order_fills(
+                        current_positions=current_positions,
+                        current_pending_orders=current_pending,
+                        active_watches=active_watches,
+                        live_tape=live_tape
+                    )
+                    for fa in fill_alerts:
+                        if fa.get("watch"):
+                            w_id = fa["watch"].get("id") or fa["watch"].get("watch_id")
+                            if w_id:
+                                ev_store.update_watch(w_id, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
+                        LOG.info(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']} {fa['volume']} lots @ {fa['price']:.2f})")
+                        log_local_llm_monitoring(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']})")
+                        post_to_opencode_session("OpenCode (CIO)", fa["prompt"])
+
+                    # 2. Evaluate active watches against live tick & tape
+                    watched_symbols = set(w.get("symbol", "XAUUSD").upper() for w in active_watches)
+                    if not watched_symbols:
+                        watched_symbols = {"XAUUSD"}
+
+                    for sym in watched_symbols:
+                        tick = mt5.symbol_info_tick(sym)
+                        if not tick:
+                            continue
+                        bid = float(getattr(tick, "bid", 0.0))
+                        ask = float(getattr(tick, "ask", 0.0))
+                        last_t = self.watcher_engine.last_ticks.get(sym, {"bid": bid, "ask": ask})
+
+                        tape_data = dict(live_tape)
+                        tape_data["spread"] = round((ask - bid) * 10, 1) if ask > bid else 0.0
+
+                        sym_watches = [w for w in active_watches if w.get("symbol", "XAUUSD").upper() == sym]
+                        for w in sym_watches:
+                            trig = self.watcher_engine.evaluate_watch(
+                                watch=w,
+                                live_tick={"bid": bid, "ask": ask, "price": (bid + ask) / 2.0},
+                                last_tick=last_t,
+                                tape_metrics=tape_data,
+                                positions=current_positions,
+                                recent_headlines=[]
+                            )
+                            if trig:
+                                wid = trig["watch_id"]
+                                ev_store.update_watch(wid, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
+                                LOG.info(f"⚡ WATCH TRIGGERED: {wid} -> {trig['trigger_reason']}")
+                                log_local_llm_monitoring(f"⚡ WATCH TRIGGERED: {wid} ({trig['trigger_reason']})")
+                                post_to_opencode_session("OpenCode (CIO)", trig["prompt"])
+
+                        self.watcher_engine.last_ticks[sym] = {"bid": bid, "ask": ask}
+
+                await asyncio.sleep(0.5)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                LOG.debug(f"Watcher task error: {e}")
+                await asyncio.sleep(1.0)
 
     async def start_loop(self):
         self.is_running = True
@@ -1134,7 +1225,7 @@ class ConsolidatedTradingDaemon:
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Probe Watcher: 500ms Split-Second Alert | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape/News) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
             f"=== EVIDENCE-FIRST AUTHORITY ===\n"
             f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n"
@@ -1143,7 +1234,8 @@ class ConsolidatedTradingDaemon:
             f"Before formulating setups or managing positions, review: C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md\n"
             f"Learn how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs on liquidity probes, avoid stale headline traps, and preserve runner profits without premature cuts.\n"
         )
-        # The daemon is observation-only. It must never run an autonomous execution watcher.
+        # Start ultra-fast 500ms Universal Watcher Task
+        self.watcher_task = asyncio.create_task(self._realtime_watcher_task())
         await asyncio.sleep(2.0)
         while self.is_running:
             try:

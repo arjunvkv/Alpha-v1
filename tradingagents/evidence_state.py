@@ -120,3 +120,23 @@ class EvidenceStateStore:
                     row["observed_at"]=ts; row["updated_at"]=ts; changed.append(row)
             self._save(state)
         return changed
+
+    def cancel_watch(self, watch_id: str) -> Optional[Dict[str, Any]]:
+        return self.update_watch(watch_id, status="CANCELLED")
+
+    def clear_completed_watches(self, symbol: str | None = None) -> int:
+        cleared = 0
+        with self.lock:
+            state = self._load()
+            new_watches = {}
+            for wid, row in state["watches"].items():
+                if symbol and str(row.get("symbol", "")).upper() != str(symbol).upper():
+                    new_watches[wid] = row
+                    continue
+                if row.get("status") in ("TRIGGERED", "CANCELLED"):
+                    cleared += 1
+                else:
+                    new_watches[wid] = row
+            state["watches"] = new_watches
+            self._save(state)
+        return cleared

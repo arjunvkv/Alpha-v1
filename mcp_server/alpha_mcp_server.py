@@ -106,23 +106,60 @@ def _normalize_symbol(symbol: str) -> str:
     return s.upper()
 
 @mcp.tool()
-def mcp_alpha_register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
-    """Create or update a persistent objective watch. The daemon may trigger it; it never decides the trade."""
+def mcp_alpha_register_watch(
+    symbol: str = "XAUUSD",
+    condition: str = "",
+    instruction: str = "",
+    target_price: float = None,
+    reason: str = "",
+    direction: str = "",
+    watch_id: str = "",
+    condition_type: str = "",
+    target_ticket: int = None,
+    tolerance: float = 0.50,
+    min_velocity: float = None,
+    max_spread: float = None,
+    is_recurring: bool = False
+) -> str:
+    """Create or update a universal persistent watch (price, pending order fill, velocity spike, spread blowout, or news keyword)."""
+    from tradingagents.watcher_engine import parse_watch_condition, WatchConditionType
     sym = _normalize_symbol(symbol)
-    if target_price is None:
-        combined_text = f"{condition} {instruction} {reason} {watch_id}"
-        # Search for explicit price patterns (e.g. 4476.41, 4480.0, 4460)
-        matches = re.findall(r'(?:above|below|at|target|breaks|break|price|level|fvg)?\s*([1-9][0-9]{2,4}(?:\.[0-9]+)?)', combined_text, re.IGNORECASE)
-        if not matches:
-            matches = re.findall(r'\b([1-9][0-9]{3}(?:\.[0-9]+)?)\b', combined_text)
-        if matches:
-            try:
-                target_price = float(matches[0])
-            except Exception:
-                pass
-    desc = condition or instruction or reason or f"Watching {sym} @ {target_price}"
-    watch = evidence_state.upsert_watch({"id": watch_id or None, "symbol": sym, "condition": desc,
-        "instruction": instruction, "target_price": target_price, "direction": direction, "reason": reason})
+
+    parsed = parse_watch_condition(
+        condition_str=condition,
+        target_price=target_price,
+        direction=direction,
+        condition_type=condition_type,
+        target_ticket=target_ticket
+    )
+    final_cond_type = condition_type.upper() if condition_type else parsed["condition_type"]
+    final_price = float(target_price) if target_price is not None else parsed["target_price"]
+    final_ticket = int(target_ticket) if target_ticket is not None else parsed["target_ticket"]
+    final_dir = (direction or parsed["direction"]).upper()
+
+    params = {
+        "tolerance": float(tolerance) if tolerance is not None else parsed["tolerance"],
+        "min_velocity": float(min_velocity) if min_velocity is not None else parsed["min_velocity"],
+        "max_spread": float(max_spread) if max_spread is not None else parsed["max_spread"],
+        "target_ticket": final_ticket,
+        "keywords": parsed["keywords"],
+        "is_recurring": bool(is_recurring)
+    }
+
+    desc = condition or instruction or reason or f"Watching {sym} [{final_cond_type}] @ {final_price}"
+    watch = evidence_state.upsert_watch({
+        "id": watch_id or None,
+        "symbol": sym,
+        "condition": desc,
+        "condition_type": final_cond_type,
+        "instruction": instruction,
+        "target_price": final_price,
+        "target_ticket": final_ticket,
+        "direction": final_dir,
+        "reason": reason,
+        "params": params,
+        "status": "ACTIVE"
+    })
     _active_watches[watch["id"]] = watch
     return json.dumps({"status": "REGISTERED", "watch": watch}, indent=2)
 
@@ -139,6 +176,22 @@ def mcp_alpha_update_watch(watch_id: str, status: str = "", condition: str = "",
     if not watch: return json.dumps({"status":"NOT_FOUND","watch_id":watch_id})
     _active_watches[watch_id]=watch
     return json.dumps({"status":"UPDATED","watch":watch}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_cancel_watch(watch_id: str) -> str:
+    """Cancel / remove an active persistent watch by ID."""
+    w = evidence_state.cancel_watch(watch_id)
+    if not w:
+        return json.dumps({"status": "NOT_FOUND", "watch_id": watch_id}, indent=2)
+    _active_watches[watch_id] = w
+    return json.dumps({"status": "CANCELLED", "watch": w}, indent=2)
+
+@mcp.tool()
+def mcp_alpha_clear_completed_watches(symbol: str = None) -> str:
+    """Clear all triggered and cancelled watches from disk memory."""
+    sym = _normalize_symbol(symbol) if symbol else None
+    cleared = evidence_state.clear_completed_watches(sym)
+    return json.dumps({"status": "SUCCESS", "cleared_count": cleared, "symbol": sym or "ALL"}, indent=2)
 
 @mcp.tool()
 def mcp_alpha_mark_watches_observed(watch_ids: List[str]) -> str:
@@ -1546,9 +1599,23 @@ def lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 1
     return mcp_alpha_lookup_common_crawl(url, index, limit)
 
 @mcp.tool()
-def register_watch(symbol: str, condition: str = "", instruction: str = "", target_price: float = None, reason: str = "", direction: str = "", watch_id: str = "") -> str:
-    """Create or update an objective persistent watch for the trading desk daemon to monitor (condition, target_price, direction, reason)."""
-    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id)
+def register_watch(
+    symbol: str = "XAUUSD",
+    condition: str = "",
+    instruction: str = "",
+    target_price: float = None,
+    reason: str = "",
+    direction: str = "",
+    watch_id: str = "",
+    condition_type: str = "",
+    target_ticket: int = None,
+    tolerance: float = 0.50,
+    min_velocity: float = None,
+    max_spread: float = None,
+    is_recurring: bool = False
+) -> str:
+    """Create or update an objective persistent watch for the trading desk daemon to monitor (condition, target_price, direction, reason, condition_type, target_ticket)."""
+    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id, condition_type, target_ticket, tolerance, min_velocity, max_spread, is_recurring)
 
 @mcp.tool()
 def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
@@ -1559,6 +1626,16 @@ def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
 def update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
     """Update status (ACTIVE/TRIGGERED/CANCELLED), target_price, condition, or notes on an existing watch."""
     return mcp_alpha_update_watch(watch_id, status, condition, instruction, target_price, reason)
+
+@mcp.tool()
+def cancel_watch(watch_id: str) -> str:
+    """Cancel / remove an active persistent watch by ID."""
+    return mcp_alpha_cancel_watch(watch_id)
+
+@mcp.tool()
+def clear_completed_watches(symbol: str = None) -> str:
+    """Clear all triggered and cancelled watches from disk memory."""
+    return mcp_alpha_clear_completed_watches(symbol)
 
 @mcp.tool()
 def mark_watches_observed(watch_ids: List[str]) -> str:
@@ -1726,9 +1803,11 @@ def list_desk_tools() -> str:
         {"name":"cancel_pending_order","description":"Cancel a pending order."},
         {"name":"get_pending_orders","description":"Fetch current pending orders."},
         {"name":"update_position","description":"Manage an explicitly identified position."},
-        {"name":"register_watch","description":"Create or update an objective persistent watch."},
+        {"name":"register_watch","description":"Create or update a universal persistent watch (price, order fill, velocity, spread, news)."},
         {"name":"get_active_watches","description":"Fetch persistent watches."},
         {"name":"update_watch","description":"Update persistent watch state."},
+        {"name":"cancel_watch","description":"Cancel / remove an active persistent watch."},
+        {"name":"clear_completed_watches","description":"Clear triggered/cancelled watches from disk."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
         {"name":"get_market_regime_context","description":"Transparent real-time market driver classification and raw kinetic metrics."}
@@ -1773,9 +1852,11 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0))),
         "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol","ALL")),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket",0),args.get("action",""),args.get("params_json","")),
-        "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol",""),args.get("condition",""),args.get("instruction",""),args.get("target_price"),args.get("reason",""),args.get("direction",""),args.get("watch_id","")),
+        "register_watch": lambda: mcp_alpha_register_watch(**args),
         "get_active_watches": lambda: mcp_alpha_get_active_watches(args.get("symbol"),args.get("include_closed",False)),
         "update_watch": lambda: mcp_alpha_update_watch(**args),
+        "cancel_watch": lambda: mcp_alpha_cancel_watch(args.get("watch_id","")),
+        "clear_completed_watches": lambda: mcp_alpha_clear_completed_watches(args.get("symbol")),
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[])),
         "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"))
