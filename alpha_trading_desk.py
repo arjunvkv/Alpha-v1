@@ -794,28 +794,6 @@ class ConsolidatedTradingDaemon:
             f"{world_events_summary}\n\n"
         )
 
-        # Run Autonomous Librarian Agent for Primary Active Instrument
-        primary_sym = top_symbol if top_symbol in self.instruments else (self.instruments[0] if self.instruments else "XAUUSD")
-        primary_inst_data = next((d for d in instruments_data if d["symbol"] == primary_sym), {})
-        fvg_obj = primary_inst_data.get("fvg", {})
-        nearest_fvg = fvg_obj.get("nearest_unmitigated_fvg") or {}
-
-        primary_market_state = {
-            "symbol": primary_sym,
-            "ask": getattr(mt5.symbol_info_tick(primary_sym), "ask", 0.0) if mt5_online else 0.0,
-            "bid": getattr(mt5.symbol_info_tick(primary_sym), "bid", 0.0) if mt5_online else 0.0,
-            "spread_pts": primary_inst_data.get("spread", {}).get("pts", 50),
-            "fvg_type": nearest_fvg.get("type", "NONE"),
-            "fvg_top": nearest_fvg.get("top", 0.0),
-            "fvg_bottom": nearest_fvg.get("bottom", 0.0),
-            "fvg_ce": nearest_fvg.get("consequent_encroachment", 0.0),
-            "sweep_status": primary_inst_data.get("liquidity_targets", {}).get("sweep_status", "IN_RANGE"),
-            "h4_bias": primary_inst_data.get("mtf", {}).get("h4_trend", "NEUTRAL"),
-            "m5_bias": primary_inst_data.get("mtf", {}).get("m5_trend", "NEUTRAL"),
-            "velocity_tpm": primary_inst_data.get("velocity", {}).get("ticks_per_min", 0)
-        }
-        # Pattern Book lookups suspended for live market analysis
-        librarian_payload = {"top_4_precedents": [], "live_thesis_revolved": "PAUSED"}
         top4_section = ""
 
         # DYNAMIC DISPATCH CADENCE (Configurable via opencode_session_config.json)

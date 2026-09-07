@@ -124,18 +124,17 @@ rather than an opposing headwind — the exact nuance that separates this from t
 ### A. Pre-trade research & validation
 | MCP tool | Purpose |
 |---|---|
-| `mcp_alpha_ask_librarian` | Quant expectancy / CE equilibrium edge + mirror-image bearish setups |
+| `get_market_regime_context` | Real-time catalyst regime, pricing power share, tape velocity, and CVD ratio |
 | `mcp_alpha_backtest_thesis` | Replay the exact FVG setup **in the live direction** before entry |
-| `mcp_alpha_get_ledger_decomposition` | Confirm the profitable condition bucket (session × direction × CE × spread) |
-| `mcp_alpha_get_trade_forensics` | Root-cause prior losses (counter-trend, direction fixation) |
-| `mcp_alpha_query_analyst_desk` | 4TF directional consensus (bull OR bear) |
+| `get_live_microstructure` | Confirm real-time spread, tick velocity, and complete raw CVD |
+| `get_symbol_conviction` | 4TF directional consensus (bull OR bear) + COT percentiles |
 
 ### B. Live entry-position
 | MCP tool | Purpose |
 |---|---|
 | `mcp_alpha_get_account_status` | Confirm equity, margin, no conflicting positions before execution |
 | `mcp_alpha_record_decision_snapshot` | Record pre-trade process context (with the direction + evidence used) |
-| `mcp_alpha_register_watch` | Register the active thesis + invalidation with the Librarian |
+| `mcp_alpha_register_watch` | Register the active thesis + invalidation with 500ms daemon price watcher |
 | `mcp_alpha_execute_trade` | Place the 1-lot trade (side = evidence direction) with structural SL + graceful TP |
 
 ### C. Position management & closure
