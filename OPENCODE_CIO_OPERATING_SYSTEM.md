@@ -50,7 +50,7 @@ These slower-moving institutional pillars are refreshed when new events occur, o
 | **Q3** | **Macro Rates & Real Yields** | get_fred_observations | Daily/hourly macro cycle, US 10Y/2Y yields, DFII10 real yields. |
 | **Q4** | **4TF Structural Trend & COT Positioning** | get_symbol_conviction | Candle closes (H4/H1), multi-timeframe EMAs/RSI, weekly COT. |
 | **Q5** | **Volume Profile POC & Value Area** | get_full_institutional_profile | Session boundaries (London/NY), POC, VAH 70%, VAL 70%, VWAP. |
-| **Q9** | **Proxima Quantitative Microstructure Validation** | acktest_thesis, sk_librarian | Mandatory before staging any new trade entry (R:R >= 2.5:1). |
+| **Q9** | **Proxima Quantitative Microstructure Validation** | `proxima_deep_search`, `proxima_ask_perplexity`, `backtest_thesis` | Mandatory before staging any new trade entry (R:R >= 2.5:1). |
 `
 
 ---

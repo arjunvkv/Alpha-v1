@@ -434,11 +434,8 @@ class ConsolidatedTradingDaemon:
     def __init__(self):
         from tradingagents.agent_graph import TradingAgentsDesk
         from mcp_server.alpha_mcp_server import AlphaMCPServer
-        from tradingagents.librarian_agent import AutonomousLibrarianAgent
-
         self.desk = TradingAgentsDesk()
         self.mcp_server = AlphaMCPServer()
-        self.librarian = AutonomousLibrarianAgent()
         self.latch = StatefulDiscoveryLatch()
         self.cio_evaluator = OpenCodeCIOEvaluator()  # evidence streamer only; never executes
         self.instruments = INSTRUMENTS
@@ -590,10 +587,6 @@ class ConsolidatedTradingDaemon:
                 # Dynamic Risk-to-Reward Ratio (RRR) for 5m-4h holds ($15 Sweet Spot Target)
                 rrr_str = "1:3.0 (Risk $5 to Make $15 Sweet Spot)"
 
-                # Autonomous Librarian & Proxima Precedent Research
-                # Autonomous Librarian & Pattern Book research paused
-                lib_payload = {"top_4_precedents": [], "status": "PAUSED", "proxima_status": "STANDBY", "proxima_research_synthesis": "Pattern Book suspended"}
-
                 # Volume Profile Metrics (POC, VAH 70%, VAL 70%)
                 vp_data = {}
                 try:
@@ -619,8 +612,7 @@ class ConsolidatedTradingDaemon:
                     "velocity": velocity,
                     "liquidity_targets": liq_targets,
                     "fvg": fvg_data,
-                    "volume_profile": vp_data,
-                    "librarian": lib_payload
+                    "volume_profile": vp_data
                 })
 
                 # Collect instrument findings with Intraday Institutional Data, Liquidity Sweeps, 4-TF, FVG, Volume Profile & RRR
@@ -972,7 +964,7 @@ class ConsolidatedTradingDaemon:
                     f"• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
                     f"5. GENERAL TIME & ATOMIC MCP TOOLS:\n"
                     f"• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
-                    f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_measured_cvd, get_live_microstructure, backtest_thesis, ask_librarian, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
+                    f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_live_microstructure, backtest_thesis, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
                     f"• Always replan pending orders whenever new news is retrieved.\n\n"
                     f"Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
                 )
@@ -1003,17 +995,17 @@ class ConsolidatedTradingDaemon:
                     f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
                     f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
                     f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
+                    f"• Q0 [Regime & Microstructure Context]: get_market_regime_context (Macro vs tech share, tape velocity, CVD ratio, 4m displacement, POC/air pockets)\n"
                     f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
                     f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
-                    f"• Q7 [Order Flow CVD]: get_measured_cvd (M5 tick CVD, 10-bar delta velocity, absorption)\n"
-                    f"• Q8 [Microstructure Friction]: get_live_microstructure (Spread pts, M1 tick velocity t/m)\n"
+                    f"• Q7/Q8 [Order Flow & Microstructure]: get_live_microstructure (Spread pts, M1 tick velocity t/m, complete raw CVD, delta velocity, absorption)\n"
                     f"• Q10 [Trade Staging & Watch]: place_pending_order, execute_trade, update_position, register_watch\n\n"
                     f"🕒 TIER 2 (PERIODIC / EVENT-DRIVEN REFRESH - On Cadence, Event, or New Trade Formulations):\n"
                     f"• Q2 [Breaking News]: get_direct_news, search_market_news, get_live_world_events (Macro release times or breaking news)\n"
                     f"• Q3 [Macro Rates]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields)\n"
                     f"• Q4 [4TF Trend & COT]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, COT Managed Money %)\n"
                     f"• Q5 [Volume Profile]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP bands)\n"
-                    f"• Q9 [Proxima Validation]: proxima_deep_search, proxima_ask_perplexity, proxima_smart_query, backtest_thesis, ask_librarian; mandatory before new trade entry; R:R >= 2.5:1\n\n"
+                    f"• Q9 [Proxima Validation]: proxima_deep_search, proxima_ask_perplexity, proxima_smart_query, backtest_thesis; mandatory before new trade entry; R:R >= 2.5:1\n\n"
                     f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
                     f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
                     f"• NO TRAILING: Mechanical trailing stops are OFF. TP is a fixed structural target; SL is an objective invalidation anchor.\n"

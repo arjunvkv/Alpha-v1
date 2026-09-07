@@ -49,7 +49,6 @@ from tradingagents.agent_graph import (
 )
 from tradingagents.institutional_analytics import InstitutionalAnalyticsEngine
 from tradingagents.multitimeframe import MultiTimeframeAnalyst
-from tradingagents.librarian_agent import AutonomousLibrarianAgent
 
 import asyncio
 import functools
@@ -77,7 +76,6 @@ _macro_analyst = MacroNewsAnalyst()
 _sent_analyst = SentimentAnalyst()
 _inst_engine = InstitutionalAnalyticsEngine()
 _mtf_analyst = MultiTimeframeAnalyst()
-_librarian_agent = AutonomousLibrarianAgent()
 _desk = TradingAgentsDesk()
 _active_watches: Dict[str, Dict[str, Any]] = {}
 _fred_adapter = FREDAdapter()
@@ -1150,14 +1148,10 @@ def mcp_alpha_get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: 
     except Exception as err:
         return json.dumps({"status": "ERROR", "error": str(err)}, indent=2)
 
-@mcp.tool()
-def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD", symbol: Any = None) -> str:
-    """Query granular post-trade forensics and entry market context for closed MT5 deals (accepts ticket number int/str or symbol str e.g. 'XAUUSD')."""
-    resolved_target = symbol if symbol is not None else target
-    from tradingagents.trade_forensics import TradeForensicsEngine
-    read_logger.log_dossier_read("OpenCode CIO (MCP Trade Forensics)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried trade forensics for {resolved_target}")
-    forensics = TradeForensicsEngine()
-    return json.dumps(forensics.get_trade_forensics(resolved_target), indent=2)
+# @mcp.tool()
+# def mcp_alpha_get_trade_forensics(target: Any = "XAUUSD", symbol: Any = None) -> str:
+#     """Query granular post-trade forensics disabled per operational instruction."""
+#     pass
 
 @mcp.tool()
 def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
@@ -1261,84 +1255,8 @@ def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disab
     }, indent=2)
 
 
-def _sync_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    sym = _normalize_symbol(symbol)
-    ans = _librarian_agent.answer_query(query, sym)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Ask Librarian)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Librarian query for {sym}: '{query}'")
-    return json.dumps({
-        "status": "SUCCESS",
-        "query": query,
-        "symbol": sym,
-        "theme": ans.get("theme"),
-        "proxima_researched_findings": {
-            "proxima_status": ans.get("proxima_status", "STANDBY"),
-            "proxima_endpoint": "http://127.0.0.1:3210/v1/chat/completions",
-            "quantitative_microstructure_synthesis": ans.get("proxima_research_synthesis")
-        },
-        "unified_learning_memory_precedents": {
-            "direct_answer": ans.get("direct_answer"),
-            "empirical_derivation": ans.get("empirical_derivation"),
-            "matched_patterns_count": ans.get("matched_evidence_count"),
-            "relevant_trade_experiences_count": ans.get("relevant_trade_experiences_count"),
-            "recommended_precedent": ans.get("recommended_precedent"),
-            "top_4_precedents": ans.get("top_4_precedents", [])
-        }
-    }, indent=2)
-
-@mcp.tool()
-async def mcp_alpha_ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    """Ask the Autonomous Librarian Agent any historical, tactical, or quantitative question about precedents, win rates, failure traps, and invalidation rules."""
-    return await run_in_thread(_sync_ask_librarian, query=query, symbol=symbol)
-
-@mcp.tool()
-async def ask_librarian(query: str, symbol: str = "XAUUSD") -> str:
-    """Ask the Autonomous Librarian Agent alias."""
-    return await run_in_thread(_sync_ask_librarian, query=query, symbol=symbol)
-
-
-@mcp.tool()
-def mcp_alpha_get_ledger_decomposition(symbol: str = "XAUUSD") -> str:
-    """Decompose historical closed-trade ledger into condition base rates: Session x Direction x Alignment x Spread x FVG Fill%."""
-    from tradingagents.ledger_decomposition import LedgerDecompositionEngine
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Ledger Decomposition)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested historical ledger decomposition for {sym}")
-    engine = LedgerDecompositionEngine()
-    return json.dumps(engine.decompose_ledger(sym), indent=2)
-
-
-@mcp.tool()
-def mcp_alpha_get_multi_instrument_ledger() -> str:
-    """Fetch complete 134-trade multi-instrument portfolio ledger breaking out 121 XAUUSD vs 13-trade non-XAU bleed (XAG/XCU/XPT/XPD)."""
-    from tradingagents.ledger_decomposition import LedgerDecompositionEngine
-    read_logger.log_dossier_read("OpenCode CIO (MCP Multi-Instrument Ledger)", "MANDATORY_PRE_EXECUTION_AUDIT", "Requested 134-trade portfolio multi-instrument ledger breakdown")
-    decomp = LedgerDecompositionEngine().decompose_ledger("XAUUSD")
-    recon = decomp.get("portfolio_accounting_reconciliation", {})
-    return json.dumps({
-        "status": "SUCCESS",
-        "portfolio_total_positions": recon.get("total_portfolio_trades", 134),
-        "total_portfolio_net_pnl_usd": recon.get("total_portfolio_net_pnl", -1371.43),
-        "total_portfolio_net_r": recon.get("total_portfolio_net_r", -32.44),
-        "canonical_xauusd": {
-            "symbol": "XAUUSD",
-            "trades": decomp.get("total_trades", 121),
-            "wins": decomp.get("wins", 33),
-            "losses": decomp.get("losses", 88),
-            "win_rate_pct": decomp.get("overall_win_rate", 27.3),
-            "net_pnl_usd": decomp.get("net_pnl_usd", -955.69),
-            "net_realized_r": decomp.get("net_realized_r", -23.37)
-        },
-        "non_xauusd_bleed": {
-            "total_bleed_trades": recon.get("non_xauusd_trades_count", 13),
-            "total_bleed_pnl_usd": recon.get("non_xauusd_bleed_pnl_usd", -415.74),
-            "total_bleed_r": recon.get("non_xauusd_bleed_r", -9.07),
-            "instrument_breakdown": recon.get("instrument_breakdown", {
-                "XAGUSD": {"trades": 6, "wins": 0, "losses": 6, "pnl_usd": -194.91, "r_multiple": -3.84},
-                "XCUUSD": {"trades": 4, "wins": 0, "losses": 4, "pnl_usd": -157.13, "r_multiple": -1.80},
-                "XPTUSD": {"trades": 2, "wins": 0, "losses": 2, "pnl_usd": -64.00, "r_multiple": -1.35},
-                "XPDUSD": {"trades": 1, "wins": 1, "losses": 0, "pnl_usd": +0.30, "r_multiple": +0.01}
-            })
-        }
-    }, indent=2)
+# Librarian removed per operational architecture
+# Ledger decomposition & multi-instrument ledger disabled per operational instruction
 
 
 @mcp.tool()
@@ -1735,10 +1653,10 @@ def record_pattern_observation(symbol: str, pattern_name: str, observation: str,
     """Record pattern evidence in Unified Learning Memory."""
     return mcp_alpha_record_pattern_observation(symbol, pattern_name, observation, outcome, ticket, r_value)
 
-@mcp.tool()
-def get_multi_instrument_ledger() -> str:
-    """Full 134-position portfolio breakdown breaking out 121 XAUUSD vs 13 non-XAU bleed (XAG/XCU/XPT/XPD)."""
-    return mcp_alpha_get_multi_instrument_ledger()
+# @mcp.tool()
+# def get_multi_instrument_ledger() -> str:
+#     """Full 134-position portfolio breakdown disabled per operational instruction."""
+#     pass
 
 @mcp.tool()
 def get_live_microstructure(symbol: str = "XAUUSD") -> str:
@@ -1797,7 +1715,6 @@ def list_desk_tools() -> str:
         {"name":"get_direct_news","description":"Configured direct RSS/Atom evidence."},
         {"name":"lookup_common_crawl","description":"On-demand historical URL recovery."},
         {"name":"backtest_thesis","description":"Historical empirical replay evidence; never an automatic signal."},
-        {"name":"ask_librarian","description":"Targeted historical precedent retrieval."},
         {"name":"search_book","description":"Targeted Pattern Book search."},
         {"name":"get_book_index","description":"Pattern Book index."},
         {"name":"get_book_page","description":"Specific Pattern Book page."},
@@ -1813,7 +1730,8 @@ def list_desk_tools() -> str:
         {"name":"get_active_watches","description":"Fetch persistent watches."},
         {"name":"update_watch","description":"Update persistent watch state."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
-        {"name":"mark_evidence_read","description":"Batch-mark evidence read."}
+        {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
+        {"name":"get_market_regime_context","description":"Transparent real-time market driver classification and raw kinetic metrics."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
 
@@ -1844,7 +1762,6 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_direct_news": lambda: mcp_alpha_get_direct_news(**args),
         "lookup_common_crawl": lambda: mcp_alpha_lookup_common_crawl(**args),
         "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
-        "ask_librarian": lambda: mcp_alpha_ask_librarian(args.get("query",""),args.get("symbol","XAUUSD")),
         "search_book": lambda: mcp_alpha_search_book(args.get("keyword",args.get("query","")),args.get("symbol")),
         "get_book_index": mcp_alpha_get_book_index,
         "get_book_page": lambda: mcp_alpha_get_book_page(args.get("page_number",1)),
