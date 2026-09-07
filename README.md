@@ -1,51 +1,127 @@
-# Alpha-v1
+# Alpha-v1: Institutional Quantitative Trading Desk & OpenCode CIO Brain
 
-Autonomous 24/7 Multi-Agent Quantitative Trading Desk & OpenCode CIO Brain Integration.
+Autonomous multi-agent quantitative trading system and institutional reasoning engine integrated with FTMO MetaTrader 5 ($100K Account).
 
-## 🚀 Features
+Alpha separates evidence gathering from deliberative reasoning:
+- **Collectors & Sensors**: Ingest live MT5 market feeds, tick velocity, raw CVD, volume profiles, unmitigated FVGs, and global news wires.
+- **FastMCP War Room Tools**: Provide atomic evidence on demand without bloating prompt context.
+- **OpenCode CIO**: The sole deliberative decision-maker running **`opencode/big-pickle`** via a resilient Cloudflare WARP proxy bridge.
+- **Execution Safeguards**: FTMO risk guardrails, objective structural invalidations, and non-trailing target protection.
 
-- **5-Agent Local LLM Desk**:
-  - `TechnicalAnalyst`: Pure Market Structure, 4-TF Confluence (H4/H1/M15/M5), and Order Flow Velocity.
-  - `MultiTimeframeAnalyst`: H1, M15, M5 trend alignment matrix.
-  - `OrderBlockEngine`: Daily Pivots ($PP, S_1, R_1$), Supply & Demand Order Block zones.
-  - `COT/FundamentalAnalyst`: CFTC Managed Money positioning percentiles.
-  - `Macro/NewsAnalyst` & `NewsShield`: DXY, VIX, RSS news & 15-min high-impact news freeze guard.
-  - `BullBearDebater`: Bull vs Bear debate, Institutional Risk audit, and conviction scoring ($0.0 - 10.0$).
-  - `RiskOfficer`: Max 6.0% account heat limit, dynamic lot sizing, and past mistake memory audit.
+---
 
-- **Resilient OpenCode CIO Communication Engine**:
-  - `is_opencode_idle()` Idle-State Latch guaranteeing zero prompt stacking or interruptions.
-  - 100% continuous multi-agent dialogue logging to `live_story.log`.
-  - FastMCP tool execution via `mcp_alpha_update_position` and `mcp_alpha_execute_trade`.
+## 🏗️ System Architecture
 
-## 🛠️ Setup & Execution
+- **Remote Access (Tailscale)**: Connect from mobile phone, laptop, or remote browser via Tailscale mesh (`100.95.56.22:4096` for OpenCode, `100.95.56.22:40001` for Proxy Bridge).
+- **Consolidated Trading Desk (`alpha_trading_desk.py`)**: Gathers market state, monitors positions, and dispatches evidence wakes to OpenCode.
+- **OpenCode Server (`opencode serve`)**: Listens on `0.0.0.0:4096`, hosting active reasoning session `Escanor`. Outbound calls to `opencode.ai` (Big-Pickle) route through the Cloudflare proxy.
+- **Cloudflare Auto-Connector (`cloudflare_autoconnector.py`)**: Maintains an HTTP CONNECT bridge on `0.0.0.0:40001`, forwarding to Cloudflare WARP SOCKS5 (`127.0.0.1:40000`) in proxy mode with automatic rate limit rotation.
+- **FastMCP Server (`mcp_server/alpha_mcp_server.py`)**: Exposes atomic market telemetry, account actions, and order management tools directly to OpenCode.
 
-```bash
-# Start 24/7 Background Trading Daemon
-python -u alpha_trading_desk.py run
+---
+
+## 🚀 Quick Start & How to Use
+
+### 1. Start Cloudflare WARP & The Auto-Connector Proxy
+The Auto-Connector runs WARP strictly in **Proxy Mode** (port 40000), binds an HTTP CONNECT bridge to `0.0.0.0:40001`, and exposes it to localhost and Tailscale peers without disrupting network routes.
+
+```powershell
+# Ensure WARP is in proxy mode and connected:
+warp-cli mode proxy
+warp-cli connect
+
+# Start the Auto-Connector Proxy Bridge:
+python C:\Trading\Alpha\cloudflare_autoconnector.py
+```
+*Proxy Bridge will be live at:*
+- Localhost: `http://127.0.0.1:40001`
+- Tailscale Mesh: `http://100.95.56.22:40001`
+
+### 2. Start the OpenCode Server (Bound to Tailscale & Proxied)
+Launch OpenCode with proxy environment variables configured so that all outbound LLM traffic to `opencode.ai` is tunneled through Cloudflare WARP, while local and Tailscale peer traffic remains direct:
+
+```cmd
+:: In cmd.exe (or batch script):
+set HTTP_PROXY=http://127.0.0.1:40001
+set http_proxy=http://127.0.0.1:40001
+set HTTPS_PROXY=http://127.0.0.1:40001
+set https_proxy=http://127.0.0.1:40001
+set ALL_PROXY=http://127.0.0.1:40001
+set all_proxy=http://127.0.0.1:40001
+set NO_PROXY=localhost,127.0.0.1,::1,100.*
+set no_proxy=localhost,127.0.0.1,::1,100.*
+opencode serve --port 4096 --hostname 0.0.0.0
+```
+*OpenCode Web UI and API will be live at:*
+- Localhost: `http://127.0.0.1:4096`
+- Tailscale Mesh: `http://100.95.56.22:4096`
+
+### 3. Start the Alpha Consolidated Trading Desk
+The trading desk continuously evaluates market structure, manages active positions, tracks armed price watches, and dispatches evidence briefings to OpenCode.
+
+```powershell
+# From C:\Trading\Alpha:
+python alpha_trading_desk.py
 ```
 
+---
 
-## Agent decision authority
+## 📱 Accessing from Tailscale (Phone, Laptop, or Remote Web UI)
 
-Alpha separates evidence from decisions.
+Any authorized device on your Tailscale network can access OpenCode directly:
 
-- The Agent is the only trading decision-maker: BUY, SELL, WAIT, HOLD,
-  CLOSE, REDUCE, REVERSE, timing, setup interpretation and conviction.
-- Memory, Pattern Book, repeatability, promotion, watchlists, scores and
-  historical outcomes are advisory evidence only.
-- The daemon may observe and wake the Agent, but may not convert evidence
-  into a trade-quality gate.
-- Execution validates malformed actions and physical/broker executability;
-  it must not silently replace an Agent ORDER with WAIT because of a learned
-  pattern, score, repeatability threshold, R:R threshold, or historical loss.
-- Novel setups are allowed. They are recorded as new evidence so the Agent
-  can learn from their eventual outcomes.
+1. **Web Interface**:
+   Open `http://100.95.56.22:4096` in any mobile or desktop browser to inspect active sessions, monitor real-time deliberations, and send manual instructions.
+2. **Model Selection**:
+   The default model is configured as **`opencode/big-pickle`** in `opencode.json`. It connects seamlessly through the Cloudflare proxy bridge.
+3. **Direct Tailscale Proxy Usage**:
+   If remote tools or scripts require routing through Cloudflare WARP, specify `http://100.95.56.22:40001` as their HTTP/HTTPS proxy.
 
-Authority flow:
+---
 
-`market → record → learn → evidence → Agent decision → execution`
+## 🔍 Verification & Health Checks
 
-Never:
+### Test 1: Verify Proxy Route & Cloudflare Exit IP
+```powershell
+python -c "import urllib.request; p=urllib.request.ProxyHandler({'http':'http://100.95.56.22:40001','https':'http://100.95.56.22:40001'}); o=urllib.request.build_opener(p); print('Exit IP:', o.open('https://api.ipify.org').read().decode())"
+```
+*Expected Output:* Cloudflare WARP exit IP (e.g. `104.28.x.x`).
 
-`market → learn/gate → pass/fail → automatic no trade`
+### Test 2: Verify Big-Pickle Deliberation via Tailscale
+```powershell
+python -c "import urllib.request, json; u='http://100.95.56.22:4096/session/ses_f83dc6d2dffeNDoT8xwgsWbfWA/message'; p=json.dumps({'parts':[{'type':'text','text':'Ping'}]}).encode(); req=urllib.request.Request(u, data=p, headers={'Content-Type':'application/json'}); print(urllib.request.urlopen(req).read().decode()[:200])"
+```
+*Expected Output:* HTTP 200 response with model `opencode/big-pickle` reasoning.
+
+---
+
+## ⚙️ Configuration Reference
+
+### Session Configuration (`config/opencode_session_config.json`)
+```json
+{
+  "session_id": "ses_f83dc6d2dffeNDoT8xwgsWbfWA",
+  "session_title": "Escanor",
+  "opencode_session_id": "ses_f83dc6d2dffeNDoT8xwgsWbfWA",
+  "opencode_session_title": "Escanor",
+  "opencode_api_url": "http://127.0.0.1:4096",
+  "dossier_interval_seconds": 240,
+  "active_trade_interval_seconds": 60,
+  "dossier_streaming_enabled": true
+}
+```
+
+### OpenCode Configuration (`opencode.json`)
+- **Default Model**: `"model": "opencode/big-pickle"`
+- **FastMCP Tool Integration**: Registered under `alpha-daemon-mcp` pointing to `alpha_mcp_server.py`.
+- **Subagent Support**: `explore` subagent with full FastMCP tool access.
+
+---
+
+## 🛡️ Trading Principles & Authority Flow
+
+1. **OpenCode is Sole Reasoner**: Collectors and daemon modules provide raw factual evidence. None may force, censor, or override OpenCode's reasoning.
+2. **A Wake is Not a Signal**: OpenCode begins every wake by classifying whether an actionable decision exists. If conditions are mid-range chop, OpenCode chooses `WAIT` or `NO TRADE`.
+3. **Position Management**: Active trades are managed through structural invalidations (SL adjustments behind protected swing shelves) and institutional targets (TP adjustments to unmitigated FVGs / opposite Value Area). Mechanical trailing stops and panic market-kills are forbidden.
+4. **Rate Limit Resilience**: If Cloudflare triggers a rate limit or mitigation, `cloudflare_autoconnector.py` rotates WARP tunnel keys in background, resumes connection within 3 seconds, and dispatches continuation without losing session context.
+

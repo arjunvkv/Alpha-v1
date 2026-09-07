@@ -60,3 +60,32 @@ def test_truth_envelope_never_invents_data():
     result=envelope(UNAVAILABLE, "test", error="offline")
     assert result["status"] == UNAVAILABLE
     assert result["data"] == {}
+
+def test_gdelt_rate_limited_falls_back_to_live_stream(tmp_path):
+    from tradingagents.evidence_state import EvidenceStateStore
+    store = EvidenceStateStore(tmp_path / "state.json")
+    rss_xml = b"""<rss version="2.0"><channel>
+        <item>
+            <title>Fed Interest Rates Hold Steady Ahead of Inflation Data - Reuters</title>
+            <link>https://reuters.com/markets/rates-test</link>
+            <pubDate>Mon, 07 Sep 2026 12:00:00 GMT</pubDate>
+            <source url="https://reuters.com">Reuters</source>
+        </item>
+    </channel></rss>"""
+    # Simulate GDELT raising 429 / timeout Exception, followed by live stream RSS response
+    fake_http = FakeHttp([RuntimeError("HTTP Error 429: Too Many Requests"), rss_xml])
+    GDELTAdapter._circuit_open_until = 0.0
+    adapter = GDELTAdapter(http=fake_http, state_store=store)
+
+    res = adapter.search("gold fed rates", max_records=5)
+    assert res["status"] == SUCCESS
+    assert "Live Market News" in res["source"]
+    assert len(res["data"]["items"]) == 1
+    item = res["data"]["items"][0]
+    assert item["headline"] == "Fed Interest Rates Hold Steady Ahead of Inflation Data - Reuters"
+    assert item["publisher"] == "Reuters"
+    assert item["discovered_via"] == "live_news_rss"
+    assert item["canonical_url"] == "https://reuters.com/markets/rates-test"
+    assert item["published_at"] == "Mon, 07 Sep 2026 12:00:00 GMT"
+    assert item["observed_at"] is not None
+

@@ -22,6 +22,17 @@ SIGNATURE_CACHE = {}
 FUNCTION_NAME_CACHE = {}
 GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
+# Cloudflare WARP HTTP Proxy Bridge Configuration (Port 40001)
+CLOUDFLARE_PROXY_URL = os.environ.get("HTTP_PROXY", "http://127.0.0.1:40001")
+try:
+    _proxy_handler = urllib.request.ProxyHandler({
+        'http': CLOUDFLARE_PROXY_URL,
+        'https': CLOUDFLARE_PROXY_URL
+    })
+    _cloudflare_opener = urllib.request.build_opener(_proxy_handler)
+except Exception:
+    _cloudflare_opener = urllib.request.build_opener()
+
 # Configured Gemini Keys Pool with Zero-Restart Hot-Reloading
 KEYS_CONFIG_PATH = os.path.expanduser("~/.config/opencode/gemini_keys.json")
 _LAST_CFG_MTIME = 0
@@ -335,7 +346,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': 'Mozilla/5.0'}
                 )
                 try:
-                    response = urllib.request.urlopen(req, timeout=30)
+                    response = _cloudflare_opener.open(req, timeout=30)
                     if response:
                         break
                 except urllib.error.HTTPError as e:

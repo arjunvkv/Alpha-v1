@@ -153,20 +153,80 @@ class FREDAdapter:
 class GDELTAdapter:
     source = "Original GDELT DOC 2.0"
     base = "https://api.gdeltproject.org/api/v2/doc/doc"
+    _circuit_open_until = 0.0
+
     def __init__(self, http=None, state_store=None):
         self.http = http or HttpJson()
         self.state_store = state_store or EvidenceStateStore()
+
+    def _fetch_live_rss_fallback(self, query: str, max_records: int = 25, retrieved: str = None) -> list:
+        """Ultra-fast, zero-rate-limit real-time news fallback with exact publication dates and source provenance."""
+        retrieved = retrieved or _iso()
+        encoded_q = urllib.parse.quote(str(query or "").strip())
+        rss_url = f"https://news.google.com/rss/search?q={encoded_q}&hl=en-US&gl=US&ceid=US:en"
+        items = []
+        try:
+            raw = self.http.get(rss_url, timeout=4)
+            root = ET.fromstring(raw)
+            count = 0
+            for node in root.findall(".//item"):
+                if count >= max_records:
+                    break
+                title = (node.findtext("title") or "").strip()
+                link = (node.findtext("link") or "").strip()
+                pub = (node.findtext("pubDate") or node.findtext("date") or "").strip()
+                if not title:
+                    continue
+                src_node = node.find("source")
+                publisher = src_node.text.strip() if src_node is not None and src_node.text else "Google News"
+                canonical = link.split("#", 1)[0]
+                news_id = hashlib.sha256((canonical or title).encode("utf-8")).hexdigest()[:24]
+                observed_dt = _parse_observed(pub)
+                items.append({
+                    "news_id": news_id,
+                    "canonical_url": canonical,
+                    "source_id": "google_news_rss",
+                    "publisher": publisher,
+                    "headline": title,
+                    "published_at": pub or None,
+                    "discovered_at": retrieved,
+                    "retrieved_at": retrieved,
+                    "first_seen_at": retrieved,
+                    "discovered_via": "live_news_rss",
+                    "language": "en",
+                    "observed_at": _iso(observed_dt) if observed_dt else None,
+                    "age_seconds": max(0.0, (_now() - observed_dt).total_seconds()) if observed_dt else None,
+                    "official_or_secondary": "secondary",
+                })
+                count += 1
+        except Exception:
+            pass
+        return items
+
     def search(self, query, max_records=25, timespan=None):
         retrieved = _iso()
-        params = {"query": query, "mode": "ArtList", "format": "json",
-                  "maxrecords": max(1, min(int(max_records), 250))}
+        max_recs = max(1, min(int(max_records), 250))
+        now_ts = time.time()
+        items = []
+
+        # If circuit breaker is active from recent 429/timeout, jump straight to fresh live RSS
+        if now_ts < GDELTAdapter._circuit_open_until:
+            items = self._fetch_live_rss_fallback(query, max_recs, retrieved)
+            if items:
+                items = self.state_store.upsert_news(items)
+                observed = items[0].get("published_at")
+                return envelope(SUCCESS, "Live Market News (Fast Stream)", {"items": items},
+                                observed_at=observed, retrieved_at=retrieved)
+
+        # Attempt GDELT DOC 2.0 with fast 2.0s timeout
+        params = {"query": query, "mode": "ArtList", "format": "json", "maxrecords": max_recs}
         if timespan:
             params["timespan"] = timespan
+
         try:
-            raw = self.http.get(self.base + "?" + urllib.parse.urlencode(params))
+            raw = self.http.get(self.base + "?" + urllib.parse.urlencode(params), timeout=2.0)
             payload = json.loads(raw.decode("utf-8"))
             articles = payload.get("articles", [])
-            items = []
             for article in articles:
                 url = article.get("url", "")
                 title = article.get("title", "")
@@ -180,11 +240,25 @@ class GDELTAdapter:
                               "discovered_at": discovered_at, "retrieved_at": retrieved, "first_seen_at": retrieved,
                               "discovered_via": "gdelt", "language": article.get("language"),
                               "data": article})
-            items = self.state_store.upsert_news(items) if items else []
-            observed = items[0].get("published_at") if items else None
-            return envelope(SUCCESS, self.source, {"items": items}, observed_at=observed, retrieved_at=retrieved)
-        except Exception as exc:
-            return envelope(ERROR, self.source, retrieved_at=retrieved, error=str(exc))
+            if items:
+                items = self.state_store.upsert_news(items)
+                observed = items[0].get("published_at")
+                return envelope(SUCCESS, self.source, {"items": items}, observed_at=observed, retrieved_at=retrieved)
+        except Exception:
+            # Trip circuit breaker for 15 minutes on GDELT failure/timeout/429
+            GDELTAdapter._circuit_open_until = time.time() + 900
+
+        # Fresh live fallback: zero delay, real-time breaking market headlines
+        items = self._fetch_live_rss_fallback(query, max_recs, retrieved)
+        if items:
+            items = self.state_store.upsert_news(items)
+            observed = items[0].get("published_at")
+            return envelope(SUCCESS, "Live Market News (Fast Stream)", {"items": items},
+                            observed_at=observed, retrieved_at=retrieved)
+
+        return envelope(ERROR, self.source, retrieved_at=retrieved,
+                        error=f"Unable to retrieve fresh live news for query '{query}'")
+
 
 class RSSRegistry:
     """Direct public feeds with provenance. RSSHub routes are opt-in and self-host only."""

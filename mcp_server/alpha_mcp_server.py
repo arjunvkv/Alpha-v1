@@ -1848,7 +1848,7 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol","ALL")),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket",0),args.get("action",""),args.get("params_json","")),
         "register_watch": lambda: mcp_alpha_register_watch(args.get("symbol",""),args.get("condition",""),args.get("instruction",""),args.get("target_price"),args.get("reason",""),args.get("direction",""),args.get("watch_id","")),
-        "get_active_watches": lambda: mcp_alpha_get_active_watches(args.get("symbol"),args.get("include_closed",True)),
+        "get_active_watches": lambda: mcp_alpha_get_active_watches(args.get("symbol"),args.get("include_closed",False)),
         "update_watch": lambda: mcp_alpha_update_watch(**args),
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[]))

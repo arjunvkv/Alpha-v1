@@ -9,6 +9,7 @@ htmlcov/
 # System logs & runtime cache
 logs/
 *.log
+*.db
 data/live/
 data/cache/
 scratch/
