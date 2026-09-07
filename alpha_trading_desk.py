@@ -971,9 +971,17 @@ class ConsolidatedTradingDaemon:
                 except Exception:
                     _time_str = f"UTC: {datetime.now(timezone.utc).isoformat()}"
 
+                try:
+                    from tradingagents.catalyst_arbiter import CatalystArbiterEngine
+                    _regime_info = CatalystArbiterEngine().get_market_regime("XAUUSD")
+                    _regime_badge = _regime_info.get("compact_prompt_badge", "")
+                except Exception as _reg_err:
+                    _regime_badge = ""
+
                 prompt = (
                     f"ALPHA EVIDENCE WAKE — {trigger}\n"
                     f"{_time_str}\n"
+                    f"{_regime_badge}\n"
                     f"Active instruments: {', '.join(get_active_instruments())}\n"
                     f"Open positions: {len(open_tickets)}\n"
                     f"Reason: periodic state changed or review interval elapsed.\n\n"
