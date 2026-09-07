@@ -10,35 +10,37 @@ from datetime import datetime
 LOG = logging.getLogger("alpha.tradingagents.news_shield")
 
 class NewsShield:
-    """Monitors news schedules and flags high-impact event freeze windows."""
+    """Monitors news schedules and flags high-impact event freeze windows via CatalystArbiterEngine."""
 
-    def evaluate_news_freeze(self) -> Dict[str, Any]:
-        """Check for active or upcoming High-Impact USD economic events via real calendar engine."""
-        status = {
-            "freeze_active": False,
-            "event_name": "None",
-            "minutes_to_event": 999,
-            "status_text": "CLEAR (No High-Impact USD Events within 15m window)"
-        }
-
+    def evaluate_news_freeze(self, symbol: str = "XAUUSD") -> Dict[str, Any]:
+        """Check for active or upcoming High-Impact economic events via live CatalystArbiterEngine."""
         try:
-            from tradingagents.economic_calendar import EconomicCalendarEngine
-            from tradingagents.world_market import IntradayInstitutionalEngine
+            from tradingagents.catalyst_arbiter import CatalystArbiterEngine
+            arb = CatalystArbiterEngine()
+            reg = arb.get_market_regime(symbol)
+            raw = reg.get("raw_metrics", {})
+            next_ev = raw.get("next_scheduled_event")
             
-            # Check market status first
-            session_status = IntradayInstitutionalEngine().get_session_status()
-            if session_status.get("market_status") == "WEEKEND_MARKET_CLOSED":
-                return status
-
-            cal_engine = EconomicCalendarEngine()
-            events = cal_engine.fetch_high_impact_events()
+            freeze_active = reg.get("regime") == "MACRO_EVENT_ACTIVE"
+            event_name = next_ev.get("title", "None") if next_ev else "None"
+            mins_to_event = next_ev.get("minutes_away", 999.0) if next_ev else 999.0
             
-            if events:
-                top_event = events[0]
-                status["event_name"] = top_event.get("event_name", "High-Impact Macro Event")
-                status["status_text"] = f"MONITORING ({status['event_name']})"
-                status["minutes_to_event"] = 15  # Active monitoring window
+            return {
+                "freeze_active": freeze_active,
+                "regime": reg.get("regime"),
+                "pricing_power": reg.get("pricing_power"),
+                "event_name": event_name,
+                "minutes_to_event": mins_to_event,
+                "status_text": f"{reg.get('regime')} ({reg.get('pricing_power')}) - Next: {event_name} in {mins_to_event}m" if next_ev else f"{reg.get('regime')} ({reg.get('pricing_power')}) - No high-impact events today",
+                "directive": reg.get("actionable_directive")
+            }
         except Exception as err:
             LOG.error(f"News Shield evaluation error: {err}")
+            return {
+                "freeze_active": False,
+                "event_name": "None",
+                "minutes_to_event": 999,
+                "status_text": "CLEAR (Fallback)",
+                "directive": "TRADE_BY_STRUCTURE"
+            }
 
-        return status

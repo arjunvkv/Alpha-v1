@@ -260,8 +260,72 @@ class CatalystArbiterEngine:
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
 
+        # 2.1 In-Between Breaking News Extraction & Tape Verification
+        in_between_news_info = {
+            "latest_headline": "None",
+
+            "category": "NONE",
+            "minutes_ago": 999.0,
+            "tape_velocity_tpm": tick_velocity_tpm,
+            "velocity_surge_ratio": round(tick_velocity_tpm / 22.0, 2),
+            "post_headline_cvd_ratio": cvd_5m_ratio,
+            "post_headline_displacement_pts": disp_4m_pts,
+            "market_absorption_state": "NO_ACTIVE_CATALYST"
+        }
+
+        try:
+            from tradingagents.world_events import LiveWorldEventsEngine
+            w_events = LiveWorldEventsEngine().fetch_live_events()
+            if w_events:
+                # Find most relevant breaking headline for commodities / central banks / geopolitics
+                top_ev = None
+                for ev in w_events:
+                    cat = ev.get("category", "")
+                    if cat in ("CENTRAL_BANKS_FED", "COMMODITIES_ENERGY", "GEOPOLITICAL_GLOBAL"):
+                        top_ev = ev
+                        break
+                if not top_ev and len(w_events) > 0:
+                    top_ev = w_events[0]
+
+                if top_ev:
+                    h_title = top_ev.get("title", "")
+                    h_cat = top_ev.get("category", "MACRO")
+                    h_time_str = top_ev.get("pub_date", "")
+                    h_mins = 30.0  # default approximation
+                    try:
+                        import email.utils
+                        parsed_t = email.utils.parsedate_to_datetime(h_time_str)
+                        h_mins = round(abs((now_utc - parsed_t).total_seconds()) / 60.0, 1)
+                    except Exception:
+                        pass
+
+                    # Physical Verification: Did the tape react to this headline?
+                    # Baseline tick velocity in calm state is 22 t/m.
+                    surge_ratio = round(tick_velocity_tpm / 22.0, 2)
+                    
+                    if tick_velocity_tpm >= 60.0 or abs(disp_4m_pts) >= 4.0:
+                        abs_state = "CONFIRMED_BREAKING_SHOCK"
+                    elif surge_ratio < 1.4 and abs(disp_4m_pts) < 1.5:
+                        abs_state = "IGNORED_BY_CROWD"
+                    else:
+                        abs_state = "MODERATE_ABSORPTION"
+
+                    in_between_news_info = {
+                        "latest_headline": h_title,
+                        "category": h_cat,
+                        "minutes_ago": h_mins,
+                        "tape_velocity_tpm": tick_velocity_tpm,
+                        "velocity_surge_ratio": surge_ratio,
+                        "post_headline_cvd_ratio": cvd_5m_ratio,
+                        "post_headline_displacement_pts": disp_4m_pts,
+                        "market_absorption_state": abs_state
+                    }
+        except Exception as _news_err:
+            LOG.debug(f"In-between news extraction error: {_news_err}")
+
 
         # 3. Macro Yields & Dominant Anchor (Live Real Yields from Official FREDAdapter with 5-minute cache)
+
         now_epoch = time.time()
         if self._cached_yields and (now_epoch - self._cached_macro_ts < 300):
             dfii10_yield = self._cached_yields.get("dfii10", 0.0)
@@ -391,16 +455,18 @@ class CatalystArbiterEngine:
             actionable_directive = "RANGE BOUND COMPRESSION: Expect technical equilibrium until release window. Target modest intraday targets (1:2 R:R)."
             pricing_power = f"ANTICIPATION_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Construct comprehensive, ultra-compact 3-line prompt badge (zero bloat, pure raw stats)
+        # Construct comprehensive, ultra-compact prompt badge (zero bloat, pure raw stats)
         next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
         air_below_str = f"[{air_pocket_below[0]}-{air_pocket_below[1]}]" if air_pocket_below else "None"
         air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
+        h_snippet = in_between_news_info['latest_headline'][:45] + "..." if len(in_between_news_info['latest_headline']) > 45 else in_between_news_info['latest_headline']
         
         badge_line1 = f"⚡ REGIME: {regime} | Pricing Power: {pricing_power}"
         badge_line2 = f"• Tape & Cross-Asset: Velocity {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts} pts) | CVD Ratio {cvd_5m_ratio:+.2f} | 4m Disp {disp_4m_pts:+.2f} pts (Rng {range_4m_pts:.2f}) | EURUSD 5m {eurusd_5m_pct:+.3f}% | XAGUSD 5m {xagusd_5m_pct:+.3f}%"
-        badge_line3 = f"• Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
-        badge_line4 = f"• Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}"
+        badge_line3 = f"• In-Between News: \"{h_snippet}\" ({in_between_news_info['minutes_ago']}m ago) | Status: {in_between_news_info['market_absorption_state']} (Tape {in_between_news_info['velocity_surge_ratio']}x baseline)"
+        badge_line4 = f"• Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
+        badge_line5 = f"• Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}"
 
         return {
             "symbol": sym,
@@ -419,6 +485,7 @@ class CatalystArbiterEngine:
                 "cvd_5m_ratio": cvd_5m_ratio,
                 "cvd_10b_pressure_pct": cvd_10b_pressure,
                 "cvd_divergence": cvd_divergence,
+                "in_between_catalysts": in_between_news_info,
                 "cross_asset_5m_deltas": {
                     "eurusd_pct": eurusd_5m_pct,
                     "xagusd_pct": xagusd_5m_pct
@@ -451,3 +518,4 @@ class CatalystArbiterEngine:
             },
             "timestamp_utc": now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
         }
+
