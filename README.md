@@ -4,7 +4,7 @@ Autonomous multi-agent quantitative trading system and institutional reasoning e
 
 Alpha separates evidence gathering from deliberative reasoning:
 - **Collectors & Sensors**: Ingest live MT5 market feeds, tick velocity, raw CVD, volume profiles, unmitigated FVGs, and global news wires.
-- **FastMCP War Room Tools**: Provide atomic evidence on demand without bloating prompt context.
+- **FastMCP Market Telemetry & Execution Tools**: Provide atomic evidence on demand without bloating prompt context.
 - **OpenCode CIO**: The sole deliberative decision-maker running **`opencode/big-pickle`** via a resilient Cloudflare WARP proxy bridge.
 - **Execution Safeguards**: FTMO risk guardrails, objective structural invalidations, and non-trailing target protection.
 
