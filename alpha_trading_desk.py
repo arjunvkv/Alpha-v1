@@ -956,8 +956,7 @@ class ConsolidatedTradingDaemon:
                 prompt = (
                     "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. "
                     "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query) and fred tools and news tools. "
-                    "Use proxima_ddg_search and proxima_web_scrape to crawl live crowd liquidity pools, retail trade setups, and stop-loss clusters directly from Reddit (r/wallstreetbets, r/Forex, r/Gold), TradingView, and forums. "
-                    "For planning the next trade. You have 0.1 - 1.0 lot area to place the lots based on the power of news. "
+                    "You have 0.1 - 1.0 lot area to place the lots based on the power of news. "
                     "Always pull latest and the closest news possible. Always replan any pending orders each time you pull the news. Always check the timezone mcp to verify we are on right track."
                 )
             else:
@@ -995,7 +994,7 @@ class ConsolidatedTradingDaemon:
                     f"• Q3 [Macro Rates]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields)\n"
                     f"• Q4 [4TF Trend & COT]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, COT Managed Money %)\n"
                     f"• Q5 [Volume Profile]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP bands)\n"
-                    f"• Q9 [Proxima Validation & Crowd Liquidity]: proxima_deep_search, proxima_ask_perplexity, proxima_smart_query; use proxima_ddg_search and proxima_web_scrape for crawling real-world crowd planned setups and retail stop pools; backtest_thesis, ask_librarian; mandatory before new trade entry; R:R >= 2.5:1\n\n"
+                    f"• Q9 [Proxima Validation]: proxima_deep_search, proxima_ask_perplexity, proxima_smart_query, backtest_thesis, ask_librarian; mandatory before new trade entry; R:R >= 2.5:1\n\n"
                     f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
                     f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
                     f"• NO TRAILING: Mechanical trailing stops are OFF. TP is a fixed structural target; SL is an objective invalidation anchor.\n"
