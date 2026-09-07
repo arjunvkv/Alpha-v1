@@ -944,6 +944,9 @@ class ConsolidatedTradingDaemon:
                     f"• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
                     f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_live_microstructure, backtest_thesis, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
                     f"• Always replan pending orders whenever new news is retrieved.\n\n"
+                    f"6. MANDATORY THOUGHT PROCESS REASONING GUIDE (PRE-EXECUTION PLAYBOOK):\n"
+                    f"• Read C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md — This is your foundational playbook on how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs during liquidity sweeps, avoid stale headline traps, and preserve runner profits without panic cuts.\n"
+                    f"• Apply the 3 case studies (Bullish Spring vs fake breakdown, Stale news triage vs yield gravity, and Position defense without trailing noise) to every active setup before staging or modifying orders.\n\n"
                     f"Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
                 )
             elif is_brainstorm_turn:
@@ -1135,7 +1138,10 @@ class ConsolidatedTradingDaemon:
             f"=== EVIDENCE-FIRST AUTHORITY ===\n"
             f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n"
-            f"Use atomic MCP evidence, ask the highest-value next question, and execute only after explicit current-state validation.\n"
+            f"Use atomic MCP evidence, ask the highest-value next question, and execute only after explicit current-state validation.\n\n"
+            f"=== MANDATORY READ: THOUGHT PROCESS GUIDE & PLAYBOOK ===\n"
+            f"Before formulating setups or managing positions, review: C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md\n"
+            f"Learn how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs on liquidity probes, avoid stale headline traps, and preserve runner profits without premature cuts.\n"
         )
         # The daemon is observation-only. It must never run an autonomous execution watcher.
         await asyncio.sleep(2.0)
