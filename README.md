@@ -100,10 +100,10 @@ python -c "import urllib.request, json; u='http://100.95.56.22:4096/session/ses_
 ### Session Configuration (`config/opencode_session_config.json`)
 ```json
 {
-  "session_id": "ses_f83dc6d2dffeNDoT8xwgsWbfWA",
-  "session_title": "Escanor",
-  "opencode_session_id": "ses_f83dc6d2dffeNDoT8xwgsWbfWA",
-  "opencode_session_title": "Escanor",
+  "session_id": "ses_f83f4c997ffeN7AZBk0c2C6w1z",
+  "session_title": "Escanor v1",
+  "opencode_session_id": "ses_f83f4c997ffeN7AZBk0c2C6w1z",
+  "opencode_session_title": "Escanor v1",
   "opencode_api_url": "http://127.0.0.1:4096",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
