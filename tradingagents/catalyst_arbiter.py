@@ -169,6 +169,8 @@ class CatalystArbiterEngine:
         is_holiday_today = any("HOLIDAY" in e.get("title", "").upper() or e.get("impact") == "Holiday" for e in events_today)
 
         # 2. Raw Tape & Microstructure Metrics from MT5
+        curr_bid = 0.0
+        curr_ask = 0.0
         tick_velocity_tpm = 0.0
         live_spread_pts = 0
         cvd_10b_pressure = 0.0
@@ -185,6 +187,24 @@ class CatalystArbiterEngine:
         pdl_price = 0.0
         dist_pdh_pts = 0.0
         dist_pdl_pts = 0.0
+        nearest_fvg_below = None
+        nearest_fvg_above = None
+
+        # 30-value 4-minute aggregated footprint horizon (120 minutes of tape)
+        deltas_4m = []
+        disp_4m = []
+        ranges_4m = []
+        vols_4m = []
+        low_wicks_4m = []
+        high_wicks_4m = []
+
+        # 30-bar M1 raw series (last 30 minutes minute-by-minute)
+        m1_prices = []
+        m1_deltas = []
+        m1_volumes = []
+        m1_ranges = []
+        m1_lower_wicks = []
+        m1_upper_wicks = []
 
         try:
             from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
@@ -197,19 +217,56 @@ class CatalystArbiterEngine:
         except Exception as err:
             LOG.debug(f"Tape sensor read error: {err}")
 
-        # Extract 4m displacement, CVD 5m ratio, cross-asset deltas, POC & air pockets
+        # Extract 120 M1 rates for 30-block 4m horizon, cross-asset deltas, POC & air pockets
         try:
             import numpy as np
             if mt5.terminal_info() is not None or mt5.initialize():
-                # 4-minute displacement on target symbol (M1)
-                r_m1 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M1, 0, 10)
-                if r_m1 is not None and len(r_m1) >= 5:
-                    disp_4m_pts = round(float(r_m1[-1]['close'] - r_m1[-5]['open']), 2)
-                    range_4m_pts = round(float(max(r['high'] for r in r_m1[-5:]) - min(r['low'] for r in r_m1[-5:])), 2)
-                    
-                    # CVD 5m signed ratio (-1.0 to +1.0)
-                    deltas_5m = [r['tick_volume'] * ((r['close'] - r['open']) / max(r['high'] - r['low'], 1e-6)) for r in r_m1[-5:]]
-                    sum_v_5m = sum(r['tick_volume'] for r in r_m1[-5:])
+                curr_tick = mt5.symbol_info_tick(sym)
+                if curr_tick:
+                    curr_bid = round(float(getattr(curr_tick, "bid", 0.0)), 2)
+                    curr_ask = round(float(getattr(curr_tick, "ask", 0.0)), 2)
+
+                # Fetch 120 M1 rates for the 30-block 4-minute horizon (120 minutes)
+                r_m1 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M1, 0, 120)
+                if r_m1 is not None and len(r_m1) >= 4:
+                    num_blocks = min(30, len(r_m1) // 4)
+                    usable_rates = r_m1[-(num_blocks * 4):]
+                    blocks = [usable_rates[i:i+4] for i in range(0, len(usable_rates), 4)]
+
+                    for b in blocks:
+                        d = sum(r['tick_volume'] * ((r['close'] - r['open']) / max(r['high'] - r['low'], 1e-6)) for r in b)
+                        deltas_4m.append(round(float(d), 0))
+                        disp = b[-1]['close'] - b[0]['open']
+                        disp_4m.append(round(float(disp), 2))
+                        b_high = max(r['high'] for r in b)
+                        b_low = min(r['low'] for r in b)
+                        ranges_4m.append(round(float(b_high - b_low), 2))
+                        vols_4m.append(int(sum(r['tick_volume'] for r in b)))
+                        body_low = min(b[0]['open'], b[-1]['close'])
+                        body_high = max(b[0]['open'], b[-1]['close'])
+                        low_wicks_4m.append(round(float(body_low - b_low), 2))
+                        high_wicks_4m.append(round(float(b_high - body_high), 2))
+
+                    # Trailing 4m displacement & range from most recent block
+                    disp_4m_pts = disp_4m[-1] if disp_4m else 0.0
+                    range_4m_pts = ranges_4m[-1] if ranges_4m else 0.0
+
+                    # 30-bar M1 raw series
+                    m1_tail = r_m1[-30:]
+                    for r in m1_tail:
+                        m1_prices.append(round(float(r['close']), 2))
+                        m1_deltas.append(round(float(r['tick_volume'] * ((r['close'] - r['open']) / max(r['high'] - r['low'], 1e-6))), 0))
+                        m1_volumes.append(int(r['tick_volume']))
+                        m1_ranges.append(round(float(r['high'] - r['low']), 2))
+                        b_low = min(r['open'], r['close'])
+                        b_high = max(r['open'], r['close'])
+                        m1_lower_wicks.append(round(float(b_low - r['low']), 2))
+                        m1_upper_wicks.append(round(float(r['high'] - b_high), 2))
+
+                    # CVD 5m signed ratio (-1.0 to +1.0) from last 5 M1 bars
+                    r_last5 = r_m1[-5:]
+                    deltas_5m = [r['tick_volume'] * ((r['close'] - r['open']) / max(r['high'] - r['low'], 1e-6)) for r in r_last5]
+                    sum_v_5m = sum(r['tick_volume'] for r in r_last5)
                     cvd_5m_ratio = round(sum(deltas_5m) / max(sum_v_5m, 1.0), 2)
 
                 # Cross-asset 5m % deltas (EURUSD & XAGUSD)
@@ -226,10 +283,9 @@ class CatalystArbiterEngine:
                 if d1_rates is not None and len(d1_rates) >= 2:
                     pdh_price = round(float(d1_rates[-2]['high']), 2)
                     pdl_price = round(float(d1_rates[-2]['low']), 2)
-                    curr_tick = mt5.symbol_info_tick(sym)
-                    if curr_tick and getattr(curr_tick, "bid", 0) > 0:
-                        dist_pdh_pts = round(pdh_price - curr_tick.bid, 2)
-                        dist_pdl_pts = round(curr_tick.bid - pdl_price, 2)
+                    if curr_bid > 0:
+                        dist_pdh_pts = round(pdh_price - curr_bid, 2)
+                        dist_pdl_pts = round(curr_bid - pdl_price, 2)
 
                 # Volume POC and Low Volume Nodes (Air Pockets) from M5 distribution
                 r_m5 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M5, 0, 150)
@@ -258,6 +314,28 @@ class CatalystArbiterEngine:
                                 air_pocket_below = pocket
                             elif b_mid > c_price and not air_pocket_above:
                                 air_pocket_above = pocket
+
+                # Institutional FVGs (Nearest Unmitigated Below and Above)
+                try:
+                    from tradingagents.fair_value_gap import FairValueGapEngine
+                    fvg_eng = FairValueGapEngine()
+                    fvg_res = fvg_eng.get_symbol_fvg_matrix(sym)
+                    ref_price = curr_bid if curr_bid > 0 else (float(r_m1[-1]['close']) if r_m1 is not None and len(r_m1) > 0 else 0.0)
+                    below_fvgs, above_fvgs = [], []
+                    for tf, tf_data in fvg_res.get("timeframes", {}).items():
+                        for f in tf_data.get("unmitigated_fvgs", []):
+                            top = float(f.get("top", 0.0))
+                            bot = float(f.get("bottom", 0.0))
+                            if top < ref_price:
+                                below_fvgs.append(f)
+                            elif bot > ref_price:
+                                above_fvgs.append(f)
+                    if below_fvgs:
+                        nearest_fvg_below = max(below_fvgs, key=lambda x: float(x.get("top", 0.0)))
+                    if above_fvgs:
+                        nearest_fvg_above = min(above_fvgs, key=lambda x: float(x.get("bottom", 0.0)))
+                except Exception as _fvg_err:
+                    LOG.debug(f"FVG matrix query error: {_fvg_err}")
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
 
@@ -475,18 +553,34 @@ class CatalystArbiterEngine:
             actionable_directive = "RANGE BOUND COMPRESSION: Expect technical equilibrium until release window. Target modest intraday targets (1:2 R:R)."
             pricing_power = f"ANTICIPATION_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Construct comprehensive, ultra-compact prompt badge (zero bloat, pure raw stats)
-        next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
+        # Construct comprehensive, raw footstep prompt badge (zero fluff, pure raw tape physics)
+        deltas_4m_str = "[" + ", ".join(f"{int(d):+d}" for d in deltas_4m) + "]" if deltas_4m else "[]"
+        disp_4m_str = "[" + ", ".join(f"{d:+.2f}" for d in disp_4m) + "]" if disp_4m else "[]"
+        ranges_4m_str = "[" + ", ".join(f"{r:.2f}" for r in ranges_4m) + "]" if ranges_4m else "[]"
+        low_wicks_4m_str = "[" + ", ".join(f"{w:.2f}" for w in low_wicks_4m) + "]" if low_wicks_4m else "[]"
+        high_wicks_4m_str = "[" + ", ".join(f"{w:.2f}" for w in high_wicks_4m) + "]" if high_wicks_4m else "[]"
+
+        # Format last 10 M1 deltas & prices
+        m1_recent_deltas_str = "[" + ", ".join(f"{int(d):+d}" for d in m1_deltas[-10:]) + "]" if m1_deltas else "[]"
+        m1_recent_prices_str = "[" + ", ".join(f"{p:.2f}" for p in m1_prices[-10:]) + "]" if m1_prices else "[]"
+
+        fvg_below_str = f"[{nearest_fvg_below.get('timeframe', '')} {nearest_fvg_below.get('type', '')} {float(nearest_fvg_below.get('bottom', 0)):.2f}-{float(nearest_fvg_below.get('top', 0)):.2f} CE:{float(nearest_fvg_below.get('consequent_encroachment', 0)):.2f}]" if nearest_fvg_below else "None"
+        fvg_above_str = f"[{nearest_fvg_above.get('timeframe', '')} {nearest_fvg_above.get('type', '')} {float(nearest_fvg_above.get('bottom', 0)):.2f}-{float(nearest_fvg_above.get('top', 0)):.2f} CE:{float(nearest_fvg_above.get('consequent_encroachment', 0)):.2f}]" if nearest_fvg_above else "None"
         air_below_str = f"[{air_pocket_below[0]}-{air_pocket_below[1]}]" if air_pocket_below else "None"
         air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
-        h_snippet = in_between_news_info['latest_headline'][:45] + "..." if len(in_between_news_info['latest_headline']) > 45 else in_between_news_info['latest_headline']
-        
-        badge_line1 = f"[REGIME] {regime} | Pricing Power: {pricing_power}"
-        badge_line2 = f"- Tape & Cross-Asset: Velocity {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts} pts) | CVD Ratio {cvd_5m_ratio:+.2f} | 4m Disp {disp_4m_pts:+.2f} pts (Rng {range_4m_pts:.2f}) | EURUSD 5m {eurusd_5m_pct:+.3f}% | XAGUSD 5m {xagusd_5m_pct:+.3f}%"
-        badge_line3 = f"- In-Between News: \"{h_snippet}\" ({in_between_news_info['minutes_ago']}m ago) | Status: {in_between_news_info['market_absorption_state']} (Tape {in_between_news_info['velocity_surge_ratio']}x baseline)"
-        badge_line4 = f"- Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
-        badge_line5 = f"- Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}"
+        next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
+
+        badge_line1 = f"[REGIME & FOOTPRINT] {regime} | Pricing Power: {pricing_power} | Bid: {curr_bid:.2f} | Spread: {live_spread_pts} pts | Vel: {tick_velocity_tpm:.0f} t/m"
+        badge_line2 = f"- Coordinates: POC {poc_price:.2f} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f}pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f}pts) | Air Below: {air_below_str} | Air Above: {air_above_str}"
+        badge_line3 = f"- Shelves: FVG Below {fvg_below_str} | FVG Above {fvg_above_str}"
+        badge_line4 = f"- 4M Footprints (30 blocks = 120m, oldest->newest):"
+        badge_line5 = f"  Deltas: {deltas_4m_str}"
+        badge_line6 = f"  Displacements (pts): {disp_4m_str}"
+        badge_line7 = f"  Ranges (pts): {ranges_4m_str} | Low Wicks: {low_wicks_4m_str} | High Wicks: {high_wicks_4m_str}"
+        badge_line8 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
+        badge_line9 = f"- Macro & Flows: Real Yield {dfii10_yield}% | 10Y {us10y}% | DXY {dxy} | EURUSD 5m {eurusd_5m_pct:+.3f}% | Next: {next_ev_str}"
+        badge_line10 = f"- Directive: {actionable_directive} (Audit full raw metrics via get_market_regime_context)."
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line8}\n{badge_line9}\n{badge_line10}"
 
         return {
             "symbol": sym,
@@ -498,6 +592,8 @@ class CatalystArbiterEngine:
             "raw_metrics": {
                 "high_impact_events_today_count": len(high_impact_today),
                 "is_holiday_today": is_holiday_today,
+                "curr_bid": curr_bid,
+                "curr_ask": curr_ask,
                 "interval_4m_displacement_pts": disp_4m_pts,
                 "interval_4m_range_pts": range_4m_pts,
                 "tick_velocity_tpm": tick_velocity_tpm,
@@ -517,7 +613,27 @@ class CatalystArbiterEngine:
                     "pdh_price": pdh_price,
                     "pdl_price": pdl_price,
                     "distance_to_pdh_pts": dist_pdh_pts,
-                    "distance_to_pdl_pts": dist_pdl_pts
+                    "distance_to_pdl_pts": dist_pdl_pts,
+                    "nearest_fvg_below": nearest_fvg_below,
+                    "nearest_fvg_above": nearest_fvg_above
+                },
+                "raw_footprints_4m_horizon": {
+                    "description": "30 rolling non-overlapping 4-minute blocks covering trailing 120 minutes of tape (FIFO, index 29 is most recent)",
+                    "deltas": deltas_4m,
+                    "displacements_pts": disp_4m,
+                    "ranges_pts": ranges_4m,
+                    "volumes": vols_4m,
+                    "lower_wicks_pts": low_wicks_4m,
+                    "upper_wicks_pts": high_wicks_4m
+                },
+                "raw_footprints_30_m1": {
+                    "description": "Trailing 30 1-minute bars minute-by-minute (index 29 is most recent)",
+                    "prices": m1_prices,
+                    "deltas": m1_deltas,
+                    "volumes": m1_volumes,
+                    "ranges_pts": m1_ranges,
+                    "lower_wicks_pts": m1_lower_wicks,
+                    "upper_wicks_pts": m1_upper_wicks
                 },
                 "macro_yields": {
                     "dfii10_real_yield_pct": dfii10_yield,
