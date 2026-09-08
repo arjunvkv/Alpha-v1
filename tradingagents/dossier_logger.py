@@ -29,6 +29,7 @@ class DeepDossierLogger:
 
         # 1. JSON Dossier Output
         json_payload = {
+            "cadence_reminder": "4-minute gap between each message/dossier — pre-position triggers and watches accordingly.",
             "timestamp": now_str,
             "scan_cycle_count": cycle_count,
             "agent_study_cycle_id": study_cycle_id,
@@ -52,6 +53,7 @@ class DeepDossierLogger:
         # 2. Markdown Dossier Output
         md_lines = []
         md_lines.append(f"# Deep Institutional Trading Desk Dossier")
+        md_lines.append(f"> ⏱️ **Cadence Reminder**: 4-minute gap between each message/dossier — pre-position triggers and watches accordingly.\n")
         if study_cycle_id is not None:
             md_lines.append(f"**Timestamp**: `{now_str}` | **Desk Scan Cycle**: `#{cycle_count}` | **Agent Study Cycle**: `#{study_cycle_id}`")
         else:
@@ -80,7 +82,8 @@ class DeepDossierLogger:
 
         md_lines.append(f"## 📋 Cadence-Tiered Market Analysis Protocol (OpenCode CIO Mandate)")
         md_lines.append(f"### ⚡ Tier 1: High-Frequency Dynamic Core (Every Wake / Price Movement)")
-        md_lines.append(f"0. **Q0 (Regime & Microstructure - MANDATORY)**: `get_market_regime_context` — Macro vs Tech pricing power share, tape velocity, CVD ratio, 4m interval displacement, cross-asset lead, and volume air pockets.")
+        md_lines.append(f"0. **Q0 (Regime & Crowd Trap Map - MANDATORY)**: `get_market_regime_context`, `get_crowd_trap_map` — Macro vs Tech pricing power share, tape velocity, CVD ratio, 4m interval displacement, cross-asset lead, volume air pockets, retail breakout triggers and stop clusters.")
+        md_lines.append(f"   • **4-Minute Pre-Trade Planning Protocol**: Combine `get_market_regime_context` (master macro/flow directional key) with `get_crowd_trap_map` (retail breakout trigger and stop loss geometry). Pre-stage pending limit orders right at retail breakout exhaustion levels to fade trapped retail longs/shorts and harvest their stop runs before the 4-minute gap elapses.")
         md_lines.append(f"1. **Q1 (Account & Orders)**: `get_account_status`, `get_pending_orders`, `get_active_watches` — Equity, margin utilization, pending tickets, and live armed watches.")
         md_lines.append(f"2. **Q6 (FVG Matrix)**: `get_fvg_matrix` — Unmitigated H4/H1/M15/M5 FVGs, 50% Consequent Encroachment (CE), fill %.")
         md_lines.append(f"3. **Q7/Q8 (Order Flow & Microstructure)**: `get_live_microstructure` — Real-time spread (pts), M1 tick velocity (t/m), order book depth imbalance, and raw_cvd_full (cumulative volume delta, absorption, exhaustion).")
@@ -174,7 +177,7 @@ class DeepDossierLogger:
             md_lines.append(f"- **Macro Intermarket Telemetry**: DXY `{macro.get('dxy', 101.4)}` | US10Y `{macro.get('us10y', 4.25)}%` | VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
             md_lines.append(f"- **Bull vs. Bear Debate Breakdown**: Bull Catalysts ({len(debate.get('bull_points', []))}): `{debate.get('bull_points', [])}` | Bear Risks ({len(debate.get('bear_points', []))}): `{debate.get('bear_points', [])}` | Regime Divergence: `{'YES' if debate.get('is_regime_conflict') else 'NO'}` | Structural Risk Warning: `{'YES' if debate.get('structural_risk_warning') else 'NO'}`")
             md_lines.append(f"- **Proxima Quantitative Research Findings (Port 3210)**: Engine Status: `{prox_status}` | Microstructure Synthesis: {prox_synth}")
-            md_lines.append(f"- **Risk Officer Agent Telemetry**: Recommended Max Lot Size: `{risk.get('max_volume_lots', 0.10)} lots` | Sizing Rationale: `{risk.get('reason')}`")
+            md_lines.append(f"- **Risk Officer Guidance**: `{risk.get('reason')}`")
             md_lines.append("")
 
         full_md_content = "\n".join(md_lines)

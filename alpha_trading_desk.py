@@ -52,6 +52,27 @@ STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 CONFIG_PATH = PROJECT_ROOT / "config" / "instruments_config.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
 
+def init_ftmo_mt5() -> bool:
+    try:
+        import MetaTrader5 as mt5
+        if mt5.terminal_info() is not None:
+            return True
+        creds_path = PROJECT_ROOT / "config" / "mt5_credentials.json"
+        if creds_path.exists():
+            with open(creds_path, "r", encoding="utf-8") as f:
+                creds = json.load(f)
+            return bool(mt5.initialize(
+                path=FTMO_PATH,
+                login=creds.get("login"),
+                password=creds.get("password"),
+                server=creds.get("server", "FTMO-Demo"),
+                timeout=15000
+            ))
+        return bool(mt5.initialize(path=FTMO_PATH, timeout=10000))
+    except Exception as e:
+        LOG.error(f"MT5 init failed: {e}")
+        return False
+
 def get_active_instruments() -> List[str]:
     """Reads config/instruments_config.json with zero-restart hot-reloading."""
     if CONFIG_PATH.exists():
@@ -110,6 +131,13 @@ LOG = logging.getLogger("alpha.trading_desk")
 # ----------------------------------------------------------------------
 def post_to_opencode_session(speaker: str, message: str):
     """Log intent, record ping into daemon_pings.log, and enqueue prompt to OpenCode."""
+    _cadence_tag = "⏱️ [CADENCE NOTE: 4-minute gap between each message/dossier — plan and pre-position triggers/watches accordingly.]"
+    if "4-minute gap" not in message and "4-min gap" not in message and "4 min gap" not in message:
+        lines = message.splitlines()
+        if lines:
+            message = lines[0] + "\n" + _cadence_tag + "\n" + "\n".join(lines[1:])
+        else:
+            message = _cadence_tag + "\n" + message
     log_story(speaker, message)
     sid, title, api_url = get_opencode_session()
     try:
@@ -300,7 +328,7 @@ def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp
     """Execute live market order on FTMO MetaTrader 5 with Max 1 Position Guard."""
     try:
         import MetaTrader5 as mt5
-        initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        initialized = init_ftmo_mt5()
         if not initialized:
             return {"success": False, "error": f"MT5 initialize failed: {mt5.last_error()}"}
 
@@ -504,7 +532,7 @@ class ConsolidatedTradingDaemon:
         instrument_matrix = []
         instruments_data = []
         import MetaTrader5 as mt5
-        mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        mt5_online = init_ftmo_mt5()
         is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED" or session_info.get("is_weekend", False)
 
         for symbol in self.instruments:
@@ -628,7 +656,7 @@ class ConsolidatedTradingDaemon:
                     f"| {fvg_line} | {vp_summary} "
                     f"| Liquidity Sweep: {liq_data.get('sweep_status')} [{liq_data.get('trap_warning')}] "
                     f"| Pivots: PP {order_blocks.get('pivot_point', 'N/A')} | Demand: {order_blocks.get('demand_zone', 'N/A')} | Supply: {order_blocks.get('supply_zone', 'N/A')} "
-                    f"| RRR: {rrr_str} | Regime Divergence: {'YES' if debate.get('is_regime_conflict') else 'NO'} | Catalysts: {len(debate.get('bull_points', []))} | Risks: {len(debate.get('bear_points', []))} | Agent Risk Vol (LLM est): {risk.get('max_volume_lots', 0.10)} lots"
+                    f"| RRR: {rrr_str} | Regime Divergence: {'YES' if debate.get('is_regime_conflict') else 'NO'} | Catalysts: {len(debate.get('bull_points', []))} | Risks: {len(debate.get('bear_points', []))} | Guidance: {risk.get('reason')}"
                 )
                 instrument_matrix.append(inst_summary)
 
@@ -638,7 +666,7 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Bull Points: {debate.get('bull_points', [])} | Bear Points: {debate.get('bear_points', [])} | Structural Risk: {'WARNING' if debate.get('structural_risk_warning') else 'CLEAR'}")
-                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
+                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Guidance: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
                 instrument_matrix.append(f"• {symbol}: DATA_UNAVAILABLE — analysis error (see alpha.log); excluded from this cycle's matrix.")
@@ -931,9 +959,9 @@ class ConsolidatedTradingDaemon:
                     f"=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
-                    f"You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514395146). Review and strictly adhere to these core principles:\n\n"
+                    f"You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514551285). Review and strictly adhere to these core principles:\n\n"
                     f"1. MANDATORY REAL-TIME REGIME & RAW MICROSTRUCTURE AUDIT (EVERY WAKE):\n"
-                    f"• On EVERY wake, review get_market_regime_context(symbol='XAUUSD') before acting or deciding to wait.\n"
+                    f"• On EVERY wake, review BOTH get_market_regime_context(symbol='XAUUSD') AND get_crowd_trap_map(symbol='XAUUSD', limit=6) before acting or deciding to wait.\n"
                     f"• Purpose: (a) Verify macro yield vs technical pricing power shares. (b) Audit raw tape velocity, CVD ratio (-1 to +1), and 4m interval displacement to avoid standing in front of violent kinetic air pockets. (c) Anchor invalidations and targets to raw volume POC, Low Volume Air Pockets, and PDH/PDL.\n\n"
                     f"2. BIFURCATED ADAPTIVE STAGING (MANDATORY DUAL-PRONGED ARCHITECTURE):\n"
                     f"• When preparing for directional expansion or trading within compression regimes, NEVER rely exclusively on a one-sided deep limit order that risks being left behind if price expands directly away.\n"
@@ -942,17 +970,17 @@ class ConsolidatedTradingDaemon:
                     f"• NO TRAILING STOPS.\n"
                     f"• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
                     f"• Manage strictly via structural SL/TP adjustments (update_position). If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor while strictly observing FTMO drawdown limits.\n"
-                    f"• Extend TP for higher R:R (>= 2.5:1) as momentum accelerates toward deeper institutional liquidity targets.\n\n"
+                    f"• HIGH R:R STRUCTURAL TP (>= 2.5:1) & NEVER MOVE GOALPOSTS: Anchor TP to structural liquidity offering high R:R (>= 2.5:1). When price or momentum accelerates toward TP, NEVER push TP further away to avoid the moving-goalpost trap. Let the broker hit the limit order to bank guaranteed profits. Capture deeper continuation via separate staged runner orders, never by moving the primary TP.\n\n"
                     f"4. VOLATILITY EXPANSIONS & ANTI-PARALYSIS:\n"
                     f"• Market repricing and volatility shocks produce two distinct behaviors: (i) an initial liquidity shakeout/sweep followed by reversal, OR (ii) an immediate direct momentum breakout without pullbacks. Actively prepare for BOTH paths via bifurcated staging (discount limit + breakout watch).\n"
                     f"• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
                     f"5. GENERAL TIME & ATOMIC MCP TOOLS:\n"
                     f"• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
-                    f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_live_microstructure, backtest_thesis, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
+                    f"• Always use targeted atomic tools: get_market_regime_context, get_crowd_trap_map, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_live_microstructure, backtest_thesis, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
                     f"• Always replan pending orders whenever new news is retrieved.\n\n"
                     f"6. MANDATORY THOUGHT PROCESS REASONING GUIDE (PRE-EXECUTION PLAYBOOK):\n"
                     f"• Read C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md — This is your foundational playbook on how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs during liquidity sweeps, avoid stale headline traps, and preserve runner profits without panic cuts.\n"
-                    f"• Apply the 3 case studies (Bullish Spring vs fake breakdown, Stale news triage vs yield gravity, and Position defense without trailing noise) to every active setup before staging or modifying orders.\n\n"
+                    f"• Apply the 4 case studies (Bullish Spring vs fake breakdown, Stale news triage vs yield gravity, Position defense without trailing noise, and Crowd-Trap Pre-Plan across the 4-minute gap) to every active setup before staging or modifying orders.\n\n"
                     f"Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
                 )
             elif is_brainstorm_turn:
@@ -961,10 +989,10 @@ class ConsolidatedTradingDaemon:
                     f"⚡ ALPHA EVIDENCE WAKE — BRAINSTORM TURN\n"
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
-                    f"MANDATORY STEP 0: Audit get_market_regime_context(symbol='XAUUSD') before brainstorming to establish macro vs technical pricing power shares.\n"
+                    f"MANDATORY STEP 0: Audit BOTH get_market_regime_context(symbol='XAUUSD') AND get_crowd_trap_map(symbol='XAUUSD', limit=6) before brainstorming to establish regime and crowd breakout/trap positioning.\n"
                     f"Brainstorm with 5 new questions about current market conditions involving all new catalysts and news. "
                     f"Use proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
-                    f"Calibrate position sizing (0.1 - 1.0 lots) strictly against catalyst pricing power. "
+                    f"Available lots are 0.10 to 1.00 scaled based on analysis confidence. "
                     f"Always pull the latest news, replan pending orders whenever new news is retrieved, and check get_market_time_context."
                 )
             else:
@@ -975,7 +1003,7 @@ class ConsolidatedTradingDaemon:
                     f"Active instruments: {', '.join(get_active_instruments())}\n"
                     f"Open positions: {len(open_tickets)}\n"
                     f"Reason: periodic state changed or review interval elapsed.\n\n"
-                    f"MANDATORY STEP 0 (EVERY WAKE): Call get_market_regime_context(symbol='XAUUSD') to inspect pricing power shares, raw tape velocity, CVD ratio, 4m displacement, and POC/air pockets before taking any action.\n\n"
+                    f"MANDATORY STEP 0 (EVERY WAKE): Call BOTH get_market_regime_context(symbol='XAUUSD') AND get_crowd_trap_map(symbol='XAUUSD', limit=6) to inspect pricing power shares, crowd breakout triggers, and stop clusters, raw tape velocity, CVD ratio, 4m displacement, and POC/air pockets before taking any action. For 4-minute trade pre-planning, combine with get_crowd_trap_map(symbol='XAUUSD') to identify retail breakout triggers and stop clusters to stage fade limits ahead of time.\n\n"
                     f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
                     f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
                     f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
@@ -984,7 +1012,7 @@ class ConsolidatedTradingDaemon:
                     f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
                     f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
                     f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
-                    f"• Q0 [Regime & Microstructure - MANDATORY]: get_market_regime_context (Macro vs tech share, tape velocity, CVD ratio, 4m displacement, POC/air pockets)\n"
+                    f"• Q0 [Regime & Crowd Trap Map - MANDATORY]: get_market_regime_context, get_crowd_trap_map (Macro vs tech share, tape velocity, CVD ratio, 4m displacement, POC/air pockets, retail breakout triggers & stop clusters)\n"
                     f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
                     f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
                     f"• Q7/Q8 [Order Flow & Microstructure]: get_live_microstructure (Spread pts, M1 tick velocity t/m, complete raw CVD, delta velocity, absorption)\n"
@@ -1001,7 +1029,8 @@ class ConsolidatedTradingDaemon:
                     f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
                     f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
                     f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
-                    f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
+                    f"• HARD FIXED TP WITH HIGH R:R (>= 2.5:1): Pre-plan structural TP targets offering high R:R (>= 2.5:1). When price accelerates toward TP, NEVER push TP further away. Let the broker hit the fixed limit order to lock in profits. Deeper targets are captured via separate follow-through orders, never by moving the primary TP.\n"
+                    f"• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
                     f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
                 )
             post_to_opencode_session("", prompt)
@@ -1140,7 +1169,7 @@ class ConsolidatedTradingDaemon:
 
         while self.is_running:
             try:
-                mt5_ok = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+                mt5_ok = init_ftmo_mt5()
                 if mt5_ok:
                     current_positions = mt5.positions_get() or []
                     current_pending = mt5.orders_get() or []
@@ -1231,8 +1260,8 @@ class ConsolidatedTradingDaemon:
             f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape/News) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
             f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY REGIME AUDIT ===\n"
             f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
-            f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
-            f"Audit macro yield vs technical pricing power, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
+            f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call BOTH `get_market_regime_context(symbol='XAUUSD')` AND `get_crowd_trap_map(symbol='XAUUSD', limit=6)` before any other analysis or action.\n"
+            f"Audit macro yield vs technical pricing power, raw tape velocity, CVD ratio, 4m interval displacement, auction air pockets, and the 6-setup crowd trap comparison matrix to pre-stage limit orders.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
             f"=== MANDATORY READ: THOUGHT PROCESS GUIDE & PLAYBOOK ===\n"
             f"Before formulating setups or managing positions, review: C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md\n"
@@ -1262,7 +1291,7 @@ if __name__ == "__main__":
     elif action == "status":
         try:
             import MetaTrader5 as mt5
-            initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+            initialized = init_ftmo_mt5()
             if initialized:
                 acc = mt5.account_info()
                 pos = mt5.positions_get()

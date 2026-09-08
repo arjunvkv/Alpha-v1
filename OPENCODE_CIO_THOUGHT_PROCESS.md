@@ -1,7 +1,7 @@
 # OPENCODE CIO THOUGHT PROCESS: TURNING LOSSES INTO WINS & PRESERVING PROFITS
 **Document:** `C:\Trading\Alpha\OPENCODE_CIO_THOUGHT_PROCESS.md`  
 **Mandatory Pre-Execution Guide & Historical Playbook Analysis**  
-**Applicable Account:** FTMO $100K Account (#1514395146) | Instrument: `XAUUSD`
+**Applicable Account:** FTMO $100K Account (#1514551285) | Instrument: `XAUUSD`
 
 ---
 
@@ -26,6 +26,12 @@ By integrating the **Catalyst Arbiter**, **Raw Tape Microstructure**, and **Bifu
    - Deploy dual coverage:
      - **Prong A (Discount Retracement)**: Resting limit order at key institutional support (FVG 50% CE, Order Block, Value Area Low).
      - **Prong B (Breakout Watch Trigger)**: Persistent 500ms watch (`register_watch`) at the structural boundary with delta acceleration triggers for instant execution if price expands without pulling back.
+
+4. **Crowd Liquidity Trap Mapping & 4-Minute Pre-Trade Planning (`get_crowd_trap_map`)**:
+   - Because OpenCode operates on a 4-minute wake cadence, it cannot chase market orders after momentum has already left the station. It must **pre-plan and pre-position** orders before the move occurs.
+   - Retail chartists, Telegram signals, and TradingView ideas congregate around obvious levels (equal highs, daily highs, ascending trendlines). Retail breakout traders place BUY STOPS above resistance and SELL STOPS below support.
+   - By querying `get_crowd_trap_map(symbol='XAUUSD')`, OpenCode audits the active crowd traps: exact retail breakout triggers (`bull_trigger` / `bear_trigger`) and stop clusters (`bull_stops` / `bear_stops`).
+   - OpenCode pairs this with `get_market_regime_context`: if macro pricing power is bearish (Yield Share > 45%), OpenCode stages a `SELL_LIMIT` directly into the retail `bull_trigger` / buy-stop sweep zone to sell to trapped retail breakout buyers at the top of the wick, then sets TP into the retail `bear_stops` to harvest the resulting liquidity cascade.
 
 ---
 
@@ -84,8 +90,38 @@ Let us examine the exact market mechanics of the last 3 trading days, dissecting
      - POC remains above price at 4418 (overhead resistance shelf).
   4. **The Action**:
      - **DO NOT TOUCH THE TRADE.** Do not tighten the stop into the noise zone. Keep SL securely anchored behind the structural shelf (4424.50).
-     - If momentum accelerates downward through 4408, **extend the TP deeper to 4395 (HTF liquidity)**.
+     - **DO NOT MOVE THE TP GOALPOST**: Once TP is set at 4400, keep it fixed. When price accelerates toward 4400, do NOT push TP deeper to avoid missing the exit before a session reversal. Let the broker hit 4400 to bank the guaranteed profit. Deeper runner targets must be captured by staging a separate follow-through order below 4398, never by moving the existing TP.
      - Outcome: Captured the full **+$1,500 runner** instead of getting chopped out for pennies.
+
+---
+
+### 🔍 Play 4: The Crowd-Trap Pre-Plan (Fading Retail Breakout Stops Across the 4-Minute Gap)
+* **The Scenario**: Spot Gold is consolidating between 4436 and 4440. The market is quiet, but approaching the European/US session crossover.
+* **The Opportunity & The 4-Minute Dilemma**:
+  - OpenCode wakes only once every 4 minutes.
+  - If a sudden liquidity probe pushes price to 4442 and reverses back to 4438 in 90 seconds, a reactive agent misses it completely or buys the wick high when it wakes late.
+* **The New Thought Process (Combining Regime with Crowd Trap Map)**:
+  1. **Audit Macro Regime**: `get_market_regime_context(symbol='XAUUSD')` reports:
+     - `regime`: `MACRO_DIRECTIONAL_PRESSURE`
+     - `macro_yield_share_pct`: `54.2%` (Macro real yields dominate; directional bias is SHORT / FADE RALLIES).
+     - Directive: *Sell premium resistance, do not chase longs.*
+  2. **Audit Crowd Planning Reality**: `get_crowd_trap_map(symbol='XAUUSD')` returns:
+     - **Headline**: *"Retail Range Breakout Trap & Double Top Hunt"*
+     - `bull_trigger`: `4441.00` (Retail breakout traders staging BUY STOP orders above the M5 swing high).
+     - `bull_stops`: `4444.50` (Retail shorts' stop-loss cluster resting above the resistance wick).
+     - `bear_stops`: `4424.50` (Retail longs' stop-loss cluster resting below the session support shelf).
+     - `trap_summary`: *"Smart money will push price through 4441.00 to trigger retail buy stops and liquidity, filling institutional sell limits before reversing hard toward 4424.50."*
+  3. **The Pre-Plan (Staging Ahead of the 4-Minute Gap)**:
+     - OpenCode does NOT place a market order at 4439.
+     - Instead, it exploits the crowd trap by staging:
+       - **Tool Call**: `place_pending_order(symbol='XAUUSD', order_type='SELL_LIMIT', price=4441.50, volume=0.30, sl=4449.00, tp=4420.00, comment='Crowd Trap Fade at Bull Trigger') # Sized dynamically at 0.30 lots (scaled between 0.10 and 1.00 lot based on 54.2% macro yield pricing power)`
+       - **Anti-Vacuum Stop Loss**: Places SL at `4449.00` (behind the HTF H4 FVG and out of reach of the retail `bull_stops` sweep zone at 4444.50).
+       - **Harvest Take Profit**: Places TP at `4420.00` (beyond the retail `bear_stops` cascade at 4424.50, capturing the full stop-run liquidity).
+       - **Companion Watch**: `register_watch(symbol='XAUUSD', condition_type='PRICE_CROSS_ABOVE', target_price=4441.00, instruction='Verify CVD delta exhaustion as retail buy stops fire into our Sell Limit')`.
+  4. **Outcome**:
+     - During the 4-minute gap, price wicks up to 4442.30, triggering retail FOMO buyers and filling OpenCode's `SELL_LIMIT` at 4441.50.
+     - Price violently rejects the FVG and plummets to 4423.00, liquidating retail long stops.
+     - OpenCode wakes 4 minutes later already +$1,800 in floating profit with zero slippage and zero panic.
 
 ---
 
@@ -96,8 +132,9 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 ```
 [WAKE INGESTION]
   │
-  ├─ 1. Q0: Audit get_market_regime_context
+  ├─ 1. Q0: Audit get_market_regime_context & get_crowd_trap_map
   │     • Who has pricing power? (Macro Yields % vs Technicals %)
+  │     • Where are the crowd traps? (bull_trigger, bear_trigger, retail stop clusters)
   │     • What is tape velocity? (<60 t/m compression vs >120 t/m kinetic expansion)
   │     • What is the CVD ratio? Is there absorption divergence?
   │
@@ -125,3 +162,4 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 2. **Never treat candle wicks as directional breakouts without checking CVD.** High velocity + opposite delta = institutional trap/absorption.
 3. **Never chase market orders into mid-range chop.** Use limit orders at value area extremes and persistent watches at breakout thresholds.
 4. **Once in a trade, let market structure govern the exit.** Trust validated HTF support/resistance shelves. Never market-kill an active position out of minor noise.
+5. **Pre-plan orders across the 4-minute gap using crowd traps.** Use `get_market_regime_context` for macro/flow direction and `get_crowd_trap_map` to identify where retail traders are placing breakout triggers. Stage pending limit orders at the retail breakout exhaustion point, targeting their stop-loss clusters for high R:R profit harvesting.

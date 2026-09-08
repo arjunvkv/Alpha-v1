@@ -50,9 +50,20 @@ class InstitutionalAnalyticsEngine:
         try:
             if mt5.terminal_info() is not None:
                 return True
+            creds_path = PROJECT_ROOT / "config" / "mt5_credentials.json"
+            if creds_path.exists():
+                with open(creds_path, "r", encoding="utf-8") as f:
+                    creds = json.load(f)
+                return mt5.initialize(
+                    path=self.ftmo_path,
+                    login=creds.get("login"),
+                    password=creds.get("password"),
+                    server=creds.get("server", "FTMO-Demo"),
+                    timeout=5000
+                )
             if os.path.exists(self.ftmo_path):
-                return mt5.initialize(path=self.ftmo_path)
-            return mt5.initialize()
+                return mt5.initialize(path=self.ftmo_path, timeout=5000)
+            return mt5.initialize(timeout=5000)
         except Exception as err:
             LOG.error(f"MT5 init check failed: {err}")
             return False

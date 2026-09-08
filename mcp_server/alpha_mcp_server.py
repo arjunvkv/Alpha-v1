@@ -94,9 +94,23 @@ class AlphaMCPServer:
 def _init_mt5():
     try:
         import MetaTrader5 as mt5
-        mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        if mt5.terminal_info() is not None:
+            return True
+        creds_path = ALPHA_ROOT / "config" / "mt5_credentials.json"
+        if creds_path.exists():
+            with open(creds_path, "r", encoding="utf-8") as f:
+                creds = json.load(f)
+            return mt5.initialize(
+                path=FTMO_PATH,
+                login=creds.get("login"),
+                password=creds.get("password"),
+                server=creds.get("server", "FTMO-Demo"),
+                timeout=15000
+            )
+        return mt5.initialize(path=FTMO_PATH, timeout=10000)
     except Exception as err:
         LOG.error(f"MT5 init error: {err}")
+        return False
 
 def _normalize_symbol(symbol: str) -> str:
     """Normalizes symbol names across broker casing conventions (e.g. USOIL.cash vs USOIL.CASH)."""
@@ -1661,6 +1675,61 @@ def get_market_regime_context(symbol: str = "XAUUSD") -> str:
     return json.dumps(arbiter.get_market_regime(sym), indent=2)
 
 @mcp.tool()
+def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
+    """Retrieve 100% raw Crowd & Analyst Technical Plans / Liquidity Trap Map (returns up to 6 distinct technical setups across breakout momentum, channel breaks, neckline retests, FVG CE, and stop hunts). Combine with get_market_regime_context for 4-minute pre-trade planning."""
+    from tradingagents.crowd_trap_store import get_crowd_trap_plans
+    from tradingagents.crowd_trap_feeder import ensure_fresh_crowd_plans
+    sym = _normalize_symbol(symbol)
+    try:
+        ensure_fresh_crowd_plans(sym, max_age_seconds=600)
+    except Exception:
+        pass
+    raw_plans = get_crowd_trap_plans(sym, limit=min(limit, 20))
+    cleaned_plans = []
+    for p in raw_plans:
+        cleaned_plans.append({
+            "id": p.get("id"),
+            "headline": p.get("headline"),
+            "bull_trigger": p.get("bull_trigger"),
+            "bear_trigger": p.get("bear_trigger"),
+            "bull_stops": p.get("bull_stops"),
+            "bear_stops": p.get("bear_stops"),
+            "trader_narrative": p.get("trader_narrative"),
+            "trap_summary": p.get("trap_summary"),
+            "source": p.get("source"),
+            "created_at": p.get("created_at")
+        })
+
+    comparison_table = [
+        {
+            "id": p.get("id"),
+            "setup": p.get("headline"),
+            "bull_trigger": p.get("bull_trigger"),
+            "bear_trigger": p.get("bear_trigger"),
+            "bull_stops": p.get("bull_stops"),
+            "bear_stops": p.get("bear_stops")
+        }
+        for p in cleaned_plans
+    ]
+
+    read_logger.log_dossier_read("OpenCode CIO (MCP Crowd Trap Map)", "PRE_TRADE_PLANNING", f"Audited raw crowd trap map for {sym} ({len(cleaned_plans)} plans)")
+    return json.dumps({
+        "status": "SUCCESS",
+        "symbol": sym,
+        "total_setups": len(cleaned_plans),
+        "setups_comparison_matrix": comparison_table,
+        "market_participants_technical_plans": cleaned_plans,
+        "pre_trade_planning_rule": "1. Macro regime (get_market_regime_context) sets master directional power. 2. Compare setups above to find where retail breakout clusters collide with institutional resistance/support. 3. Pre-stage pending limit orders at breakout exhaustion to harvest retail stop cascades."
+    }, indent=2)
+
+# Internal Python aliases (not exposed as separate MCP tools to avoid tool catalog bloat)
+def get_market_participants_technical_plans(pulse_ids: str = "", symbol: str = "XAUUSD", limit: int = 6) -> str:
+    return get_crowd_trap_map(symbol=symbol, limit=limit)
+
+def get_peoples_technical_plans(pulse_ids: str = "", symbol: str = "XAUUSD", limit: int = 6) -> str:
+    return get_crowd_trap_map(symbol=symbol, limit=limit)
+
+@mcp.tool()
 def get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
     """Retrieve synchronized market clocks across UTC, New York (EDT/EST), London (BST/GMT), Tokyo (JST), Sydney (AEST), live trading sessions, or calculate exact countdowns to any target time."""
     return mcp_alpha_get_market_time_context(target_time, target_timezone)
@@ -1810,7 +1879,9 @@ def list_desk_tools() -> str:
         {"name":"clear_completed_watches","description":"Clear triggered/cancelled watches from disk."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
-        {"name":"get_market_regime_context","description":"Transparent real-time market driver classification and raw kinetic metrics."}
+        {"name":"get_market_regime_context","description":"Transparent real-time market driver classification and raw kinetic metrics."},
+        {"name":"get_crowd_trap_map","description":"Crowd & retail technical planning reality: breakout triggers, stop clusters, and institutional trap harvest maps."},
+        {"name":"get_market_participants_technical_plans","description":"Alias for get_crowd_trap_map: crowd technical planning setups and stop levels."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
 
@@ -1859,7 +1930,10 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "clear_completed_watches": lambda: mcp_alpha_clear_completed_watches(args.get("symbol")),
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[])),
-        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"))
+        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD")),
+        "get_crowd_trap_map": lambda: get_crowd_trap_map(args.get("symbol","XAUUSD"), args.get("limit", 2)),
+        "get_market_participants_technical_plans": lambda: get_crowd_trap_map(args.get("symbol","XAUUSD"), args.get("limit", 2)),
+        "get_peoples_technical_plans": lambda: get_crowd_trap_map(args.get("symbol","XAUUSD"), args.get("limit", 2))
     }
 
     if name in fn_map:
