@@ -106,6 +106,83 @@ CORE_FACTS = [
         "evidence_required": "Tick velocity spikes >120 t/m, followed by steady drop to <50 t/m over 2-3 bars.",
         "invalidation_boundary": "If high-impact macroeconomic news is actively breaking, volatility will not compress; it will chain into secondary shock waves.",
         "literature": "Engle (1982) Econometrica; Mandelbrot (1963) Journal of Business"
+    },
+    {
+        "fact_id": "spoofing_phantom_liquidity",
+        "canonical_name": "Phantom Depth Spoofing and Algorithmic Order Flashing",
+        "trade_scientists": "Alvaro Cartea, Sebastian Jaimungal (2015), X. Frank Wang (2020)",
+        "synonyms": "spoofing fake wall phantom liquidity spoof bid spoof ask cancel rate high cancellation flashing depth fake order book",
+        "microstructure_reality": "Algorithmic market manipulators post large passive limit orders (phantom depth) to artificially alter visible order book skew, inducing retail breakout market orders, then cancel within microseconds before execution.",
+        "crowd_implication": "When crowd plans cite 'massive support wall on the order book' as their bullish rationale, verify whether the wall is canceling on approach. Resting walls that vanish are predatory spoof bait.",
+        "evidence_required": "Order book shows concentrated size (>200 lots) at a single tick that cancels immediately when price moves within 2-3 points.",
+        "invalidation_boundary": "If the resting limit order actually executes and transacts with high printed tick volume, it is authentic institutional accumulation, NOT a spoof.",
+        "literature": "Cartea & Jaimungal (2015) 'Algorithmic and High-Frequency Trading', Cambridge Univ Press; Wang (2020) JFM"
+    },
+    {
+        "fact_id": "hawkes_liquidation_cascade",
+        "canonical_name": "Self-Exciting Point Processes in Stop Cascade Avalanches",
+        "trade_scientists": "Alan G. Hawkes (1971), Emmanuel Bacry & Jean-Francois Muzy (2013)",
+        "synonyms": "hawkes process self exciting avalanche liquidation cascade cascade stop cascade domino effect cascading stops panic selling panic buying",
+        "microstructure_reality": "Order book liquidations follow mutually exciting Hawkes processes: the execution of one stop order increases the conditional intensity of adjacent stop executions in an avalanche branching ratio (eta > 1).",
+        "crowd_implication": "A stop run does not halt at the first retail stop level; it accelerates exponentially through the entire stop density cluster until the branching ratio drops below criticality (eta < 1).",
+        "evidence_required": "Tick velocity accelerates exponentially (>140 t/m) with consecutive same-direction market trades across multiple price points in seconds.",
+        "invalidation_boundary": "The cascade is terminated when trade arrival rate drops sharply and resting limit quotes replenish with spreads tightening back to baseline.",
+        "literature": "Hawkes (1971) Biometrika; Bacry et al. (2013) Quantitative Finance"
+    },
+    {
+        "fact_id": "ornstein_uhlenbeck_poc_reversion",
+        "canonical_name": "Ornstein-Uhlenbeck Stochastic Mean Reversion to Equilibrium",
+        "trade_scientists": "George Uhlenbeck & Leonard Ornstein (1930), Euan Sinclair (2010), Ernie Chan (2013)",
+        "synonyms": "ornstein uhlenbeck half life mean reversion speed stochastic drift poc pull vwap drift gravitational pull equilibrium attractor",
+        "microstructure_reality": "Intraday price deviations from the Volume Point of Control (POC) follow a stochastic Ornstein-Uhlenbeck mean-reverting process: dX_t = theta*(mu - X_t)*dt + sigma*dW_t. When half-life is between 15-45 minutes, mean reversion has positive expectancy.",
+        "crowd_implication": "When price extends >2.5 standard deviations away from the Volume POC without fundamental news, the probability of gravitational rotation back toward the POC increases monotonically with elapsed time.",
+        "evidence_required": "Price distance from intraday POC is >8-12 points, Hurst exponent H < 0.50, and tick velocity stabilizes.",
+        "invalidation_boundary": "If Hurst exponent H > 0.55 or macro yield shock is active, the drift parameter theta approaches 0 and the process converts into geometric Brownian trend expansion. Mean-reversion fade is invalidated.",
+        "literature": "Uhlenbeck & Ornstein (1930) Physical Review; Sinclair (2010) 'Volatility Trading'; Chan (2013) Wiley"
+    },
+    {
+        "fact_id": "kyle_obizhaeva_invariance",
+        "canonical_name": "Microstructure Invariance and Volatility-Scaled Sweep Radii",
+        "trade_scientists": "Albert S. Kyle & Anna A. Obizhaeva (2016)",
+        "synonyms": "market microstructure invariance sweep depth kyle obizhaeva sweep radius volatility scaling transaction rate beta invariance",
+        "microstructure_reality": "The distribution of bets, transactions, and price impact scales with a universal invariant transaction rate: W = (P * V) / sigma. Stop-run sweep depth is not a static dollar amount; it scales strictly proportionally to daily volatility sigma.",
+        "crowd_implication": "Never use fixed-point stop-loss buffers across different market conditions. When daily volatility expands, algorithmic stop sweeps overshoot swing levels by 2-3x their normal point depth.",
+        "evidence_required": "Gold ATR expands; sweep wicks extend 4-8 points beyond pivots rather than 1-2 points.",
+        "invalidation_boundary": "In ultra-low volatility compression regimes (ATR bottom decile), sweep overshoots are tight and compact (<1.5 points).",
+        "literature": "Kyle & Obizhaeva (2016) 'Market Microstructure Invariance', Econometrica"
+    },
+    {
+        "fact_id": "roll_effective_spread_autocovariance",
+        "canonical_name": "Roll's Effective Spread and Serial Order Flow Autocovariance",
+        "trade_scientists": "Richard Roll (1984)",
+        "synonyms": "roll spread effective spread bid ask bounce autocovariance serial covariance noise bounce quote bounce transition to trend",
+        "microstructure_reality": "In balancing markets, bid-ask bounce introduces negative first-order serial covariance in price changes: Spread = 2 * sqrt(-Cov(dP_t, dP_t-1)). When serial covariance suddenly flips from negative to positive, the market has transitioned from market-maker balancing to informed institutional accumulation.",
+        "crowd_implication": "Do not mistake price oscillation inside the effective spread for structural breakout. As long as serial autocovariance is negative, price is merely ping-ponging between dealer quotes.",
+        "evidence_required": "Consecutive ticks alternate positive and negative signs inside a 2-3 point band with flat volume.",
+        "invalidation_boundary": "When 3+ consecutive ticks print in the same direction with expanding volume, serial covariance flips positive and trend discovery is initiated.",
+        "literature": "Roll (1984) 'A Simple Implicit Measure of the Effective Bid-Ask Spread', Journal of Finance"
+    },
+    {
+        "fact_id": "disposition_effect_breakeven_wall",
+        "canonical_name": "The Disposition Effect and Trapped Retail Breakeven Supply",
+        "trade_scientists": "Hersh Shefrin & Meir Statman (1985), Terrance Odean (1998)",
+        "synonyms": "disposition effect breakeven exit trapped retail supply trapped buyers breakeven relief rally second chance exit relief selling",
+        "microstructure_reality": "Retail traders exhibit severe loss aversion, refusing to realize losses but eagerly closing underwater positions at exact breakeven. When price returns to a high-volume congestion zone from earlier in the session, a massive wave of retail breakeven sell/buy orders hits the book, forming a physical supply/demand barrier.",
+        "crowd_implication": "When price retests a morning breakdown level where retail previously went long, expect heavy selling resistance as trapped traders dump positions at breakeven ('second-chance relief').",
+        "evidence_required": "Price returns to a prior session congestion POC; tape velocity slows and limit order depth visibly swells as breakeven orders flood the book.",
+        "invalidation_boundary": "If price blows straight through the breakeven level with velocity >100 t/m and positive delta, trapped traders have already been forced-liquidated and will not supply inventory.",
+        "literature": "Shefrin & Statman (1985) Journal of Finance; Odean (1998) Journal of Finance"
+    },
+    {
+        "fact_id": "amihud_illiquidity_void",
+        "canonical_name": "Amihud Illiquidity Ratio and Return-to-Volume Displacement",
+        "trade_scientists": "Yakov Amihud (2002)",
+        "synonyms": "amihud ratio illiquidity ratio return to volume empty candle volume void low volume bar false expansion paper candle",
+        "microstructure_reality": "Illiquidity is quantified by the ratio of absolute price return to dollar volume: ILLIQ_t = |R_t| / Volume_t. A massive price bar formed on tiny volume indicates high illiquidity (vacuum traversal), NOT genuine institutional buying power.",
+        "crowd_implication": "Do not chase large expansion candles that have tiny tick volume. High Amihud ratio proves the move was an effortless slide through an empty book that will collapse upon meeting the first real limit order shelf.",
+        "evidence_required": "Candle body is >4 points but tick volume is in the bottom 20th percentile of recent bars.",
+        "invalidation_boundary": "Authentic institutional trend bars have low Amihud ratios (massive executed volume accompanying each point of price advancement).",
+        "literature": "Amihud (2002) 'Illiquidity and Stock Returns', Journal of Financial Markets"
     }
 ]
 
@@ -135,11 +212,12 @@ def init_market_facts_db():
             );
         """)
         
-        # Check if table already populated
+        # Check if table needs re-seeding
         cursor = conn.execute("SELECT COUNT(*) FROM market_facts_fts")
         count = cursor.fetchone()[0]
         
-        if count == 0:
+        if count != len(CORE_FACTS):
+            conn.execute("DELETE FROM market_facts_fts;")
             for f in CORE_FACTS:
                 conn.execute("""
                     INSERT INTO market_facts_fts (

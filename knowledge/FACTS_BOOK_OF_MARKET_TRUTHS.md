@@ -106,6 +106,59 @@ Every price change is the physical result of order flow interacting with limit o
   - **Responsive Activity**: Price testing outside value with low volume is rejected back toward the Point of Control (POC).
   - **Initiative Activity**: Price departing value with high volume/delta establishes new price discovery.
 
+### 14. Alvaro Cartea, Sebastian Jaimungal & X. Frank Wang (Oxford / Toronto / JFM - 2015, 2020)
+* **Landmark Work**: *"Algorithmic and High-Frequency Trading"* (Cambridge Univ Press, 2015) & *"Spoofing and Price Manipulation in Limit Order Books"* (*Journal of Financial Markets*, 2020).
+* **Microstructure Proof**:
+  - Algorithmic market manipulators post large passive limit orders (phantom depth) to artificially alter visible order book skew, inducing retail breakout market orders, then cancel within microseconds before execution.
+  - **Invalidation Guard**: If the resting wall actually executes and transacts with high printed tick volume, it is authentic institutional accumulation, NOT a spoof.
+
+### 15. Alan G. Hawkes, Emmanuel Bacry & Jean-François Muzy (Biometrika / Quantitative Finance - 1971, 2013)
+* **Landmark Work**: *"Spectra of Some Self-Exciting and Mutually Exciting Point Processes"* (1971) & *"Some Properties of the Mutually Exciting, Multifactor Hawkes Process in Financial Markets"* (2013).
+* **Microstructure Proof**:
+  - Order book liquidations follow mutually exciting Hawkes processes: the execution of one stop order increases the conditional intensity of adjacent stop executions in an avalanche branching ratio ($\eta > 1$).
+  - A stop run does not halt at the first retail stop level; it accelerates exponentially through the entire stop density cluster until the branching ratio drops below criticality ($\eta < 1$).
+  - **Invalidation Guard**: The cascade is terminated when trade arrival rate drops sharply and resting limit quotes replenish with spreads tightening back to baseline.
+
+### 16. George Uhlenbeck & Leonard Ornstein (1930) / Euan Sinclair (2010) / Ernie Chan (2013)
+* **Landmark Work**: *"On the Theory of the Brownian Motion"* (1930), *"Volatility Trading"* (Wiley, 2010), *"Algorithmic Trading: Winning Strategies"* (Wiley, 2013).
+* **Microstructure Proof**:
+  - Intraday price deviations from the Volume Point of Control (POC) follow a stochastic Ornstein-Uhlenbeck mean-reverting process:
+    $$dX_t = \theta (\mu - X_t) dt + \sigma dW_t$$
+    Where $\theta$ is the rate of mean reversion, with a half-life of $t_{1/2} = \frac{\ln(2)}{\theta}$.
+  - When price extends $>2.5\sigma$ from the POC without fundamental news, gravitational drift back toward the POC increases monotonically with elapsed time.
+  - **Invalidation Guard**: If Hurst exponent $H > 0.55$ or macro yield shock is active, $\theta \to 0$ and the market is in geometric Brownian trend expansion. Mean-reversion fade is invalidated.
+
+### 17. Albert S. Kyle & Anna A. Obizhaeva (Princeton / Econometrica - 2016)
+* **Landmark Work**: *"Market Microstructure Invariance: Empirical Hypotheses"*, *Econometrica*, Vol. 84, No. 4, pp. 1345–1404.
+* **Microstructure Proof**:
+  - The distribution of bets, transactions, and price impact scales with a universal invariant transaction rate:
+    $$W = \frac{P \cdot V}{\sigma}$$
+  - Stop-run sweep depth is not a static dollar amount; it scales strictly proportionally to daily volatility $\sigma$. Sweep buffers must expand/contract dynamically based on ATR.
+  - **Invalidation Guard**: In ultra-low volatility compression regimes, sweep overshoots are tight and compact ($<1.5$ points); in high volatility, sweeps overshoot by $4 - 8$ points.
+
+### 18. Richard Roll (UCLA / Journal of Finance - 1984)
+* **Landmark Work**: *"A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market"*, *Journal of Finance*, Vol. 39, No. 4, pp. 1127–1139.
+* **Microstructure Proof**:
+  - In balancing markets, bid-ask bounce introduces negative first-order serial covariance in price changes:
+    $$\text{Spread} = 2 \cdot \sqrt{-\text{Cov}(\Delta P_t, \Delta P_{t-1})}$$
+  - When serial covariance suddenly flips from negative to positive, the market has transitioned from market-maker balancing to informed institutional accumulation.
+  - **Invalidation Guard**: As long as serial autocovariance remains negative, price is merely bouncing between dealer quotes; do not trade perceived breakouts inside the effective spread.
+
+### 19. Hersh Shefrin & Meir Statman (1985) / Terrance Odean (1998)
+* **Landmark Work**: *"The Disposition Effect in Securities Trading"* (*Journal of Finance*, 1985) & *"Are Investors Reluctant to Realize Their Losses?"* (*Journal of Finance*, 1998).
+* **Microstructure Proof**:
+  - Retail traders exhibit severe loss aversion, refusing to realize losses but eagerly closing underwater positions at exact breakeven.
+  - When price returns to a high-volume congestion zone from earlier in the session, a massive wave of retail breakeven sell/buy orders hits the book, forming a physical supply/demand barrier.
+  - **Invalidation Guard**: If price slices through the breakeven level with velocity $>100$ t/m and positive delta, trapped traders have already been forced-liquidated and will not supply inventory.
+
+### 20. Yakov Amihud (NYU Stern / Journal of Financial Markets - 2002)
+* **Landmark Work**: *"Illiquidity and Stock Returns: Cross-Section and Time-Series Effects"*, *Journal of Financial Markets*, Vol. 5, No. 1, pp. 31–56.
+* **Microstructure Proof**:
+  - Illiquidity is quantified by the ratio of absolute price return to dollar volume:
+    $$\text{ILLIQ}_t = \frac{|R_t|}{\text{Volume}_t}$$
+  - A massive price bar formed on tiny volume indicates high illiquidity (vacuum traversal), NOT genuine institutional buying power.
+  - **Invalidation Guard**: Authentic institutional trend bars have low Amihud ratios (massive executed volume accompanying each point of price advancement).
+
 ---
 
 ## 3. The 4 Market Scenarios: How It Totally Works vs. How It Turns Against Us
