@@ -5,9 +5,10 @@
 Transparent, Real-Time Market Driver Classification Engine.
 Determines whether the market is currently driven by:
 1. MACRO_EVENT_ACTIVE: Active scheduled high-impact macro release window (T-30m to T+15m)
-2. GEOPOLITICAL_SHOCK_DRIFT: Unscheduled breaking event confirmed by MT5 tape surge (>80 t/m + CVD spike)
-3. MACRO_DIRECTIONAL_PRESSURE: No immediate release, but dominant macro anchor (e.g. DFII10 Real Yields > 2.40%) skews HTF bias
-4. PURE_TECHNICAL_ORDERFLOW: No high-impact events today; tape is normal; price is 100% driven by VAH/VAL/FVG and liquidity sweeps
+2. GEOPOLITICAL_SHOCK_DRIFT: Unscheduled breaking event confirmed by climactic tape surge (>200 t/m + large displacement)
+3. ACTIVE_SESSION_FLOW: Normal active session flow (80-199 t/m) with two-way liquidity
+4. MACRO_DIRECTIONAL_PRESSURE: Dominant macro anchor (DFII10 Real Yields > 2.35%) providing HTF drift
+5. PURE_TECHNICAL_ORDERFLOW: Calm tape, balanced macro; price is driven by VAH/VAL/FVG and liquidity sweeps
 
 Exposes BOTH the high-level regime label AND the exact raw numbers/formulas
 behind it to eliminate black-box hallucinations without context bloat.
@@ -299,21 +300,32 @@ class CatalystArbiterEngine:
                     except Exception:
                         pass
 
+                    # High-impact breaking keywords specifically indicating immediate real-time market shocks
+                    CRITICAL_SHOCK_KEYWORDS = [
+                        "EMERGENCY", "MISSILE", "STRIKE", "INVASION", "DECLARES WAR", "EXPLOSION",
+                        "SURPRISE RATE", "INTERVENE", "SANCTION BAN", "SHUTDOWN"
+                    ]
+                    title_upper = h_title.upper()
+                    is_critical_headline = any(kw in title_upper for kw in CRITICAL_SHOCK_KEYWORDS)
+
                     # Physical Verification: Did the tape react to this headline?
-                    # Baseline tick velocity in calm state is 22 t/m.
-                    surge_ratio = round(tick_velocity_tpm / 22.0, 2)
+                    # Baseline tick velocity in normal session is ~40-60 t/m.
+                    surge_ratio = round(tick_velocity_tpm / 45.0, 2)
                     
-                    if tick_velocity_tpm >= 60.0 or abs(disp_4m_pts) >= 4.0:
+                    if is_critical_headline and (tick_velocity_tpm >= 180.0 or abs(disp_4m_pts) >= 6.0):
                         abs_state = "CONFIRMED_BREAKING_SHOCK"
-                    elif surge_ratio < 1.4 and abs(disp_4m_pts) < 1.5:
-                        abs_state = "IGNORED_BY_CROWD"
+                    elif surge_ratio >= 1.8 and abs(disp_4m_pts) >= 4.0:
+                        abs_state = "SESSION_MOMENTUM_SURGE"
+                    elif surge_ratio < 1.2 and abs(disp_4m_pts) < 2.0:
+                        abs_state = "IGNORED_BY_TAPE"
                     else:
-                        abs_state = "MODERATE_ABSORPTION"
+                        abs_state = "ROUTINE_FLOW"
 
                     in_between_news_info = {
                         "latest_headline": h_title,
                         "category": h_cat,
                         "minutes_ago": h_mins,
+                        "is_critical_breaking": is_critical_headline,
                         "tape_velocity_tpm": tick_velocity_tpm,
                         "velocity_surge_ratio": surge_ratio,
                         "post_headline_cvd_ratio": cvd_5m_ratio,
@@ -385,17 +397,17 @@ class CatalystArbiterEngine:
         
         # 1. Macro Z-score: neutral baseline is 2.10% (standard dev = 0.15%)
         z_macro = max(0.0, (dfii10_yield - 2.10) / 0.15) if dfii10_yield > 0 else 0.0
-        macro_force = z_macro * 1.5  # Scalar for asset pricing power
+        macro_force = z_macro * 1.2  # Fundamental backdrop pressure
 
         # 2. Calendar Proximity Weight
         min_dt_min = min(next_event["minutes_away"] if next_event else 9999.0, last_event["minutes_ago"] if last_event else 9999.0)
         w_event_shock = 10.0 / (1.0 + (min_dt_min / 15.0)**2)  # Explodes to ~10.0 at T-0, decays to <0.05 past 3h
 
-        # 3. Tape Volatility Force
-        tape_force = max(0.2, tick_velocity_tpm / 35.0)
+        # 3. Tape Volatility Force (Baseline active session velocity is ~60-80 t/m)
+        tape_force = max(0.2, tick_velocity_tpm / 55.0)
 
-        # 4. Base Technical Structural Weight (Algorithmic auctions always carry a baseline floor)
-        base_tech = 1.0
+        # 4. Base Technical Structural Weight (Orderflow auctions always govern entries/exits)
+        base_tech = 1.5
 
         # Sum of competing dynamic forces
         total_forces = macro_force + w_event_shock + tape_force + base_tech
@@ -419,34 +431,42 @@ class CatalystArbiterEngine:
         if next_event and next_event["minutes_away"] <= 30.0:
             regime = "MACRO_EVENT_ACTIVE"
             label_justification = f"High-Impact release '{next_event['title']}' ({next_event['country']}) is imminent in {next_event['minutes_away']}m (Calendar Shock: {pct_event}%)."
-            actionable_directive = "HIGH VOLATILITY FREEZE: Do not place new market/limit orders into the release path. Maintain structural stops."
+            actionable_directive = "HIGH VOLATILITY WINDOW: Macro release imminent. Expect sudden spread expansion and slippage. Anchor pending orders outside immediate noise or wait for release prints."
             pricing_power = f"EVENT_SHOCK_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
         elif last_event and last_event["minutes_ago"] <= 15.0:
             regime = "MACRO_EVENT_ACTIVE"
-            label_justification = f"High-Impact release '{last_event['title']}' occurred {last_event['minutes_ago']}m ago. Spread expansion & slippage active (Post-Shock: {pct_event}%)."
+            label_justification = f"High-Impact release '{last_event['title']}' occurred {last_event['minutes_ago']}m ago. Post-release volatility settling (Post-Shock: {pct_event}%)."
             actionable_directive = "POST-RELEASE SETTLEMENT: Let initial 15-minute whipsaw settle before entering structural retest trades."
             pricing_power = f"POST_RELEASE_SETTLEMENT_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Rule 2: Geopolitical Shock Surge (Unscheduled News with Tape Surge)
-        elif tick_velocity_tpm >= 80.0:
+        # Rule 2: True Climactic Shock Surge (Verified breaking headline + climactic velocity >= 200 t/m or 4m displacement >= 8 pts)
+        elif in_between_news_info.get("is_critical_breaking") and (tick_velocity_tpm >= 200.0 or abs(disp_4m_pts) >= 8.0):
             regime = "GEOPOLITICAL_SHOCK_DRIFT"
-            label_justification = f"Tape velocity surged to {tick_velocity_tpm:.1f} t/m (>80 threshold) with spread {live_spread_pts} pts. Dynamic tape momentum: {pct_tape}%."
-            actionable_directive = "BREAKING MOMENTUM SHOCK: Respect the immediate impulse. Do not fade blindly; wait for first structural exhaustion/pause."
-            pricing_power = f"TAPE_MOMENTUM_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
+            label_justification = f"Breaking shock '{in_between_news_info['latest_headline'][:40]}' verified with climactic velocity {tick_velocity_tpm:.1f} t/m and displacement {disp_4m_pts:+.1f} pts."
+            actionable_directive = "CLIMACTIC SHOCK IMPULSE: Extreme one-way order flow active. If trading impulse, join on shallow M1 FVG retests with tight stops; do not fade until climactic volume exhausts."
+            pricing_power = f"BREAKING_SHOCK_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Rule 3: Zero Scheduled News Today -> Pure Technical / Macro Ceiling
+        # Rule 3: Active Session Flow / Normal Liquid Expansion (velocity 80-199 t/m)
+        elif tick_velocity_tpm >= 80.0:
+            regime = "ACTIVE_SESSION_FLOW"
+            label_justification = f"Normal active session tape velocity {tick_velocity_tpm:.1f} t/m with spread {live_spread_pts} pts (Tape: {pct_tape}%, Tech: {pct_tech}%)."
+            actionable_directive = f"ACTIVE AUCTION: Normal session liquidity. CVD ratio {cvd_5m_ratio:+.2f}. Trade both sides freely: align with initiative flow if 10-bar delta is persistent, or trade responsive mean-reversion at structural extremes (POC {poc_price:.2f}, VAH/VAL) if price sweeps liquidity with absorption."
+            pricing_power = f"SESSION_FLOW_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
+
+        # Rule 4: High Real Yield Gravity without upcoming scheduled shock
+        elif dfii10_yield >= 2.35 and (not next_event or next_event.get("hours_away", 99) > 4.0):
+            regime = "MACRO_DIRECTIONAL_PRESSURE"
+            holiday_note = " (US Bank Holiday / Quiet Calendar)" if is_holiday_today else ""
+            label_justification = f"Background macro influenced by DFII10 Real Yields at {dfii10_yield}% (+{z_macro:.1f}sigma deviation){holiday_note}. Background macro share: {pct_macro}%."
+            actionable_directive = f"ASYMMETRIC AUCTION BIAS: Real yield overhang provides structural tailwind for shorts, but counter-trend scalps remain fully valid at extreme demand (VAL, PDL sweeps, Wyckoff springs). Size by setup quality and maintain explicit structural SL."
+            pricing_power = f"MACRO_YIELD_{pct_macro:.0f}%_TECHNICALS_{pct_tech:.0f}%"
+
+        # Rule 5: Pure Technical Orderflow
         elif len(high_impact_today) == 0:
-            if dfii10_yield >= 2.30:
-                regime = "MACRO_DIRECTIONAL_PRESSURE"
-                holiday_note = " (US Bank Holiday / Quiet Calendar)" if is_holiday_today else " (Empty Calendar Today)"
-                label_justification = f"Zero high-impact releases today{holiday_note}. Background macro dominated by DFII10 Real Yields at {dfii10_yield}% (+{z_macro:.1f}σ hawkish deviation), exerting a fundamental ceiling."
-                actionable_directive = "FADE RALLIES AT RESISTANCE: Macro yield overhang is bearish gold. Trade in direction of macro (SELL), but strictly at technical extremes (VAH/FVG). Do NOT chase breakout wicks."
-                pricing_power = f"MACRO_YIELD_{pct_macro:.0f}%_TECHNICALS_{pct_tech:.0f}%"
-            else:
-                regime = "PURE_TECHNICAL_ORDERFLOW"
-                label_justification = f"Zero high-impact releases today. Real yields neutral. Tape is calm ({tick_velocity_tpm:.0f} t/m). Algorithmic liquidity hunts and range boundaries dominate."
-                actionable_directive = "TRADE 100% BY STRUCTURE: Ignore minor news headlines. Price is navigating between Value Area (VAH/VAL) and liquidity pools."
-                pricing_power = f"TECHNICALS_{pct_tech:.0f}%_TAPE_{pct_tape:.0f}%"
+            regime = "PURE_TECHNICAL_ORDERFLOW"
+            label_justification = f"Zero high-impact releases today. Real yields baseline. Tape velocity {tick_velocity_tpm:.0f} t/m. Pure auction orderflow dominates."
+            actionable_directive = f"STRUCTURE-DRIVEN AUCTION: Price navigating between Value Area (VAH/VAL) and liquidity pools. Trade responsive mean-reversion at extremes or breakout expansions with CVD confirmation."
+            pricing_power = f"TECHNICALS_{pct_tech:.0f}%_TAPE_{pct_tape:.0f}%"
 
         else:
             # High impact event later today, but >30m away
@@ -461,11 +481,11 @@ class CatalystArbiterEngine:
         air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
         h_snippet = in_between_news_info['latest_headline'][:45] + "..." if len(in_between_news_info['latest_headline']) > 45 else in_between_news_info['latest_headline']
         
-        badge_line1 = f"⚡ REGIME: {regime} | Pricing Power: {pricing_power}"
-        badge_line2 = f"• Tape & Cross-Asset: Velocity {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts} pts) | CVD Ratio {cvd_5m_ratio:+.2f} | 4m Disp {disp_4m_pts:+.2f} pts (Rng {range_4m_pts:.2f}) | EURUSD 5m {eurusd_5m_pct:+.3f}% | XAGUSD 5m {xagusd_5m_pct:+.3f}%"
-        badge_line3 = f"• In-Between News: \"{h_snippet}\" ({in_between_news_info['minutes_ago']}m ago) | Status: {in_between_news_info['market_absorption_state']} (Tape {in_between_news_info['velocity_surge_ratio']}x baseline)"
-        badge_line4 = f"• Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
-        badge_line5 = f"• Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
+        badge_line1 = f"[REGIME] {regime} | Pricing Power: {pricing_power}"
+        badge_line2 = f"- Tape & Cross-Asset: Velocity {tick_velocity_tpm:.0f} t/m (Spread {live_spread_pts} pts) | CVD Ratio {cvd_5m_ratio:+.2f} | 4m Disp {disp_4m_pts:+.2f} pts (Rng {range_4m_pts:.2f}) | EURUSD 5m {eurusd_5m_pct:+.3f}% | XAGUSD 5m {xagusd_5m_pct:+.3f}%"
+        badge_line3 = f"- In-Between News: \"{h_snippet}\" ({in_between_news_info['minutes_ago']}m ago) | Status: {in_between_news_info['market_absorption_state']} (Tape {in_between_news_info['velocity_surge_ratio']}x baseline)"
+        badge_line4 = f"- Auction & Macro: POC {poc_price:.2f} | Air Pockets: Below {air_below_str} / Above {air_above_str} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f} pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f} pts) | Real Yield {dfii10_yield}% | Next: {next_ev_str}"
+        badge_line5 = f"- Mandatory Directive: {actionable_directive} (Audit raw metrics via get_market_regime_context before modifying or executing orders)."
         compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}"
 
         return {
