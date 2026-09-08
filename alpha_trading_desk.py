@@ -950,7 +950,7 @@ class ConsolidatedTradingDaemon:
                     f"Reason: {triggered_watch.get('reason')}\n\n"
                     f"Action Required: MANDATORY FIRST CALL: get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}') to audit real-time pricing power and tape kinetics. "
                     f"Then execute pre-execution validation (get_live_microstructure, get_account_status). "
-                    f"If order flow and breakout conditions confirm, execute trade immediately (execute_trade) with defined structural SL/TP and calibrated 0.1-1.0 lots. "
+                    f"If order flow and breakout conditions confirm, stage order via place_pending_order or execute via execute_trade with defined structural SL/TP and calibrated 0.1-1.0 lots. "
                     f"If conditions are invalidated, cancel and register updated watch."
                 )
             elif is_rule_turn:
@@ -959,7 +959,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
-                    f"You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514551285). Review and strictly adhere to these core principles:\n\n"
+                    f"You are OpenCode, the sole quantitative reasoner orchestrating the Alpha algorithmic desk. Review and strictly adhere to these core principles:\n\n"
                     f"1. MANDATORY REAL-TIME REGIME, CROWD TRAP & SCIENTIFIC FACTS AUDIT (EVERY WAKE):\n"
                     f"• On EVERY wake, call (1) get_market_regime_context(symbol='XAUUSD'), (2) get_crowd_trap_map(symbol='XAUUSD', limit=6), and as the 3rd step call (3) get_market_scientific_fact(query=..., symbol='XAUUSD') before acting or deciding to wait.\n"
                     f"• Purpose: (a) Verify macro yield vs technical pricing power shares. (b) Audit raw tape velocity, CVD ratio (-1 to +1), and 4m interval displacement to avoid standing in front of violent kinetic air pockets. (c) Anchor invalidations and targets to raw volume POC, Low Volume Air Pockets, and PDH/PDL. (d) Verify trade scientist invalidation boundaries (Brunnermeier, Bouchaud, Kyle, Steidlmayer, Hasbrouck) to confirm whether institutions are absorbing or driving the move.\n\n"
