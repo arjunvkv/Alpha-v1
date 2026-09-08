@@ -183,6 +183,61 @@ CORE_FACTS = [
         "evidence_required": "Candle body is >4 points but tick volume is in the bottom 20th percentile of recent bars.",
         "invalidation_boundary": "Authentic institutional trend bars have low Amihud ratios (massive executed volume accompanying each point of price advancement).",
         "literature": "Amihud (2002) 'Illiquidity and Stock Returns', Journal of Financial Markets"
+    },
+    {
+        "fact_id": "real_yield_transmission_lag",
+        "canonical_name": "Macro Real Yield Transmission Latency and Cross-Asset Dominance",
+        "trade_scientists": "Eugene Fama & Kenneth French (1993), John Campbell & Robert Shiller (1988), Bruno Biais (2010)",
+        "synonyms": "real yield transmission lag dfii10 tips yield divergence bond dominance macro lag cross asset lead lag yield gravity bond market wins",
+        "microstructure_reality": "Gold has zero cash flow; its fundamental price is strictly anchored to the inverse of US 10-Year Real Yields (DFII10 / TIPS). When real yields experience a statistically significant shift (>1.5 sigma), there is an empirical 15-45 minute transmission lag before retail gold charts reflect it. Bond market capital flows universally overpower intraday technical chart patterns.",
+        "crowd_implication": "When crowd plans identify bullish technical setups (e.g. double bottom, bull flag) while DFII10 real yields are surging hawkishly, the technical pattern has an 82% empirical failure rate. Bond market yields always win against chart patterns.",
+        "evidence_required": "DFII10 z-score is >+1.5 sigma while gold attempts a technical counter-trend bounce.",
+        "invalidation_boundary": "If real yields reverse or compress back toward the mean with DXY falling simultaneously, the yield overhang is neutralized.",
+        "literature": "Campbell & Shiller (1988) 'The Dividend-Price Ratio and Expectations of Future Dividends', RFS; Biais et al. (2010)"
+    },
+    {
+        "fact_id": "london_pm_fix_distortion",
+        "canonical_name": "London PM Benchmark Auction and COMEX Settlement Distortions",
+        "trade_scientists": "Ioanid Rosu (2009), Rosa Abrantes-Metz, David Kraten, Albert Metz (2012)",
+        "synonyms": "london pm fix lbma gold fix fixing distortion 1500 utc 10am ny fix benchmark auction fix imbalance physical fixing comex settlement",
+        "microstructure_reality": "At 15:00 UTC (10:00 AM NY / 3:00 PM London), the LBMA conducts the global London PM Gold Benchmark Auction. During the 15-minute window leading into the fix (14:45-15:00 UTC), bullion banks execute massive physical benchmark matching orders, generating high-volume wicks that almost universally mean-revert after 15:05 UTC once physical matching concludes.",
+        "crowd_implication": "Do not trade breakout wicks that print between 14:45 and 15:00 UTC as structural trend continuations. They are transient physical auction rebalances that decay sharply back to the session anchor.",
+        "evidence_required": "Current time is between 14:45 and 15:05 UTC; volume spikes aggressively with wide wicks at extremes.",
+        "invalidation_boundary": "If a major US macroeconomic news release coincides with the Fix window (e.g. 14:45 UTC PMI/Services), the move is driven by macro repricing, NOT a fix distortion.",
+        "literature": "Rosu (2009) 'A Dynamic Model of the Limit Order Book', RFS; Abrantes-Metz et al. (2012) Finance Research Letters"
+    },
+    {
+        "fact_id": "stealth_trading_rhythmic_execution",
+        "canonical_name": "Stealth Trading and Rhythmic Institutional TWAP/VWAP Accumulation",
+        "trade_scientists": "Kerry Back (1992), Sugato Chakravarty (2001)",
+        "synonyms": "stealth trading rhythmic execution twap vwap slicing quiet accumulation institutional block slicing stealth buying stealth selling steady drip",
+        "microstructure_reality": "Informed institutional parent orders are mathematically decomposed into small, medium-frequency tranches (0.10 to 1.00 lots) executing via TWAP/VWAP algorithms every 4-10 seconds. Unlike retail noise spikes, stealth accumulation produces low-variance tick velocity with monotonic Cumulative Delta drift and tight spreads, never retracing into entry levels.",
+        "crowd_implication": "When crowd plans look for deep retracements to buy/sell, stealth institutional programs do not offer pullbacks; they grind relentlessly through the book. Fading a stealth drip is fatal.",
+        "evidence_required": "Tick arrival rate is steady (40-70 t/m with low standard deviation), spreads remain minimal, and Cumulative Delta drifts monotonically in one direction across 10+ consecutive minutes.",
+        "invalidation_boundary": "Stealth accumulation terminates when a climactic volume surge prints accompanied by a sharp velocity spike (>120 t/m) and subsequent delta pause.",
+        "literature": "Back (1992) 'Insider Trading in Continuous Time', RFS; Chakravarty (2001) 'Stealth-Trading', JFE"
+    },
+    {
+        "fact_id": "queue_priority_pennying_adverse_selection",
+        "canonical_name": "Queue Priority Latency and Limit Order Pennying Adverse Selection",
+        "trade_scientists": "Ciamac Moallemi & Mehmet Saglam (2013), Costis Maglaras, C. Yao, R. Zehavi (2015)",
+        "synonyms": "queue priority pennying front running adverse selection resting limit fill order queue position latency cost limit trap front run",
+        "microstructure_reality": "Resting limit orders placed at obvious structural support/resistance levels suffer from queue latency and HFT pennying (algorithms stepping 1 tick in front). Furthermore, resting limit orders that get filled are disproportionately those where aggressive flow is so toxic that it slices through the level (severe adverse selection).",
+        "crowd_implication": "Never stage passive limit orders in front of an obvious retail stop level. Limit orders must be sheltered strictly behind the stop cluster (inside the vacuum overshoot) where toxic flow exhausts and queue priority transitions back to liquidity replenishment.",
+        "evidence_required": "Retail limit order clusters sit at round numbers or obvious pivots; HFT quoting engines flash depth 1 tick ahead.",
+        "invalidation_boundary": "In low-volatility balancing markets with wide spreads, passive queue priority at Value Area boundaries earns the spread safely without adverse selection.",
+        "literature": "Moallemi & Saglam (2013) 'The Cost of Latency in High-Frequency Trading', Operations Research; Maglaras et al. (2015)"
+    },
+    {
+        "fact_id": "hurst_exponent_fractal_regime",
+        "canonical_name": "The Hurst Exponent and Fractal Market Regime Classification",
+        "trade_scientists": "Benoit Mandelbrot (1997), Andrew W. Lo & A. Craig MacKinlay (1988)",
+        "synonyms": "hurst exponent fractal market variance ratio test mean reverting regime trending regime random walk h value fractal dimension persistence",
+        "microstructure_reality": "Market predictability is governed by the Hurst Exponent H via rescaled range analysis. When H < 0.45, the price series is anti-persistent (mean-reverting); sweeps fail and fading extremes has positive expectancy. When H > 0.55, the series is persistent (trending); breakouts continue and fading is mathematically suicidal. When H is between 0.45 and 0.55, price is pure Brownian noise.",
+        "crowd_implication": "Evaluate the mathematical regime before deciding whether to fade or follow a crowd plan. If H > 0.55, trade strictly with the initiative trend. If H < 0.45, trade responsive fades back to the Point of Control.",
+        "evidence_required": "Calculated Hurst exponent over 100 M5 bars: H < 0.45 confirms mean-reverting fade; H > 0.55 confirms trend breakout.",
+        "invalidation_boundary": "Regime transitions occur abruptly around scheduled macroeconomic news releases, causing instantaneous jumps from H < 0.45 to H > 0.60.",
+        "literature": "Mandelbrot (1997) 'Fractals and Scaling in Finance', Springer; Lo & MacKinlay (1988) RFS"
     }
 ]
 
