@@ -84,7 +84,7 @@ Let us examine the exact market mechanics of the last 3 trading days, dissecting
      - POC remains above price at 4418 (overhead resistance shelf).
   4. **The Action**:
      - **DO NOT TOUCH THE TRADE.** Do not tighten the stop into the noise zone. Keep SL securely anchored behind the structural shelf (4424.50).
-     - If momentum accelerates downward through 4408, **extend the TP deeper to 4395 (HTF liquidity)**.
+     - **Dynamic TP Calibration (Avoid Moving Goalposts)**: Pre-plan structural TP (e.g. 4400). You are free to dynamically calibrate TP as conditions evolve — pulling it nearer to bank and protect gains if momentum stalls or absorption appears, or adjusting it slightly further away toward major unmitigated structural liquidity (e.g. 4395 HTF liquidity) if real-time order flow strongly confirms continuation. However, strictly avoid the emotional "moving-goalpost trap": never greedily push TP away during a rapid price rush without objective structural backing, risking an adverse snapback that erases banked gains.
      - Outcome: Captured the full **+$1,500 runner** instead of getting chopped out for pennies.
 
 ---

@@ -941,8 +941,7 @@ class ConsolidatedTradingDaemon:
                     f"3. ACTIVE POSITION RESILIENCE & PROFIT PROTECTION:\n"
                     f"• NO TRAILING STOPS.\n"
                     f"• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
-                    f"• Manage strictly via structural SL/TP adjustments (update_position). If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor while strictly observing FTMO drawdown limits.\n"
-                    f"• Extend TP for higher R:R (>= 2.5:1) as momentum accelerates toward deeper institutional liquidity targets.\n\n"
+                    f"• DYNAMIC TP CALIBRATION & AVOID THE MOVING-GOALPOST TRAP: Pre-plan structural TP targets offering high R:R (>= 2.5:1). You are free to dynamically calibrate TP as conditions evolve — pulling it nearer to bank and protect profits if momentum stalls or absorption walls appear, or adjusting it slightly further away toward major liquidity magnets if order flow strongly favors continuation. However, strictly avoid the emotional 'moving-goalpost trap': never greedily push TP away during a rapid price rush without objective structural support, risking an adverse snapback that erases gains.\n\n"
                     f"4. VOLATILITY EXPANSIONS & ANTI-PARALYSIS:\n"
                     f"• Market repricing and volatility shocks produce two distinct behaviors: (i) an initial liquidity shakeout/sweep followed by reversal, OR (ii) an immediate direct momentum breakout without pullbacks. Actively prepare for BOTH paths via bifurcated staging (discount limit + breakout watch).\n"
                     f"• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
@@ -1001,7 +1000,7 @@ class ConsolidatedTradingDaemon:
                     f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
                     f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
                     f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
-                    f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
+                    f"• DYNAMIC TP CALIBRATION & AVOID MOVING GOALPOSTS: Pre-plan structural TP (>= 2.5:1). You are free to adjust TP dynamically as conditions evolve — pulling it nearer to bank gains if momentum stalls, or adjusting it slightly further away toward major liquidity magnets if order flow strongly confirms expansion. Avoid the moving-goalpost trap: never greedily push TP away during a rapid price rush without objective structural backing.\n"
                     f"• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
                     f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
                 )
