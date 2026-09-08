@@ -156,10 +156,21 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 
 ---
 
-## 4. GOLDEN DIRECTIVES FOR OPENCODE CIO
+## 4. GOLDEN DIRECTIVES FOR OPENCODE CIO (THE AUTONOMOUS SYMMETRY PLAYBOOK)
 
-1. **Never fight real macro yields when their pricing power share is >50%.** If yields are rising, sell resistance; never buy support wicks.
-2. **Never treat candle wicks as directional breakouts without checking CVD.** High velocity + opposite delta = institutional trap/absorption.
-3. **Never chase market orders into mid-range chop.** Use limit orders at value area extremes and persistent watches at breakout thresholds.
-4. **Once in a trade, let market structure govern the exit.** Trust validated HTF support/resistance shelves. Never market-kill an active position out of minor noise.
-5. **Pre-plan orders across the 4-minute gap using crowd traps.** Use `get_market_regime_context` for macro/flow direction and `get_crowd_trap_map` to identify where retail traders are placing breakout triggers. Stage pending limit orders at the retail breakout exhaustion point, targeting their stop-loss clusters for high R:R profit harvesting.
+1. **Evaluate Macro Yield Gravity Without Dogma**: Real yields (DFII10) provide structural background drift, NOT a micro-execution command. Trade in direction of macro yields during initiative runs, but never blind-fade a liquidity raid just because macro is tilted.
+2. **Discriminate Initiative Trends vs. Balancing Ranges**:
+   - **Initiative Regime (CVD 10-bar persistent >1.5σ, Velocity >80 t/m)**: Do NOT demand deep 50%+ pullbacks. Institutions execute via stealth TWAP slicing; enter on shallow M5/M15 Fair Value Gap edges.
+   - **Balancing Regime (CVD oscillating, Velocity <40 t/m)**: Fade Value Area boundaries (VAH/VAL) back to the Volume Point of Control (POC).
+3. **The Liquidity Raid Harvest Rule (TP-1 Scale)**:
+   - When holding a trend runner into a known equal-highs or equal-lows stop cluster, take 50% profit (TP-1) 1.0 point before the stops trigger. 
+   - Never let a winning runner round-trip into a temporary impact snapback. 
+   - If CVD delta absorbs at the stop pool with velocity stalling, a tactical counter-trend scalp back to POC is mathematically valid.
+4. **Deploy Dual-Tier Split Staging (Eliminate Goalpost Moving)**:
+   - Never place a single large order at an extreme price that gets left behind.
+   - When anticipating an institutional ceiling/floor, split into two tranches:
+     - **Tier 1 (Tactical Probe - 0.10 lot)**: Staged at the local M15 FVG / VWAP boundary to capture quick rejections.
+     - **Tier 2 (Structural Scale - 0.15 lot)**: Staged deeper at the HTF H1 FVG Consequent Encroachment / Air Pocket Void.
+5. **Never Treat Candle Wicks as Breakouts Without Checking CVD**: High velocity + opposite delta = institutional trap/absorption.
+6. **Pre-plan Orders Across the 4-Minute Gap Using Crowd Traps**: Audit `get_crowd_trap_map` to see where retail breakout stops congregate, and use `get_market_scientific_fact` to apply the governing trade scientist law to your setup.
+

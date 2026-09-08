@@ -25,7 +25,7 @@ CORE_FACTS = [
         "trade_scientists": "Markus Brunnermeier & Lasse Pedersen (2005), Larry Harris (2003)",
         "synonyms": "equal lows equal highs stop hunt sweep raid double bottom break double top break ssl bsl fakeout support pierce resting stops liquidation spike stop cascade trap liquidity grab liquidity pool liquidity sweep buy side liquidity sell side liquidity",
         "microstructure_reality": "Resting stop clusters are predatory liquidity magnets. Strategic algorithms intentionally drive price through equal lows/highs to trigger forced market orders, unlocking zero-slippage counterparty volume for large institutional absorption.",
-        "crowd_implication": "When crowd plans show stops clustered tightly under equal lows or above equal highs, the breakdown/breakout is a planned predatory raid. Price will overshoot into the stops before mean-reverting sharply.",
+        "crowd_implication": "When crowd plans show stops clustered tightly under equal lows or above equal highs, the breakdown/breakout is a planned predatory raid. If holding a trend runner into the stops, take 50% profit (TP-1) 1.0 point before the stops trigger. Price will overshoot into the stops before mean-reverting sharply.",
         "evidence_required": "Price pierces the stop cluster, CVD delta shows positive absorption or volume stalls, and tape velocity drops from >90 down to <40 t/m.",
         "invalidation_boundary": "If velocity stays >80 t/m with expanding directional delta (>3000 pts) and H1 closure beyond the level, this is INITIATIVE EXPANSION, NOT a trap. DO NOT FADE.",
         "literature": "Brunnermeier & Pedersen (2005) 'Predatory Trading', Journal of Finance"
@@ -58,7 +58,7 @@ CORE_FACTS = [
         "trade_scientists": "J. Doyne Farmer & Fabrizio Lillo (2004), J. Peter Steidlmayer (1986)",
         "synonyms": "initiative selling initiative buying strong trend momentum run breakdown continuation displacement bos market structure break expansion leg heavy volume",
         "microstructure_reality": "Order flow is not a random walk; trade signs exhibit power-law long-memory autocorrelation. High-velocity departure from the Point of Control with expanding one-sided delta exhibits self-exciting persistence. This is Initiative Discovery seeking new balance.",
-        "crowd_implication": "Retail crowd attempts to buy dips or fade back to the POC during an initiative drive are fighting a multi-million dollar liquidation wave. They provide trapped exit liquidity for trend continuation.",
+        "crowd_implication": "Do not fight persistent order flow by fading an active institutional drive. If 10-bar CVD is persistent (>1.5 sigma), do not wait for deep 50%+ pullbacks; enter on shallow M5/M15 Fair Value Gap retests in direction of the drive. Retail crowds attempting to fade back to POC during an initiative drive provide trapped exit liquidity.",
         "evidence_required": "Price departs Value Area with velocity >80 t/m, one-sided CVD expansion with zero divergence, and clean candle closes outside range.",
         "invalidation_boundary": "Initiative persistence is exhausted only when a high-volume absorption node prints with tape velocity falling <40 t/m and delta slope reversing.",
         "literature": "Farmer & Lillo (2004) 'Power-law tails in financial prices'; Steidlmayer (1986) 'Auction Market Theory'"
@@ -91,7 +91,7 @@ CORE_FACTS = [
         "trade_scientists": "Robert Almgren & Neil Chriss (2000), Jean-Philippe Bouchaud (2018)",
         "synonyms": "temporary impact impact decay mean reversion bounce square root law snap back wick rejection snap back wick recovery counter sweep",
         "microstructure_reality": "Aggressive market sweeps displace price non-linearly (I ~ sqrt(Q/V)), but this displacement is overwhelmingly temporary impact. Once the stop-liquidation volume is satisfied, temporary impact decays exponentially, snapping price back to equilibrium.",
-        "crowd_implication": "Do not trail stop losses into the sweep zone or move take-profit targets further away. The snap-back decay happens rapidly; bank profit at fair value before opposing quote replenishment.",
+        "crowd_implication": "Do not trail stop losses into the sweep zone or move take-profit targets further away. The snap-back decay happens rapidly; bank profit at fair value before opposing quote replenishment. If velocity stalls (<40 t/m) post-sweep and delta absorbs, a tactical counter-trend scalp back to the Session POC has positive mathematical expectancy (half-life 15-20 min).",
         "evidence_required": "Price spikes 3-8 points outside a key level on stop trigger, then immediately prints a counter-bar with falling velocity.",
         "invalidation_boundary": "If price holds beyond the level for more than 3 consecutive 5-minute candles with expanding volume, temporary impact has converted into permanent informational drift.",
         "literature": "Almgren & Chriss (2000) Journal of Risk; Bouchaud et al. (2018)"

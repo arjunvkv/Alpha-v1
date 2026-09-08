@@ -431,7 +431,7 @@ class CatalystArbiterEngine:
         elif tick_velocity_tpm >= 80.0:
             regime = "GEOPOLITICAL_SHOCK_DRIFT"
             label_justification = f"Tape velocity surged to {tick_velocity_tpm:.1f} t/m (>80 threshold) with spread {live_spread_pts} pts. Dynamic tape momentum: {pct_tape}%."
-            actionable_directive = "BREAKING MOMENTUM SHOCK: Respect the immediate impulse. Do not fade blindly; wait for first structural exhaustion/pause."
+            actionable_directive = "MOMENTUM SURGE ACTIVE: Velocity elevated (>80 t/m). Evaluate tape direction & delta persistence. In initiative runs, trade shallow FVG tests; do not fade blind without structural absorption."
             pricing_power = f"TAPE_MOMENTUM_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
         # Rule 3: Zero Scheduled News Today -> Pure Technical / Macro Ceiling
@@ -440,19 +440,19 @@ class CatalystArbiterEngine:
                 regime = "MACRO_DIRECTIONAL_PRESSURE"
                 holiday_note = " (US Bank Holiday / Quiet Calendar)" if is_holiday_today else " (Empty Calendar Today)"
                 label_justification = f"Zero high-impact releases today{holiday_note}. Background macro dominated by DFII10 Real Yields at {dfii10_yield}% (+{z_macro:.1f}σ hawkish deviation), exerting a fundamental ceiling."
-                actionable_directive = "FADE RALLIES AT RESISTANCE: Macro yield overhang is bearish gold. Trade in direction of macro (SELL), but strictly at technical extremes (VAH/FVG). Do NOT chase breakout wicks."
+                actionable_directive = "MACRO ASYMMETRY ACTIVE: Real yield ceiling (+2.2σ) provides macro gravity. INITIATIVE REGIME: If 10-bar delta is persistent, trade shallow M5/M15 FVG tests. RANGE/EXCESS REGIME: Fade value extremes. LIQUIDITY RAIDS: Bank TP-1 at equal highs/lows and expect transient snapbacks."
                 pricing_power = f"MACRO_YIELD_{pct_macro:.0f}%_TECHNICALS_{pct_tech:.0f}%"
             else:
                 regime = "PURE_TECHNICAL_ORDERFLOW"
                 label_justification = f"Zero high-impact releases today. Real yields neutral. Tape is calm ({tick_velocity_tpm:.0f} t/m). Algorithmic liquidity hunts and range boundaries dominate."
-                actionable_directive = "TRADE 100% BY STRUCTURE: Ignore minor news headlines. Price is navigating between Value Area (VAH/VAL) and liquidity pools."
+                actionable_directive = "AUCTION SYMMETRY ACTIVE: Price navigating Value Area (VAH/VAL) and liquidity pools. Trade responsive mean-reversion at boundaries; if velocity breaks >80 with delta, switch to initiative continuation."
                 pricing_power = f"TECHNICALS_{pct_tech:.0f}%_TAPE_{pct_tape:.0f}%"
 
         else:
             # High impact event later today, but >30m away
             regime = "PRE_EVENT_ANTICIPATION"
             label_justification = f"High-impact event '{high_impact_today[0]['title']}' scheduled for today in {next_event['hours_away']}h."
-            actionable_directive = "RANGE BOUND COMPRESSION: Expect technical equilibrium until release window. Target modest intraday targets (1:2 R:R)."
+            actionable_directive = "RANGE BOUND COMPRESSION: Expect technical equilibrium until release window. Exploit value area rotations with modest targets (1:2 R:R)."
             pricing_power = f"ANTICIPATION_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
         # Construct comprehensive, ultra-compact prompt badge (zero bloat, pure raw stats)
