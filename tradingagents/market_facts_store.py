@@ -23,7 +23,7 @@ CORE_FACTS = [
         "fact_id": "predatory_stop_hunt",
         "canonical_name": "Predatory Liquidity Hunting at Clustered Stops",
         "trade_scientists": "Markus Brunnermeier & Lasse Pedersen (2005), Larry Harris (2003)",
-        "synonyms": "equal lows equal highs stop hunt sweep raid double bottom break double top break ssl bsl fakeout support pierce resting stops liquidation spike stop cascade trap",
+        "synonyms": "equal lows equal highs stop hunt sweep raid double bottom break double top break ssl bsl fakeout support pierce resting stops liquidation spike stop cascade trap liquidity grab liquidity pool liquidity sweep buy side liquidity sell side liquidity",
         "microstructure_reality": "Resting stop clusters are predatory liquidity magnets. Strategic algorithms intentionally drive price through equal lows/highs to trigger forced market orders, unlocking zero-slippage counterparty volume for large institutional absorption.",
         "crowd_implication": "When crowd plans show stops clustered tightly under equal lows or above equal highs, the breakdown/breakout is a planned predatory raid. Price will overshoot into the stops before mean-reverting sharply.",
         "evidence_required": "Price pierces the stop cluster, CVD delta shows positive absorption or volume stalls, and tape velocity drops from >90 down to <40 t/m.",
