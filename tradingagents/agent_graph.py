@@ -242,13 +242,7 @@ class RiskManager:
                 "study_required": bool(similar_mistakes),
                 "veto_authority": False
             },
-            "risk_guidance": {
-                "max_volume_lots": 0.10,
-                "standard_production_lots": 0.10,
-                "pilot_probe_lots": 0.02,
-                "max_risk_pct": 1.5
-            },
-            "reason": "Standard production trades sized at 0.10 lots for high-conviction setups; empirical probes sized at 0.01-0.05 lots."
+            "reason": "Available lots are 0.10 to 1.00 scaled based on analysis confidence."
         }
 
 from tradingagents.multitimeframe import MultiTimeframeAnalyst, OrderBlockEngine

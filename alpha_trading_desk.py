@@ -638,7 +638,7 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Bull Points: {debate.get('bull_points', [])} | Bear Points: {debate.get('bear_points', [])} | Structural Risk: {'WARNING' if debate.get('structural_risk_warning') else 'CLEAR'}")
-                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Max Volume: {risk.get('max_volume_lots')} lots | Rationale: {risk.get('reason')}")
+                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Guidance: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
                 instrument_matrix.append(f"• {symbol}: DATA_UNAVAILABLE — analysis error (see alpha.log); excluded from this cycle's matrix.")
@@ -922,7 +922,7 @@ class ConsolidatedTradingDaemon:
                     f"Reason: {triggered_watch.get('reason')}\n\n"
                     f"Action Required: MANDATORY FIRST CALL: get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}') to audit real-time pricing power and tape kinetics. "
                     f"Then execute pre-execution validation (get_live_microstructure, get_account_status). "
-                    f"If order flow and breakout conditions confirm, execute trade immediately (execute_trade) with defined structural SL/TP and calibrated 0.1-1.0 lots. "
+                    f"If order flow and breakout conditions confirm, stage order via place_pending_order or execute via execute_trade with defined structural SL/TP and calibrated 0.1-1.0 lots. "
                     f"If conditions are invalidated, cancel and register updated watch."
                 )
             elif is_rule_turn:
@@ -931,7 +931,7 @@ class ConsolidatedTradingDaemon:
                     f"=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
-                    f"You are OpenCode, the sole market/trading reasoner on FTMO MetaTrader 5 ($100K account #1514395146). Review and strictly adhere to these core principles:\n\n"
+                    f"You are OpenCode, the sole quantitative reasoner orchestrating the Alpha algorithmic desk on FTMO MetaTrader 5 ($100K account #1514551285). Review and strictly adhere to these core principles:\n\n"
                     f"1. MANDATORY REAL-TIME REGIME & RAW MICROSTRUCTURE AUDIT (EVERY WAKE):\n"
                     f"• On EVERY wake, review get_market_regime_context(symbol='XAUUSD') before acting or deciding to wait.\n"
                     f"• Purpose: (a) Verify macro yield vs technical pricing power shares. (b) Audit raw tape velocity, CVD ratio (-1 to +1), and 4m interval displacement to avoid standing in front of violent kinetic air pockets. (c) Anchor invalidations and targets to raw volume POC, Low Volume Air Pockets, and PDH/PDL.\n\n"
@@ -964,7 +964,7 @@ class ConsolidatedTradingDaemon:
                     f"MANDATORY STEP 0: Audit get_market_regime_context(symbol='XAUUSD') before brainstorming to establish macro vs technical pricing power shares.\n"
                     f"Brainstorm with 5 new questions about current market conditions involving all new catalysts and news. "
                     f"Use proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
-                    f"Calibrate position sizing (0.1 - 1.0 lots) strictly against catalyst pricing power. "
+                    f"Available lots are 0.10 to 1.00 scaled based on analysis confidence. "
                     f"Always pull the latest news, replan pending orders whenever new news is retrieved, and check get_market_time_context."
                 )
             else:
@@ -1002,6 +1002,7 @@ class ConsolidatedTradingDaemon:
                     f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
                     f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
                     f"• EXTEND TP FOR HIGHER R:R: When momentum accelerates in our favor, adjust fixed TP to deeper institutional liquidity targets.\n"
+                    f"• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
                     f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
                 )
             post_to_opencode_session("", prompt)

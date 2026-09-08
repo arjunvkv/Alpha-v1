@@ -174,7 +174,7 @@ class DeepDossierLogger:
             md_lines.append(f"- **Macro Intermarket Telemetry**: DXY `{macro.get('dxy', 101.4)}` | US10Y `{macro.get('us10y', 4.25)}%` | VIX `{macro.get('vix', 15.8)}` | News Shield: `{news.get('status_text', 'CLEAR')}` | {macro.get('thesis', 'N/A')}")
             md_lines.append(f"- **Bull vs. Bear Debate Breakdown**: Bull Catalysts ({len(debate.get('bull_points', []))}): `{debate.get('bull_points', [])}` | Bear Risks ({len(debate.get('bear_points', []))}): `{debate.get('bear_points', [])}` | Regime Divergence: `{'YES' if debate.get('is_regime_conflict') else 'NO'}` | Structural Risk Warning: `{'YES' if debate.get('structural_risk_warning') else 'NO'}`")
             md_lines.append(f"- **Proxima Quantitative Research Findings (Port 3210)**: Engine Status: `{prox_status}` | Microstructure Synthesis: {prox_synth}")
-            md_lines.append(f"- **Risk Officer Agent Telemetry**: Recommended Max Lot Size: `{risk.get('max_volume_lots', 0.10)} lots` | Sizing Rationale: `{risk.get('reason')}`")
+            md_lines.append(f"- **Risk Officer Guidance**: `{risk.get('reason')}`")
             md_lines.append("")
 
         full_md_content = "\n".join(md_lines)

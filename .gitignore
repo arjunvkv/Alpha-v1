@@ -25,3 +25,4 @@ ENV/
 .vscode/
 *.swp
 *.tmp
+config/mt5_credentials.json
