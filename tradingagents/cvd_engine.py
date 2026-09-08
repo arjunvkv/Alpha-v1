@@ -103,9 +103,22 @@ class CumulativeVolumeDeltaEngine:
                 current_m1_velocity = 0.0
                 avg_5m_velocity = 0.0
 
-            # Adverse velocity warning (loss clusters occur when velocity > 120 t/m into setup)
-            is_high_velocity = current_m1_velocity > 120.0 or avg_5m_velocity > 120.0
-            velocity_posture = "HIGH_VELOCITY_SPIKE (>120 t/m)" if is_high_velocity else ("MODERATE_FLOW (60-120 t/m)" if current_m1_velocity >= 60.0 else "LOW_COMPRESSION (<60 t/m)")
+            # Real-time tape velocity posture (M1 is primary; trailing avg confirms persistence)
+            if current_m1_velocity >= 180.0:
+                velocity_posture = "CLIMACTIC_SURGE (>=180 t/m)"
+                is_high_velocity = True
+            elif current_m1_velocity >= 80.0:
+                velocity_posture = "ACTIVE_SESSION_FLOW (80-179 t/m)"
+                is_high_velocity = False
+            elif current_m1_velocity >= 40.0:
+                velocity_posture = "MODERATE_FLOW (40-79 t/m)"
+                is_high_velocity = False
+            else:
+                velocity_posture = "LOW_COMPRESSION (<40 t/m)"
+                is_high_velocity = False
+
+            # Adverse velocity warning: only true when live tape is genuinely climactic (>180 t/m)
+            adverse_velocity_warning = is_high_velocity
 
             # Order book imbalance read
             book_imbalance = "BALANCED"
