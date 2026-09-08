@@ -1653,7 +1653,7 @@ def mark_evidence_read(evidence_ids: List[str]) -> str:
 
 @mcp.tool()
 def get_market_regime_context(symbol: str = "XAUUSD") -> str:
-    """Retrieve transparent real-time market driver regime classification (PURE_TECHNICAL_ORDERFLOW, MACRO_DIRECTIONAL_PRESSURE, MACRO_EVENT_ACTIVE, or GEOPOLITICAL_SHOCK_DRIFT) with complete raw metrics (events today, tape velocity t/m, spread pts, real yield %, upcoming event countdown) and actionable trade directive."""
+    """Retrieve transparent real-time market driver regime classification (PURE_TECHNICAL_ORDERFLOW, MACRO_DIRECTIONAL_PRESSURE, MACRO_EVENT_ACTIVE, or ACTIVE_SESSION_FLOW) with complete raw metrics (events today, tape velocity t/m, spread pts, real yield %, upcoming event countdown) and actionable trade directive."""
     from tradingagents.catalyst_arbiter import CatalystArbiterEngine
     sym = _normalize_symbol(symbol)
     read_logger.log_dossier_read("OpenCode CIO (MCP Regime Context)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested market regime classification & driver transparency for {sym}")

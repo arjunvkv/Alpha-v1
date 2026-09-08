@@ -5,10 +5,9 @@
 Transparent, Real-Time Market Driver Classification Engine.
 Determines whether the market is currently driven by:
 1. MACRO_EVENT_ACTIVE: Active scheduled high-impact macro release window (T-30m to T+15m)
-2. GEOPOLITICAL_SHOCK_DRIFT: Unscheduled breaking event confirmed by climactic tape surge (>200 t/m + large displacement)
-3. ACTIVE_SESSION_FLOW: Normal active session flow (80-199 t/m) with two-way liquidity
-4. MACRO_DIRECTIONAL_PRESSURE: Dominant macro anchor (DFII10 Real Yields > 2.35%) providing HTF drift
-5. PURE_TECHNICAL_ORDERFLOW: Calm tape, balanced macro; price is driven by VAH/VAL/FVG and liquidity sweeps
+2. ACTIVE_SESSION_FLOW: Normal active session flow (>=80 t/m) with two-way liquidity
+3. MACRO_DIRECTIONAL_PRESSURE: Dominant macro anchor (DFII10 Real Yields > 2.35%) providing HTF drift
+4. PURE_TECHNICAL_ORDERFLOW: Calm tape, balanced macro; price is driven by VAH/VAL/FVG and liquidity sweeps
 
 Exposes BOTH the high-level regime label AND the exact raw numbers/formulas
 behind it to eliminate black-box hallucinations without context bloat.
@@ -586,21 +585,14 @@ class CatalystArbiterEngine:
             actionable_directive = "POST-RELEASE SETTLEMENT: Let initial 15-minute whipsaw settle before entering structural retest trades."
             pricing_power = f"POST_RELEASE_SETTLEMENT_{pct_event:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Rule 2: True Climactic Shock Surge (Verified breaking headline + climactic velocity >= 200 t/m or 4m displacement >= 8 pts)
-        elif in_between_news_info.get("is_critical_breaking") and (tick_velocity_tpm >= 200.0 or abs(disp_4m_pts) >= 8.0):
-            regime = "GEOPOLITICAL_SHOCK_DRIFT"
-            label_justification = f"Breaking shock '{in_between_news_info['latest_headline'][:40]}' verified with climactic velocity {tick_velocity_tpm:.1f} t/m and displacement {disp_4m_pts:+.1f} pts."
-            actionable_directive = "CLIMACTIC SHOCK IMPULSE: Extreme one-way order flow active. If trading impulse, join on shallow M1 FVG retests with tight stops; do not fade until climactic volume exhausts."
-            pricing_power = f"BREAKING_SHOCK_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
-
-        # Rule 3: Active Session Flow / Normal Liquid Expansion (velocity 80-199 t/m)
+        # Rule 2: Active Session Flow / Normal Liquid Expansion (velocity >= 80 t/m)
         elif tick_velocity_tpm >= 80.0:
             regime = "ACTIVE_SESSION_FLOW"
             label_justification = f"Normal active session tape velocity {tick_velocity_tpm:.1f} t/m with spread {live_spread_pts} pts (Tape: {pct_tape}%, Tech: {pct_tech}%)."
             actionable_directive = f"ACTIVE AUCTION: Normal session liquidity. CVD ratio {cvd_5m_ratio:+.2f}. Trade both sides freely: align with initiative flow if 10-bar delta is persistent, or trade responsive mean-reversion at structural extremes (POC {poc_price:.2f}, VAH/VAL) if price sweeps liquidity with absorption."
             pricing_power = f"SESSION_FLOW_{pct_tape:.0f}%_TECHNICALS_{pct_tech:.0f}%"
 
-        # Rule 4: High Real Yield Gravity without upcoming scheduled shock
+        # Rule 3: High Real Yield Gravity without upcoming scheduled shock
         elif dfii10_yield >= 2.35 and (not next_event or next_event.get("hours_away", 99) > 4.0):
             regime = "MACRO_DIRECTIONAL_PRESSURE"
             holiday_note = " (US Bank Holiday / Quiet Calendar)" if is_holiday_today else ""

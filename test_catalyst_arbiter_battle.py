@@ -38,13 +38,13 @@ def test_live_arbiter():
     print(f"Is holiday today: {raw['is_holiday_today']}")
     print(f"Tick velocity (t/m): {raw['tick_velocity_tpm']}")
     print(f"Live spread (pts): {raw['live_spread_pts']}")
-    print(f"DFII10 Real Yield: {raw['dfii10_real_yield_pct']}%")
+    print(f"DFII10 Real Yield: {raw['macro_yields']['dfii10_real_yield_pct']}%")
     print(f"Next scheduled event: {raw['next_scheduled_event']}")
     
     print("\n--- COMPACT PROMPT BADGE ---")
     print(res['compact_prompt_badge'])
     
-    assert res['regime'] in ["PURE_TECHNICAL_ORDERFLOW", "MACRO_DIRECTIONAL_PRESSURE", "MACRO_EVENT_ACTIVE", "GEOPOLITICAL_SHOCK_DRIFT", "PRE_EVENT_ANTICIPATION"]
+    assert res['regime'] in ["PURE_TECHNICAL_ORDERFLOW", "MACRO_DIRECTIONAL_PRESSURE", "MACRO_EVENT_ACTIVE", "ACTIVE_SESSION_FLOW", "PRE_EVENT_ANTICIPATION"]
     assert elapsed_ms < 1000.0, f"Latency exceeded 1000ms: {elapsed_ms:.2f}ms"
     print("\n>>> LIVE ARBITER TEST PASSED! <<<\n")
 
