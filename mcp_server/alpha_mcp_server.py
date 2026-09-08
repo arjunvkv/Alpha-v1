@@ -1685,8 +1685,10 @@ def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
     except Exception:
         pass
     raw_plans = get_crowd_trap_plans(sym, limit=min(limit, 20))
+    from tradingagents.market_facts_store import query_market_fact
     cleaned_plans = []
     for p in raw_plans:
+        fact = query_market_fact(p.get("headline", "") or p.get("trap_summary", ""), symbol=sym)
         cleaned_plans.append({
             "id": p.get("id"),
             "headline": p.get("headline"),
@@ -1696,6 +1698,12 @@ def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
             "bear_stops": p.get("bear_stops"),
             "trader_narrative": p.get("trader_narrative"),
             "trap_summary": p.get("trap_summary"),
+            "scientific_fact": {
+                "fact_id": fact.get("fact_id"),
+                "trade_scientists": fact.get("trade_scientists"),
+                "microstructure_principle": fact.get("microstructure_reality"),
+                "invalidation_boundary": fact.get("invalidation_boundary")
+            },
             "source": p.get("source"),
             "created_at": p.get("created_at")
         })
@@ -1707,7 +1715,8 @@ def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
             "bull_trigger": p.get("bull_trigger"),
             "bear_trigger": p.get("bear_trigger"),
             "bull_stops": p.get("bull_stops"),
-            "bear_stops": p.get("bear_stops")
+            "bear_stops": p.get("bear_stops"),
+            "fact_id": p.get("scientific_fact", {}).get("fact_id")
         }
         for p in cleaned_plans
     ]
@@ -1719,7 +1728,21 @@ def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
         "total_setups": len(cleaned_plans),
         "setups_comparison_matrix": comparison_table,
         "market_participants_technical_plans": cleaned_plans,
-        "pre_trade_planning_rule": "1. Macro regime (get_market_regime_context) sets master directional power. 2. Compare setups above to find where retail breakout clusters collide with institutional resistance/support. 3. Pre-stage pending limit orders at breakout exhaustion to harvest retail stop cascades."
+        "pre_trade_planning_rule": "1. Macro regime (get_market_regime_context) sets master directional power. 2. Compare setups above to find where retail breakout clusters collide with institutional resistance/support. 3. Call get_market_scientific_fact(query) to verify microstructure invalidation boundaries before executing."
+    }, indent=2)
+
+@mcp.tool()
+def get_market_scientific_fact(query: str = "", symbol: str = "XAUUSD") -> str:
+    """Query the Facts Book of Market Microstructure Truths written by trade scientists (Brunnermeier, Bouchaud, Kyle, Steidlmayer, Hasbrouck, Farmer, Glosten-Milgrom). Call this as the 3rd step after reviewing get_crowd_trap_map to verify the scientific cause-and-effect reality, invalidation boundaries, and whether institutions are absorbing or driving the current market state."""
+    from tradingagents.market_facts_store import query_market_fact
+    sym = _normalize_symbol(symbol)
+    fact = query_market_fact(query=query, symbol=sym)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Scientific Fact)", "PRE_TRADE_PLANNING", f"Queried scientific fact for '{query}' on {sym} -> {fact.get('fact_id')}")
+    return json.dumps({
+        "status": "SUCCESS",
+        "symbol": sym,
+        "query": query,
+        "scientific_fact": fact
     }, indent=2)
 
 # Internal Python aliases (not exposed as separate MCP tools to avoid tool catalog bloat)
