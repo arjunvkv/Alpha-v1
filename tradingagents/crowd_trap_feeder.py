@@ -332,8 +332,8 @@ CRITICAL REQUIREMENTS:
     LOG.info("[CROWD_TRAP_FEEDER] Using 100% raw algorithmic structural calculations.")
     return build_algorithmic_trap_plans(mkt)
 
-def ensure_fresh_crowd_plans(symbol: str = "XAUUSD", max_age_seconds: int = 600) -> int:
-    """Ensure the store has fresh crowd plans. Populates if empty or older than max_age_seconds."""
+def ensure_fresh_crowd_plans(symbol: str = "XAUUSD", max_age_seconds: int = 240, max_drift_pts: float = 3.0) -> int:
+    """Ensure the store has fresh crowd plans. Populates if empty, older than max_age_seconds, or if spot price drifted > max_drift_pts."""
     existing = get_crowd_trap_plans(symbol=symbol, limit=1)
     need_refresh = False
     
@@ -341,6 +341,7 @@ def ensure_fresh_crowd_plans(symbol: str = "XAUUSD", max_age_seconds: int = 600)
         need_refresh = True
     else:
         latest = existing[0]
+        # 1. Time-based cadence check (default: 4 mins / 240s)
         created_at_str = latest.get("created_at")
         if created_at_str:
             try:
@@ -354,6 +355,24 @@ def ensure_fresh_crowd_plans(symbol: str = "XAUUSD", max_age_seconds: int = 600)
                 need_refresh = True
         else:
             need_refresh = True
+            
+        # 2. Dynamic market condition / price drift check
+        if not need_refresh:
+            try:
+                import MetaTrader5 as mt5
+                _ensure_mt5_connected()
+                tick = mt5.symbol_info_tick(symbol)
+                if tick:
+                    cur_spot = float(tick.bid)
+                    b_trig = latest.get("bull_trigger")
+                    be_trig = latest.get("bear_trigger")
+                    if b_trig is not None and be_trig is not None:
+                        ref_price = (float(b_trig) + float(be_trig)) / 2.0
+                        if abs(cur_spot - ref_price) > max_drift_pts:
+                            LOG.info(f"[CROWD_TRAP_FEEDER] Market price moved {abs(cur_spot - ref_price):.2f} pts (> {max_drift_pts} pts); triggering immediate fresh crowd plan refresh for {symbol}.")
+                            need_refresh = True
+            except Exception:
+                pass
             
     if need_refresh:
         plans = fetch_fresh_crowd_plans(symbol)

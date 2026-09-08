@@ -1681,7 +1681,7 @@ def get_crowd_trap_map(symbol: str = "XAUUSD", limit: int = 6) -> str:
     from tradingagents.crowd_trap_feeder import ensure_fresh_crowd_plans
     sym = _normalize_symbol(symbol)
     try:
-        ensure_fresh_crowd_plans(sym, max_age_seconds=600)
+        ensure_fresh_crowd_plans(sym, max_age_seconds=240, max_drift_pts=3.0)
     except Exception:
         pass
     raw_plans = get_crowd_trap_plans(sym, limit=min(limit, 20))
