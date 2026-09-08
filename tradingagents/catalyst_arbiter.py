@@ -190,6 +190,7 @@ class CatalystArbiterEngine:
         nearest_fvg_below = None
         nearest_fvg_above = None
         roadway_100b = {}
+        highway_trail_m5 = []
         raw_ohlc_60b = {}
 
         # 30-value 4-minute aggregated footprint horizon (120 minutes of tape)
@@ -369,6 +370,9 @@ class CatalystArbiterEngine:
                         lows_100 = [float(r['low']) for r in r_100]
                         up_rail = round(max(highs_100), 1)
                         low_rail = round(min(lows_100), 1)
+                        n_bars = len(r_100) - 1
+                        up_ago = n_bars - max(i for i, h in enumerate(highs_100) if h == max(highs_100))
+                        low_ago = n_bars - min(i for i, l in enumerate(lows_100) if l == min(lows_100))
                         up_touches = sum(1 for h in highs_100 if abs(h - up_rail) <= tol)
                         low_touches = sum(1 for l in lows_100 if abs(l - low_rail) <= tol)
                         w_pts = round(up_rail - low_rail, 1)
@@ -378,8 +382,10 @@ class CatalystArbiterEngine:
                         roadway_100b[tf_name] = {
                             "up": up_rail,
                             "up_t": up_touches,
+                            "up_ago": up_ago,
                             "low": low_rail,
                             "low_t": low_touches,
+                            "low_ago": low_ago,
                             "w": w_pts,
                             "pos": p_pct
                         }
@@ -389,6 +395,16 @@ class CatalystArbiterEngine:
                             [round(float(r['open']), 1), round(float(r['high']), 1), round(float(r['low']), 1), round(float(r['close']), 1)]
                             for r in r_100[-60:]
                         ]
+
+                        # M5 Highway Trail (4 Checkpoints: 60b, 40b, 20b, Now)
+                        if tf_name == "M5":
+                            for cp in [40, 60, 80, 100]:
+                                if len(r_100) >= cp:
+                                    sub = r_100[:cp]
+                                    f_val = round(min(float(x['low']) for x in sub[-40:]), 1)
+                                    c_val = round(max(float(x['high']) for x in sub[-40:]), 1)
+                                    w_val = round(c_val - f_val, 1)
+                                    highway_trail_m5.append({'ago': 100 - cp, 'floor': f_val, 'ceil': c_val, 'w': w_val})
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
 
@@ -623,17 +639,19 @@ class CatalystArbiterEngine:
         air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
         next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
 
-        roadway_badge_str = " | ".join(f"{tf}: [{v['up']}({v['up_t']}x)|{v['low']}({v['low_t']}x)|W:{v['w']}|{v['pos']}%]" for tf, v in roadway_100b.items()) if roadway_100b else "None"
+        roadway_badge_str = " | ".join(f"{tf}: [{v['up']}({v['up_t']}x,{v['up_ago']}b)|{v['low']}({v['low_t']}x,{v['low_ago']}b)|W:{v['w']}|{v['pos']}%]" for tf, v in roadway_100b.items()) if roadway_100b else "None"
+        trail_m5_str = " -> ".join(f"[{t['floor']:.0f}-{t['ceil']:.0f}](W:{t['w']:.0f})" for t in highway_trail_m5) if highway_trail_m5 else "None"
 
         badge_line1 = f"[REGIME & FOOTPRINT] {regime} | Power: {pricing_power} | Bid: {curr_bid:.1f} (Spr {live_spread_pts}) | Vel: {tick_velocity_tpm:.0f} t/m"
         badge_line2 = f"- Coordinates: POC {poc_price:.1f} | PDL {pdl_price:.1f} ({dist_pdl_pts:+.1f}) | PDH {pdh_price:.1f} ({dist_pdh_pts:+.1f}) | FVG Below: {fvg_below_str} | FVG Above: {fvg_above_str}"
         badge_line3 = f"- 100b Roadways: {roadway_badge_str}"
+        badge_line3b = f"- M5 Highway Trail (60b->Now): {trail_m5_str}"
         badge_line4 = f"- 4M Footprint Deltas (30b=120m): {deltas_4m_str}"
         badge_line5 = f"- 4M Displacements (pts): {disp_4m_str}"
         badge_line6 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
         badge_line7 = f"- Macro & Flows: Real Yield {dfii10_yield}% | 10Y {us10y}% | DXY {dxy} | EURUSD 5m {eurusd_5m_pct:+.3f}% | Next: {next_ev_str}"
         badge_line8 = f"- Directive: {actionable_directive} (Audit full raw metrics via get_market_regime_context)."
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line8}"
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line3b}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line8}"
 
         return {
             "symbol": sym,
@@ -671,6 +689,7 @@ class CatalystArbiterEngine:
                     "nearest_fvg_above": nearest_fvg_above
                 },
                 "roadway_100b": roadway_100b,
+                "highway_trail_m5": highway_trail_m5,
                 "raw_ohlc_60b": raw_ohlc_60b,
                 "raw_footprints_4m_horizon": {
                     "description": "30 rolling non-overlapping 4-minute blocks covering trailing 120 minutes of tape (FIFO, index 29 is most recent)",
