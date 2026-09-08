@@ -189,6 +189,8 @@ class CatalystArbiterEngine:
         dist_pdl_pts = 0.0
         nearest_fvg_below = None
         nearest_fvg_above = None
+        roadway_100b = {}
+        raw_ohlc_60b = {}
 
         # 30-value 4-minute aggregated footprint horizon (120 minutes of tape)
         deltas_4m = []
@@ -331,11 +333,62 @@ class CatalystArbiterEngine:
                             elif bot > ref_price:
                                 above_fvgs.append(f)
                     if below_fvgs:
-                        nearest_fvg_below = max(below_fvgs, key=lambda x: float(x.get("top", 0.0)))
+                        nb = max(below_fvgs, key=lambda x: float(x.get("top", 0.0)))
+                        nearest_fvg_below = {
+                            "tf": nb.get("timeframe"),
+                            "type": nb.get("type"),
+                            "bot": round(float(nb.get("bottom", 0)), 1),
+                            "top": round(float(nb.get("top", 0)), 1),
+                            "ce": round(float(nb.get("consequent_encroachment", 0)), 1),
+                            "fill_pct": round(float(nb.get("fill_pct", 0)), 1)
+                        }
                     if above_fvgs:
-                        nearest_fvg_above = min(above_fvgs, key=lambda x: float(x.get("bottom", 0.0)))
+                        na = min(above_fvgs, key=lambda x: float(x.get("bottom", 0.0)))
+                        nearest_fvg_above = {
+                            "tf": na.get("timeframe"),
+                            "type": na.get("type"),
+                            "bot": round(float(na.get("bottom", 0)), 1),
+                            "top": round(float(na.get("top", 0)), 1),
+                            "ce": round(float(na.get("consequent_encroachment", 0)), 1),
+                            "fill_pct": round(float(na.get("fill_pct", 0)), 1)
+                        }
                 except Exception as _fvg_err:
                     LOG.debug(f"FVG matrix query error: {_fvg_err}")
+
+                # 4-Timeframe Real MT5 Data Ingestion (M5, M15, H1, H4): 100b Roadway Rails & 60-Bar OHLC
+                tf_specs = [
+                    ("M5", mt5.TIMEFRAME_M5, 0.8),
+                    ("M15", mt5.TIMEFRAME_M15, 0.8),
+                    ("H1", mt5.TIMEFRAME_H1, 1.5),
+                    ("H4", mt5.TIMEFRAME_H4, 1.5)
+                ]
+                for tf_name, tf_id, tol in tf_specs:
+                    r_100 = mt5.copy_rates_from_pos(sym, tf_id, 0, 100)
+                    if r_100 is not None and len(r_100) > 0:
+                        highs_100 = [float(r['high']) for r in r_100]
+                        lows_100 = [float(r['low']) for r in r_100]
+                        up_rail = round(max(highs_100), 1)
+                        low_rail = round(min(lows_100), 1)
+                        up_touches = sum(1 for h in highs_100 if abs(h - up_rail) <= tol)
+                        low_touches = sum(1 for l in lows_100 if abs(l - low_rail) <= tol)
+                        w_pts = round(up_rail - low_rail, 1)
+                        ref_p = curr_bid if curr_bid > 0 else float(r_100[-1]['close'])
+                        p_pct = round((ref_p - low_rail) / max(w_pts, 0.1) * 100.0, 1)
+
+                        roadway_100b[tf_name] = {
+                            "up": up_rail,
+                            "up_t": up_touches,
+                            "low": low_rail,
+                            "low_t": low_touches,
+                            "w": w_pts,
+                            "pos": p_pct
+                        }
+
+                        # 60 Real Physical OHLC bars (rounded to 1 decimal place: 0.10)
+                        raw_ohlc_60b[tf_name] = [
+                            [round(float(r['open']), 1), round(float(r['high']), 1), round(float(r['low']), 1), round(float(r['close']), 1)]
+                            for r in r_100[-60:]
+                        ]
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
 
@@ -562,25 +615,25 @@ class CatalystArbiterEngine:
 
         # Format last 10 M1 deltas & prices
         m1_recent_deltas_str = "[" + ", ".join(f"{int(d):+d}" for d in m1_deltas[-10:]) + "]" if m1_deltas else "[]"
-        m1_recent_prices_str = "[" + ", ".join(f"{p:.2f}" for p in m1_prices[-10:]) + "]" if m1_prices else "[]"
+        m1_recent_prices_str = "[" + ", ".join(f"{p:.1f}" for p in m1_prices[-10:]) + "]" if m1_prices else "[]"
 
-        fvg_below_str = f"[{nearest_fvg_below.get('timeframe', '')} {nearest_fvg_below.get('type', '')} {float(nearest_fvg_below.get('bottom', 0)):.2f}-{float(nearest_fvg_below.get('top', 0)):.2f} CE:{float(nearest_fvg_below.get('consequent_encroachment', 0)):.2f}]" if nearest_fvg_below else "None"
-        fvg_above_str = f"[{nearest_fvg_above.get('timeframe', '')} {nearest_fvg_above.get('type', '')} {float(nearest_fvg_above.get('bottom', 0)):.2f}-{float(nearest_fvg_above.get('top', 0)):.2f} CE:{float(nearest_fvg_above.get('consequent_encroachment', 0)):.2f}]" if nearest_fvg_above else "None"
+        fvg_below_str = f"[{nearest_fvg_below.get('tf', '')} {nearest_fvg_below.get('type', '')} {float(nearest_fvg_below.get('bot', 0)):.1f}-{float(nearest_fvg_below.get('top', 0)):.1f} CE:{float(nearest_fvg_below.get('ce', 0)):.1f}]" if nearest_fvg_below else "None"
+        fvg_above_str = f"[{nearest_fvg_above.get('tf', '')} {nearest_fvg_above.get('type', '')} {float(nearest_fvg_above.get('bot', 0)):.1f}-{float(nearest_fvg_above.get('top', 0)):.1f} CE:{float(nearest_fvg_above.get('ce', 0)):.1f}]" if nearest_fvg_above else "None"
         air_below_str = f"[{air_pocket_below[0]}-{air_pocket_below[1]}]" if air_pocket_below else "None"
         air_above_str = f"[{air_pocket_above[0]}-{air_pocket_above[1]}]" if air_pocket_above else "None"
         next_ev_str = f"{next_event['title']} in {next_event['hours_away']}h" if next_event else "None today"
 
-        badge_line1 = f"[REGIME & FOOTPRINT] {regime} | Pricing Power: {pricing_power} | Bid: {curr_bid:.2f} | Spread: {live_spread_pts} pts | Vel: {tick_velocity_tpm:.0f} t/m"
-        badge_line2 = f"- Coordinates: POC {poc_price:.2f} | PDL {pdl_price:.2f} ({dist_pdl_pts:+.1f}pts) | PDH {pdh_price:.2f} ({dist_pdh_pts:+.1f}pts) | Air Below: {air_below_str} | Air Above: {air_above_str}"
-        badge_line3 = f"- Shelves: FVG Below {fvg_below_str} | FVG Above {fvg_above_str}"
-        badge_line4 = f"- 4M Footprints (30 blocks = 120m, oldest->newest):"
-        badge_line5 = f"  Deltas: {deltas_4m_str}"
-        badge_line6 = f"  Displacements (pts): {disp_4m_str}"
-        badge_line7 = f"  Ranges (pts): {ranges_4m_str} | Low Wicks: {low_wicks_4m_str} | High Wicks: {high_wicks_4m_str}"
-        badge_line8 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
-        badge_line9 = f"- Macro & Flows: Real Yield {dfii10_yield}% | 10Y {us10y}% | DXY {dxy} | EURUSD 5m {eurusd_5m_pct:+.3f}% | Next: {next_ev_str}"
-        badge_line10 = f"- Directive: {actionable_directive} (Audit full raw metrics via get_market_regime_context)."
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line8}\n{badge_line9}\n{badge_line10}"
+        roadway_badge_str = " | ".join(f"{tf}: [{v['up']}({v['up_t']}x)|{v['low']}({v['low_t']}x)|W:{v['w']}|{v['pos']}%]" for tf, v in roadway_100b.items()) if roadway_100b else "None"
+
+        badge_line1 = f"[REGIME & FOOTPRINT] {regime} | Power: {pricing_power} | Bid: {curr_bid:.1f} (Spr {live_spread_pts}) | Vel: {tick_velocity_tpm:.0f} t/m"
+        badge_line2 = f"- Coordinates: POC {poc_price:.1f} | PDL {pdl_price:.1f} ({dist_pdl_pts:+.1f}) | PDH {pdh_price:.1f} ({dist_pdh_pts:+.1f}) | FVG Below: {fvg_below_str} | FVG Above: {fvg_above_str}"
+        badge_line3 = f"- 100b Roadways: {roadway_badge_str}"
+        badge_line4 = f"- 4M Footprint Deltas (30b=120m): {deltas_4m_str}"
+        badge_line5 = f"- 4M Displacements (pts): {disp_4m_str}"
+        badge_line6 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
+        badge_line7 = f"- Macro & Flows: Real Yield {dfii10_yield}% | 10Y {us10y}% | DXY {dxy} | EURUSD 5m {eurusd_5m_pct:+.3f}% | Next: {next_ev_str}"
+        badge_line8 = f"- Directive: {actionable_directive} (Audit full raw metrics via get_market_regime_context)."
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line8}"
 
         return {
             "symbol": sym,
@@ -617,6 +670,8 @@ class CatalystArbiterEngine:
                     "nearest_fvg_below": nearest_fvg_below,
                     "nearest_fvg_above": nearest_fvg_above
                 },
+                "roadway_100b": roadway_100b,
+                "raw_ohlc_60b": raw_ohlc_60b,
                 "raw_footprints_4m_horizon": {
                     "description": "30 rolling non-overlapping 4-minute blocks covering trailing 120 minutes of tape (FIFO, index 29 is most recent)",
                     "deltas": deltas_4m,
