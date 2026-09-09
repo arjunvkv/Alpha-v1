@@ -127,3 +127,63 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 8. **Calendar Date Grounding & Event Proximity Defense:** Never trade, wait for, or pause execution for a scheduled calendar event unless it is explicitly scheduled for the active current trading day. Inspect the Step 0 badge to verify whether an upcoming release is marked 'TODAY' or 'FUTURE':
    (a) **Events Scheduled for TODAY (Within Active Session):** If an upcoming event is marked 'TODAY' and is scheduled within the next 30 to 60 minutes (or inside the News Shield freeze window), DO NOT stage new positions or catch falling knives directly into the release. Stand aside, let the initial volatility explosion clear, and execute only after the post-event repricing structure is established.
    (b) **Events Scheduled on FUTURE Calendar Dates:** If an event is on a future date or over 12+ hours away on another calendar day, DO NOT treat it as an active catalyst for the current session, and do not withhold trades waiting for future events. When no high-impact events remain on today's calendar, trade active wire news catalysts and order-flow structure directly.
+
+---
+
+## 5. CASE STUDIES: THE 5 RECENT WINNING TRADES & THOUGHT PROCESS STYLES
+
+> [!IMPORTANT]
+> **CRITICAL DIRECTIVE: VALUE THE THOUGHT PROCESS STYLE — THESE ARE NOT RIGID RULES TO BE FOLLOWED.**
+> Markets are fluid, non-stationary auction environments. The case studies below are **NOT mechanical recipes, hardcoded rules, or rigid formulas** to be applied blindly. 
+> **Only the THOUGHT PROCESS STYLE should be valued and internalized**: how OpenCode observed raw tape pressure, how it formulated directional conviction from macro catalysts, how it reasoned through temporary adverse pullbacks, and how it anchored invalidations to institutional structural shelves. Always evaluate current live market reality over static dogma.
+
+### 🏆 Win 1 (Pos 538062016): The Structural Shelf Re-Anchor & Early Scratch
+* **Trade Data**: BUY 0.10 lots @ 4406.43 -> 4407.50 (+48.7m duration | Net +$10.08).
+* **Thought Process Style**:
+  1. **Macro & Value Area Context**: During London-NY overlap, gold held ground above the 4400 psychological barrier and retested the Volume Point of Control (POC 4401.0).
+  2. **Tape Reading**: M5 Bullish FVG (4398.5–4398.9) was defending price. 5-minute CVD printed **+0.28** and 10-bar net delta rose to **+12.9%**, confirming passive institutional limit buyers were absorbing sell market orders at the shelf.
+  3. **Stop Loss Anchoring**: Placed at **4397.50**, safely below the 4398.5 Bull FVG floor. Even though price consolidated between 4405–4406 for over 40 minutes, the pullback never came close to breaching the 4398 support block.
+  4. **The Exit Decision**: At 4407.50, tape velocity spiked to 125 t/m with an aggressive seller displacement block (-256 delta), indicating an H4 FVG supply wall rejection. OpenCode scratched the trade for +$10 rather than greedily holding into supply ahead of the US session.
+
+### 🏆 Win 2 (Pos 538204233): The M5 Bear FVG Premium Fade & Pivot Reversal
+* **Trade Data**: SELL 0.50 lots @ 4395.33 -> 4394.57 (+10.1m duration | Net +$34.92).
+* **Thought Process Style**:
+  1. **Algorithmic Premium Placement**: Staged a `SELL_LIMIT` at 4395.30 inside an unmitigated **M5 Bearish Fair Value Gap**. In consolidating or balanced markets, the initial touch of a fresh M5 Bear FVG triggers immediate institutional algorithm selling. The limit order caught the exact high tick at 4395.33.
+  2. **Stop Loss Defense**: Positioned at **4397.50** (above the M5 FVG ceiling). The rejection was immediate, dropping price to 4394 within minutes.
+  3. **Adaptive Macro Pivot**: OpenCode banked profit at 4394.57 because its live news feed detected a macro shift: DXY was slipping, US yields were softening, and buyers were mounting an aggressive bid to reclaim $4,400. OpenCode took profit early to avoid fighting the emerging bullish impulse.
+
+### 🏆 Win 3 (Pos 538213397): The M15 Breakout Stop & Roadway Highway Run
+* **Trade Data**: BUY 1.00 lots @ 4397.75 -> 4401.96 (+19.3m duration | Net +$414.84).
+* **Thought Process Style**:
+  1. **Breakout Stop Trigger (`BUY_STOP`)**: Right after closing the short, OpenCode staged a `BUY_STOP` at **4397.50** (the breakout level above the M15 Bear FVG 4396.2–4396.9).
+  2. **Reasoning in Logs**: *"M15 bear FVG break = premium entry. 90% news momentum is weak USD + safe-haven bid + gold reclaiming $4,400. Clearing the M15 FVG opens the roadway to 4402."*
+  3. **Stop Loss Anchoring**: Placed at **4393.30**. This was anchored **beneath the prior M5 swing low and the reclaimed FVG base**. Once buyers punched through the FVG with +11% delta, old resistance flipped into new support. Price only dipped to 4396.5 before rocketing.
+  4. **Target Discipline**: TP set at **4402.00** (just under the major 4403.0 overhead ask wall). Hit TP cleanly at 4401.96.
+
+### 🏆 Win 4 (Pos 538243241): The Shelf Defense & Higher Timeframe Magnet
+* **Trade Data**: BUY 0.70 lots @ 4403.63 -> 4413.16 (+43.0m duration | Net +$662.78).
+* **Thought Process Style**:
+  1. **Entry Alignment**: Entered long at **4403.53** (M15 Bear FVG top shelf). 10-bar delta was **+25.7%**, M1 prints were **+84/+89**, Level 2 book showed a **+0.58 bid wall at 4403.02**, and velocity was 113 t/m. Macro wire confirmed DXY dropping to 98.647 and US-Canada tariff escalation.
+  2. **Stop Loss Anchoring & The Crucial Hold**: Placed SL at **4398.50**. When price pulled back from 4406.4 to 4402.1 (showing a -$100 floating drawdown), OpenCode diagnosed:
+     > *"Price poked M15 bear FVG top and got a mild rejection back toward POC 4401 — an expected tug at supply, NOT a structural break. 10b delta +21.3% still positive, bid wall 4401.8 sits right under price. SL 4398.5 sits safely behind the M15 Bull FVG (4399.2–4399.5). HOLD — pressing-zone rejection is not a reversal."*
+     Because 4398.5 was guarded by the 4399.2 Bull FVG wall, the pullback never touched the stop. Price bounced off 4401.8 and expanded upward.
+  3. **Consequent Encroachment (CE) Magnet**: TP set at **4412.50**. The H1 Bear FVG (4409.3–4417.3) had its 50% midpoint (Consequent Encroachment) at **4413.3**. Price spiked to 4414.2, filling the 4412.5 TP at 4413.16.
+
+### 🏆 Win 5 (Pos 538349210): The Absorption-Maturity Breakout
+* **Trade Data**: BUY 0.50 lots @ 4401.06 -> 4413.17 (+14.4m duration | Net +$602.42).
+* **Thought Process Style**:
+  1. **Bifurcated Setup**: Price pulled back from 4414 to 4395. OpenCode staged a discount limit at 4389.0 and a `BUY_STOP` at **4401.06** (above the M5 Bear FVG midpoint at 4400.4).
+  2. **Absorption Diagnosis**: The 5-question brainstorm diagnosed: *"10-bar delta improved from -35.6% to -11.2%, last M1 printed +167/+44 delta, absorption phase is mature. Firing breakout prong."*
+  3. **Stop Loss Anchoring**: Placed at **4395.50** (just below the absorption floor at 4396.0). Because passive institutional buyers had absorbed all selling between 4395–4398, that level formed a hard floor.
+  4. **Target Execution**: TP set at **4415.10** (the M5 100-bar roadway upper boundary). Exited cleanly at 4413.17 for +$602.42.
+
+---
+
+## 6. SYNTHESIS: THE CORE COGNITIVE ATTRIBUTES
+
+| Attribute | What OpenCode Does (The Thinking Style) | Why It Protects the Account |
+| :--- | :--- | :--- |
+| **Entry Timing** | Uses `BUY_STOP` / `SELL_STOP` after delta confirmation (+10% to +25%) or limit orders at structural FVG shelves. | Avoids catching falling knives; ensures price is already accelerating in our direction. |
+| **Stop-Loss Anchoring** | Places SL behind **opposing FVG floors/ceilings and high-volume POC clusters** (e.g. SL 4398.5 behind the 4399.2 FVG). | Retracements retest the *entry shelf*, never reaching the *invalidation shelf*. |
+| **Pullback Tolerance** | Checks if 10-bar delta remains positive and bid walls remain intact during floating drawdowns. | Eliminates emotional panic cuts; lets winning positions breathe through normal retest wicks. |
+| **Take Profit Magnet** | Anchors targets to the **50% Consequent Encroachment (CE)** of higher-timeframe FVGs or 100b roadway limits. | Takes profit right before the exhaustion liquidity grab reverses back. |
