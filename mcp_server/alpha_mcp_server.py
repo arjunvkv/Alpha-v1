@@ -620,9 +620,17 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
         params = json.loads(params_json) if isinstance(params_json, str) and params_json.strip().startswith("{") else {}
         
         if act in ("BREAK_EVEN", "BREAKEVEN", "BE"):
-            new_sl = max(p.price_open, p.sl) if p.type == 0 else (min(p.price_open, p.sl) if p.sl > 0 else p.price_open)
+            tick_info = mt5.symbol_info_tick(symbol)
+            curr_price = tick_info.bid if p.type == 0 else tick_info.ask
+            # Validate that position is actually in profit before moving SL to break-even
+            if p.type == 0 and curr_price <= p.price_open:
+                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Cannot set Break-Even: BUY is currently underwater (bid {curr_price} <= entry {p.price_open}). SL must remain structural."})
+            if p.type == 1 and curr_price >= p.price_open:
+                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Cannot set Break-Even: SELL is currently underwater (ask {curr_price} >= entry {p.price_open}). SL must remain structural."})
+            
+            new_sl = p.price_open
             if abs(new_sl - p.sl) < 0.001:
-                return json.dumps({"status": "NO_CHANGE", "ticket": ticket, "sl": p.sl, "reason": "SL is already at or tighter than Break-Even"})
+                return json.dumps({"status": "NO_CHANGE", "ticket": ticket, "sl": p.sl, "reason": "SL is already at Break-Even"})
             req = {"action": mt5.TRADE_ACTION_SLTP, "position": p.ticket, "symbol": symbol, "sl": new_sl, "tp": p.tp}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
@@ -1326,6 +1334,13 @@ def mcp_alpha_get_live_microstructure(symbol: str = "XAUUSD") -> str:
     news_data = NewsShield().evaluate_news_freeze()
     sess_data = IntradayInstitutionalEngine().get_session_status()
 
+    # Level 2 Order Book & Resting Liquidity Depth
+    try:
+        from tradingagents.market_depth_engine import MarketDepthEngine
+        depth_data = MarketDepthEngine().get_full_market_depth(sym)
+    except Exception as _d_err:
+        depth_data = {"status": "UNAVAILABLE", "error": str(_d_err)}
+
     return json.dumps({
         "symbol": sym,
         "live_spread_pts": cvd_data.get("live_spread_pts", 0),
@@ -1333,7 +1348,14 @@ def mcp_alpha_get_live_microstructure(symbol: str = "XAUUSD") -> str:
         "avg_5m_velocity_tpm": cvd_data.get("avg_5m_velocity_tpm", 0.0),
         "velocity_posture": cvd_data.get("velocity_posture", "NORMAL"),
         "adverse_velocity_warning": cvd_data.get("adverse_velocity_warning", False),
-        "order_book_imbalance": cvd_data.get("order_book_imbalance", "BALANCED"),
+        "order_book_imbalance": depth_data.get("book_posture", cvd_data.get("order_book_imbalance", "BALANCED")),
+        "broker_dom_imbalance": depth_data.get("dom_imbalance", 0.0),
+        "global_central_imbalance": depth_data.get("global_imbalance", 0.0),
+        "resting_liquidity_walls": {
+            "top_bid_wall": depth_data.get("broker_dom", {}).get("top_bid_wall"),
+            "top_ask_wall": depth_data.get("broker_dom", {}).get("top_ask_wall")
+        },
+        "order_book_l2_depth": depth_data,
         "cumulative_volume_delta": cvd_data.get("cumulative_volume_delta", 0.0),
         "delta_pressure_pct": cvd_data.get("delta_pressure_pct", 0.0),
         "delta_exhaustion": cvd_data.get("delta_exhaustion", False),
@@ -1618,7 +1640,7 @@ def register_watch(
     return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id, condition_type, target_ticket, tolerance, min_velocity, max_spread, is_recurring)
 
 @mcp.tool()
-def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
+def get_active_watches(symbol: str = None, include_closed: bool = False) -> str:
     """Fetch all active persistent watches currently tracked by the trading desk."""
     return mcp_alpha_get_active_watches(symbol, include_closed)
 
@@ -1651,14 +1673,18 @@ def mark_evidence_read(evidence_ids: List[str]) -> str:
 # DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
 # ======================================================================
 
+_global_arbiter = None
+
 @mcp.tool()
-def get_market_regime_context(symbol: str = "XAUUSD") -> str:
-    """Retrieve transparent real-time market driver regime classification (PURE_TECHNICAL_ORDERFLOW, MACRO_DIRECTIONAL_PRESSURE, MACRO_EVENT_ACTIVE, or ACTIVE_SESSION_FLOW) with complete raw metrics (events today, tape velocity t/m, spread pts, real yield %, upcoming event countdown) and actionable trade directive."""
+def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = False) -> str:
+    """Retrieve pure real-time physical market telemetry and raw kinetic metrics (live broker quotes, spread, tape velocity, CVD ratios, 4m/M1 footprints, 100b physical roadways, real yields, and verbatim news) without artificial labels or calculated fluff. Set force_refresh=True to bypass cached macro yields and pull live endpoints."""
+    global _global_arbiter
     from tradingagents.catalyst_arbiter import CatalystArbiterEngine
+    if _global_arbiter is None:
+        _global_arbiter = CatalystArbiterEngine()
     sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Regime Context)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested market regime classification & driver transparency for {sym}")
-    arbiter = CatalystArbiterEngine()
-    return json.dumps(arbiter.get_market_regime(sym), indent=2)
+    read_logger.log_dossier_read("OpenCode CIO (MCP Telemetry Context)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested raw physical market telemetry for {sym}")
+    return json.dumps(_global_arbiter.get_market_regime(sym, force_refresh=force_refresh), indent=2)
 
 @mcp.tool()
 def get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
@@ -1810,7 +1836,7 @@ def list_desk_tools() -> str:
         {"name":"clear_completed_watches","description":"Clear triggered/cancelled watches from disk."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
-        {"name":"get_market_regime_context","description":"Transparent real-time market driver classification and raw kinetic metrics."}
+        {"name":"get_market_regime_context","description":"Retrieve pure real-time physical market telemetry, tape kinetics, roadways, and macro yields."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
 
@@ -1859,7 +1885,7 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "clear_completed_watches": lambda: mcp_alpha_clear_completed_watches(args.get("symbol")),
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[])),
-        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"))
+        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"), args.get("force_refresh", False))
     }
 
     if name in fn_map:

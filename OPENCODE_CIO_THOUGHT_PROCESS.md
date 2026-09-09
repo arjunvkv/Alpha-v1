@@ -34,58 +34,54 @@ By integrating the **Catalyst Arbiter**, **Raw Tape Microstructure**, and **Bifu
 Let us examine the exact market mechanics of the last 3 trading days, dissecting why trades failed under the old approach and how the new thought process converts them into high-R:R wins.
 
 ### 🔍 Play 1: The Liquidity Probe / False Breakdown Trap
-* **The Scenario**: Gold is consolidating inside Value Area (4410–4420). Price suddenly drops sharply through the range low down to 4402, breaking support on the M5 candle.
+* **The Scenario**: Market is consolidating inside Value Area. Price suddenly drops sharply through the range low, breaking short-term support on the M5 candle.
 * **The Old Failure**:
-  - The old logic saw candle color (bearish red), 4TF trend leaning short, and entered a market SELL or allowed a trailing stop on longs to get tagged at the absolute low (4402).
-  - Seconds later, price violently reversed upward +$25 to 4427. Loss realized: -$300.
+  - The old logic saw candle color, short-term trend leaning short, and entered a market SELL or allowed a trailing stop on longs to get tagged at the absolute low.
+  - Seconds later, price violently reversed upward back into value. Loss realized.
 * **The New Thought Process (Turning Loss into Win)**:
-  1. **Audit Macro & Regime**: `get_market_regime_context` shows `MACRO_YIELD_SHARE: 20% | TAPE_SHARE: 65%` (Pure Technical Order Flow). No fundamental yield shock.
-  2. **Audit Raw Tape Kinetics**: At 4402, `get_live_microstructure` reveals:
-     - Tape velocity spikes to 140 t/m (exhaustion velocity).
-     - M5 Tick CVD is **positive (+360 delta)** despite price printing a lower low!
+  1. **Audit Macro & Telemetry**: `get_market_regime_context` shows real yields steady, tape calm. No fundamental yield shock.
+  2. **Audit Raw Tape Kinetics**: At the range low, `get_live_microstructure` reveals:
+     - Tape velocity spikes (exhaustion velocity).
+     - M5 Tick CVD is positive despite price printing a lower low.
      - `order_book_imbalance`: `PASSIVE_BUY_ABSORPTION` (limit buyers absorbed all retail panic selling).
   3. **The Action**:
-     - Do NOT sell into the sweep! Recognize the **Bullish Liquidity Probe (Spring / Stop Hunt)**.
-     - Execute BUY at 4404 or stage limit at 4403 with structural SL protected below the true liquidity anchor (4398).
-     - Outcome: Instead of a -$300 loss on a panicked short, capture a **+$600 to +$1,200 swing (1:3+ R:R)** back to POC (4413) and VAH (4425).
+     - Do NOT sell into the sweep! Recognize the Bullish Liquidity Probe (Spring / Stop Hunt).
+     - Execute BUY or stage limit at key structural support with SL protected below the true liquidity anchor.
+     - Outcome: Instead of a loss on a panicked short, capture a high-R:R swing back to POC and Value Area High.
 
 ---
 
 ### 🔍 Play 2: The Stale Headline & News Drift Whipsaw
-* **The Scenario**: An alert fires: *"CONFIRMED BREAKING SHOCK: Geopolitical Tension in Middle East / Oil Disruption"*. Headline text looks terrifyingly bullish for gold. Price spikes up $4 to 4424 into high supply.
+* **The Scenario**: An alert fires with breaking geopolitical or commodity headlines. Price spikes into high supply.
 * **The Old Failure**:
-  - Trader/agent panicked, believed the raw text headline, bought gold at market at 4423 (the high of the day), right into institutional supply.
-  - Price immediately collapsed back to 4405 as macro yields stood at multi-month highs. Loss: -$450.
+  - Trader/agent panicked, believed raw text headlines without checking recency or real tape displacement, bought at market at the absolute high into institutional supply.
+  - Price immediately collapsed back as macro yields exerted heavy gravity. Loss realized.
 * **The New Thought Process (Avoiding the Loss)**:
-  1. **Triage Headline Provenance**: The Catalyst Arbiter checks timestamp and GDELT tape. The headline was an opinion piece published 3 hours ago, regurgitated by RSS.
+  1. **Triage Headline Provenance**: Check timestamp and tape. The headline was an opinion piece published hours ago.
   2. **Verify Tape Velocity & Displacement**:
-     - Normal breaking shock velocity is >180 t/m with sustained CVD buying.
-     - Live velocity is only 45 t/m (tepid). Post-headline displacement is merely +0.47 pts (sub-baseline).
-     - Catalyst Arbiter reports: `News Power: MODERATE / FAKE SHOCK`.
-  3. **Audit Macro Context**: `get_fred_observations` confirms US 10Y real yields are sitting high at 2.43%, which exerts heavy gravity downward on gold.
-  4. **The Action**:
-     - **VETO the market buy completely.**
-     - Recognize that institutional sellers are using the headline pop to offload inventory at premium FVG supply (4424).
-     - Stage SELL LIMIT at 4422.50 or WAIT.
-     - Outcome: Avoided a -$450 trap and captured the fade downward for +$400 profit.
+     - Normal breaking shock velocity is high with sustained CVD buying.
+     - Live velocity is tepid, post-headline displacement sub-baseline.
+     - Macro yields remain elevated, exerting heavy downward gravity.
+  3. **The Action**:
+     - VETO the market buy completely.
+     - Recognize institutional offloading at premium supply.
+     - Stage SELL LIMIT at supply or WAIT.
+     - Outcome: Avoided a trap and captured the fade downward.
 
 ---
 
 ### 🔍 Play 3: The Premature Panic Cut (Killing a Winning Trade on Pullback Noise)
-* **The Scenario**: We are short from 4422 targeting 4400 (Value Area Low). Price drops to 4410 (+12 pts in profit). Suddenly, an M1 candle prints a green impulse up to 4415. Floating PnL drops from +$600 to +$250.
+* **The Scenario**: We are in a winning position in the direction of the dominant trend. An intraday candle prints a counter-trend impulse. Floating PnL drops temporarily.
 * **The Old Failure**:
-  - Fear and mental stops took over. The model thought: *"It's bouncing! Protect capital!"* and closed the position at market for a meager +$200 gain, or tightened the stop to break-even (4421) where it got wicked out right before price plunged to 4395.
-  - The missed move was +$1,800.
+  - Fear took over. The model thought: *"It's bouncing! Protect capital!"* and closed at market or tightened stop to break-even into immediate noise where it got wicked out right before the market resumed its dominant run.
 * **The New Thought Process (Preserving the Win & Maximizing R:R)**:
   1. **Check Structural Grounding**: Rule 4 strictly states: **FORBID PANIC KILLS & NO MECHANICAL TRAILING**.
-  2. **Audit HTF Confluence**: H4 and H1 remain firmly BEARISH. The pullback to 4415 is merely a test of the 50% Consequent Encroachment of the intraday M15 bearish FVG.
-  3. **Audit Microstructure on Pullback**:
-     - Tick CVD on the bounce to 4415 is weak and declining (no aggressive institutional buyers).
-     - POC remains above price at 4418 (overhead resistance shelf).
+  2. **Audit HTF Confluence**: Higher timeframes remain firmly aligned with dominant momentum. The pullback is merely testing the 50% Consequent Encroachment of an intraday FVG.
+  3. **Audit Microstructure on Pullback**: Counter-trend CVD is weak and declining (no aggressive institutional backing).
   4. **The Action**:
-     - **DO NOT TOUCH THE TRADE.** Do not tighten the stop into the noise zone. Keep SL securely anchored behind the structural shelf (4424.50).
-     - **Dynamic TP Calibration (Avoid Moving Goalposts)**: Pre-plan structural TP (e.g. 4400). You are free to dynamically calibrate TP as conditions evolve — pulling it nearer to bank and protect gains if momentum stalls or absorption appears, or adjusting it slightly further away toward major unmitigated structural liquidity (e.g. 4395 HTF liquidity) if real-time order flow strongly confirms continuation. However, strictly avoid the emotional "moving-goalpost trap": never greedily push TP away during a rapid price rush without objective structural backing, risking an adverse snapback that erases banked gains.
-     - Outcome: Captured the full **+$1,500 runner** instead of getting chopped out for pennies.
+     - **DO NOT TOUCH THE TRADE.** Do not tighten the stop into the noise zone. Keep SL securely anchored behind the structural shelf.
+     - **Dynamic TP Calibration (Avoid Moving Goalposts)**: Pre-plan structural TP. Dynamically calibrate to bank profits if absorption appears, but strictly avoid the emotional "moving-goalpost trap" during rapid price rushes.
+     - Outcome: Captured the full structural runner instead of getting chopped out for pennies.
 
 ---
 
@@ -97,7 +93,7 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 [WAKE INGESTION]
   │
   ├─ 1. Q0: Audit get_market_regime_context
-  │     • Who has pricing power? (Macro Yields % vs Technicals %)
+  │     • What are real yields & broker spread?
   │     • What is tape velocity? (<60 t/m compression vs >120 t/m kinetic expansion)
   │     • What is the CVD ratio? Is there absorption divergence?
   │
@@ -121,7 +117,13 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 
 ## 4. GOLDEN DIRECTIVES FOR OPENCODE CIO
 
-1. **Never fight real macro yields when their pricing power share is >50%.** If yields are rising, sell resistance; never buy support wicks.
+1. **Never fight real macro yields when 10Y real yields are expanding aggressively.** If yields are surging, sell resistance; never buy support wicks.
 2. **Never treat candle wicks as directional breakouts without checking CVD.** High velocity + opposite delta = institutional trap/absorption.
 3. **Never chase market orders into mid-range chop.** Use limit orders at value area extremes and persistent watches at breakout thresholds.
 4. **Once in a trade, let market structure govern the exit.** Trust validated HTF support/resistance shelves. Never market-kill an active position out of minor noise.
+5. **Enforce Directional News Momentum & Symmetric Execution:** When 90% news/macro catalysts are actively driving the market, all trade staging MUST strictly align in the direction of the news momentum (riding expansions or staging entries on shallow pullbacks into that dominant flow). Maintain zero innate bullish or bearish bias—be equally ready to sell breakdowns/pullbacks when news drives down, as you are to buy when news drives up. NEVER attempt counter-trend bottom or top picking against active news momentum. Switch to reverse-engineering trapped crowd liquidity only when news drivers are confirmed quiet or exhausted. If an entered trade is in profit and encounters an adverse reverse signal, advance SL to break-even to eliminate downside risk. If a position is experiencing an adverse pullback, NEVER execute a manual panic market exit (FULL_EXIT)—rely strictly on the validated structural SL to govern the trade.
+6. **Focus exclusively on the sure-shot structural bank (Target 1 Only):** When reverse-engineering, do not leave lingering runner targets. Focus 100% of execution on the single, high-certainty structural target (the immediate level proven by structure to be swept). Scale lot size proportionally on this setup to extract high profit on the guaranteed, high-probability TP.
+7. **Wire Headline & Policy Announcement Interpretation:** High-velocity market moves (+10 to +30 points) during financial, debt-management, or central-bank events are driven by real institutional policy announcements crossing the wire. Never dismiss a move as driven by "unknown news" merely because a secondary retail article contains phrases like "details to be revealed" or clickbait titles. Institutional bond and currency desks execute immediately upon policy speeches and treasury operations (e.g. liquidity facilities, bond buybacks, debt operations). Look at the operational context in the wire summary, connect the policy driver directly to sovereign debt and currency flows, and align execution with the dominant institutional repricing flow.
+8. **Calendar Date Grounding & Event Proximity Defense:** Never trade, wait for, or pause execution for a scheduled calendar event unless it is explicitly scheduled for the active current trading day. Inspect the Step 0 badge to verify whether an upcoming release is marked 'TODAY' or 'FUTURE':
+   (a) **Events Scheduled for TODAY (Within Active Session):** If an upcoming event is marked 'TODAY' and is scheduled within the next 30 to 60 minutes (or inside the News Shield freeze window), DO NOT stage new positions or catch falling knives directly into the release. Stand aside, let the initial volatility explosion clear, and execute only after the post-event repricing structure is established.
+   (b) **Events Scheduled on FUTURE Calendar Dates:** If an event is on a future date or over 12+ hours away on another calendar day, DO NOT treat it as an active catalyst for the current session, and do not withhold trades waiting for future events. When no high-impact events remain on today's calendar, trade active wire news catalysts and order-flow structure directly.

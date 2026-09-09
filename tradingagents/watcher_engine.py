@@ -315,28 +315,42 @@ class UniversalWatcherEngine:
         direction = str(watch.get("direction", "")).upper()
         params = watch.get("params") or {}
 
-        if not cond_type or target_price is None:
+        if not cond_type or cond_type == "PRICE_LEVEL" or target_price is None:
             parsed = parse_watch_condition(
                 condition_str=cond_raw,
                 target_price=target_price,
                 direction=direction,
-                condition_type=cond_type,
+                condition_type="" if cond_type == "PRICE_LEVEL" else cond_type,
                 target_ticket=target_ticket
             )
-            cond_type = cond_type or parsed["condition_type"]
+            cond_type = parsed["condition_type"] if (not cond_type or cond_type == "PRICE_LEVEL") else cond_type
             target_price = target_price if target_price is not None else parsed["target_price"]
             target_ticket = target_ticket if target_ticket is not None else parsed["target_ticket"]
             direction = direction or parsed["direction"]
 
-        bid = live_tick.get("bid", 0.0)
-        ask = live_tick.get("ask", 0.0)
-        curr_price = bid if ("BUY" in direction or "LONG" in direction) else (ask if ("SELL" in direction or "SHORT" in direction) else (bid + ask) / 2.0)
-        if curr_price <= 0:
-            curr_price = live_tick.get("price", 0.0)
+        bid = float(live_tick.get("bid", 0.0))
+        ask = float(live_tick.get("ask", 0.0))
+        mid = (bid + ask) / 2.0 if (bid > 0 and ask > 0) else float(live_tick.get("price", 0.0))
 
-        last_bid = (last_tick or {}).get("bid", bid)
-        last_ask = (last_tick or {}).get("ask", ask)
-        last_price = last_bid if ("BUY" in direction or "LONG" in direction) else (last_ask if ("SELL" in direction or "SHORT" in direction) else (last_bid + last_ask) / 2.0)
+        # Traded/execution price context:
+        # If buying, relevant price is Ask; if selling, relevant price is Bid.
+        # For general directional/level threshold crossing, Bid or Mid accurately reflects price arrival.
+        if cond_type in (WatchConditionType.PRICE_BELOW, WatchConditionType.PRICE_CROSS_BELOW):
+            curr_price = bid if bid > 0 else mid
+        elif cond_type in (WatchConditionType.PRICE_ABOVE, WatchConditionType.PRICE_CROSS_ABOVE):
+            curr_price = ask if ("BUY" in direction or "LONG" in direction) else (bid if bid > 0 else mid)
+        else:
+            curr_price = mid if mid > 0 else bid
+
+        last_bid = float((last_tick or {}).get("bid", bid))
+        last_ask = float((last_tick or {}).get("ask", ask))
+        last_mid = (last_bid + last_ask) / 2.0 if (last_bid > 0 and last_ask > 0) else float((last_tick or {}).get("price", curr_price))
+        if cond_type in (WatchConditionType.PRICE_BELOW, WatchConditionType.PRICE_CROSS_BELOW):
+            last_price = last_bid if last_bid > 0 else last_mid
+        elif cond_type in (WatchConditionType.PRICE_ABOVE, WatchConditionType.PRICE_CROSS_ABOVE):
+            last_price = last_ask if ("BUY" in direction or "LONG" in direction) else (last_bid if last_bid > 0 else last_mid)
+        else:
+            last_price = last_mid if last_mid > 0 else last_bid
 
         triggered = False
         trigger_reason = ""
@@ -441,11 +455,11 @@ class UniversalWatcherEngine:
             f"• Instruction: {watch.get('instruction', 'Evaluate immediate current-state validation')}\n"
             f"• Rationale: {watch.get('reason', 'N/A')}\n"
             f"{tape_summary}\n\n"
-            f"=== ACTION REQUIRED ===\n"
-            f"1. MANDATORY FIRST CALL (STEP 0): `get_market_regime_context(symbol='{sym}')` to verify live pricing power and auction air pockets.\n"
-            f"2. Validate order flow absorption via `get_live_microstructure(symbol='{sym}')`.\n"
-            f"3. Distinguish liquidity probe trap vs genuine expansion.\n"
-            f"4. If confirmed, execute trade (`execute_trade` or `update_position`). If invalidated, cancel or update watch status."
+            f"=== MANDATORY 90/10 REASONING FRAMEWORK (NEWS CATALYSTS VS TECHNICALS) ===\n"
+            f"1. MANDATORY FIRST CALL (STEP 0): `get_market_regime_context(symbol='{sym}')`.\n"
+            f"2. 90% NEWS & MACRO PRIORITY: First evaluate the rotating classified wire intelligence box across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields and DXY. Real-world catalysts drive 90% of market repricing, momentum, and direction.\n"
+            f"3. 10% TECHNICAL EXECUTION COORDINATES: Use technical levels (roadways, DOM order book walls, FVGs, footprints) strictly as the remaining 10% to locate precise entry timing, tight structural invalidation (SL), and plausible targets (TP).\n"
+            f"4. Re-verify whether this triggered watch is still valid against the live news narrative and tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
         )
 
         return {

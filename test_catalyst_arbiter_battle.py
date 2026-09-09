@@ -28,10 +28,7 @@ def test_live_arbiter():
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     
     print(f"Calculated in {elapsed_ms:.2f} ms (Cycle latency)")
-    print(f"Regime: {res['regime']}")
-    print(f"Pricing Power: {res['pricing_power']}")
-    print(f"Justification: {res['label_justification']}")
-    print(f"Actionable Directive: {res['actionable_directive']}")
+    print(f"Telemetry Type: {res.get('telemetry_type')}")
     print("\n--- RAW METRICS VERIFICATION ---")
     raw = res['raw_metrics']
     print(f"Events today count: {raw['high_impact_events_today_count']}")
@@ -44,7 +41,7 @@ def test_live_arbiter():
     print("\n--- COMPACT PROMPT BADGE ---")
     print(res['compact_prompt_badge'])
     
-    assert res['regime'] in ["PURE_TECHNICAL_ORDERFLOW", "MACRO_DIRECTIONAL_PRESSURE", "MACRO_EVENT_ACTIVE", "ACTIVE_SESSION_FLOW", "PRE_EVENT_ANTICIPATION"]
+    assert res.get('telemetry_type') == "RAW_MARKET_REALITY"
     assert elapsed_ms < 1000.0, f"Latency exceeded 1000ms: {elapsed_ms:.2f}ms"
     print("\n>>> LIVE ARBITER TEST PASSED! <<<\n")
 
@@ -63,12 +60,11 @@ def test_mcp_tool_integration():
     print(">>> MCP TOOL INTEGRATION TEST PASSED! <<<\n")
 
 def test_simulation_regimes():
-    print("=== TEST 3: SIMULATING REGIME TRANSITIONS ===")
+    print("=== TEST 3: RAW CALENDAR PROXIMITY VERIFICATION ===")
     engine = CatalystArbiterEngine()
 
-    # Case A: Simulate Pre-Release Shock Window (T-10m to CPI)
+    # Case A: Verify Upcoming Event Tracking (T-10m to CPI)
     print("\nCase A: Simulating T-10m before US CPI...")
-    # Mock next event
     mock_events = [{
         "title": "CPI m/m",
         "country": "USD",
@@ -77,25 +73,11 @@ def test_simulation_regimes():
     }]
     engine.fetch_calendar_events = lambda force_refresh=False: mock_events
     res_a = engine.get_market_regime("XAUUSD")
-    print(f"Regime: {res_a['regime']}")
-    print(f"Justification: {res_a['label_justification']}")
-    assert res_a['regime'] == "MACRO_EVENT_ACTIVE"
-    print("✓ Pre-event freeze correctly triggered!")
-
-    # Case B: Simulate Post-Release Shock Window (T+5m after NFP)
-    print("\nCase B: Simulating T+5m after Non-Farm Payrolls...")
-    mock_events_b = [{
-        "title": "Non-Farm Payrolls",
-        "country": "USD",
-        "impact": "High",
-        "date": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).isoformat()
-    }]
-    engine.fetch_calendar_events = lambda force_refresh=False: mock_events_b
-    res_b = engine.get_market_regime("XAUUSD")
-    print(f"Regime: {res_b['regime']}")
-    print(f"Justification: {res_b['label_justification']}")
-    assert res_b['regime'] == "MACRO_EVENT_ACTIVE"
-    print("✓ Post-release settlement correctly triggered!")
+    next_ev = res_a['raw_metrics']['next_scheduled_event']
+    print(f"Next scheduled event: {next_ev['title']} in {next_ev['minutes_away']}m")
+    assert next_ev['title'] == "CPI m/m"
+    assert next_ev['minutes_away'] <= 10.0
+    print("✓ Calendar event proximity accurately tracked in raw metrics!")
 
 if __name__ == "__main__":
     import datetime

@@ -125,6 +125,11 @@ def post_to_opencode_session(speaker: str, message: str):
         LOG.info(f"Dossier prompt streaming to session '{title}' ({sid}) is currently PAUSED. (Daemon remains live & scanning).")
         return
 
+    # Check if OpenCode is actively deliberating/executing tools
+    if sid and not is_opencode_idle(sid):
+        LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Skipping prompt dispatch to prevent aborting ongoing turn.")
+        return
+
     LOG.info(
         f"\n=== [COMMUNICATION LOG STREAM] ===\n"
         f"Speaker: {speaker}\n"
@@ -210,27 +215,21 @@ def log_local_llm_monitoring(msg: str): log_story("Local LLM Desk", f"[Monitorin
 def log_proactive_alert(sym: str, score: float, headline: str): log_story("Local LLM Desk", f'[Proactive Discovery] "{headline}"')
 
 def is_opencode_idle(session_id: str = None) -> bool:
-    """Check if OpenCode session is ready to receive alerts. Always defaults to True to guarantee reliable 3-min and startup dispatch."""
+    """Check if OpenCode session is ready to receive alerts (not busy generating tokens or running tools)."""
     if not session_id:
         session_id = get_opencode_session_id()
     try:
         import urllib.request
         api_url = get_opencode_api_url()
-        url = f"{api_url}/session/{session_id}/message"
-        req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
-        resp = urllib.request.urlopen(req, timeout=2)
-        if resp.status == 200:
-            messages = json.loads(resp.read().decode("utf-8"))
-            if messages:
-                last_msg = messages[-1]
-                info = last_msg.get("info", {})
-                role = info.get("role", "")
-                created_ts = info.get("time", {}).get("created", 0) / 1000.0
-                now_ts = datetime.now().timestamp()
-                # If last msg was user sent over 120s ago, or assistant replied, it is ready
-                if role.lower() != "user" or (now_ts - created_ts > 120.0):
-                    return True
-                return False
+        url = f"{api_url}/session/status"
+        req = urllib.request.Request(url, headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                s_info = data.get(session_id, {})
+                if s_info.get("type") == "busy":
+                    return False
+                return True
     except Exception as err:
         LOG.debug(f"is_opencode_idle query error: {err}")
     return True
@@ -822,7 +821,7 @@ class ConsolidatedTradingDaemon:
             self.just_sent_active_brainstorm = False
             required_interval = float(dossier_interval)
 
-        # Evaluate active persistent watches against live tick price
+        # Evaluate active persistent watches against live tick price using UniversalWatcherEngine
         triggered_watch = None
         try:
             from tradingagents.evidence_state import EvidenceStateStore
@@ -830,35 +829,21 @@ class ConsolidatedTradingDaemon:
             _active_watches = _ev_store.get_watches(include_closed=False)
             for w in _active_watches:
                 w_sym = w.get("symbol", "XAUUSD")
-                w_target = w.get("target_price")
-                if w_target is not None:
-                    try:
-                        w_target_val = float(w_target)
-                        w_tick = mt5.symbol_info_tick(w_sym) if mt5_online else None
-                        if w_tick:
-                            w_bid = float(getattr(w_tick, "bid", 0.0))
-                            w_ask = float(getattr(w_tick, "ask", 0.0))
-                            w_dir = str(w.get("direction", "")).upper()
-                            w_cond = str(w.get("condition", "")).upper()
-
-                            is_triggered = False
-                            if "BUY" in w_dir or "LONG" in w_dir or "ABOVE" in w_cond:
-                                if w_bid >= w_target_val:
-                                    is_triggered = True
-                            elif "SELL" in w_dir or "SHORT" in w_dir or "BELOW" in w_cond:
-                                if w_ask <= w_target_val:
-                                    is_triggered = True
-                            else:
-                                if abs(w_bid - w_target_val) <= 0.5 or w_bid >= w_target_val:
-                                    is_triggered = True
-
-                            if is_triggered:
-                                triggered_watch = w
-                                _ev_store.update_watch(w["id"], status="TRIGGERED")
-                                LOG.info(f"⚡ WATCH TRIGGERED: {w['id']} @ {w_target_val} (Live bid: {w_bid})")
-                                break
-                    except Exception as _w_err:
-                        LOG.debug(f"Watch check err: {_w_err}")
+                w_tick = mt5.symbol_info_tick(w_sym) if mt5_online else None
+                if w_tick:
+                    w_bid = float(getattr(w_tick, "bid", 0.0))
+                    w_ask = float(getattr(w_tick, "ask", 0.0))
+                    last_t = getattr(self.watcher_engine, "last_ticks", {}).get(w_sym, {"bid": w_bid, "ask": w_ask})
+                    trig = self.watcher_engine.evaluate_watch(
+                        watch=w,
+                        live_tick={"bid": w_bid, "ask": w_ask, "price": (w_bid + w_ask) / 2.0},
+                        last_tick=last_t
+                    )
+                    if trig:
+                        triggered_watch = w
+                        _ev_store.update_watch(w["id"], status="TRIGGERED")
+                        LOG.info(f"⚡ WATCH TRIGGERED: {w['id']} -> {trig.get('trigger_reason', '')} (Live bid: {w_bid})")
+                        break
         except Exception as _w_store_err:
             LOG.debug(f"Watch store err: {_w_store_err}")
 
@@ -920,10 +905,11 @@ class ConsolidatedTradingDaemon:
                     f"Condition: {triggered_watch.get('condition')}\n"
                     f"Instruction: {triggered_watch.get('instruction')}\n"
                     f"Reason: {triggered_watch.get('reason')}\n\n"
-                    f"Action Required: MANDATORY FIRST CALL: get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}') to audit real-time pricing power and tape kinetics. "
-                    f"Then execute pre-execution validation (get_live_microstructure, get_account_status). "
-                    f"If order flow and breakout conditions confirm, stage order via place_pending_order or execute via execute_trade with defined structural SL/TP and calibrated 0.1-1.0 lots. "
-                    f"If conditions are invalidated, cancel and register updated watch."
+                    f"MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS):\n"
+                    f"1. STEP 0 (MANDATORY): get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}').\n"
+                    f"2. 90% NEWS & MACRO DRIVERS: Audit the classified rotating wire intelligence box across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields and DXY. Real-world catalysts drive 90% of market repricing, momentum, and direction.\n"
+                    f"3. 10% TECHNICAL EXECUTION COORDINATES: Use technical levels (roadways, DOM book, FVGs, footprints) strictly as the remaining 10% to locate precise entry timing, tight structural invalidation (SL), and plausible targets (TP).\n"
+                    f"4. Re-verify whether this triggered watch is still valid against the live news narrative and tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
                 )
             elif is_rule_turn:
                 # Rule reminder turn replacing dossier every 10th dispatch
@@ -932,9 +918,12 @@ class ConsolidatedTradingDaemon:
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
                     f"You are OpenCode, the sole quantitative reasoner orchestrating the Alpha algorithmic desk on FTMO MetaTrader 5 ($100K account #1514551285). Review and strictly adhere to these core principles:\n\n"
-                    f"1. MANDATORY REAL-TIME REGIME & RAW MICROSTRUCTURE AUDIT (EVERY WAKE):\n"
+                    f"1. MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS - EVERY WAKE):\n"
                     f"• On EVERY wake, review get_market_regime_context(symbol='XAUUSD') before acting or deciding to wait.\n"
-                    f"• Purpose: (a) Verify macro yield vs technical pricing power shares. (b) Audit raw tape velocity, CVD ratio (-1 to +1), and 4m interval displacement to avoid standing in front of violent kinetic air pockets. (c) Anchor invalidations and targets to raw volume POC, Low Volume Air Pockets, and PDH/PDL.\n\n"
+                    f"• 90% News & Macro Catalysts: Markets reprice on real-world information. The rotating raw news points across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields, DXY, and dark pool flows establish market bias, directional regime, and institutional momentum.\n"
+                    f"• 10% Technical Coordinates: Use physical broker data (roadways, 4M footprints, CVD, DOM order book walls, Volume POC, air pockets) strictly as the remaining 10% for tactical execution coordinates—pinpointing precise entries, tight structural invalidations, and logical take-profit boundaries.\n"
+                    f"• Strategic Adaptation & Directional News Alignment: When 90% news/macro catalysts are actively driving the market, all trade staging MUST strictly align in the direction of the news momentum (riding expansions or staging entries on shallow pullbacks into that dominant flow). Maintain zero innate bullish or bearish bias—be equally ready to sell breakdowns/pullbacks when news drives down, as you are to buy when news drives up. NEVER attempt counter-trend bottom or top picking against active news momentum. Switch to reverse-engineering trapped crowd liquidity only when news drivers are confirmed quiet or exhausted. When reverse-engineering, focus exclusively on the single sure-shot structural bank (Target 1 only; no lingering runners) with scaled lot size to capture high profit on the guaranteed, high-certainty structural TP. If an entered trade encounters a strong confirmed reverse signal, advance SL to break-even to eliminate downside risk.\n"
+                    f"• Autonomous reasoning: No artificial trade bans or rigid prohibitions. Objectively weigh catalyst evidence and execute or wait accordingly.\n\n"
                     f"2. BIFURCATED ADAPTIVE STAGING (MANDATORY DUAL-PRONGED ARCHITECTURE):\n"
                     f"• When preparing for directional expansion or trading within compression regimes, NEVER rely exclusively on a one-sided deep limit order that risks being left behind if price expands directly away.\n"
                     f"• Establish dual-pronged coverage: (a) Discount/Retracement Prong: Stage a pending limit order directly at the active institutional structural boundary (FVG 50% CE, Order Block, Value Area boundary) to absorb liquidity sweep pullbacks. (b) Expansion/Breakout Trigger Prong: Concurrently register an active persistent watch (register_watch) at the immediate structural breakout boundary (range high/low, session pivot, unmitigated opposite FVG) with order-flow confirmation, ensuring immediate daemon wake-up and market execution (execute_trade) if price launches directly without retracing.\n\n"
@@ -960,8 +949,8 @@ class ConsolidatedTradingDaemon:
                     f"⚡ ALPHA EVIDENCE WAKE — BRAINSTORM TURN\n"
                     f"{_time_str}\n"
                     f"{_regime_badge}\n"
-                    f"MANDATORY STEP 0: Audit get_market_regime_context(symbol='XAUUSD') before brainstorming to establish macro vs technical pricing power shares.\n"
-                    f"Brainstorm with 5 new questions about current market conditions involving all new catalysts and news. "
+                    f"MANDATORY STEP 0: Audit get_market_regime_context(symbol='XAUUSD') to inspect live physical market reality (quotes, delta kinetics, roadways, yields, and verbatim news).\n"
+                    f"MANDATORY 90/10 REASONING RATIO: Brainstorm with 5 new questions where 90% focus on real-world news catalysts and macro drivers, and 10% on technical execution coordinates. "
                     f"Use proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
                     f"Available lots are 0.10 to 1.00 scaled based on analysis confidence. "
                     f"Always pull the latest news, replan pending orders whenever new news is retrieved, and check get_market_time_context."
@@ -974,16 +963,21 @@ class ConsolidatedTradingDaemon:
                     f"Active instruments: {', '.join(get_active_instruments())}\n"
                     f"Open positions: {len(open_tickets)}\n"
                     f"Reason: periodic state changed or review interval elapsed.\n\n"
-                    f"MANDATORY STEP 0 (EVERY WAKE): Call get_market_regime_context(symbol='XAUUSD') to inspect pricing power shares, raw tape velocity, CVD ratio, 4m displacement, and POC/air pockets before taking any action.\n\n"
+                    f"MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS):\n"
+                    f"• STEP 0 (EVERY WAKE): Call get_market_regime_context(symbol='XAUUSD').\n"
+                    f"• 90% News & Macro Catalysts: Inspect the classified rotating news points ([MACRO], [MICRO], [OTHER]), real yields, and DXY to evaluate institutional repricing drivers and market bias.\n"
+                    f"• 10% Technicals & Order Flow: Use roadways, footprints, CVD, and DOM order book strictly as execution coordinates for entries, invalidations, and targets.\n"
+                    f"• Strategic Adaptation & Directional News Alignment: When 90% news/macro catalysts are actively driving the market, all trade staging MUST strictly align in the direction of the news momentum (riding expansions or staging entries on shallow pullbacks into that dominant flow). Maintain zero innate bullish or bearish bias—be equally ready to sell breakdowns/pullbacks when news drives down, as you are to buy when news drives up. NEVER attempt counter-trend bottom or top picking against active news momentum. Switch to reverse-engineering trapped crowd liquidity only when news drivers are confirmed quiet or exhausted. When reverse-engineering, focus exclusively on the single sure-shot structural bank (Target 1 only; no lingering runners) with scaled lot size to capture high profit on the guaranteed, high-certainty structural TP. If an entered trade encounters a strong confirmed reverse signal, advance SL to break-even to eliminate downside risk.\n"
+                    f"• Wire Headline & Policy Announcement Interpretation: High-velocity moves (+10 to +30 points) during financial, debt-management, or central-bank events are driven by real policy announcements. Never dismiss an expansion as 'unknown news' merely because secondary articles say 'details to be revealed'. Institutional desks trade announcements instantly upon wire release. Check the operational context snippet, connect it to sovereign debt/currency flows, and align with the repricing flow.\n"
+                    f"• Calendar Date Grounding & Event Proximity Defense: Never trade, wait for, or pause execution for a scheduled calendar event unless it is explicitly scheduled for the active current trading day. In the Step 0 badge, check whether an upcoming release is marked 'TODAY' or 'FUTURE'. (a) Upcoming Releases TODAY (30-60m Knife Defense): If an event is marked 'TODAY' and is scheduled within the next 30 to 60 minutes (or inside the News Shield freeze window), DO NOT stage entries or catch knives immediately before the release. Stand aside, let the initial spread/volatility spike clear, and trade the confirmed post-news repricing structure. (b) Future Releases: If an event is on a future date or over 12+ hours away on another calendar day, DO NOT treat it as an active catalyst for the current session, and do not withhold trades waiting for future events. When no high-impact events remain on today's calendar, trade active wire news catalysts and order-flow structure directly.\n\n"
                     f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
                     f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
                     f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
-
                     f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
                     f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
                     f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
                     f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
-                    f"• Q0 [Regime & Microstructure - MANDATORY]: get_market_regime_context (Macro vs tech share, tape velocity, CVD ratio, 4m displacement, POC/air pockets)\n"
+                    f"• Q0 [Raw Market Reality - MANDATORY]: get_market_regime_context (Broker quotes, tape velocity, CVD ratio, 4m displacement, POC/air pockets, roadways, yields)\n"
                     f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
                     f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
                     f"• Q7/Q8 [Order Flow & Microstructure]: get_live_microstructure (Spread pts, M1 tick velocity t/m, complete raw CVD, delta velocity, absorption)\n"
@@ -1229,10 +1223,10 @@ class ConsolidatedTradingDaemon:
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape/News) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
-            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY REGIME AUDIT ===\n"
+            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===\n"
             f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
             f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
-            f"Audit macro yield vs technical pricing power, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
+            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, roadways, and auction air pockets.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
             f"=== MANDATORY READ: THOUGHT PROCESS GUIDE & PLAYBOOK ===\n"
             f"Before formulating setups or managing positions, review: C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md\n"
