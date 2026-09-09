@@ -194,15 +194,80 @@ Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*worker-ser
 Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*opencode serve*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 ```
 
-### Rotating the Cloudflare IP Manually
+---
 
-If you encounter rate limits or wish to rotate the exit IP:
+## 🔄 How to Rotate the IP & Restart Cloudflare
+
+Whenever you hit rate limits (HTTP 429), connection dropouts, or want a fresh egress identity:
+
+### 1. Manual One-Liner (IP Rotation + Proxy Restart)
+Run this complete sequence in PowerShell:
 ```powershell
+# Step A: Disconnect & reconnect WARP to get a fresh IP
 warp-cli disconnect
 Start-Sleep -Seconds 2
 warp-cli connect
 Start-Sleep -Seconds 3
+
+# Step B: Terminate existing autoconnector instances
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*cloudflare_autoconnector.py*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Start-Sleep -Seconds 1
+
+# Step C: Relaunch the Cloudflare Auto-Connector Proxy Bridge
+Start-Process python -ArgumentList "C:\Trading\cloudflare_autoconnector.py" -WindowStyle Hidden
+
+# Step D: Verify new public exit IP through the proxy bridge
 curl.exe -x 127.0.0.1:40001 -s https://cloudflare.com/cdn-cgi/trace
+```
+*Verification Check:* Confirm `warp=on` appears and a new `ip=` is printed.
+
+---
+
+## 🔁 How to Restart Individual Daemons
+
+### 1. Restart Cloudflare Auto-Connector Proxy Only
+```powershell
+# Kill existing instance:
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*cloudflare_autoconnector.py*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+# Start fresh instance:
+python C:\Trading\cloudflare_autoconnector.py
+```
+
+### 2. Restart Alpha Consolidated Trading Desk Daemon
+```powershell
+# Kill existing desk daemon:
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*alpha_trading_desk.py*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+# Start fresh desk daemon:
+python C:\Trading\Alpha\alpha_trading_desk.py
+```
+
+### 3. Restart OpenCode Memory Worker Service
+```powershell
+# Kill existing worker:
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*worker-service.js*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+# Start fresh daemon via Bun:
+bun C:\Agent\opencode-mem\dist\services\worker-service.js --daemon
+```
+
+### 4. Restart OpenCode Server
+```powershell
+# Kill existing server:
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*opencode serve*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+# Launch with proxy environment variables (Cmd / Batch):
+set HTTP_PROXY=http://127.0.0.1:40001
+set http_proxy=http://127.0.0.1:40001
+set HTTPS_PROXY=http://127.0.0.1:40001
+set https_proxy=http://127.0.0.1:40001
+set ALL_PROXY=http://127.0.0.1:40001
+set all_proxy=http://127.0.0.1:40001
+set NO_PROXY=localhost,127.0.0.1,::1,100.*
+set no_proxy=localhost,127.0.0.1,::1,100.*
+
+opencode serve --port 4096 --hostname 0.0.0.0
 ```
 
 ---
