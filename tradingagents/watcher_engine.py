@@ -462,7 +462,7 @@ class UniversalWatcherEngine:
             f"{tape_summary}\n\n"
             f"=== EXECUTION AUDIT ===\n"
             f"1. STEP 0 (MANDATORY): Call `get_market_regime_context(symbol='{sym}')` for live broker quote, spread, CVD flow, and economic calendar.\n"
-            f"2. RE-VERIFY THESIS: Audit current price against order book depth (DOM walls), FVGs, volume POC, and footprints.\n"
+            f"2. RE-VERIFY THESIS: Audit current price against live market structure and tape kinetics.\n"
             f"3. DECIDE: If confirmed by live tape, execute or stage order; if invalidated, cancel or update watch."
         )
 
