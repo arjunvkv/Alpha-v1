@@ -554,7 +554,7 @@ class CatalystArbiterEngine:
         gex_trail = "->".join(f"{g:+.2f}" for g in gex_5d_series) if gex_5d_series else f"{gex_billions:+.2f}"
         badge_line7 = f"- Macro & Rates: Real Yield {dfii10_yield}% | 10Y {us10y}% | DXY {dxy} | EURUSD 5m {eurusd_5m_pct:+.3f}% | Next: {next_ev_str}"
         badge_line7b = f"- Dark Pool & Gamma 5D Trail: DIX {dix_pct:.1f}% [{dix_trail}] ({dix_5d_delta:+.1f}%, {dix_trend}) | GEX ${gex_billions:+.2f}B [{gex_trail}] ({gex_trend}) | VIX {vix:.1f}"
-        badge_line7c = f"- Institutional COT: Spec {cot_mm_percentile:.1f}%ile (Net: {cot_noncomm_net:+d}, 1W Chg: {cot_weekly_change:+d} [{cot_unwind_vel}]) | Comm: {cot_commercial_net:+d}"
+        badge_line7c = f"- Institutional COT (Weekly Snapshot): Spec {cot_mm_percentile:.1f}%ile (Net: {cot_noncomm_net:+d}, 1W Chg: {cot_weekly_change:+d}) | Comm: {cot_commercial_net:+d}"
 
         # Level 2 Order Book & Resting Liquidity Depth (Broker DOM + Global PAXG Book)
         try:

@@ -782,10 +782,9 @@ def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
         cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
         nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg") or fvg_mat.get("m5_fvg")
 
-        # Trap detection
+        # FVG fill geometry
         fvg_fill_val = nearest_fvg.get("fill_pct") if nearest_fvg else None
-        is_exhausted_fvg = bool(fvg_fill_val and fvg_fill_val >= 60.0)
-        trap_msg = f"EXHAUSTED_FVG_WARNING: Nearest {nearest_fvg.get('type')} is {fvg_fill_val:.1f}% filled - CHASE TRAP ZONE (-97.09R historical loss)." if is_exhausted_fvg else None
+        trap_msg = None
 
         status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "LIVE_SYMBOL_SPECIFIC"
         data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"

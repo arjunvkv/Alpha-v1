@@ -902,13 +902,15 @@ class ConsolidatedTradingDaemon:
             elif is_brainstorm_turn:
                 prompt = (
                     f"{_time_str}\n\n"
-                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news.\n"
-                    "RULE: When using Proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), you must query STRICTLY for objective facts, official data releases, and consensus numbers (e.g. actual vs forecast prints, official central bank statements, factual event timelines). NEVER query Proxima for opinions, directional bias, or market probabilities (which are synthetic LLM hallucinations).\n"
-                    "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools.\n"
+                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news.\n\n"
+                    "RESEARCH & PROXIMA PROTOCOL (FACTS ONLY — ZERO PROBABILITY QUERIES):\n"
+                    "• During research, send ONLY factual news queries to Proxima: allocate exactly 2 queries to Perplexity (proxima_ask_perplexity) for rapid breaking headline checks, and route all remaining deep queries through Proxima deep research (proxima_deep_search, proxima_smart_query) and archive/crawl tools (lookup_common_crawl).\n"
+                    "• NEVER send probability-seeking prompts, directional questions, or outcome-biased inquiries (e.g. 'What are the odds of breaking 4355?', 'Will gold drop?', 'Give me probabilities'). Synthetic LLM probabilities are ungrounded hallucinations.\n"
+                    "• Query STRICTLY for objective real-world facts: official numbers, consensus estimates vs actual prints, scheduled speech timestamps, and verified event chronology.\n"
+                    "• With proxima research tools, FRED yields (get_fred_observations), and news tools, gather facts without narrative confirmation bias.\n\n"
                     "You have 0.10 to 1.00 lot area to place the lots based on the power of news and analysis confidence.\n"
                     "ORDER INTEGRITY: If you decide in reasoning to cancel or modify any pending order, you MUST call the respective tool (cancel_pending_order / update_position) in this exact turn. Never state a cancellation in prose without executing the tool call.\n"
-                    "Always pull the latest and closest news possible. Always replan any pending orders each time you pull the news.\n"
-                    "Always check get_market_time_context to verify we are on the right track."
+                    "Always pull the latest and closest news possible. Always replan any pending orders each time you pull fresh data. Check get_market_time_context to verify session timing."
                 )
             else:
                 prompt = (
@@ -924,7 +926,8 @@ class ConsolidatedTradingDaemon:
                     "• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
                     "• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
                     "• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
-                    "• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs."
+                    "• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs.\n"
+                    "• Make good use of all technical tools wherever possible (Level 2 depth, FVG matrix, CVD posture, microstructure). Reference file:///C:/Trading/Alpha/MCP_TOOLS_USAGE_GUIDE.md for the complete tool guide and usage."
                 )
             post_to_opencode_session("", prompt)
 
