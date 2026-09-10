@@ -349,79 +349,12 @@ class StatefulDiscoveryLatch:
         return False, "LATCHED_ACTIVE"
 
 # ----------------------------------------------------------------------
-# 3. FTMO MT5 Execution & Router Module
+# 3. Execution Authority Guard (Daemon has ZERO execution authority)
 # ----------------------------------------------------------------------
-def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp: float) -> Dict[str, Any]:
-    """Execute live market order on FTMO MetaTrader 5 with Max 1 Position Guard."""
-    try:
-        import MetaTrader5 as mt5
-        initialized = _init_mt5()
-        if not initialized:
-            return {"success": False, "error": f"MT5 initialize failed: {mt5.last_error()}"}
+# NOTE: The background daemon is strictly a read-only scanner & evidence streamer.
+# Live MT5 trade execution is exclusively reserved for OpenCode via MCP tools.
+# Any automated/daemon-side market order execution functions have been permanently excised.
 
-        mt5.symbol_select(symbol, True)
-
-        # Max 1 Active Position Guard per Symbol
-        all_pos = mt5.positions_get()
-        if all_pos:
-            sym_target = symbol.replace(".cash", "").upper()
-            matching = [p for p in all_pos if p.symbol.replace(".cash", "").upper() == sym_target]
-            if matching:
-                ticket_id = matching[0].ticket
-                return {"success": False, "error": f"position_already_open for {symbol} (Ticket #{ticket_id})"}
-
-        tick_info = mt5.symbol_info_tick(symbol)
-        sym_info = mt5.symbol_info(symbol)
-        if not tick_info:
-            return {"success": False, "error": f"No tick data available for {symbol}"}
-
-        price = tick_info.ask if side == "buy" else tick_info.bid
-        point = getattr(sym_info, "point", 0.01) if sym_info else 0.01
-        digits = getattr(sym_info, "digits", 2) if sym_info else 2
-        stops_dist = max((getattr(sym_info, "trade_stops_level", 50) or 50) * point, 20 * point)
-
-        # Validate Agent-selected SL/TP without silently substituting trading decisions.
-        if side == "buy":
-            if not (0 < sl < price - stops_dist):
-                return {"success": False, "error": "invalid_agent_sl_for_buy"}
-            if not (tp > price + stops_dist):
-                return {"success": False, "error": "invalid_agent_tp_for_buy"}
-            sl_val = round(sl, digits)
-            tp_val = round(tp, digits)
-            order_type = mt5.ORDER_TYPE_BUY
-        else:
-            if not (sl > price + stops_dist):
-                return {"success": False, "error": "invalid_agent_sl_for_sell"}
-            if not (0 < tp < price - stops_dist):
-                return {"success": False, "error": "invalid_agent_tp_for_sell"}
-            sl_val = round(sl, digits)
-            tp_val = round(tp, digits)
-            order_type = mt5.ORDER_TYPE_SELL
-
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": float(volume),
-            "type": order_type,
-            "price": price,
-            "sl": sl_val,
-            "tp": tp_val,
-            "deviation": 30,
-            "magic": 20260822,
-            "comment": "AlphaV2_FTMO",
-            "type_time": mt5.ORDER_TIME_GTC,
-        }
-        result = mt5.order_send(request)
-        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
-            retcode = getattr(result, "retcode", None)
-            comment = getattr(result, "comment", "unknown error")
-            return {"success": False, "error": f"order_send retcode {retcode} ({comment})"}
-
-        LOG.info(f"LIVE FTMO FILL {side.upper()} {volume} {symbol} @ {result.price} Ticket #{result.order}")
-        return {"success": True, "ticket": result.order, "fill_price": result.price, "dry_run": False}
-    except Exception as exc:
-        LOG.error(f"place_ftmo_market_order failed: {exc}")
-        return {"success": False, "error": str(exc)}
 
 # ----------------------------------------------------------------------
 # 4. Discovery Evidence Streamer
@@ -960,19 +893,21 @@ class ConsolidatedTradingDaemon:
                     f"Condition: {triggered_watch.get('condition')}\n"
                     f"Instruction: {triggered_watch.get('instruction')}\n"
                     f"Reason: {triggered_watch.get('reason')}\n\n"
-                    f"MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS):\n"
+                    f"MANDATORY EXECUTION PROTOCOL:\n"
                     f"1. STEP 0 (MANDATORY): get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}').\n"
-                    f"2. 90% NEWS & MACRO DRIVERS: Audit the classified rotating wire intelligence box across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields and DXY. Real-world catalysts drive 90% of market repricing, momentum, and direction.\n"
-                    f"3. 10% TECHNICAL EXECUTION COORDINATES: Use technical levels (roadways, DOM book, FVGs, footprints) strictly as the remaining 10% to locate precise entry timing, tight structural invalidation (SL), and plausible targets (TP).\n"
-                    f"4. Re-verify whether this triggered watch is still valid against the live news narrative and tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
+                    f"2. NEWS & MACRO DRIVERS: Audit factual economic calendar countdown alongside real yields and DXY.\n"
+                    f"3. TECHNICAL EXECUTION COORDINATES: Use technical levels (DOM book, FVGs, volume POC, footprints) to locate precise entry timing, tight structural invalidation (SL), and plausible front-running targets (TP < 12 pts).\n"
+                    f"4. Re-verify whether this triggered watch is still valid against the live tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
                 )
             elif is_brainstorm_turn:
                 prompt = (
                     f"{_time_str}\n\n"
-                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. "
-                    "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
-                    "You have 0.10 to 1.00 lot area to place the lots based on the power of news and analysis confidence. "
-                    "Always pull the latest and closest news possible. Always replan any pending orders each time you pull the news. "
+                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news.\n"
+                    "RULE: When using Proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), you must query STRICTLY for objective facts, official data releases, and consensus numbers (e.g. actual vs forecast prints, official central bank statements, factual event timelines). NEVER query Proxima for opinions, directional bias, or market probabilities (which are synthetic LLM hallucinations).\n"
+                    "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools.\n"
+                    "You have 0.10 to 1.00 lot area to place the lots based on the power of news and analysis confidence.\n"
+                    "ORDER INTEGRITY: If you decide in reasoning to cancel or modify any pending order, you MUST call the respective tool (cancel_pending_order / update_position) in this exact turn. Never state a cancellation in prose without executing the tool call.\n"
+                    "Always pull the latest and closest news possible. Always replan any pending orders each time you pull the news.\n"
                     "Always check get_market_time_context to verify we are on the right track."
                 )
             else:
@@ -982,7 +917,14 @@ class ConsolidatedTradingDaemon:
                     "Only trade when there is a macro or micro news catalyst (check full news for that 90% gathering) aligned with the 10% technicals (use full technicals) and the direction following pure thought processes (no rules--only follow pure thought processes).\n\n"
                     "Instead of waiting for a retracement catch, position in such a way that we take a BUY_STOP or SELL_STOP where price cannot retrace back, or even if it does retrace back, there should be a strong structural hold above the SL (analyze full technicals for that).\n\n"
                     "Do sure-shot front-running captures with pre-planned positioning and only when the time is right from the best structural coordinates using 0.5-1.0 lot size with confident technicals. Take small, high-probability distance TP targets (below 12 points) with solid volume that gets overrun by the momentum push--front-running the expansion rather than attempting a retrace catch that gets run over. Check full technicals for that.\n\n"
-                    "Plan for this if there is no news against us. Not a retrace catch, but when the time is right, place it for a front-run that will for sure get run over."
+                    "Plan for this if there is no news against us. Not a retrace catch, but when the time is right, place it for a front-run that will for sure get run over.\n\n"
+                    "MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
+                    "• Replace pending orders dynamically as conditions evolve.\n"
+                    "• NO TRAILING when price is in profit.\n"
+                    "• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
+                    "• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
+                    "• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
+                    "• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs."
                 )
             post_to_opencode_session("", prompt)
 

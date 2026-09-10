@@ -454,6 +454,36 @@ def mcp_alpha_place_pending_order(
                 "status": "INVALID_PRICE",
                 "error": "Price must be a positive number greater than 0."
             }, indent=2)
+
+        # Pre-validate price distance against live market quotes to prevent MT5 Retcode 10015
+        tick_info = mt5.symbol_info_tick(sym)
+        if tick_info:
+            curr_bid = getattr(tick_info, "bid", 0.0)
+            curr_ask = getattr(tick_info, "ask", 0.0)
+            point = getattr(sym_info, "point", 0.01) or 0.01
+            stops_level_pts = (getattr(sym_info, "trade_stops_level", 0) or 0) * point
+            min_dist = max(stops_level_pts, point * 5)
+
+            if ot_clean == "BUY_STOP" and target_price < (curr_ask + min_dist):
+                return json.dumps({
+                    "status": "INVALID_PRICE_DISTANCE",
+                    "error": f"BUY_STOP price ({target_price}) must be strictly ABOVE current ask ({curr_ask:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be >= {curr_ask + min_dist:.2f}"
+                }, indent=2)
+            elif ot_clean == "SELL_STOP" and target_price > (curr_bid - min_dist):
+                return json.dumps({
+                    "status": "INVALID_PRICE_DISTANCE",
+                    "error": f"SELL_STOP price ({target_price}) must be strictly BELOW current bid ({curr_bid:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be <= {curr_bid - min_dist:.2f}"
+                }, indent=2)
+            elif ot_clean == "BUY_LIMIT" and target_price > (curr_ask - min_dist):
+                return json.dumps({
+                    "status": "INVALID_PRICE_DISTANCE",
+                    "error": f"BUY_LIMIT price ({target_price}) must be strictly BELOW current ask ({curr_ask:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be <= {curr_ask - min_dist:.2f}"
+                }, indent=2)
+            elif ot_clean == "SELL_LIMIT" and target_price < (curr_bid + min_dist):
+                return json.dumps({
+                    "status": "INVALID_PRICE_DISTANCE",
+                    "error": f"SELL_LIMIT price ({target_price}) must be strictly ABOVE current bid ({curr_bid:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be >= {curr_bid + min_dist:.2f}"
+                }, indent=2)
             
         step = sym_info.volume_step if sym_info.volume_step > 0 else 0.01
         vol = round(round(vol / step) * step, 2)

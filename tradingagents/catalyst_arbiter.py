@@ -195,8 +195,6 @@ class CatalystArbiterEngine:
         dist_pdl_pts = 0.0
         nearest_fvg_below = None
         nearest_fvg_above = None
-        roadway_100b = {}
-        highway_trail_m5 = []
         raw_ohlc_60b = {}
 
         # 30-value 4-minute aggregated footprint horizon (120 minutes of tape)
@@ -363,71 +361,24 @@ class CatalystArbiterEngine:
                 except Exception as _fvg_err:
                     LOG.debug(f"FVG matrix query error: {_fvg_err}")
 
-                # 4-Timeframe Real MT5 Data Ingestion (M5, M15, H1, H4): 100b Roadway Rails & 60-Bar OHLC
+                # 4-Timeframe Real MT5 Data Ingestion (M5, M15, H1, H4): 60-Bar Physical OHLC
                 tf_specs = [
-                    ("M5", mt5.TIMEFRAME_M5, 0.8),
-                    ("M15", mt5.TIMEFRAME_M15, 0.8),
-                    ("H1", mt5.TIMEFRAME_H1, 1.5),
-                    ("H4", mt5.TIMEFRAME_H4, 1.5)
+                    ("M5", mt5.TIMEFRAME_M5),
+                    ("M15", mt5.TIMEFRAME_M15),
+                    ("H1", mt5.TIMEFRAME_H1),
+                    ("H4", mt5.TIMEFRAME_H4)
                 ]
-                for tf_name, tf_id, tol in tf_specs:
+                for tf_name, tf_id in tf_specs:
                     r_100 = mt5.copy_rates_from_pos(sym, tf_id, 0, 100)
                     if r_100 is not None and len(r_100) > 0:
-                        highs_100 = [float(r['high']) for r in r_100]
-                        lows_100 = [float(r['low']) for r in r_100]
-                        up_rail = round(max(highs_100), 1)
-                        low_rail = round(min(lows_100), 1)
-                        n_bars = len(r_100) - 1
-                        up_ago = n_bars - max(i for i, h in enumerate(highs_100) if h == max(highs_100))
-                        low_ago = n_bars - min(i for i, l in enumerate(lows_100) if l == min(lows_100))
-                        up_touches = sum(1 for h in highs_100 if abs(h - up_rail) <= tol)
-                        low_touches = sum(1 for l in lows_100 if abs(l - low_rail) <= tol)
-                        w_pts = round(up_rail - low_rail, 1)
-                        ref_p = curr_bid if curr_bid > 0 else float(r_100[-1]['close'])
-                        p_pct = round((ref_p - low_rail) / max(w_pts, 0.1) * 100.0, 1)
-
-                        roadway_100b[tf_name] = {
-                            "up": up_rail,
-                            "up_t": up_touches,
-                            "up_ago": up_ago,
-                            "low": low_rail,
-                            "low_t": low_touches,
-                            "low_ago": low_ago,
-                            "w": w_pts,
-                            "pos": p_pct
-                        }
-
                         # 60 Real Physical OHLC bars (rounded to 1 decimal place: 0.10)
                         raw_ohlc_60b[tf_name] = [
                             [round(float(r['open']), 1), round(float(r['high']), 1), round(float(r['low']), 1), round(float(r['close']), 1)]
                             for r in r_100[-60:]
                         ]
-
-                        # M5 Highway Trail (4 Checkpoints: 60b, 40b, 20b, Now)
-                        if tf_name == "M5":
-                            for cp in [40, 60, 80, 100]:
-                                if len(r_100) >= cp:
-                                    sub = r_100[:cp]
-                                    f_val = round(min(float(x['low']) for x in sub[-40:]), 1)
-                                    c_val = round(max(float(x['high']) for x in sub[-40:]), 1)
-                                    w_val = round(c_val - f_val, 1)
-                                    highway_trail_m5.append({'ago': 100 - cp, 'floor': f_val, 'ceil': c_val, 'w': w_val})
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
 
-        # 2.1 In-Between Breaking News Extraction & Tape Verification
-        # 2.1 Pure Classified Rotating News Catalysts (Zero Technical Fluff)
-        classified_news = {
-            "macro": [],
-            "micro": [],
-            "other": [],
-            "formatted_box": "- NEWS & CATALYST INTELLIGENCE: No active wire headlines."
-        }
-        try:
-            from tradingagents.world_events import LiveWorldEventsEngine
-            classified_news = LiveWorldEventsEngine().get_classified_rotating_news()
-        except Exception as _news_err:
-            LOG.debug(f"Classified rotating news error: {_news_err}")
 
 
         # 3. Macro Yields & Dominant Anchor (Fast memory + disk cache with 300s TTL)
@@ -594,13 +545,8 @@ class CatalystArbiterEngine:
         else:
             next_ev_str = "None scheduled today"
 
-        roadway_badge_str = " | ".join(f"{tf}: [{v['up']}({v['up_t']}x,{v['up_ago']}b)|{v['low']}({v['low_t']}x,{v['low_ago']}b)|W:{v['w']}|{v['pos']}%]" for tf, v in roadway_100b.items()) if roadway_100b else "None"
-        trail_m5_str = " -> ".join(f"[{t['floor']:.0f}-{t['ceil']:.0f}](W:{t['w']:.0f})" for t in highway_trail_m5) if highway_trail_m5 else "None"
-
         badge_line1 = f"[RAW REALITY] Bid: {curr_bid:.1f} | Ask: {curr_ask:.1f} | Spr: {live_spread_pts} pts | Vel: {tick_velocity_tpm:.0f} t/m | CVD 5m: {cvd_5m_ratio:+.2f} | 10b Net Delta: {cvd_10b_pressure:+.1f}%"
         badge_line2 = f"- Coordinates: POC {poc_price:.1f} | PDL {pdl_price:.1f} ({dist_pdl_pts:+.1f}) | PDH {pdh_price:.1f} ({dist_pdh_pts:+.1f}) | FVG Below: {fvg_below_str} | FVG Above: {fvg_above_str}"
-        badge_line3 = f"- 100b Roadways: {roadway_badge_str}"
-        badge_line3b = f"- M5 Highway Trail (60b->Now): {trail_m5_str}"
         badge_line4 = f"- 4M Footprint Deltas (30b=120m): {deltas_4m_str}"
         badge_line5 = f"- 4M Displacements (pts): {disp_4m_str}"
         badge_line6 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
@@ -621,8 +567,7 @@ class CatalystArbiterEngine:
             badge_line7d = "- Level 2 Order Book: DOM Imbalance: 0.00 | Bid Wall: None | Ask Wall: None"
             depth_data = {}
 
-        badge_line8 = classified_news.get("formatted_box", "- NEWS & CATALYSTS: Clear.")
-        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line3}\n{badge_line3b}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line7b}\n{badge_line7c}\n{badge_line7d}\n{badge_line8}"
+        compact_badge = f"{badge_line1}\n{badge_line2}\n{badge_line4}\n{badge_line5}\n{badge_line6}\n{badge_line7}\n{badge_line7b}\n{badge_line7c}\n{badge_line7d}"
 
         return {
             "symbol": sym,
@@ -641,7 +586,6 @@ class CatalystArbiterEngine:
                 "cvd_5m_ratio": cvd_5m_ratio,
                 "cvd_10b_pressure_pct": cvd_10b_pressure,
                 "cvd_divergence": cvd_divergence,
-                "news_catalysts": classified_news,
                 "cross_asset_5m_deltas": {
                     "eurusd_pct": eurusd_5m_pct,
                     "xagusd_pct": xagusd_5m_pct
@@ -657,8 +601,6 @@ class CatalystArbiterEngine:
                     "nearest_fvg_below": nearest_fvg_below,
                     "nearest_fvg_above": nearest_fvg_above
                 },
-                "roadway_100b": roadway_100b,
-                "highway_trail_m5": highway_trail_m5,
                 "raw_ohlc_60b": raw_ohlc_60b,
                 "raw_footprints_4m_horizon": {
                     "description": "30 rolling non-overlapping 4-minute blocks covering trailing 120 minutes of tape (FIFO, index 29 is most recent)",

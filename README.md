@@ -234,12 +234,24 @@ Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*cloudflare
 python C:\Trading\cloudflare_autoconnector.py
 ```
 
-### 2. Restart Alpha Consolidated Trading Desk Daemon
+### 2. Restart Alpha Consolidated Trading Desk Daemon (Zombie-Safe Cleanup)
 ```powershell
-# Kill existing desk daemon:
-Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*alpha_trading_desk.py*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+# Step A: Find and terminate all existing desk daemon and orphaned child instances across all venvs:
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*alpha_trading_desk.py*" } | ForEach-Object { 
+    Write-Host "Terminating daemon PID $($_.ProcessId)..."
+    Stop-Process -Id $_.ProcessId -Force 
+}
+Start-Sleep -Seconds 2
 
-# Start fresh desk daemon:
+# Step B: Verify zero lingering instances:
+$lingering = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*alpha_trading_desk.py*" }
+if ($lingering) {
+    Write-Warning "Forcing termination on lingering PID(s): $($lingering.ProcessId -join ', ')"
+    $lingering | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+    Start-Sleep -Seconds 1
+}
+
+# Step C: Start a single fresh desk daemon:
 python C:\Trading\Alpha\alpha_trading_desk.py
 ```
 
