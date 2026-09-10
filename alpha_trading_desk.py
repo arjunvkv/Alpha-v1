@@ -979,9 +979,9 @@ class ConsolidatedTradingDaemon:
                 prompt = (
                     f"{_time_str}\n\n"
                     "Your primary role is gathering the news (we don't want to miss any) followed by 10% technicals with reverse engineering.\n\n"
-                    "Only trade when there is a macro or micro news catalyst (check full news for that 90% gathering) aligned with the 10% technicals (use full technicals) and the direction following pure thought processes (no rules—only follow pure thought processes).\n\n"
+                    "Only trade when there is a macro or micro news catalyst (check full news for that 90% gathering) aligned with the 10% technicals (use full technicals) and the direction following pure thought processes (no rules--only follow pure thought processes).\n\n"
                     "Instead of waiting for a retracement catch, position in such a way that we take a BUY_STOP or SELL_STOP where price cannot retrace back, or even if it does retrace back, there should be a strong structural hold above the SL (analyze full technicals for that).\n\n"
-                    "Do sure-shot front-running captures with pre-planned positioning and only when the time is right from the best structural coordinates using 0.5–1.0 lot size with confident technicals. Take small, high-probability distance TP targets (below 12 points) with solid volume that gets overrun by the momentum push—front-running the expansion rather than attempting a retrace catch that gets run over. Check full technicals for that.\n\n"
+                    "Do sure-shot front-running captures with pre-planned positioning and only when the time is right from the best structural coordinates using 0.5-1.0 lot size with confident technicals. Take small, high-probability distance TP targets (below 12 points) with solid volume that gets overrun by the momentum push--front-running the expansion rather than attempting a retrace catch that gets run over. Check full technicals for that.\n\n"
                     "Plan for this if there is no news against us. Not a retrace catch, but when the time is right, place it for a front-run that will for sure get run over."
                 )
             post_to_opencode_session("", prompt)
