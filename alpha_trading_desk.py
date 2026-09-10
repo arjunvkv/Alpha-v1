@@ -913,7 +913,7 @@ class ConsolidatedTradingDaemon:
                     "• STRICT NEGATIVE CONSTRAINT: ZERO PROBABILITY QUERIES. Never ask 'what is the probability', 'will it break', or seek speculative forecasts. Query only for factual prints, actual data points, and verbatim quotes.\n\n"
                     "You have 0.10 to 1.00 lot area to place the lots based on the power of news and analysis confidence.\n"
                     "ORDER INTEGRITY: If you decide in reasoning to cancel or modify any pending order, you MUST call the respective tool (cancel_pending_order / update_position) in this exact turn. Never state a cancellation in prose without executing the tool call.\n"
-                    "Always pull the latest and closest news possible via Proxima. Always replan any pending orders each time you pull fresh data."
+                    "Always pull the latest and closest news possible via Proxima. Always replan any pending orders each time you pull fresh data. Adapt order types (BUY_STOP, SELL_STOP, BUY_LIMIT, SELL_LIMIT) dynamically to the scenario: stops for momentum expansion, limits for structural shelf tests."
                 )
             else:
                 prompt = (
@@ -928,9 +928,16 @@ class ConsolidatedTradingDaemon:
                     "  • `get_fred_observations(series_id='DFII10')`: For 10Y real yields (TIPS).\n"
                     "• STRICT NEGATIVE CONSTRAINT: ZERO PROBABILITY QUERIES. Never ask 'what is the probability', 'will it break', or seek speculative forecasts. Query only for factual prints, actual data points, and verbatim quotes.\n\n"
                     "Only trade when there is a macro or micro news catalyst (confirmed via Proxima MCP) aligned with the 10% technicals (Level 2 depth, FVG matrix, CVD posture, microstructure) and the direction following pure thought processes (no rules--only follow pure thought processes).\n\n"
-                    "Instead of waiting for a retracement catch, position in such a way that we take a BUY_STOP or SELL_STOP where price cannot retrace back, or even if it does retrace back, there should be a strong structural hold above the SL (analyze full technicals for that).\n\n"
-                    "Do sure-shot front-running captures with pre-planned positioning and only when the time is right from the best structural coordinates using 0.5-1.0 lot size with confident technicals. Take small, high-probability distance TP targets (below 12 points) with solid volume that gets overrun by the momentum push--front-running the expansion rather than attempting a retrace catch that gets run over. Check full technicals for that.\n\n"
-                    "Plan for this if there is no news against us. Not a retrace catch, but when the time is right, place it for a front-run that will for sure get run over.\n\n"
+                    "DYNAMIC SCENARIO-ADAPTIVE ORDER PLACEMENT (STOP ORDERS & LIMIT ORDERS):\n"
+                    "Adapt your order type dynamically to current market geometry and tape kinetics rather than forcing a single mode:\n"
+                    "• EXPANSION & BREAKOUT MOMENTUM (BUY_STOP / SELL_STOP): When momentum accelerates and price is pushing into structural vacuum or clearing key levels, stage BUY_STOP or SELL_STOP to front-run the expansion push where momentum will overrun the level.\n"
+                    "• STRUCTURAL RETRACEMENTS & KEY LEVEL SHELVES (BUY_LIMIT / SELL_LIMIT): When price is testing or pulling back into high-conviction institutional shelves — such as unmitigated FVG Consequent Encroachment (50% CE), order blocks, Value Area boundaries (VAH/VAL 70%), or major liquidity pools with passive absorption — stage BUY_LIMIT or SELL_LIMIT to capture premium pricing with tight invalidation.\n"
+                    "• IMMEDIATE MOMENTUM DISPLACEMENT (BUY / SELL): When confirmed high-impact catalyst momentum is actively displacing through the tape with heavy volume delta, execute immediate market entry.\n\n"
+                    "POSITIONING & EXECUTION PRINCIPLES:\n"
+                    "• Pre-plan your orders from the best structural coordinates using 0.10 to 1.00 lot size (typically 0.50–1.00 when highly confident).\n"
+                    "• Always ensure a strong structural anchor defends the Stop Loss (behind FVG boundary, order block, or DOM wall) where price cannot easily clip it without invalidating the thesis.\n"
+                    "• Target high-probability, structurally sound Take Profits (below 12 points for rapid front-running scalps, or extended to major institutional liquidity pools when momentum allows).\n"
+                    "• If conditions shift before fill, cancel or replace pending orders dynamically.\n\n"
                     "MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
                     "• Replace pending orders dynamically as conditions evolve.\n"
                     "• NO TRAILING when price is in profit.\n"
