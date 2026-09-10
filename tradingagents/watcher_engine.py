@@ -308,6 +308,11 @@ class UniversalWatcherEngine:
         Returns trigger dict if fired, None otherwise.
         """
         w_id = watch.get("id") or watch.get("watch_id")
+        status = (watch.get("status") or "ACTIVE").upper()
+        is_recurring = bool((watch.get("params") or {}).get("is_recurring", False))
+        if status in ("TRIGGERED", "CANCELLED", "COMPLETED") and not is_recurring:
+            return None
+
         cond_raw = watch.get("condition", "")
         cond_type = (watch.get("condition_type") or "").upper()
         target_price = watch.get("target_price")

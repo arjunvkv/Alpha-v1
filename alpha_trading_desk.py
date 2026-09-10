@@ -18,11 +18,13 @@ Runtime model:
 import os
 import sys
 import json
+import re
 import time
 import psutil
 import logging
 import asyncio
 from datetime import datetime, timedelta, timezone
+import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -117,6 +119,9 @@ def spread_classification(symbol: str, spread_pts: int) -> str:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.trading_desk")
 
+_RECENTLY_DISPATCHED_ALERTS: Dict[str, float] = {}
+_DISPATCH_LOCK = threading.Lock()
+
 # ----------------------------------------------------------------------
 # 1. Story Logger & Resilient OpenCode HTTP Session Streamer Module
 # ----------------------------------------------------------------------
@@ -138,6 +143,19 @@ def post_to_opencode_session(speaker: str, message: str):
         return
 
     is_urgent = any(k in message for k in ("WATCH ALERT", "WATCH TRIGGERED", "FILL ALERT", "AUTO-WIN HARVEST", "EVIDENCE WAKE"))
+
+    # Extract watch_id if present to prevent flooding duplicate trigger prompts
+    watch_match = re.search(r"watch_[a-zA-Z0-9_]+", message)
+    watch_id = watch_match.group(0) if watch_match else None
+
+    if watch_id and is_urgent:
+        now_mono = time.monotonic()
+        with _DISPATCH_LOCK:
+            last_time = _RECENTLY_DISPATCHED_ALERTS.get(watch_id, 0.0)
+            if now_mono - last_time < 30.0:
+                LOG.info(f"⚡ [SUPPRESSING DUPLICATE ALERT] Watch {watch_id} alert already dispatched/queued {now_mono - last_time:.1f}s ago.")
+                return
+            _RECENTLY_DISPATCHED_ALERTS[watch_id] = now_mono
 
     # Check if OpenCode is actively deliberating/executing tools
     if sid and not is_opencode_idle(sid):
@@ -163,6 +181,19 @@ def post_to_opencode_session(speaker: str, message: str):
         # For urgent alerts, wait until OpenCode becomes idle before dispatching
         if sid and is_urgent:
             for _ in range(60):
+                # Check if watch was cancelled while waiting for OpenCode to be idle
+                if watch_id:
+                    try:
+                        from tradingagents.evidence_state import EvidenceStateStore
+                        _chk_store = EvidenceStateStore()
+                        _w = _chk_store.get_watches(include_closed=True)
+                        _match_w = next((x for x in _w if x.get("id") == watch_id), None)
+                        if _match_w and _match_w.get("status") == "CANCELLED":
+                            LOG.info(f"⚡ [CANCELLED IN FLIGHT] Watch {watch_id} was CANCELLED while waiting for OpenCode to be idle. Dropping queued wake prompt.")
+                            return
+                    except Exception:
+                        pass
+
                 if is_opencode_idle(sid):
                     break
                 time.sleep(1.0)
@@ -851,7 +882,7 @@ class ConsolidatedTradingDaemon:
         try:
             from tradingagents.evidence_state import EvidenceStateStore
             _ev_store = EvidenceStateStore()
-            _active_watches = _ev_store.get_watches(include_closed=False)
+            _active_watches = [w for w in _ev_store.get_watches(include_closed=False) if (w.get("status") or "ACTIVE").upper() == "ACTIVE"]
             for w in _active_watches:
                 w_sym = w.get("symbol", "XAUUSD")
                 w_tick = mt5.symbol_info_tick(w_sym) if mt5_online else None
@@ -866,7 +897,8 @@ class ConsolidatedTradingDaemon:
                     )
                     if trig:
                         triggered_watch = w
-                        _ev_store.update_watch(w["id"], status="TRIGGERED")
+                        _ev_store.update_watch(w["id"], status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
+                        w["status"] = "TRIGGERED"
                         LOG.info(f"⚡ WATCH TRIGGERED: {w['id']} -> {trig.get('trigger_reason', '')} (Live bid: {w_bid})")
                         break
         except Exception as _w_store_err:
@@ -1163,7 +1195,7 @@ class ConsolidatedTradingDaemon:
                 if mt5_ok:
                     current_positions = mt5.positions_get() or []
                     current_pending = mt5.orders_get() or []
-                    active_watches = ev_store.get_watches(include_closed=False)
+                    active_watches = [w for w in ev_store.get_watches(include_closed=False) if (w.get("status") or "ACTIVE").upper() == "ACTIVE"]
 
                     # Gather high-speed live tape snapshot for XAUUSD
                     live_tape = {}
@@ -1189,12 +1221,13 @@ class ConsolidatedTradingDaemon:
                             w_id = fa["watch"].get("id") or fa["watch"].get("watch_id")
                             if w_id:
                                 ev_store.update_watch(w_id, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
+                                fa["watch"]["status"] = "TRIGGERED"
                         LOG.info(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']} {fa['volume']} lots @ {fa['price']:.2f})")
                         log_local_llm_monitoring(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']})")
                         post_to_opencode_session("OpenCode (CIO)", fa["prompt"])
 
                     # 2. Evaluate active watches against live tick & tape
-                    watched_symbols = set(w.get("symbol", "XAUUSD").upper() for w in active_watches)
+                    watched_symbols = set(w.get("symbol", "XAUUSD").upper() for w in active_watches if (w.get("status") or "ACTIVE").upper() == "ACTIVE")
                     if not watched_symbols:
                         watched_symbols = {"XAUUSD"}
 
@@ -1209,7 +1242,7 @@ class ConsolidatedTradingDaemon:
                         tape_data = dict(live_tape)
                         tape_data["spread"] = round((ask - bid) * 10, 1) if ask > bid else 0.0
 
-                        sym_watches = [w for w in active_watches if w.get("symbol", "XAUUSD").upper() == sym]
+                        sym_watches = [w for w in active_watches if w.get("symbol", "XAUUSD").upper() == sym and (w.get("status") or "ACTIVE").upper() == "ACTIVE"]
                         for w in sym_watches:
                             trig = self.watcher_engine.evaluate_watch(
                                 watch=w,
@@ -1222,6 +1255,7 @@ class ConsolidatedTradingDaemon:
                             if trig:
                                 wid = trig["watch_id"]
                                 ev_store.update_watch(wid, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
+                                w["status"] = "TRIGGERED"
                                 LOG.info(f"⚡ WATCH TRIGGERED: {wid} -> {trig['trigger_reason']}")
                                 log_local_llm_monitoring(f"⚡ WATCH TRIGGERED: {wid} ({trig['trigger_reason']})")
                                 post_to_opencode_session("OpenCode (CIO)", trig["prompt"])

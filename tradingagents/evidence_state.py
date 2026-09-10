@@ -121,8 +121,8 @@ class EvidenceStateStore:
         if symbol:
             rows = [r for r in rows if str(r.get("symbol", "")).upper() == str(symbol).upper()]
         if not include_closed:
-            # Include ACTIVE and un-cleared TRIGGERED watches so trigger states are auditable
-            rows = [r for r in rows if r.get("status") in ("ACTIVE", "TRIGGERED")]
+            # Strictly ACTIVE watches only (prevents daemon watcher loops from re-evaluating triggered watches)
+            rows = [r for r in rows if r.get("status") == "ACTIVE"]
         return sorted(rows, key=lambda r: r.get("updated_at", ""), reverse=True)
 
     def update_watch(self, watch_id: str, **changes):

@@ -1644,8 +1644,8 @@ def register_watch(
     return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id, condition_type, target_ticket, tolerance, min_velocity, max_spread, is_recurring)
 
 @mcp.tool()
-def get_active_watches(symbol: str = None, include_closed: bool = False) -> str:
-    """Fetch all active persistent watches currently tracked by the trading desk."""
+def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
+    """Fetch persistent watches tracked by the trading desk (includes ACTIVE, TRIGGERED, and CANCELLED unless include_closed=False)."""
     return mcp_alpha_get_active_watches(symbol, include_closed)
 
 @mcp.tool()
