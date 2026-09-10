@@ -79,13 +79,15 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
 
 External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP** executing 8 parallel calls. **OpenCode formulates its own search queries dynamically based on its cognitive thought process without hardcoded topic constraints**:
 
-1. **`proxima_ask_perplexity(message: str)`** (Mandatory 4 Calls):
-   * 4 parallel Perplexity queries on whatever news, macro, central bank, and market angles OpenCode decides to explore.
+1. **`proxima_ask_perplexity(message: str)`** (Mandatory 2 Calls):
+   * 2 parallel Perplexity queries on breaking headlines, macro releases, and wire alerts.
 2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`** (Mandatory 2 Calls):
    * 2 parallel deep AI research queries for in-depth background, institutional flows, and chronological details.
 3. **`proxima_ddg_search(query: str)`** (Mandatory 2 Calls):
    * 2 parallel live web searches across primary sources and wires.
-4. **`proxima_web_scrape(url: str)`**:
+4. **`proxima_deep_search(query: str, type: str = 'reddit')` or `proxima_ddg_search(query='... site:reddit.com')`** (Mandatory 2 Calls):
+   * 2 parallel live Reddit sentiment/discussion searches to monitor retail positioning, community chatter, and sentiment shifts.
+5. **`proxima_web_scrape(url: str)`**:
    * Scrapes and converts discovered URLs into clean markdown for source verification.
 
 > [!IMPORTANT]
