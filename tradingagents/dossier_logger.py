@@ -81,7 +81,7 @@ class DeepDossierLogger:
         md_lines.append(f"3. **Q7/Q8 (Order Flow & Microstructure)**: `get_live_microstructure` — Real-time spread (pts), M1 tick velocity (t/m), order book depth imbalance, and raw_cvd_full (cumulative volume delta, absorption, exhaustion).")
         md_lines.append(f"4. **Q10 (Execution & Staging)**: `place_pending_order`, `execute_trade`, `update_position`, `register_watch` — Stage/manage limits or SL/TP.\n")
         md_lines.append(f"### 🕒 Tier 2: Periodic & Event-Driven Refresh (Cadence / Event / New Trade)")
-        md_lines.append(f"5. **Q2 (Breaking News & Event Research)**: Proxima MCP (`proxima_ask_perplexity` exact 2 queries, `proxima_deep_search`, `proxima_ddg_search`, `proxima_web_scrape`; hard numbers only, zero probability queries).")
+        md_lines.append(f"5. **Q2 (Breaking News & Event Research)**: Proxima MCP (4x `proxima_ask_perplexity`, 2x `proxima_deep_search`, 2x `proxima_ddg_search`, `proxima_web_scrape`; 8 parallel calls, hard numbers only, zero probability queries).")
         md_lines.append(f"6. **Q3 (Macro Rates & Real Yields)**: `get_fred_observations` — US Treasury 10Y/2Y yields, real yields (DFII10), breakeven inflation.")
         md_lines.append(f"7. **Q4/Q5 (Volume Profile & Structure)**: `get_full_institutional_profile` — Point of Control (POC), Value Area (VAH/VAL 70%), VWAP sigma bands.")
         md_lines.append(f"8. **Q9 (Thesis Validation)**: `backtest_thesis`, Proxima MCP — Empirically validate proposed thesis before new trade entry ($R:R \\ge 2.5:1$).\n")

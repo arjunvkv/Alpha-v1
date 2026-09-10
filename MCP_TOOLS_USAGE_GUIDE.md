@@ -77,20 +77,25 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
 
 ### Proxima MCP News & Deep Research Suite
 
-External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP**:
+External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP** executing 8 parallel calls:
 
-1. **`proxima_ask_perplexity(message: str)`**:
-   * Rapid headline sweeps, breaking central bank announcements, official economic release prints (CPI, PPI, NFP).
-   * **Rule**: Exact 2 queries per news cycle.
-2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`**:
-   * In-depth chronological reporting, institutional flow details, and geopolitical context.
-3. **`proxima_ddg_search(query: str)`**:
-   * Live web search across primary wire sources for raw links and statements.
+1. **`proxima_ask_perplexity(message: str)`** (Mandatory 4 Calls):
+   * Call 1: Central Banks & Rates (Fed, ECB, BOJ decisions, rate probabilities, official quotes).
+   * Call 2: Macro Inflation & Growth (PPI, CPI, PCE, NFP prints vs consensus).
+   * Call 3: Geopolitics & Energy Flow (Middle East, Hormuz, sanctions, crude prices).
+   * Call 4: XAUUSD Institutional & Sovereign Flows (Central bank gold reserves, ETF flows).
+2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`** (Mandatory 2 Calls):
+   * Call 1: Deep chronological report on geopolitical conflicts, sanctions, and supply chain impacts.
+   * Call 2: Deep institutional positioning, hedge fund COT positioning, and bullion bank desk flows.
+3. **`proxima_ddg_search(query: str)`** (Mandatory 2 Calls):
+   * Call 1: Live breaking wire headlines from Reuters, Bloomberg, CNBC in the last 60 minutes.
+   * Call 2: Real-time gold market breaking news, central bank speech transcripts, and flash alerts.
 4. **`proxima_web_scrape(url: str)`**:
    * Scrapes and converts discovered URLs into clean markdown for source verification.
 
 > [!IMPORTANT]
 > **Research Directives**:
+> - Execute all 8 queries in parallel for full 90% catalyst coverage.
 > - Query strictly for hard numbers, official figures, and verbatim quotes.
 > - **Strictly NO probabilistic queries** (e.g., "what are the odds of breaking 4350?").
 > - Zero RSS / scraped news in Alpha MCP — Proxima is the sole research engine.
