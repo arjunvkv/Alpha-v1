@@ -1,11 +1,11 @@
 {
-  "session_id": "ses_f745a6001ffee0OE5If26Hn1K1",
-  "session_title": "Escanor v9",
-  "opencode_session_id": "ses_f7aa410f8ffe5efMsOjffSh3Tx",
-  "opencode_session_title": "Escanor v8",
+  "session_id": "ses_f737f5903ffeoKxbwPymA6gs1G",
+  "session_title": "Escanor v10",
+  "opencode_session_id": "ses_f737f5903ffeoKxbwPymA6gs1G",
+  "opencode_session_title": "Escanor v10",
   "opencode_api_url": "http://127.0.0.1:4096",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 120,
   "dossier_streaming_enabled": true,
-  "updated_at": "2026-09-10 14:08:45 UTC"
+  "updated_at": "2026-09-10 18:07:00 UTC"
 }

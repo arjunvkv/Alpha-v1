@@ -460,11 +460,10 @@ class UniversalWatcherEngine:
             f"• Instruction: {watch.get('instruction', 'Evaluate immediate current-state validation')}\n"
             f"• Rationale: {watch.get('reason', 'N/A')}\n"
             f"{tape_summary}\n\n"
-            f"=== MANDATORY 90/10 REASONING FRAMEWORK (NEWS CATALYSTS VS TECHNICALS) ===\n"
-            f"1. MANDATORY FIRST CALL (STEP 0): `get_market_regime_context(symbol='{sym}')`.\n"
-            f"2. 90% NEWS & MACRO PRIORITY: First evaluate the rotating classified wire intelligence box across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields and DXY. Real-world catalysts drive 90% of market repricing, momentum, and direction.\n"
-            f"3. 10% TECHNICAL EXECUTION COORDINATES: Use technical levels (roadways, DOM order book walls, FVGs, footprints) strictly as the remaining 10% to locate precise entry timing, tight structural invalidation (SL), and plausible targets (TP).\n"
-            f"4. Re-verify whether this triggered watch is still valid against the live news narrative and tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
+            f"=== EXECUTION AUDIT ===\n"
+            f"1. STEP 0 (MANDATORY): Call `get_market_regime_context(symbol='{sym}')` for live broker quote, spread, CVD flow, and economic calendar.\n"
+            f"2. RE-VERIFY THESIS: Audit current price against order book depth (DOM walls), FVGs, volume POC, and footprints.\n"
+            f"3. DECIDE: If confirmed by live tape, execute or stage order; if invalidated, cancel or update watch."
         )
 
         return {
