@@ -982,14 +982,6 @@ async def query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
     return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
 
 @mcp.tool()
-def mcp_alpha_get_live_world_events(category: str = "ALL") -> str:
-    """Fetch full live real-world events, macro news, central bank headlines, and geopolitical updates."""
-    read_logger.log_dossier_read("OpenCode CIO (MCP World Events)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested live world events (Category filter: {category})")
-    events = world_events_engine.fetch_live_events(force_refresh=True)
-    if category.upper() != "ALL": events = [e for e in events if e.get("category") == category.upper()]
-    return json.dumps({"status": "SUCCESS", "total_events": len(events), "category_filter": category.upper(), "events": events}, indent=2)
-
-@mcp.tool()
 def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
     """Record pattern evidence in Unified Learning Memory. Evidence is unlimited; no hit threshold authorizes execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
@@ -1614,44 +1606,9 @@ def mcp_alpha_get_fred_observations(series_id: str, limit: int = 100, vintage_da
     return json.dumps(_fred_adapter.observations(series_id, limit, vintage_date or None), indent=2)
 
 @mcp.tool()
-def mcp_alpha_search_market_news(query: str, max_records: int = 25, timespan: str = "") -> str:
-    """Search Original GDELT for global/historical news context with provenance."""
-    return json.dumps(_gdelt_adapter.search(query, max_records, timespan or None), indent=2)
-
-@mcp.tool()
-def mcp_alpha_get_direct_news(max_items: int = 20) -> str:
-    """Fetch configured direct RSS/Atom sources with canonical IDs and first-seen timestamps."""
-    return json.dumps(_rss_registry.fetch(max_items), indent=2)
-
-@mcp.tool()
-def mcp_alpha_lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
-    """On-demand historical URL capture lookup. Not intended for routine live-news polling."""
-    return json.dumps(_common_crawl_adapter.lookup(url, index, limit), indent=2)
-
-@mcp.tool()
-def get_evidence_capabilities() -> str:
-    """Check status and availability of optional evidence adapters (FRED, GDELT, RSS, Common Crawl) without fetching bulk data."""
-    return mcp_alpha_get_evidence_capabilities()
-
-@mcp.tool()
 def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
     """Retrieve factual vintage-aware Federal Reserve economic observations (e.g. series 'DGS10', 'T10YIE', 'DFII10') for macroeconomic interest rate analysis."""
     return mcp_alpha_get_fred_observations(series_id, limit, vintage_date)
-
-@mcp.tool()
-def search_market_news(query: str, max_records: int = 25, timespan: str = "") -> str:
-    """Search global news and historical intelligence via Original GDELT DOC 2.0 API with provenance timestamps."""
-    return mcp_alpha_search_market_news(query, max_records, timespan)
-
-@mcp.tool()
-def get_direct_news(max_items: int = 20) -> str:
-    """Fetch live breaking financial headlines from direct RSS/Atom feeds (MarketWatch, Yahoo Finance, Investing.com) with first-seen timestamps."""
-    return mcp_alpha_get_direct_news(max_items)
-
-@mcp.tool()
-def lookup_common_crawl(url: str, index: str = "CC-MAIN-2026-30", limit: int = 10) -> str:
-    """On-demand historical URL capture recovery from Common Crawl index. Use only when historical article verification is needed."""
-    return mcp_alpha_lookup_common_crawl(url, index, limit)
 
 @mcp.tool()
 def register_watch(
@@ -1710,7 +1667,7 @@ _global_arbiter = None
 
 @mcp.tool()
 def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = False) -> str:
-    """Retrieve pure real-time physical market telemetry and raw kinetic metrics (live broker quotes, spread, tape velocity, CVD ratios, 4m/M1 footprints, 100b physical roadways, real yields, and verbatim news) without artificial labels or calculated fluff. Set force_refresh=True to bypass cached macro yields and pull live endpoints."""
+    """Retrieve pure real-time physical market telemetry and raw kinetic metrics (live broker quotes, spread, tape velocity, CVD ratios, 4m/M1 footprints, Level 2 order book depth, real yields, and calendar countdown) without artificial labels or calculated fluff. Set force_refresh=True to bypass cached macro yields and pull live endpoints."""
     global _global_arbiter
     from tradingagents.catalyst_arbiter import CatalystArbiterEngine
     if _global_arbiter is None:
@@ -1804,10 +1761,6 @@ def get_fvg_matrix(symbol: str = "XAUUSD") -> str:
     """Fetch multi-timeframe Fair Value Gaps (H4, H1, M15, M5) and 50% Consequent Encroachment levels."""
     return mcp_alpha_get_fvg_matrix(symbol)
 
-@mcp.tool()
-def get_live_world_events(category: str = "ALL") -> str:
-    """Live macroeconomic releases, central bank speeches, and geopolitical intelligence."""
-    return mcp_alpha_get_live_world_events(category)
 
 @mcp.tool()
 def search_book(keyword: str, symbol: str = None) -> str:
@@ -1844,12 +1797,7 @@ def list_desk_tools() -> str:
         {"name":"get_live_microstructure","description":"Current measured spread, tick velocity, order-book and CVD evidence."},
         {"name":"get_measured_cvd","description":"Measured tick CVD and delta evidence."},
         {"name":"get_fvg_matrix","description":"Multi-timeframe FVG geometry."},
-        {"name":"get_live_world_events","description":"Current factual macro/event evidence."},
-        {"name":"get_evidence_capabilities","description":"Availability state of optional evidence adapters."},
         {"name":"get_fred_observations","description":"Vintage-aware FRED/ALFRED macro observations."},
-        {"name":"search_market_news","description":"Original GDELT article discovery."},
-        {"name":"get_direct_news","description":"Configured direct RSS/Atom evidence."},
-        {"name":"lookup_common_crawl","description":"On-demand historical URL recovery."},
         {"name":"backtest_thesis","description":"Historical empirical replay evidence; never an automatic signal."},
         {"name":"search_book","description":"Targeted Pattern Book search."},
         {"name":"get_book_index","description":"Pattern Book index."},
@@ -1862,14 +1810,14 @@ def list_desk_tools() -> str:
         {"name":"cancel_pending_order","description":"Cancel a pending order."},
         {"name":"get_pending_orders","description":"Fetch current pending orders."},
         {"name":"update_position","description":"Manage an explicitly identified position."},
-        {"name":"register_watch","description":"Create or update a universal persistent watch (price, order fill, velocity, spread, news)."},
+        {"name":"register_watch","description":"Create or update a universal persistent watch (price, order fill, velocity, spread)."},
         {"name":"get_active_watches","description":"Fetch persistent watches."},
         {"name":"update_watch","description":"Update persistent watch state."},
         {"name":"cancel_watch","description":"Cancel / remove an active persistent watch."},
         {"name":"clear_completed_watches","description":"Clear triggered/cancelled watches from disk."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
-        {"name":"get_market_regime_context","description":"Retrieve pure real-time physical market telemetry, tape kinetics, roadways, and macro yields."}
+        {"name":"get_market_regime_context","description":"Retrieve pure real-time physical market telemetry, tape kinetics, and macro yields."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
 
@@ -1893,12 +1841,7 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_live_microstructure": lambda: mcp_alpha_get_live_microstructure(args.get("symbol","XAUUSD")),
         "get_measured_cvd": lambda: mcp_alpha_get_measured_cvd(args.get("symbol","XAUUSD")),
         "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol","XAUUSD")),
-        "get_live_world_events": lambda: mcp_alpha_get_live_world_events(args.get("category","ALL")),
-        "get_evidence_capabilities": mcp_alpha_get_evidence_capabilities,
         "get_fred_observations": lambda: mcp_alpha_get_fred_observations(**args),
-        "search_market_news": lambda: mcp_alpha_search_market_news(**args),
-        "get_direct_news": lambda: mcp_alpha_get_direct_news(**args),
-        "lookup_common_crawl": lambda: mcp_alpha_lookup_common_crawl(**args),
         "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "search_book": lambda: mcp_alpha_search_book(args.get("keyword",args.get("query","")),args.get("symbol")),
         "get_book_index": mcp_alpha_get_book_index,

@@ -46,13 +46,12 @@ egister_watch | Stage/replace pending orders, adjust SL/TP defensively, or set w
 ### 🕒 TIER 2: PERIODIC & EVENT-DRIVEN REFRESH (Refreshed on Cadence or New Trade Formulations)
 These slower-moving institutional pillars are refreshed when new events occur, on session transitions, or when validating a new trade entry:
 
-| # | Periodic / Event Question | Pinned FastMCP Tools | Refresh Trigger |
+| # | Periodic / Event Question | Pinned Tools / Source | Refresh Trigger |
 |---|---|---|---|
-| **Q2** | **Breaking News & Geopolitical Catalysts** | get_direct_news, search_market_news | Macro release times (CPI/NFP/FOMC) or breaking news alerts. |
-| **Q3** | **Macro Rates & Real Yields** | get_fred_observations | Daily/hourly macro cycle, US 10Y/2Y yields, DFII10 real yields. |
-| **Q4** | **4TF Structural Trend & COT Positioning** | get_symbol_conviction | Candle closes (H4/H1), multi-timeframe EMAs/RSI, weekly COT. |
-| **Q5** | **Volume Profile POC & Value Area** | get_full_institutional_profile | Session boundaries (London/NY), POC, VAH 70%, VAL 70%, VWAP. |
-| **Q9** | **Proxima Quantitative Microstructure Validation** | `proxima_deep_search`, `proxima_ask_perplexity`, `backtest_thesis` | Mandatory before staging any new trade entry (R:R >= 2.5:1). |
+| **Q2** | **Breaking News & Geopolitical Catalysts** | Proxima MCP (`proxima_ask_perplexity` max 2 queries for hard numbers only; deep crawl for sources) | Macro release times (CPI/NFP/FOMC) or breaking news alerts. |
+| **Q3** | **Macro Rates & Real Yields** | `get_fred_observations` | Daily/hourly macro cycle, US 10Y/2Y yields, DFII10 real yields. |
+| **Q4/Q5** | **Volume Profile POC & Value Area** | `get_full_institutional_profile` | Session boundaries (London/NY), POC, VAH 70%, VAL 70%, VWAP. |
+| **Q9** | **Proxima Quantitative Validation & Replay** | `proxima_deep_search`, `backtest_thesis` | Mandatory before staging any new trade entry (R:R >= 2.5:1). |
 `
 
 ---

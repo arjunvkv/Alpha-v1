@@ -1155,15 +1155,15 @@ class ConsolidatedTradingDaemon:
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape/News) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
             f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===\n"
             f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
             f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
-            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, roadways, and auction air pockets.\n"
+            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
             f"=== MCP TOOLS DIRECTORY & USAGE GUIDE ===\n"
             f"For full reference on all available tools, capabilities, parameters, and workflows, consult: C:\\Trading\\Alpha\\MCP_TOOLS_USAGE_GUIDE.md\n"
-            f"Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_direct_news, search_market_news, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, update_watch, cancel_watch, clear_completed_watches.\n"
+            f"Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_fvg_matrix, get_fred_observations, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, update_watch, cancel_watch, clear_completed_watches.\n"
         )
         # Start ultra-fast 500ms Universal Watcher Task
         self.watcher_task = asyncio.create_task(self._realtime_watcher_task())

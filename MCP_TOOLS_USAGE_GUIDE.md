@@ -7,19 +7,23 @@ This document is the definitive operational reference for all tools exposed by t
 ## 1. Quick-Start Workflow: Autonomous Reasoning Cycle
 
 Every OpenCode wake cycle should proceed through this disciplined sequence:
-1. **Clock & Session Awareness**: `get_market_time_context()` to verify synchronized UTC, New York, and London trading hours.
-2. **Account & Inventory**: `get_account_status()` and `get_pending_orders()` to check balance, margin, and staged orders.
-3. **90% News & Macro Catalysts**: `get_direct_news()`, `search_market_news()`, `get_live_world_events()`, and `get_fred_observations()` to gather all wire drivers and real yields.
-4. **10% Microstructure & Execution Coordinates**: `get_live_microstructure()`, `get_fvg_matrix()`, and `get_full_institutional_profile()` to locate precise entry shelves, invalidations (SL), and TP targets.
-5. **Pre-Planned Order Placement**: `place_pending_order()` (`BUY_STOP` / `SELL_STOP`) for front-running expansions when the time is right.
-6. **Universal Watch Arming**: `register_watch()` to alert the daemon if price crosses critical thresholds.
+1. **Mandatory First Action (Step 0)**: `get_market_regime_context(symbol='XAUUSD')` to audit live broker quotes, spread, raw tick velocity, CVD ratio, 4m interval displacement, and real yields.
+2. **Account & Inventory**: `get_account_status()` and `get_pending_orders()` to check balance, margin, open tickets, and staged orders.
+3. **Microstructure & Institutional Geometry**: `get_live_microstructure()`, `get_fvg_matrix()`, and `get_full_institutional_profile()` to locate precise order-book walls, unmitigated FVGs, Point of Control (POC), and Value Area (VAH/VAL).
+4. **Macro Economic Gravity**: `get_fred_observations()` for factual Federal Reserve real yields (e.g. `DFII10`) and nominal rates (`DGS10`).
+5. **Targeted Narrative Research (Proxima MCP Only)**:
+   * Real-time financial headlines and central bank statements are queried strictly through **Proxima MCP** (`proxima_ask_perplexity`, `proxima_deep_search`).
+   * **Research Protocol**: Maximum 2 Perplexity queries per investigation. Use deep research / crawl tools for underlying factual transcripts and numbers.
+   * **Strict Prohibition**: Strictly NO probability-seeking queries (e.g. "what is the probability gold rallies to 4400?"). Only query factual events, actual economic releases, and central bank quotes.
+6. **Pre-Planned Order Placement**: `place_pending_order()` (`BUY_STOP` / `SELL_STOP` / `BUY_LIMIT` / `SELL_LIMIT`) for front-running expansions or staging at institutional shelves.
+7. **Universal Watch Arming**: `register_watch()` to alert the daemon if price crosses critical thresholds or volatility spikes.
 
 ---
 
 ## 2. Market Microstructure & Physical Telemetry Tools
 
 ### `get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = False)`
-* **Purpose**: Fetches real-time physical broker reality and econometric variance metrics.
+* **Purpose**: Fetches real-time physical broker reality and raw kinetic metrics.
 * **Returns**:
   * Live broker bid/ask and spread in points.
   * Tick velocity (`tpm` - ticks per minute).
@@ -27,7 +31,7 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
   * 4-minute price displacement and direction.
   * Point of Control (POC), Value Area High/Low (VAH/VAL), and auction air pockets.
   * Real yield levels (`DFII10`) and multi-asset deltas.
-* **When to use**: To get an instant snapshot of broker tape conditions.
+* **When to use**: Mandatory first call on every OpenCode wake.
 
 ### `get_live_microstructure(symbol: str = "XAUUSD")`
 * **Purpose**: Inspects deep Level 2 book structure and tick-level tape dynamics.
@@ -58,38 +62,26 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
 * **Purpose**: Detailed breakdown of cumulative volume delta across multiple lookbacks.
 * **Returns**: Delta ratios, bar-by-bar delta shifts, and divergence indicators against price action.
 
-### `get_symbol_conviction(symbol: str = "XAUUSD")`
-* **Purpose**: Multi-timeframe trend alignment and institutional positioning.
-* **Returns**: EMA alignments (H4/H1/M15/M5), RSI momentum regimes, and latest CFTC COT Managed Money net positioning.
-
 ---
 
-## 3. News, Macro & World Intelligence Tools (90% Weight)
-
-### `get_direct_news(max_items: int = 20)`
-* **Purpose**: Retrieves the latest rotating wire news feeds ingested by the desk.
-* **Returns**:
-  * Classified news categories: `[MACRO & GEOPOLITICAL]`, `[MICRO & COMMODITY FLOW]`, `[OTHER & CROSS-MARKET]`.
-  * Verbatim headlines, publication timestamps, and source URLs.
-* **When to use**: Every analysis cycle to ensure no high-impact catalyst is missed.
-
-### `search_market_news(query: str, max_records: int = 25, timespan: str = "")`
-* **Purpose**: Performs semantic and keyword search across all scraped news archives.
-* **Parameters**: `query` (e.g., "Fed rate cut", "PBOC gold reserves", "Iran Middle East conflict", "US CPI inflation").
-* **When to use**: To drill into specific developing headlines or confirm macro policy statements.
-
-### `get_live_world_events(category: str = "ALL")`
-* **Purpose**: Tracks breaking geopolitical crises, central bank meetings, and sovereign announcements.
-* **Parameters**: `category` ("ALL", "GEOPOLITICAL", "CENTRAL_BANK", "COMMODITIES").
-* **When to use**: To monitor global flash events that drive sudden volume expansions.
+## 3. Macroeconomic Yields & External Research
 
 ### `get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "")`
-* **Purpose**: Direct access to Federal Reserve Economic Data (FRED).
+* **Purpose**: Direct access to factual Federal Reserve Economic Data (FRED).
 * **Key Series IDs**:
-  * `DFII10`: 10-Year Real Yield (TIPS yield) — the primary macro gravity driver for gold.
+  * `DFII10`: 10-Year Real Yield (TIPS yield) — primary macro gravity driver for gold.
   * `DGS10`: 10-Year Nominal Treasury Yield.
   * `DGS2`: 2-Year Treasury Yield.
-* **When to use**: When evaluating whether bond yields provide tailwinds or headwinds for gold pricing.
+  * `T10YIE`: 10-Year Breakeven Inflation Rate.
+* **When to use**: When evaluating whether real rates provide tailwinds or headwinds for gold pricing.
+
+> [!IMPORTANT]
+> **Zero RSS / Scraped News in Alpha MCP**:
+> To eliminate retail news hallucinations, all RSS scrapers and GDELT discovery tools have been removed from Alpha MCP.
+> All external narrative and breaking news research must be conducted via **Proxima MCP**:
+> - Limit to **maximum 2 Perplexity queries** per session.
+> - Query strictly for hard economic figures and official releases.
+> - Never ask probabilistic questions.
 
 ---
 
@@ -113,7 +105,7 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
   * `price`: Exact trigger entry coordinate.
   * `volume`: Lot size (0.10 to 1.00 lot scaled based on confidence).
   * `sl_price`: Mandatory structural invalidation level.
-  * `tp_price`: Target profit level (recommended below 12 points for high-probability front-running captures).
+  * `tp_price`: Target profit level (aligned with structural liquidity pools).
   * `tag`: Optional descriptor string.
 * **When to use**: For front-running breakouts or placing structural shelf limit orders.
 
@@ -166,21 +158,33 @@ The background daemon scans active persistent watches every 500ms against live M
 ### `clear_completed_watches(symbol: str = None)`
 * **Purpose**: Purges `TRIGGERED` and `CANCELLED` watches from the persistent state file.
 
----
+### `mark_watches_observed(watch_ids: list[str])`
+* **Purpose**: Batch marks triggered watches as acknowledged by OpenCode.
 
-## 6. Time & Session Management
-
-### `get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York")`
-* **Purpose**: Provides authoritative synchronized clocks across UTC, New York (ET), and London (BST).
-* **Returns**: Active session name (e.g., `NEW_YORK_SESSION`, `LONDON_SESSION`, `ASIAN_SESSION`), active market overlaps, and minutes until session close.
-* **When to use**: At the beginning of every turn to maintain absolute temporal alignment.
+### `mark_evidence_read(evidence_ids: list[str])`
+* **Purpose**: Batch marks evidence items as processed.
 
 ---
 
-## 7. Research & Desk Validation
+## 6. Pattern Book & Research Memory Tools
 
-### `backtest_thesis(symbol: str, thesis: str, timeframe: str = "M5", bars: int = 500)`
-* **Purpose**: Fast backtest of a quantitative thesis against recent bar data before taking high-risk action.
+### `search_book(keyword: str, symbol: str = None)`
+* **Purpose**: Targeted search across Pattern Book setup records.
 
-### `query_analyst_desk(query: str, symbol: str = "XAUUSD")`
-* **Purpose**: Gathers consensus analysis from the Technical, Fundamental, Macro News, and Sentiment analyst sub-modules.
+### `get_book_index()`
+* **Purpose**: Complete index of institutional trade setups and playbooks.
+
+### `get_book_page(page_id: str)`
+* **Purpose**: Inspects deep execution guidelines for a specific setup pattern.
+
+### `record_decision_snapshot(snapshot_json: str)`
+* **Purpose**: Persists pre-decision context and rationale before trade staging.
+
+### `record_trade_observation(observation_json: str)`
+* **Purpose**: Records post-trade execution metrics and lessons learned.
+
+### `record_pattern_observation(pattern_json: str)`
+* **Purpose**: Adds an observed market microstructure pattern into persistent memory.
+
+### `backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 60, offset: int = 0)`
+* **Purpose**: Replays empirical bar history to validate edge before committing capital.
