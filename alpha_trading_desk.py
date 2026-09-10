@@ -137,10 +137,15 @@ def post_to_opencode_session(speaker: str, message: str):
         LOG.info(f"Dossier prompt streaming to session '{title}' ({sid}) is currently PAUSED. (Daemon remains live & scanning).")
         return
 
+    is_urgent = any(k in message for k in ("WATCH ALERT", "WATCH TRIGGERED", "FILL ALERT", "AUTO-WIN HARVEST", "EVIDENCE WAKE"))
+
     # Check if OpenCode is actively deliberating/executing tools
     if sid and not is_opencode_idle(sid):
-        LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Skipping prompt dispatch to prevent aborting ongoing turn.")
-        return
+        if not is_urgent:
+            LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Skipping routine prompt dispatch to prevent aborting ongoing turn.")
+            return
+        else:
+            LOG.info(f"⚡ [URGENT DISPATCH QUEUED] OpenCode session '{title}' ({sid}) is busy. Enqueueing trigger alert to dispatch immediately once idle.")
 
     LOG.info(
         f"\n=== [COMMUNICATION LOG STREAM] ===\n"
@@ -153,6 +158,14 @@ def post_to_opencode_session(speaker: str, message: str):
     def _send():
         import urllib.error
         import urllib.request
+        import time
+
+        # For urgent alerts, wait until OpenCode becomes idle before dispatching
+        if sid and is_urgent:
+            for _ in range(60):
+                if is_opencode_idle(sid):
+                    break
+                time.sleep(1.0)
 
         target_sids = set()
         if sid:
