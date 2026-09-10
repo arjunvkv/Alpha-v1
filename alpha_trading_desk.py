@@ -933,8 +933,6 @@ class ConsolidatedTradingDaemon:
                 # Idle pattern: 4m dossier -> 8m brainstorm message
                 is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
 
-            is_rule_turn = (self.dispatch_count % 10 == 0) and not is_startup
-
             try:
                 from tradingagents.time_helper import get_market_time_context
                 _t_ctx = get_market_time_context()
@@ -968,92 +966,23 @@ class ConsolidatedTradingDaemon:
                     f"3. 10% TECHNICAL EXECUTION COORDINATES: Use technical levels (roadways, DOM book, FVGs, footprints) strictly as the remaining 10% to locate precise entry timing, tight structural invalidation (SL), and plausible targets (TP).\n"
                     f"4. Re-verify whether this triggered watch is still valid against the live news narrative and tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
                 )
-            elif is_rule_turn:
-                # Rule reminder turn replacing dossier every 10th dispatch
-                prompt = (
-                    f"=== MANDATORY OPERATIONAL RULES & BEHAVIORAL DIRECTIVES ===\n"
-                    f"{_time_str}\n"
-                    f"{_regime_badge}\n"
-                    f"You are OpenCode, the sole quantitative reasoner orchestrating the Alpha algorithmic desk on FTMO MetaTrader 5 ($100K account #1514551285). Review and strictly adhere to these core principles:\n\n"
-                    f"1. MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS - EVERY WAKE):\n"
-                    f"• On EVERY wake, review get_market_regime_context(symbol='XAUUSD') before acting or deciding to wait.\n"
-                    f"• 90% News & Macro Catalysts: Markets reprice on real-world information. The rotating raw news points across [MACRO & GEOPOLITICAL], [MICRO & COMMODITY FLOW], and [OTHER & CROSS-MARKET] alongside real yields, DXY, and dark pool flows establish market bias, directional regime, and institutional momentum.\n"
-                    f"• 10% Technical Coordinates: Use physical broker data (roadways, 4M footprints, CVD, DOM order book walls, Volume POC, air pockets) strictly as the remaining 10% for tactical execution coordinates—pinpointing precise entries, tight structural invalidations, and logical take-profit boundaries.\n"
-                    f"• Strategic Adaptation & Directional News Alignment: When 90% news/macro catalysts are actively driving the market, all trade staging MUST strictly align in the direction of the news momentum (riding expansions or staging entries on shallow pullbacks into that dominant flow). Maintain zero innate bullish or bearish bias—be equally ready to sell breakdowns/pullbacks when news drives down, as you are to buy when news drives up. NEVER attempt counter-trend bottom or top picking against active news momentum. Switch to reverse-engineering trapped crowd liquidity only when news drivers are confirmed quiet or exhausted. When reverse-engineering, focus exclusively on the single sure-shot structural bank (Target 1 only; no lingering runners) with scaled lot size to capture high profit on the guaranteed, high-certainty structural TP. If an entered trade encounters a strong confirmed reverse signal, advance SL to break-even to eliminate downside risk.\n"
-                    f"• Autonomous reasoning: No artificial trade bans or rigid prohibitions. Objectively weigh catalyst evidence and execute or wait accordingly.\n\n"
-                    f"2. BIFURCATED ADAPTIVE STAGING (MANDATORY DUAL-PRONGED ARCHITECTURE):\n"
-                    f"• When preparing for directional expansion or trading within compression regimes, NEVER rely exclusively on a one-sided deep limit order that risks being left behind if price expands directly away.\n"
-                    f"• Establish dual-pronged coverage: (a) Discount/Retracement Prong: Stage a pending limit order directly at the active institutional structural boundary (FVG 50% CE, Order Block, Value Area boundary) to absorb liquidity sweep pullbacks. (b) Expansion/Breakout Trigger Prong: Concurrently register an active persistent watch (register_watch) at the immediate structural breakout boundary (range high/low, session pivot, unmitigated opposite FVG) with order-flow confirmation, ensuring immediate daemon wake-up and market execution (execute_trade) if price launches directly without retracing.\n\n"
-                    f"3. ACTIVE POSITION RESILIENCE & PROFIT PROTECTION:\n"
-                    f"• NO TRAILING STOPS.\n"
-                    f"• FORBID PANIC KILLS & ARBITRARY MENTAL STOPS: Never market-kill or panic-close an already triggered active trade out of fear, minor wick noise, or self-invented mental stops on pullbacks if multi-timeframe structure (HTF FVG / Value Area) and macro tailwinds still support the thesis.\n"
-                    f"• DYNAMIC TP CALIBRATION & AVOID THE MOVING-GOALPOST TRAP: Pre-plan structural TP targets offering high R:R (>= 2.5:1). You are free to dynamically calibrate TP as conditions evolve — pulling it nearer to bank and protect profits if momentum stalls or absorption walls appear, or adjusting it slightly further away toward major liquidity magnets if order flow strongly favors continuation. However, strictly avoid the emotional 'moving-goalpost trap': never greedily push TP away during a rapid price rush without objective structural support, risking an adverse snapback that erases gains.\n\n"
-                    f"4. VOLATILITY EXPANSIONS & ANTI-PARALYSIS:\n"
-                    f"• Market repricing and volatility shocks produce two distinct behaviors: (i) an initial liquidity shakeout/sweep followed by reversal, OR (ii) an immediate direct momentum breakout without pullbacks. Actively prepare for BOTH paths via bifurcated staging (discount limit + breakout watch).\n"
-                    f"• When registering watches via register_watch, specify precise price thresholds, structural direction, and order-flow triggers (e.g. CVD acceleration / delta flip) so the daemon's 500ms watcher can trigger split-second investigations on breakout arrival.\n\n"
-                    f"5. GENERAL TIME & ATOMIC MCP TOOLS:\n"
-                    f"• Always call get_market_time_context for synchronized UTC, NY (ET), London clocks and session countdowns.\n"
-                    f"• Always use targeted atomic tools: get_market_regime_context, get_account_status, get_pending_orders, get_direct_news, search_market_news, get_fred_observations, get_symbol_conviction, get_full_institutional_profile, get_fvg_matrix, get_live_microstructure, backtest_thesis, place_pending_order, execute_trade, cancel_pending_order, update_position, register_watch, get_active_watches, update_watch.\n"
-                    f"• Always replan pending orders whenever new news is retrieved.\n\n"
-                    f"6. MANDATORY THOUGHT PROCESS REASONING GUIDE (PRE-EXECUTION PLAYBOOK):\n"
-                    f"• Read C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md — This is your foundational playbook on how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs during liquidity sweeps, avoid stale headline traps, and preserve runner profits without panic cuts.\n"
-                    f"• Apply the 3 case studies (Bullish Spring vs fake breakdown, Stale news triage vs yield gravity, and Position defense without trailing noise) to every active setup before staging or modifying orders.\n\n"
-                    f"Confirm current market state, active/pending orders, active watches, and strict adherence to these rules."
-                )
             elif is_brainstorm_turn:
-                # Brainstorm turn replacing dossier
                 prompt = (
-                    f"⚡ ALPHA EVIDENCE WAKE — BRAINSTORM TURN\n"
-                    f"{_time_str}\n"
-                    f"{_regime_badge}\n"
-                    f"MANDATORY STEP 0: Audit get_market_regime_context(symbol='XAUUSD') to inspect live physical market reality (quotes, delta kinetics, roadways, yields, and verbatim news).\n"
-                    f"MANDATORY 90/10 REASONING RATIO: Brainstorm with 5 new questions where 90% focus on real-world news catalysts and macro drivers, and 10% on technical execution coordinates. "
-                    f"Use proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
-                    f"Available lots are 0.10 to 1.00 scaled based on analysis confidence. "
-                    f"Always pull the latest news, replan pending orders whenever new news is retrieved, and check get_market_time_context."
+                    f"{_time_str}\n\n"
+                    "Brainstorm with 5 new questions about the current state of market conditions only involving all the new news. "
+                    "With proxima research tools (proxima_deep_search, proxima_ask_perplexity, proxima_smart_query), FRED yields (get_fred_observations), and news tools. "
+                    "You have 0.10 to 1.00 lot area to place the lots based on the power of news and analysis confidence. "
+                    "Always pull the latest and closest news possible. Always replan any pending orders each time you pull the news. "
+                    "Always check get_market_time_context to verify we are on the right track."
                 )
             else:
                 prompt = (
-                    f"ALPHA EVIDENCE WAKE — {trigger}\n"
-                    f"{_time_str}\n"
-                    f"{_regime_badge}\n"
-                    f"Active instruments: {', '.join(get_active_instruments())}\n"
-                    f"Open positions: {len(open_tickets)}\n"
-                    f"Reason: periodic state changed or review interval elapsed.\n\n"
-                    f"MANDATORY 90/10 REASONING RATIO (NEWS CATALYSTS VS TECHNICALS):\n"
-                    f"• STEP 0 (EVERY WAKE): Call get_market_regime_context(symbol='XAUUSD').\n"
-                    f"• 90% News & Macro Catalysts: Inspect the classified rotating news points ([MACRO], [MICRO], [OTHER]), real yields, and DXY to evaluate institutional repricing drivers and market bias.\n"
-                    f"• 10% Technicals & Order Flow: Use roadways, footprints, CVD, and DOM order book strictly as execution coordinates for entries, invalidations, and targets.\n"
-                    f"• Strategic Adaptation & Directional News Alignment: When 90% news/macro catalysts are actively driving the market, all trade staging MUST strictly align in the direction of the news momentum (riding expansions or staging entries on shallow pullbacks into that dominant flow). Maintain zero innate bullish or bearish bias—be equally ready to sell breakdowns/pullbacks when news drives down, as you are to buy when news drives up. NEVER attempt counter-trend bottom or top picking against active news momentum. Switch to reverse-engineering trapped crowd liquidity only when news drivers are confirmed quiet or exhausted. When reverse-engineering, focus exclusively on the single sure-shot structural bank (Target 1 only; no lingering runners) with scaled lot size to capture high profit on the guaranteed, high-certainty structural TP. If an entered trade encounters a strong confirmed reverse signal, advance SL to break-even to eliminate downside risk.\n"
-                    f"• Wire Headline & Policy Announcement Interpretation: High-velocity moves (+10 to +30 points) during financial, debt-management, or central-bank events are driven by real policy announcements. Never dismiss an expansion as 'unknown news' merely because secondary articles say 'details to be revealed'. Institutional desks trade announcements instantly upon wire release. Check the operational context snippet, connect it to sovereign debt/currency flows, and align with the repricing flow.\n"
-                    f"• Calendar Date Grounding & Event Proximity Defense: Never trade, wait for, or pause execution for a scheduled calendar event unless it is explicitly scheduled for the active current trading day. In the Step 0 badge, check whether an upcoming release is marked 'TODAY' or 'FUTURE'. (a) Upcoming Releases TODAY (30-60m Knife Defense): If an event is marked 'TODAY' and is scheduled within the next 30 to 60 minutes (or inside the News Shield freeze window), DO NOT stage entries or catch knives immediately before the release. Stand aside, let the initial spread/volatility spike clear, and trade the confirmed post-news repricing structure. (b) Future Releases: If an event is on a future date or over 12+ hours away on another calendar day, DO NOT treat it as an active catalyst for the current session, and do not withhold trades waiting for future events. When no high-impact events remain on today's calendar, trade active wire news catalysts and order-flow structure directly.\n\n"
-                    f"Do NOT request a full dossier. Start a fresh reasoning cycle: define the actual decision, "
-                    f"identify the highest-value unresolved question, then call only MCP evidence capable of changing the action. "
-                    f"Refresh executable market/account state before any execution. If no action is justified, WAIT or NO TRADE. "
-                    f"Existing watches must be treated as triggers for a new investigation, not preservation of an old thesis.\n\n"
-                    f"CADENCE-TIERED MARKET ANALYSIS PROTOCOL:\n"
-                    f"Do not force all questions on every wake. Focus live reasoning on frequently changing dynamic questions, and refresh slower macro/precedents on cadence or when formulating a new trade:\n"
-                    f"⚡ TIER 1 (HIGH-FREQUENCY CORE - Every Wake / Move):\n"
-                    f"• Q0 [Raw Market Reality - MANDATORY]: get_market_regime_context (Broker quotes, tape velocity, CVD ratio, 4m displacement, POC/air pockets, roadways, yields)\n"
-                    f"• Q1 [Account & Orders]: get_account_status, get_pending_orders (Equity, margin, active tickets)\n"
-                    f"• Q6 [FVG Matrix]: get_fvg_matrix (Unmitigated H4/H1/M15/M5 FVGs, 50% CE touches, fill %)\n"
-                    f"• Q7/Q8 [Order Flow & Microstructure]: get_live_microstructure (Spread pts, M1 tick velocity t/m, complete raw CVD, delta velocity, absorption)\n"
-                    f"• Q10 [Trade Staging & Watch]: place_pending_order, execute_trade, update_position, register_watch\n\n"
-                    f"🕒 TIER 2 (PERIODIC / EVENT-DRIVEN REFRESH - On Cadence, Event, or New Trade Formulations):\n"
-                    f"• Q2 [Breaking News]: get_direct_news, search_market_news, get_live_world_events (Macro release times or breaking news)\n"
-                    f"• Q3 [Macro Rates]: get_fred_observations (US 10Y/2Y yields, DFII10 real yields)\n"
-                    f"• Q4 [4TF Trend & COT]: get_symbol_conviction (H4/H1/M15/M5 EMAs, RSI regimes, COT Managed Money %)\n"
-                    f"• Q5 [Volume Profile]: get_full_institutional_profile (POC, VAH 70%, VAL 70%, VWAP bands)\n"
-                    f"• Q9 [Proxima Validation]: proxima_deep_search, proxima_ask_perplexity, proxima_smart_query, backtest_thesis; mandatory before new trade entry; R:R >= 2.5:1\n\n"
-                    f"MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
-                    f"• Replace pending orders or flip direction (BUY/SELL) dynamically as conditions evolve.\n"
-                    f"• NO TRAILING: Mechanical trailing stops are OFF. TP is a fixed structural target; SL is an objective invalidation anchor.\n"
-                    f"• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
-                    f"• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
-                    f"• AVOID HARD SL TRIGGERS: If market structure creates a new support/resistance shelf, widen/reposition the SL behind the new protected structural anchor (non-hit place) while strictly observing FTMO drawdown limits.\n"
-                    f"• DYNAMIC TP CALIBRATION & AVOID MOVING GOALPOSTS: Pre-plan structural TP (>= 2.5:1). You are free to adjust TP dynamically as conditions evolve — pulling it nearer to bank gains if momentum stalls, or adjusting it slightly further away toward major liquidity magnets if order flow strongly confirms expansion. Avoid the moving-goalpost trap: never greedily push TP away during a rapid price rush without objective structural backing.\n"
-                    f"• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
-                    f"• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs (4TF flip + massive counter-delta), pull TP closer to market price for immediate safe exit or advance SL to break-even."
+                    f"{_time_str}\n\n"
+                    "Your primary role is gathering the news (we don't want to miss any) followed by 10% technicals with reverse engineering.\n\n"
+                    "Only trade when there is a macro or micro news catalyst (check full news for that 90% gathering) aligned with the 10% technicals (use full technicals) and the direction following pure thought processes (no rules—only follow pure thought processes).\n\n"
+                    "Instead of waiting for a retracement catch, position in such a way that we take a BUY_STOP or SELL_STOP where price cannot retrace back, or even if it does retrace back, there should be a strong structural hold above the SL (analyze full technicals for that).\n\n"
+                    "Do sure-shot front-running captures with pre-planned positioning and only when the time is right from the best structural coordinates using 0.5–1.0 lot size with confident technicals. Take small, high-probability distance TP targets (below 12 points) with solid volume that gets overrun by the momentum push—front-running the expansion rather than attempting a retrace catch that gets run over. Check full technicals for that.\n\n"
+                    "Plan for this if there is no news against us. Not a retrace catch, but when the time is right, place it for a front-run that will for sure get run over."
                 )
             post_to_opencode_session("", prompt)
 
@@ -1287,9 +1216,9 @@ class ConsolidatedTradingDaemon:
             f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
             f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, roadways, and auction air pockets.\n"
             f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
-            f"=== MANDATORY READ: THOUGHT PROCESS GUIDE & PLAYBOOK ===\n"
-            f"Before formulating setups or managing positions, review: C:\\Trading\\Alpha\\OPENCODE_CIO_THOUGHT_PROCESS.md\n"
-            f"Learn how real-time catalyst telemetry, tape kinetics, and bifurcated staging turn past losses into wins, prevent false stop-outs on liquidity probes, avoid stale headline traps, and preserve runner profits without premature cuts.\n"
+            f"=== MCP TOOLS DIRECTORY & USAGE GUIDE ===\n"
+            f"For full reference on all available tools, capabilities, parameters, and workflows, consult: C:\\Trading\\Alpha\\MCP_TOOLS_USAGE_GUIDE.md\n"
+            f"Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_direct_news, search_market_news, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, update_watch, cancel_watch, clear_completed_watches.\n"
         )
         # Start ultra-fast 500ms Universal Watcher Task
         self.watcher_task = asyncio.create_task(self._realtime_watcher_task())

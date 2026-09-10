@@ -290,8 +290,8 @@ opencode serve --port 4096 --hostname 0.0.0.0
 
 - **`C:\Trading\opencode.json` & `C:\Trading\Alpha\opencode.json`**:
   Configures FastMCP tools, `opencode/big-pickle` model parameters, and operational trading directives (100% synchronized).
-- **`C:\Trading\OPENCODE_CIO_THOUGHT_PROCESS.md` & `C:\Trading\Alpha\OPENCODE_CIO_THOUGHT_PROCESS.md`**:
-  Core institutional reasoning playbook: 90% News / 10% Technicals framework, Wire Headline interpretation, Event Proximity Knife defense, and single-target bank execution.
+- **`C:\Trading\Alpha\MCP_TOOLS_USAGE_GUIDE.md`**:
+  Comprehensive directory of all available FastMCP desk tools, input parameters, output schemas, and autonomous reasoning workflows.
 - **`C:\Trading\Alpha\config\opencode_session_config.json`**:
   Points the trading desk daemon to the active session ID (e.g. `Escanor v8`) and defines briefing cadences.
 

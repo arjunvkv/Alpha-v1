@@ -1,3 +1,4 @@
+<!--
 # OPENCODE CIO THOUGHT PROCESS: TURNING LOSSES INTO WINS & PRESERVING PROFITS
 **Document:** `C:\Trading\Alpha\OPENCODE_CIO_THOUGHT_PROCESS.md`  
 **Mandatory Pre-Execution Guide & Historical Playbook Analysis**  
@@ -215,3 +216,5 @@ Whenever OpenCode wakes, it must step through this objective sequence:
 | **Pullback Tolerance** | Checks if 10-bar delta remains positive and bid walls remain intact during floating drawdowns. | Eliminates emotional panic cuts; lets winning positions breathe through normal retest wicks. |
 | **Take Profit Magnet** | Anchors targets to the **50% Consequent Encroachment (CE)** of higher-timeframe FVGs or 100b roadway limits. | Takes profit right before the exhaustion liquidity grab reverses back. |
 | **Rip to Fill Navigation** | Identifies no-news liquidity hunts; avoids blind limit orders in front of steamrolls; verifies defending block absorption (DOM walls + delta exhaustion). | Prevents becoming exit liquidity for institutional sweeps; protects against cracked-shelf cascades. |
+
+-->
