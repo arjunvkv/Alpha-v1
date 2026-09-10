@@ -37,7 +37,8 @@ class MultiTimeframeAnalyst:
         }
 
         try:
-            if not mt5.initialize():
+            from tradingagents.mt5_connector import ensure_mt5_connected
+            if not ensure_mt5_connected(timeout=3000):
                 return res
 
             tf_map = [
@@ -126,7 +127,8 @@ class OrderBlockEngine:
         }
 
         try:
-            if not mt5.initialize():
+            from tradingagents.mt5_connector import ensure_mt5_connected
+            if not ensure_mt5_connected(timeout=3000):
                 return levels
 
             d1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 1, 1)

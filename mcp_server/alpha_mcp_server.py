@@ -94,9 +94,13 @@ class AlphaMCPServer:
 def _init_mt5():
     try:
         import MetaTrader5 as mt5
-        mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        if mt5.terminal_info() is not None and getattr(mt5.terminal_info(), "connected", False):
+            return True
+        from tradingagents.mt5_connector import ensure_mt5_connected
+        return ensure_mt5_connected(timeout=5000)
     except Exception as err:
         LOG.error(f"MT5 init error: {err}")
+        return False
 
 def _normalize_symbol(symbol: str) -> str:
     """Normalizes symbol names across broker casing conventions (e.g. USOIL.cash vs USOIL.CASH)."""

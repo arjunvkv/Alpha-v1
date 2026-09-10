@@ -52,6 +52,18 @@ STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 CONFIG_PATH = PROJECT_ROOT / "config" / "instruments_config.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
 
+def _init_mt5(timeout: int = 5000) -> bool:
+    try:
+        import MetaTrader5 as mt5
+        t_info = mt5.terminal_info()
+        if t_info is not None and getattr(t_info, "connected", False):
+            return True
+        from tradingagents.mt5_connector import ensure_mt5_connected
+        return ensure_mt5_connected(timeout=timeout)
+    except Exception as err:
+        logging.getLogger("alpha.trading_desk").error(f"MT5 init error: {err}")
+        return False
+
 def get_active_instruments() -> List[str]:
     """Reads config/instruments_config.json with zero-restart hot-reloading."""
     if CONFIG_PATH.exists():
@@ -299,7 +311,7 @@ def place_ftmo_market_order(symbol: str, side: str, volume: float, sl: float, tp
     """Execute live market order on FTMO MetaTrader 5 with Max 1 Position Guard."""
     try:
         import MetaTrader5 as mt5
-        initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        initialized = _init_mt5()
         if not initialized:
             return {"success": False, "error": f"MT5 initialize failed: {mt5.last_error()}"}
 
@@ -503,7 +515,7 @@ class ConsolidatedTradingDaemon:
         instrument_matrix = []
         instruments_data = []
         import MetaTrader5 as mt5
-        mt5_online = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+        mt5_online = _init_mt5()
         is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED" or session_info.get("is_weekend", False)
 
         for symbol in self.instruments:
@@ -1027,7 +1039,7 @@ class ConsolidatedTradingDaemon:
             return cached_config
 
         # One-time MT5 initialization
-        mt5.initialize()
+        _init_mt5()
 
         while self.is_running:
             try:
@@ -1040,7 +1052,7 @@ class ConsolidatedTradingDaemon:
                 current_positions = mt5.positions_get()
                 if current_positions is None:
                     # Connection lost -> re-initialize
-                    mt5.initialize()
+                    _init_mt5()
                     await asyncio.sleep(0.1)
                     continue
 
@@ -1134,7 +1146,7 @@ class ConsolidatedTradingDaemon:
 
         while self.is_running:
             try:
-                mt5_ok = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+                mt5_ok = _init_mt5()
                 if mt5_ok:
                     current_positions = mt5.positions_get() or []
                     current_pending = mt5.orders_get() or []
@@ -1256,7 +1268,7 @@ if __name__ == "__main__":
     elif action == "status":
         try:
             import MetaTrader5 as mt5
-            initialized = mt5.initialize(path=FTMO_PATH) if os.path.exists(FTMO_PATH) else mt5.initialize()
+            initialized = _init_mt5()
             if initialized:
                 acc = mt5.account_info()
                 pos = mt5.positions_get()

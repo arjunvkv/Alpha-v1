@@ -229,7 +229,8 @@ class CatalystArbiterEngine:
         # Extract 120 M1 rates for 30-block 4m horizon, cross-asset deltas, POC & air pockets
         try:
             import numpy as np
-            if mt5.terminal_info() is not None or mt5.initialize():
+            from tradingagents.mt5_connector import ensure_mt5_connected
+            if ensure_mt5_connected(timeout=3000):
                 curr_tick = mt5.symbol_info_tick(sym)
                 if curr_tick:
                     curr_bid = round(float(getattr(curr_tick, "bid", 0.0)), 2)

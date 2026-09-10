@@ -52,11 +52,10 @@ class InstitutionalAnalyticsEngine:
     def _ensure_mt5(self) -> bool:
         """Ensure MT5 connection is active."""
         try:
-            if mt5.terminal_info() is not None:
+            if mt5.terminal_info() is not None and getattr(mt5.terminal_info(), "connected", False):
                 return True
-            if os.path.exists(self.ftmo_path):
-                return mt5.initialize(path=self.ftmo_path)
-            return mt5.initialize()
+            from tradingagents.mt5_connector import ensure_mt5_connected
+            return ensure_mt5_connected(timeout=3000)
         except Exception as err:
             LOG.error(f"MT5 init check failed: {err}")
             return False

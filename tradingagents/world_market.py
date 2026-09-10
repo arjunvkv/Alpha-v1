@@ -22,9 +22,10 @@ class IntradayInstitutionalEngine:
 
     def _ensure_mt5(self):
         try:
-            if not mt5.initialize():
-                if os.path.exists(FTMO_PATH):
-                    mt5.initialize(path=FTMO_PATH)
+            if mt5.terminal_info() is not None and getattr(mt5.terminal_info(), "connected", False):
+                return
+            from tradingagents.mt5_connector import ensure_mt5_connected
+            ensure_mt5_connected(timeout=3000)
         except Exception as err:
             LOG.error(f"MT5 initialization in IntradayInstitutionalEngine failed: {err}")
 
