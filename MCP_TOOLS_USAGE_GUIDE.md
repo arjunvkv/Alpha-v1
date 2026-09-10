@@ -75,13 +75,25 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
   * `T10YIE`: 10-Year Breakeven Inflation Rate.
 * **When to use**: When evaluating whether real rates provide tailwinds or headwinds for gold pricing.
 
+### Proxima MCP News & Deep Research Suite
+
+External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP**:
+
+1. **`proxima_ask_perplexity(message: str)`**:
+   * Rapid headline sweeps, breaking central bank announcements, official economic release prints (CPI, PPI, NFP).
+   * **Rule**: Exact 2 queries per news cycle.
+2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`**:
+   * In-depth chronological reporting, institutional flow details, and geopolitical context.
+3. **`proxima_ddg_search(query: str)`**:
+   * Live web search across primary wire sources for raw links and statements.
+4. **`proxima_web_scrape(url: str)`**:
+   * Scrapes and converts discovered URLs into clean markdown for source verification.
+
 > [!IMPORTANT]
-> **Zero RSS / Scraped News in Alpha MCP**:
-> To eliminate retail news hallucinations, all RSS scrapers and GDELT discovery tools have been removed from Alpha MCP.
-> All external narrative and breaking news research must be conducted via **Proxima MCP**:
-> - Limit to **maximum 2 Perplexity queries** per session.
-> - Query strictly for hard economic figures and official releases.
-> - Never ask probabilistic questions.
+> **Research Directives**:
+> - Query strictly for hard numbers, official figures, and verbatim quotes.
+> - **Strictly NO probabilistic queries** (e.g., "what are the odds of breaking 4350?").
+> - Zero RSS / scraped news in Alpha MCP — Proxima is the sole research engine.
 
 ---
 

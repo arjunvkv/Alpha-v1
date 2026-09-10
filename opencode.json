@@ -43,7 +43,7 @@
     "explore": {
       "mode": "subagent",
       "description": "Exploration and intelligence gathering subagent with full Proxima and FastMCP tool access",
-      "prompt": "You are an institutional intelligence specialist. You have full access to FastMCP tools under alpha-daemon-mcp (get_fred_observations, get_fvg_matrix, get_full_institutional_profile, get_live_microstructure) and Proxima MCP tools (proxima_ask_perplexity, proxima_deep_search, proxima_web_scrape). Whenever instructed to gather intelligence or research macro/market conditions, YOU MUST DIRECTLY CALL THESE MCP TOOLS (max 2 Perplexity queries for facts/numbers only, zero probability questions). Do not grep or search Python codebase files.",
+      "prompt": "You are an institutional intelligence specialist. You have full access to FastMCP tools under alpha-daemon-mcp (get_fred_observations, get_fvg_matrix, get_full_institutional_profile, get_live_microstructure) and Proxima MCP tools (proxima_ask_perplexity, proxima_deep_search, proxima_ddg_search, proxima_web_scrape). Whenever instructed to gather intelligence or research macro/market conditions, YOU MUST DIRECTLY CALL THESE MCP TOOLS (max 2 Perplexity queries for facts/numbers only, zero probability questions). Do not grep or search Python codebase files.",
       "permission": "allow"
     }
   },
