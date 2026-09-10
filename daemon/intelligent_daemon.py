@@ -34,7 +34,7 @@ class IntelligentDaemon:
 
     async def run_cycle(self) -> Dict[str, Any]:
         """Run single 24/7 scanning cycle across all instruments."""
-        log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Granger 7-Layers + Global Eyes RSS feeds active)...")
+        log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Physical Telemetry + Tick CVD Ingestion active)...")
 
         cycle_summary = {
             "proactive_discoveries": [],

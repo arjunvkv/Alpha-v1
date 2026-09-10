@@ -450,7 +450,7 @@ class ConsolidatedTradingDaemon:
         self.cycle_count += 1
         self.instruments = get_active_instruments()
         LOG.info(f"--- Starting Scan Cycle #{self.cycle_count} across {len(self.instruments)} instruments ({', '.join(self.instruments)}) ---")
-        log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Granger 7-Layers + Global Eyes RSS feeds active)...")
+        log_local_llm_monitoring(f"Scanning market data across {len(self.instruments)} instruments (Physical Telemetry + Tick CVD Ingestion active)...")
 
         # Record live error-monitor heartbeat (H4)
         try:
