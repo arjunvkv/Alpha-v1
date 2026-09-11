@@ -85,3 +85,45 @@ Traditional models fail when treating price in isolation, chasing indicator cros
   2. *Audit the Liquidity Map*: Overhead sits an unmitigated Buy-Stop Pool Magnet and Value Area High (VAH). The market auction naturally drifts toward resting liquidity to find matches.
   3. *Avoid The Suicide Stop*: Placing an SL just behind the local FVG boundary puts the exit directly inside the liquidity magnet trajectory.
   4. *Action*: Stand aside and refuse to short into an active overhead magnet. Wait for the buy stops to be swept, verify whether genuine institutional distribution responds at VAH/resistance, and only enter once price rolls back below the reclaimed shelf.
+
+---
+
+7. **Pre-Catalyst Order Lockout — No Directional Stop Orders Before Tier-1 Events**:
+   - Do NOT place BUY_STOP or SELL_STOP orders more than 30 minutes before any confirmed Tier-1 macro catalyst (CPI, PPI, FOMC, NFP, GDP). Pre-catalyst stop orders are directional bets on a binary event outcome — they are speculation disguised as technical entries.
+   - **Correct pre-catalyst posture**: If exposure is wanted before the event, use only a small BUY_LIMIT or SELL_LIMIT from a structural shelf inside the current range (demand or supply zone). Max size: 0.10 lots. This keeps risk bounded inside the known pre-event range.
+   - Keep all directional stop orders (BUY_STOP / SELL_STOP) as **contingency orders to be armed AFTER the actual data print confirms direction**. The watch system (spread > 80 OR velocity > 500) is precisely designed to detect the CPI/NFP release moment — use it to fire the stop order at the right time, not 4 hours early.
+   - If the pre-catalyst BUY_LIMIT or SELL_LIMIT is already triggered and holding, manage it per the active position rules. Do not add to it pre-event.
+
+8. **FVG-Aligned Entry Architecture — Enter From Structure, Exit Into Structure**:
+   - **LONG entries**:
+     - `BUY_LIMIT` → place at the **demand shelf** (bullish FVG CE, OB top, or VAL). TP at the supply cluster above (bearish FVG, OB bottom, or VAH).
+     - `BUY_STOP` → place **only ABOVE a supply zone that has already been fully absorbed/mitigated**, confirming buyer strength through resistance. Never place a BUY_STOP above an unmitigated bearish FVG cluster — the entry triggers directly into supply.
+   - **SHORT entries**:
+     - `SELL_LIMIT` → place at the **supply shelf** (bearish FVG CE, OB bottom, or VAH). TP at the demand cluster below (bullish FVG, OB top, or VAL).
+     - `SELL_STOP` → place **only BELOW a demand zone that has already been fully absorbed/broken**, confirming seller strength through support. Never place a SELL_STOP below an unmitigated bullish FVG cluster — the entry triggers directly into demand.
+   - The universal principle: **Enter from structure, exit into structure.** Limit orders enter from the near zone. Stop orders confirm penetration of the far zone. Never invert this.
+
+9. **R:R Floor of 1.5:1 — Mandatory Pre-Entry Check**:
+   - Every order placed must have a minimum reward-to-risk ratio of **1.5:1** before entry. If the structural coordinates do not allow it, the trade is not valid regardless of directional conviction.
+   - **Verification (mandatory before calling `place_pending_order`)**:
+     ```
+     Reward = |Entry - TP|
+     Risk   = |Entry - SL|
+     R:R    = Reward / Risk
+     Accept only if R:R ≥ 1.5
+     ```
+   - If R:R < 1.5, the options are: (a) move TP to a further realistic liquidity target, (b) tighten SL to a closer structural anchor, or (c) **do not take the trade and wait for a better coordinate**. Never widen SL to manufacture a better-looking R:R while keeping TP fixed — this degrades expected value.
+   - Negative R:R trades (risking more than the potential reward) are categorically forbidden.
+
+---
+
+### Example E: The Pre-CPI Supply Ceiling Trap
+* **Market Context**: A BUY_STOP was placed at 4350.52 — above three stacked unmitigated bearish FVGs (4347.63–4350.03) — more than 4 hours before a CPI release. Velocity at placement was 39 t/m (LOW_COMPRESSION). The trade triggered, immediately entered a -$224 drawdown, and is sitting below entry with CPI 2h47m away.
+* **The Cognitive Thought Process (correct version)**:
+  1. *Audit Entry Coordinate*: Three bearish FVGs stacked between 4347–4350 are unmitigated overhead supply. A BUY_STOP above them triggers the entry AT the supply ceiling, not through it. This violates Rule 8.
+  2. *Check R:R*: Entry 4350.52, SL 4337, TP 4361 → Risk 13.5 pts, Reward 10.5 pts → R:R 0.78:1. Negative R:R. This trade should never have been placed as structured (Rule 9).
+  3. *Check Timing*: CPI is 4+ hours away. Tape velocity 39 t/m (pre-event thin tape). Directional stop order before a Tier-1 catalyst violates Rule 7.
+  4. *Correct Architecture Would Have Been*:
+     - Pre-CPI: `BUY_LIMIT @ 4339.50` | SL 4326 | TP 4361 | 0.10 lots → R:R 1.69:1 ✅, inside the range, sized for binary uncertainty.
+     - At CPI print (watch fires): Pull Perplexity for the actual print → cool CPI: arm `BUY_STOP 4350.50` (0.30 lots) → hot CPI: arm `SELL_STOP 4337` (0.30 lots) → inline: no trade.
+  5. *Lesson*: The structural analysis (DIX accumulation, DXY exhaustion, Middle East floor) was correct. The direction lean was correct. The **entry architecture was wrong** — correct thesis, wrong execution. Thesis quality does not compensate for structural entry errors.
