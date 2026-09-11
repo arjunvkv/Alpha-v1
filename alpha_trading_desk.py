@@ -436,6 +436,7 @@ class ConsolidatedTradingDaemon:
         self.active_burst_step = 0
         self.just_sent_active_brainstorm = False
         self.next_turn_type = "DOSSIER"
+        self.has_dispatched_initial_dossier = False
 
         # Wire live error monitoring into Desk Daemon (H4)
         from monitor.error_monitor import error_monitor
@@ -792,7 +793,7 @@ class ConsolidatedTradingDaemon:
 
         # DYNAMIC DISPATCH CADENCE (Configurable via opencode_session_config.json)
         now_ts = time.time()
-        is_startup = (self.cycle_count == 1)
+        is_startup = not self.has_dispatched_initial_dossier
         elapsed_since_dispatch = now_ts - self.last_dispatch_time
         dossier_interval = get_dossier_interval_seconds()
         active_trade_interval = get_active_trade_interval_seconds()
@@ -845,7 +846,10 @@ class ConsolidatedTradingDaemon:
         if triggered_watch is not None:
             ready_for_dispatch = True
         elif is_startup:
-            ready_for_dispatch = True
+            if is_idle:
+                ready_for_dispatch = True
+            else:
+                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding initial dossier dispatch until idle...")
         elif elapsed_since_dispatch >= required_interval:
             if is_idle:
                 ready_for_dispatch = True
@@ -855,6 +859,8 @@ class ConsolidatedTradingDaemon:
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
             self.dispatch_count += 1
+            if is_startup:
+                self.has_dispatched_initial_dossier = True
             if triggered_watch is not None:
                 trigger = f"WATCH_TRIGGER — {triggered_watch['id']} (Target: {triggered_watch.get('target_price')})"
             else:
@@ -904,16 +910,14 @@ class ConsolidatedTradingDaemon:
                 prompt = (
                     f"⚡ ALPHA EVIDENCE WAKE — WATCH_TRIGGER\n"
                     f"{_time_str}\n"
-                    f"{_regime_badge}\n"
                     f"WATCH ALERT: {triggered_watch['id']} TRIGGERED at target price {triggered_watch.get('target_price')}!\n"
-                    f"Condition: {triggered_watch.get('condition')}\n"
-                    f"Instruction: {triggered_watch.get('instruction')}\n"
-                    f"Reason: {triggered_watch.get('reason')}\n\n"
-                    f"MANDATORY EXECUTION PROTOCOL:\n"
-                    f"1. STEP 0 (MANDATORY): get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}').\n"
-                    f"2. NEWS & MACRO DRIVERS: Audit factual economic calendar countdown alongside real yields and DXY.\n"
-                    f"3. TECHNICAL EXECUTION COORDINATES: Use technical levels (DOM book, FVGs, volume POC, footprints) to locate precise entry timing, tight structural invalidation (SL), and plausible front-running targets (TP < 12 pts).\n"
-                    f"4. Re-verify whether this triggered watch is still valid against the live tape. If confirmed, stage or execute; if invalidated, cancel or update watch."
+                    f"• Condition: {triggered_watch.get('condition')}\n"
+                    f"• Instruction: {triggered_watch.get('instruction')}\n"
+                    f"• Reason: {triggered_watch.get('reason')}\n\n"
+                    f"=== EXECUTION AUDIT ===\n"
+                    f"1. STEP 0 (MANDATORY): Call `get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}')` for live broker quote, spread, CVD flow, and economic calendar.\n"
+                    f"2. RE-VERIFY THESIS: Audit current price against live market structure and tape kinetics.\n"
+                    f"3. DECIDE: If confirmed by live tape, execute or stage order; if invalidated, cancel or update watch."
                 )
             elif is_brainstorm_turn:
                 prompt = (
@@ -934,12 +938,6 @@ class ConsolidatedTradingDaemon:
                 )
             else:
                 prompt = (
-                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'ACTIVE_TRADE' if has_active_trades else 'SCHEDULED'}):\n"
-                    f"{file_ref_header}\n"
-                    f"{world_header}\n"
-                    f"{full_4tf_reveal_block}\n"
-                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
-                    f"{matrix_formatted}\n\n"
                     f"{_time_str}\n\n"
                     "Evaluate live market structure, inventory, and order flow (10% technicals with reverse engineering).\n"
                     "Adapt your reasoning and orders dynamically following pure thought processes (no rules--only follow pure thought processes).\n\n"
