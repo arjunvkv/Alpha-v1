@@ -977,8 +977,16 @@ class ConsolidatedTradingDaemon:
                     "• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor fake signals if HTF structure and CVD flow support the thesis.\n"
                     "• MANAGE VIA SL & TP ONLY: Manage active trades strictly through SL/TP adjustments (update_position).\n"
                     "• POSITION SIZING (0.10 TO 1.00 LOT): Available lots are 0.10 to 1.00 scaled based on analysis confidence.\n"
-                    "• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs.\n"
-                    "• Make good use of all technical tools wherever possible. Reference file:///C:/Trading/Alpha/MCP_TOOLS_USAGE_GUIDE.md for the complete tool guide and usage."
+                    "• EARLY EXIT ON STRONG INVALIDATION: If strong, confirmed invalidation occurs.\n\n"
+                    "MANDATORY 10% TECHNICAL AUDIT SUITE VIA ALPHA MCP (EXECUTE IN PARALLEL):\n"
+                    "Call the full technical suite in parallel to reverse-engineer tape kinetics and market structure:\n"
+                    "  • `get_market_regime_context(symbol='XAUUSD')`: Live broker quotes, spread, CVD, 4M footprint bars, multi-timeframe trend & RSI.\n"
+                    "  • `get_fvg_matrix(symbol='XAUUSD')`: Multi-timeframe Fair Value Gaps across M1/M5/M15/H1/H4.\n"
+                    "  • `get_live_microstructure(symbol='XAUUSD')`: Tape velocity TPM, adverse flow warnings, and micro air-pocket checks.\n"
+                    "  • `get_measured_cvd(symbol='XAUUSD')`: Measured tick CVD and buyer vs seller aggression delta.\n"
+                    "  • `read(path='C:/Trading/Alpha/logs/institutional_deep_book.md')`: Full institutional book with Order Blocks, Breaker Blocks, Wyckoff Phase classifications, Equal Highs/Lows, and Fibonacci confluences.\n"
+                    "  • `get_pending_orders()` and `get_active_watches()`: Live pending ladder and armed watch status.\n"
+                    "Reference file:///C:/Trading/Alpha/MCP_TOOLS_USAGE_GUIDE.md for the complete tool guide and usage."
                 )
             post_to_opencode_session("", prompt)
 
