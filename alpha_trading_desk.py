@@ -939,8 +939,8 @@ class ConsolidatedTradingDaemon:
             else:
                 prompt = (
                     f"{_time_str}\n\n"
-                    "Evaluate live market structure, inventory, and order flow (10% technicals with reverse engineering).\n"
-                    "Adapt your reasoning and orders dynamically following pure thought processes (no rules--only follow pure thought processes).\n\n"
+                    "Your primary role is gathering the news (we don't want to miss any) followed by 10% technicals with reverse engineering.\n\n"
+                    "Only trade when there is a macro or micro news catalyst (confirmed via Proxima MCP) aligned with the 10% technicals and the direction following pure thought processes (no rules--only follow pure thought processes).\n\n"
                     "DYNAMIC SCENARIO-ADAPTIVE ORDER PLACEMENT (STOP ORDERS & LIMIT ORDERS):\n"
                     "Adapt your order type dynamically to evolving market conditions and tape kinetics:\n"
                     "• EXPANSIONS & BREAKOUTS: Use BUY_STOP or SELL_STOP when momentum is accelerating and expanding through key levels.\n"
