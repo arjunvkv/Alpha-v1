@@ -437,6 +437,7 @@ class ConsolidatedTradingDaemon:
         self.just_sent_active_brainstorm = False
         self.next_turn_type = "DOSSIER"
         self.has_dispatched_initial_dossier = False
+        self.last_session_id = None
 
         # Wire live error monitoring into Desk Daemon (H4)
         from monitor.error_monitor import error_monitor
@@ -447,6 +448,25 @@ class ConsolidatedTradingDaemon:
         from tradingagents.watcher_engine import UniversalWatcherEngine
         self.watcher_engine = UniversalWatcherEngine()
         self.watcher_task = None
+
+    def dispatch_startup_ping(self, sid: str, title: str):
+        dossier_mins = max(1, int(round(get_dossier_interval_seconds() / 60.0)))
+        active_mins = max(1, int(round(get_active_trade_interval_seconds() / 60.0)))
+        post_to_opencode_session(
+            "OpenCode (CIO)",
+            f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
+            f"Session: {title} ({sid})\n"
+            f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
+            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===\n"
+            f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
+            f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
+            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
+            f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
+            f"=== MCP TOOLS DIRECTORY & USAGE GUIDE ===\n"
+            f"For full reference on all available tools, capabilities, parameters, and workflows, consult: C:\\Trading\\Alpha\\MCP_TOOLS_USAGE_GUIDE.md\n"
+            f"Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_fvg_matrix, get_fred_observations, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, update_watch, cancel_watch, clear_completed_watches.\n"
+        )
 
     async def run_cycle(self):
         self.cycle_count += 1
@@ -839,22 +859,26 @@ class ConsolidatedTradingDaemon:
         except Exception as _w_store_err:
             LOG.debug(f"Watch store err: {_w_store_err}")
 
-        ready_for_dispatch = False
+        # Check if active session ID changed dynamically in config
         sid, title, _ = get_opencode_session()
+        if sid and self.last_session_id is not None and sid != self.last_session_id:
+            LOG.info(f"🔄 Active OpenCode session changed to '{title}' ({sid}). Resetting cadence and dispatching startup message.")
+            self.last_session_id = sid
+            self.has_dispatched_initial_dossier = False
+            self.last_dispatch_time = now_ts
+            self.next_turn_type = "DOSSIER"
+            self.dispatch_startup_ping(sid, title)
+
+        ready_for_dispatch = False
         is_idle = is_opencode_idle(sid) if sid else True
 
         if triggered_watch is not None:
             ready_for_dispatch = True
-        elif is_startup:
-            if is_idle:
-                ready_for_dispatch = True
-            else:
-                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding initial dossier dispatch until idle...")
         elif elapsed_since_dispatch >= required_interval:
             if is_idle:
                 ready_for_dispatch = True
             else:
-                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding routine dispatch until idle...")
+                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding dispatch until idle...")
 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
@@ -876,17 +900,13 @@ class ConsolidatedTradingDaemon:
                 else:
                     is_brainstorm_turn = False
             else:
-                # Idle pattern: alternate DOSSIER and BRAINSTORM
-                if is_startup:
+                # Idle pattern: alternate DOSSIER and BRAINSTORM (Dossier -> 4m -> Brainstorm -> 4m -> Dossier)
+                if self.next_turn_type == "BRAINSTORM":
+                    is_brainstorm_turn = True
+                    self.next_turn_type = "DOSSIER"
+                else:
                     is_brainstorm_turn = False
                     self.next_turn_type = "BRAINSTORM"
-                else:
-                    if self.next_turn_type == "BRAINSTORM":
-                        is_brainstorm_turn = True
-                        self.next_turn_type = "DOSSIER"
-                    else:
-                        is_brainstorm_turn = False
-                        self.next_turn_type = "BRAINSTORM"
 
             try:
                 from tradingagents.time_helper import get_market_time_context
@@ -1180,22 +1200,12 @@ class ConsolidatedTradingDaemon:
         active_mins = max(1, int(round(get_active_trade_interval_seconds() / 60.0)))
         LOG.info(f"Consolidated Trading Daemon started with Dynamic Briefing Cadence ({active_mins}-min active trades, {dossier_mins}-min idle).")
         sid, title, _ = get_opencode_session()
+        self.last_session_id = sid
+        self.last_dispatch_time = time.time()
+        self.next_turn_type = "DOSSIER"
+        self.has_dispatched_initial_dossier = False
         # Immediately fire startup ping to OpenCode so user knows daemon is alive
-        post_to_opencode_session(
-            "OpenCode (CIO)",
-            f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
-            f"Session: {title} ({sid})\n"
-            f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
-            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===\n"
-            f"OpenCode is the sole market reasoner and decision-maker. The daemon only observes and wakes a new investigation.\n"
-            f"MANDATORY ON EVERY WAKE (STEP 0): You MUST call `get_market_regime_context(symbol='XAUUSD')` before any other analysis or action.\n"
-            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
-            f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
-            f"=== MCP TOOLS DIRECTORY & USAGE GUIDE ===\n"
-            f"For full reference on all available tools, capabilities, parameters, and workflows, consult: C:\\Trading\\Alpha\\MCP_TOOLS_USAGE_GUIDE.md\n"
-            f"Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_fvg_matrix, get_fred_observations, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, update_watch, cancel_watch, clear_completed_watches.\n"
-        )
+        self.dispatch_startup_ping(sid, title)
         # Start ultra-fast 500ms Universal Watcher Task
         self.watcher_task = asyncio.create_task(self._realtime_watcher_task())
         await asyncio.sleep(2.0)
