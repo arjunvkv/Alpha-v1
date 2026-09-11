@@ -6,6 +6,7 @@
     "alpha-daemon-mcp": {
       "command": "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
       "args": [
+        "-u",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ]
     },
@@ -21,6 +22,7 @@
       "type": "local",
       "command": [
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+        "-u",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ],
       "enabled": true,
