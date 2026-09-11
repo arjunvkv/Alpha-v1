@@ -435,6 +435,7 @@ class ConsolidatedTradingDaemon:
         self.last_reversal_dispatch_time = 0.0
         self.active_burst_step = 0
         self.just_sent_active_brainstorm = False
+        self.next_turn_type = "DOSSIER"
 
         # Wire live error monitoring into Desk Daemon (H4)
         from monitor.error_monitor import error_monitor
@@ -838,12 +839,18 @@ class ConsolidatedTradingDaemon:
             LOG.debug(f"Watch store err: {_w_store_err}")
 
         ready_for_dispatch = False
+        sid, title, _ = get_opencode_session()
+        is_idle = is_opencode_idle(sid) if sid else True
+
         if triggered_watch is not None:
             ready_for_dispatch = True
         elif is_startup:
             ready_for_dispatch = True
         elif elapsed_since_dispatch >= required_interval:
-            ready_for_dispatch = True
+            if is_idle:
+                ready_for_dispatch = True
+            else:
+                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding routine dispatch until idle...")
 
         if ready_for_dispatch:
             self.last_dispatch_time = now_ts
@@ -863,8 +870,17 @@ class ConsolidatedTradingDaemon:
                 else:
                     is_brainstorm_turn = False
             else:
-                # Idle pattern: 4m dossier -> 8m brainstorm message
-                is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
+                # Idle pattern: alternate DOSSIER and BRAINSTORM
+                if is_startup:
+                    is_brainstorm_turn = False
+                    self.next_turn_type = "BRAINSTORM"
+                else:
+                    if self.next_turn_type == "BRAINSTORM":
+                        is_brainstorm_turn = True
+                        self.next_turn_type = "DOSSIER"
+                    else:
+                        is_brainstorm_turn = False
+                        self.next_turn_type = "BRAINSTORM"
 
             try:
                 from tradingagents.time_helper import get_market_time_context
@@ -918,6 +934,12 @@ class ConsolidatedTradingDaemon:
                 )
             else:
                 prompt = (
+                    f"OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER ({'ACTIVE_TRADE' if has_active_trades else 'SCHEDULED'}):\n"
+                    f"{file_ref_header}\n"
+                    f"{world_header}\n"
+                    f"{full_4tf_reveal_block}\n"
+                    f"=== MULTI-INSTRUMENT 7-AGENT RAW FINDINGS MATRIX ===\n"
+                    f"{matrix_formatted}\n\n"
                     f"{_time_str}\n\n"
                     "Evaluate live market structure, inventory, and order flow (10% technicals with reverse engineering).\n"
                     "Adapt your reasoning and orders dynamically following pure thought processes (no rules--only follow pure thought processes).\n\n"
