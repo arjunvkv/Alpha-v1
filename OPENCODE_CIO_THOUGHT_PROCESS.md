@@ -115,6 +115,11 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - If R:R < 1.5, the options are: (a) move TP to a further realistic liquidity target, (b) tighten SL to a closer structural anchor, or (c) **do not take the trade and wait for a better coordinate**. Never widen SL to manufacture a better-looking R:R while keeping TP fixed — this degrades expected value.
    - Negative R:R trades (risking more than the potential reward) are categorically forbidden.
 
+10. **Pre- & Post-Trade Memory Protocol — Separation of Process vs. Outcome**:
+    - **Pre-Entry Consultation**: Before proposing or placing ANY order, audit Unified Learning Memory (`read(filePath='C:/Trading/Alpha/logs/unified_learning_memory.json')` or `alpha-daemon-mcp_search_book`). Verify that your proposed setup does NOT repeat a documented historical failure (e.g. entering into unmitigated FVG ceilings, thin tape ahead of Tier-1 catalysts, inverted R:R, or false absorption).
+    - **Post-Trade Forensic Archiving**: The instant any trade closes (SL, TP, or early exit), conduct a forensic autopsy: Was the outcome due to execution quality (entry coordinate, R:R, SL anchor) or genuine macro surprise? You MUST call `alpha-daemon-mcp_record_trade_observation(symbol='XAUUSD', pattern_name=..., observation=..., outcome='WIN'|'LOSS'|'BE', r_multiple=..., ticket=...)` to permanently record the reusable lesson.
+    - **Noise Gate**: Do NOT record observations during routine un-triggered cadence turns. Routine sweeps stay in chat text. Permanent memory records are strictly for Pre-Trade verification and Post-Trade forensic autopsies.
+
 ---
 
 ### Example E: The Pre-CPI Supply Ceiling Trap
