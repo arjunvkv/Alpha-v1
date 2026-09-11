@@ -969,6 +969,8 @@ class ConsolidatedTradingDaemon:
                     "POSITIONING & EXECUTION PRINCIPLES:\n"
                     "• Pre-plan your orders from the best structural coordinates using 0.10 to 1.00 lot size scaled to your confidence.\n"
                     "• Always ensure a solid structural anchor defends the Stop Loss against noise while protecting account limits.\n"
+                    "• LIQUIDITY MAGNET PROTECTION: Never place an SL inside the suction path between current price and a flagged Retail Stop Pool (Buy/Sell Stop Pool Magnet) or VAH/VAL. Anchors must sit beyond the pool.\n"
+                    "• PRE-CATALYST THIN TAPE AWARENESS: Ahead of Tier-1 macro releases (CPI/PPI/FOMC), velocity collapse (<50 t/m) is thin pre-news drift, NOT buyer/seller exhaustion. Do not treat resting walls as barriers.\n"
                     "• Target realistic, high-probability Take Profits aligned with market structure.\n"
                     "• Replace or cancel pending orders dynamically as conditions evolve.\n\n"
                     "MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"

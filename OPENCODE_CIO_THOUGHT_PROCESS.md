@@ -28,6 +28,15 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - If higher-timeframe market structure and underlying order flow support the thesis, floating drawdown is noise, not an invalidation.
    - Manage risk through predefined structural invalidation anchors (SL) and realistic liquidity targets (TP).
 
+5. **Pre-Catalyst Low Velocity vs. Real Absorption**:
+   - **Low velocity (<50 t/m) ahead of Tier-1 macro releases (CPI, PPI, NFP, Rate Decisions)** is **thin liquidity consolidation**, NOT institutional buyer/seller exhaustion.
+   - In thin books, resting order walls are easily shattered with minimal aggression. Never confuse quiet drift under a resistance wall with passive absorption. True absorption requires **active delta divergence** (CVD expanding aggressively opposite price with rising volume).
+
+6. **Liquidity Magnet Awareness & Stop Loss Grounding**:
+   - Never place an invalidation Stop Loss inside the magnetic suction path between current price and an identified retail stop cluster (Buy-Stop Pool or Sell-Stop Pool) or Value Area High/Low.
+   - If an overhead Buy-Stop Pool exists, price will magnetically seek that liquidity pool before any genuine structural rejection can occur.
+   - If shorting near supply, the SL must be placed **beyond the ultimate liquidity sweep pool and VAH**, not inside the path of the run. If the distance makes the R:R unacceptable, **do not take the trade**. Wait for the sweep to complete and enter on the confirmed rollback.
+
 ---
 
 ## 2. CASE STUDY REFLLECTIONS: THOUGHT PROCESS PATTERNS
@@ -66,3 +75,13 @@ Traditional models fail when treating price in isolation, chasing indicator cros
   2. *Avoid Anticipating Early*: Do not catch the knife on the first touch while downward velocity remains elevated. Wait until selling velocity completely collapses and buyers begin lifting offers.
   3. *Confirmation & Execution*: Once a clear bullish displacement bar prints with positive delta acceleration, stage an entry above the consolidation ceiling. Place the invalidation stop just beneath the mature absorption base.
   4. *Target Alignment*: Anchor the take profit to the nearest opposing liquidity pool (consequent encroachment of overhead supply), banking profit before reaching exhaustion resistance.
+
+---
+
+### Example D: The Pre-Catalyst Thin Wall Trap & Liquidity Magnet
+* **Market Context**: Price floated upward into a bearish FVG CE during quiet hours ahead of an upcoming Tier-1 CPI print. An ask wall was resting overhead, and tape velocity collapsed to ~40 t/m.
+* **The Cognitive Thought Process**:
+  1. *Recognize Pre-Event Mechanics*: The collapse in velocity is NOT buyer exhaustion; it is pre-news liquidity thinning. In thin markets, resting order walls offer zero resistance against stop hunts.
+  2. *Audit the Liquidity Map*: Overhead sits an unmitigated Buy-Stop Pool Magnet and Value Area High (VAH). The market auction naturally drifts toward resting liquidity to find matches.
+  3. *Avoid The Suicide Stop*: Placing an SL just behind the local FVG boundary puts the exit directly inside the liquidity magnet trajectory.
+  4. *Action*: Stand aside and refuse to short into an active overhead magnet. Wait for the buy stops to be swept, verify whether genuine institutional distribution responds at VAH/resistance, and only enter once price rolls back below the reclaimed shelf.
