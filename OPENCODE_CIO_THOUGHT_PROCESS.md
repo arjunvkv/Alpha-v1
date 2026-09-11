@@ -1,6 +1,6 @@
-# INSTITUTIONAL THOUGHT PROCESS: COGNITIVE REFLECTION & MARKET READING
-**File:* `C:\Trading\Alpha\OPENCODE_CIO_THOUGHT_PROCESS.md`  
-**Purpose:** Cognitive orientation on institutional auction dynamics, order flow, and tape psychology.
+# OPENCODE CIO THOUGHT PROCESS: COGNITIVE REFLECTION & MARKET READING
+**File:** `C:\Trading\Alpha\OPENCODE_CIO_THOUGHT_PROCESS.md`  
+**Purpose:** Cognitive orientation on institutional auction dynamics, order flow, tape psychology, and historical winning execution patterns.
 
 ---
 
@@ -8,127 +8,163 @@
 
 Traditional models fail when treating price in isolation, chasing indicator crossovers, or reacting emotionally to candle wicks. Institutional order flow operates through fundamental auction mechanisms:
 
-1. **Macro Gravity vs. Technical Geometry**:
-   - Real yields and sovereign capital flows set the macro tide.
-   - When yields are in a violent directional impulse, minor intraday technical shelves yield to the macro force.
+1. **Macro Gravity vs. Technical Geometry (Rule 1)**:
+   - Real yields (10Y TIPS / `DFII10`) and sovereign capital flows set the macro tide.
+   - When real yields or dollar liquidity are in a violent directional impulse, minor intraday technical shelves yield to the macro force.
    - When macro rates are quiet and steady, structural auction geometry (Volume POC, Fair Value Gaps, Value Area boundaries) commands dominant pricing power, creating clean mean-reversion and shelf-defense behavior.
 
-2. **Tape Absorption & Delta Divergence**:
+2. **Tape Absorption & Delta Divergence (Rule 2)**:
    - Large institutional participants cannot conceal their presence. Their footprints appear in tape velocity and Cumulative Volume Delta (CVD).
    - A downward price sweep accompanied by rising positive delta and thickening bid walls represents **passive institutional absorption** (liquidity capture), not a genuine breakdown.
    - A downward price move accompanied by aggressive negative delta displacement and high velocity represents **active kinetic liquidation**.
 
-3. **Defending Block vs. Liquidity Seeking ("Rip to Fill")**:
+3. **Defending Block vs. Liquidity Seeking ("Rip to Fill") (Rule 3)**:
    - In the absence of breaking news, price seeks resting liquidity pools (stops and pending limits) where institutional volume can be matched without slippage.
    - Never place naked, unconfirmed limit orders in front of a rapid, aggressive move.
-   - Demand evidence of defending absorption: delta exhaustion, Level 2 order-book thickening on the defending side, and velocity decay. Enter via breakout confirmation once the defending shelf is defended and reclaimed.
+   - Demand evidence of defending absorption: delta exhaustion, Level 2 order-book thickening on the defending side, and velocity decay. Enter via breakout confirmation (`BUY_STOP` / `SELL_STOP`) once the defending shelf is defended and reclaimed.
 
-4. **Position Discipline & Noise Tolerance**:
+4. **Position Discipline & Noise Tolerance (Rule 4)**:
    - Minor counter-wicks during a trending impulse are normal retests of intermediate structural shelves.
    - If higher-timeframe market structure and underlying order flow support the thesis, floating drawdown is noise, not an invalidation.
-   - Manage risk through predefined structural invalidation anchors (SL) and realistic liquidity targets (TP).
+   - Manage risk through predefined structural invalidation anchors (SL) and realistic liquidity targets (TP). **FORBID PANIC KILLS & NO MECHANICAL TRAILING**.
 
-5. **Pre-Catalyst Low Velocity vs. Real Absorption**:
+5. **Pre-Catalyst Low Velocity vs. Real Absorption (Rule 5)**:
    - **Low velocity (<50 t/m) ahead of Tier-1 macro releases (CPI, PPI, NFP, Rate Decisions)** is **thin liquidity consolidation**, NOT institutional buyer/seller exhaustion.
    - In thin books, resting order walls are easily shattered with minimal aggression. Never confuse quiet drift under a resistance wall with passive absorption. True absorption requires **active delta divergence** (CVD expanding aggressively opposite price with rising volume).
 
-6. **Liquidity Magnet Awareness & Stop Loss Grounding**:
+6. **Liquidity Magnet Awareness & Stop Loss Grounding (Rule 6)**:
    - Never place an invalidation Stop Loss inside the magnetic suction path between current price and an identified retail stop cluster (Buy-Stop Pool or Sell-Stop Pool) or Value Area High/Low.
    - If an overhead Buy-Stop Pool exists, price will magnetically seek that liquidity pool before any genuine structural rejection can occur.
    - If shorting near supply, the SL must be placed **beyond the ultimate liquidity sweep pool and VAH**, not inside the path of the run. If the distance makes the R:R unacceptable, **do not take the trade**. Wait for the sweep to complete and enter on the confirmed rollback.
 
----
+7. **Pre-Catalyst Order Lockout — Event Proximity Defense (Rule 7 & Master Directive 8)**:
+   - Absolute order lockout **30 to 60 minutes before and 5 minutes after** any Tier-1 macro catalyst (CPI, PPI, FOMC, NFP, GDP). Pre-catalyst stop orders are directional bets on a binary event outcome — speculation disguised as technical entries.
+   - Stand completely flat through the event freeze window. Let the initial knee-jerk liquidity sweep exhaust. Arm directional orders only after the actual data print and tape reaction confirm directional momentum.
 
-## 2. CASE STUDY REFLLECTIONS: THOUGHT PROCESS PATTERNS
-
-> [!CAUTION]
-> **MANDATORY NOTICE: THE EXAMPLES BELOW ARE HISTORICAL THOUGHT PROCESS DEMONSTRATIONS ONLY.**
-> **DO NOT COPY SPECIFIC NUMBERS*, EXACT PRICES, OR CONVERT THEM INTO MECHANICAL TRADING RULES.
-> Markets are non-stationary auctions. The purpose of these examples is strictly to illustrate the **internal cognitive reasoning style**: how to audit raw tape pressure, how to evaluate defending absorption, how to handle normal retracements, and how to define structural invalidation.
-
----
-
-### Example A: The Shelf Defense & Order Flow Absorption
-* **Market Context**: Price was trending upward in London/NY overlap. Price pulled back sharply into a prior 15-minute Fair Value Gap shelf, creating negative floating PnL on existing long exposure.
-* **The Cognitive Thought Process**:
-  1. *Audit the Tape*: Is this a real structural reversal or a liquidity sweep? Checking the raw metrics reveals that tape velocity is declining into the shelf and cumulative delta remains firmly positive overall.
-  2. *Inspect Order Book Depth*: Level 2 bids are actively stacking right below the shelf rather than pulling back. Market sell orders are being absorbed without downward price displacement.
-  3. *Invalidation Grounding*: The structural invalidation (SL) sits securely behind the opposing high-volume POC node and the base of the FVG. The pullback is merely testing the top edge of value.
-  4. *Action*: Stand firm. Do not panic-close on the red candle. Let the defending shelf hold. Price absorbs the selling, buyers step in, and price rallies to the target liquidity boundary.
-
----
-
-### Example B: The Premium Fair Value Gap Fade
-* **Market Context**: Price pushed into an overhead supply shelf during quiet session hours with no breaking macro headlines.
- * **The Cognitive Thought Process**:
-  1. *Recognize Session State*: Macro yields are flat and no scheduled high-impact releases are imminent. Price is auctioning inside a balanced range.
-  2. *Identify Supply Asymmetry*: Price approaches the unmitigated upper boundary of a bearish FVG. Buyers are expending volume but failing to displace price higher.
-  3. *Risk Anchor*: A clean structural invalidation exists just beyond the top of the supply shelf. If price breaks and closes above that shelf, the fade thesis is immediately wrong.
-  4. *Action*: Enter short near the supply boundary with a tight, well-defined stop above the shelf. As sellers defend the zone, price rolls back toward range equilibrium (Volume POC) where profits are banked cleanly.
-
----
-
-### Example C: The Mature Absorption Breakout
-* **Market Context**: Price consolidated after an extended downward move, printing multiple touches at a support floor.
-* **The Cognitive Thought Process**:
-  1. *Diagnose Absorption Progression*: Over several cycles, selling deltas shrink significantly from deep negative to near flat. Downward wicks are rapidly bought back, leaving lower wicks.
-  2. *Avoid Anticipating Early*: Do not catch the knife on the first touch while downward velocity remains elevated. Wait until selling velocity completely collapses and buyers begin lifting offers.
-  3. *Confirmation & Execution*: Once a clear bullish displacement bar prints with positive delta acceleration, stage an entry above the consolidation ceiling. Place the invalidation stop just beneath the mature absorption base.
-  4. *Target Alignment*: Anchor the take profit to the nearest opposing liquidity pool (consequent encroachment of overhead supply), banking profit before reaching exhaustion resistance.
-
----
-
-### Example D: The Pre-Catalyst Thin Wall Trap & Liquidity Magnet
-* **Market Context**: Price floated upward into a bearish FVG CE during quiet hours ahead of an upcoming Tier-1 CPI print. An ask wall was resting overhead, and tape velocity collapsed to ~40 t/m.
-* **The Cognitive Thought Process**:
-  1. *Recognize Pre-Event Mechanics*: The collapse in velocity is NOT buyer exhaustion; it is pre-news liquidity thinning. In thin markets, resting order walls offer zero resistance against stop hunts.
-  2. *Audit the Liquidity Map*: Overhead sits an unmitigated Buy-Stop Pool Magnet and Value Area High (VAH). The market auction naturally drifts toward resting liquidity to find matches.
-  3. *Avoid The Suicide Stop*: Placing an SL just behind the local FVG boundary puts the exit directly inside the liquidity magnet trajectory.
-  4. *Action*: Stand aside and refuse to short into an active overhead magnet. Wait for the buy stops to be swept, verify whether genuine institutional distribution responds at VAH/resistance, and only enter once price rolls back below the reclaimed shelf.
-
----
-
-7. **Pre-Catalyst Order Lockout — No Directional Stop Orders Before Tier-1 Events**:
-   - Do NOT place BUY_STOP or SELL_STOP orders more than 30 minutes before any confirmed Tier-1 macro catalyst (CPI, PPI, FOMC, NFP, GDP). Pre-catalyst stop orders are directional bets on a binary event outcome — they are speculation disguised as technical entries.
-   - **Correct pre-catalyst posture**: If exposure is wanted before the event, use only a small BUY_LIMIT or SELL_LIMIT from a structural shelf inside the current range (demand or supply zone). Max size: 0.10 lots. This keeps risk bounded inside the known pre-event range.
-   - Keep all directional stop orders (BUY_STOP / SELL_STOP) as **contingency orders to be armed AFTER the actual data print confirms direction**. The watch system (spread > 80 OR velocity > 500) is precisely designed to detect the CPI/NFP release moment — use it to fire the stop order at the right time, not 4 hours early.
-   - If the pre-catalyst BUY_LIMIT or SELL_LIMIT is already triggered and holding, manage it per the active position rules. Do not add to it pre-event.
-
-8. **FVG-Aligned Entry Architecture — Enter From Structure, Exit Into Structure**:
+8. **FVG-Aligned Entry Architecture — Enter From Structure, Exit Into Structure (Rule 8)**:
    - **LONG entries**:
-     - `BUY_LIMIT` → place at the **demand shelf** (bullish FVG CE, OB top, or VAL). TP at the supply cluster above (bearish FVG, OB bottom, or VAH).
-     - `BUY_STOP` → place **only ABOVE a supply zone that has already been fully absorbed/mitigated**, confirming buyer strength through resistance. Never place a BUY_STOP above an unmitigated bearish FVG cluster — the entry triggers directly into supply.
+     - `BUY_LIMIT` → place at the **demand shelf** (bullish FVG CE, OB top, or VAL). TP at the supply cluster above.
+     - `BUY_STOP` → place **only ABOVE a supply zone that has already been fully absorbed/mitigated**, confirming buyer strength through resistance. Never place a BUY_STOP above an unmitigated bearish FVG cluster.
    - **SHORT entries**:
-     - `SELL_LIMIT` → place at the **supply shelf** (bearish FVG CE, OB bottom, or VAH). TP at the demand cluster below (bullish FVG, OB top, or VAL).
-     - `SELL_STOP` → place **only BELOW a demand zone that has already been fully absorbed/broken**, confirming seller strength through support. Never place a SELL_STOP below an unmitigated bullish FVG cluster — the entry triggers directly into demand.
+     - `SELL_LIMIT` → place at the **supply shelf** (bearish FVG CE, OB bottom, or VAH). TP at the demand cluster below.
+     - `SELL_STOP` → place **only BELOW a demand zone that has already been fully absorbed/broken**, confirming seller strength through support. Never place a SELL_STOP below an unmitigated bullish FVG cluster.
    - The universal principle: **Enter from structure, exit into structure.** Limit orders enter from the near zone. Stop orders confirm penetration of the far zone. Never invert this.
 
-9. **R:R Floor of 1.5:1 — Mandatory Pre-Entry Check**:
-   - Every order placed must have a minimum reward-to-risk ratio of **1.5:1** before entry. If the structural coordinates do not allow it, the trade is not valid regardless of directional conviction.
-   - **Verification (mandatory before calling `place_pending_order`)**:
+9. **R:R Floor of 1.5:1 — Mandatory Pre-Entry Check (Rule 9)**:
+   - Every order placed must have a minimum reward-to-risk ratio of **1.5:1** before entry:
      ```
      Reward = |Entry - TP|
      Risk   = |Entry - SL|
-     R:R    = Reward / Risk
-     Accept only if R:R ≥ 1.5
+     R:R    = Reward / Risk >= 1.5
      ```
-   - If R:R < 1.5, the options are: (a) move TP to a further realistic liquidity target, (b) tighten SL to a closer structural anchor, or (c) **do not take the trade and wait for a better coordinate**. Never widen SL to manufacture a better-looking R:R while keeping TP fixed — this degrades expected value.
-   - Negative R:R trades (risking more than the potential reward) are categorically forbidden.
+   - If R:R < 1.5: move TP to further structural target, tighten SL to closer anchor, or skip the trade. Negative R:R trades are categorically forbidden.
 
-10. **Pre- & Post-Trade Memory Protocol — Separation of Process vs. Outcome**:
-    - **Pre-Entry Consultation**: Before proposing or placing ANY order, audit Unified Learning Memory (`read(filePath='C:/Trading/Alpha/logs/unified_learning_memory.json')` or `alpha-daemon-mcp_search_book`). Verify that your proposed setup does NOT repeat a documented historical failure (e.g. entering into unmitigated FVG ceilings, thin tape ahead of Tier-1 catalysts, inverted R:R, or false absorption).
-    - **Post-Trade Forensic Archiving**: The instant any trade closes (SL, TP, or early exit), conduct a forensic autopsy: Was the outcome due to execution quality (entry coordinate, R:R, SL anchor) or genuine macro surprise? You MUST call `alpha-daemon-mcp_record_trade_observation(symbol='XAUUSD', pattern_name=..., observation=..., outcome='WIN'|'LOSS'|'BE', r_multiple=..., ticket=...)` to permanently record the reusable lesson.
-    - **Noise Gate**: Do NOT record observations during routine un-triggered cadence turns. Routine sweeps stay in chat text. Permanent memory records are strictly for Pre-Trade verification and Post-Trade forensic autopsies.
+10. **Pre- & Post-Trade Memory Protocol — Separation of Process vs. Outcome (Rule 10)**:
+    - **Pre-Entry Audit**: Before proposing or placing ANY order, audit Unified Learning Memory (`read(filePath='C:/Trading/Alpha/logs/unified_learning_memory.json')`). Verify that the proposed setup does not repeat a documented historical failure.
+    - **Post-Trade Forensic Archiving**: The instant any trade closes, conduct a forensic autopsy: Was the outcome due to execution quality or genuine macro surprise? You MUST call `alpha-daemon-mcp_record_trade_observation(symbol='XAUUSD', pattern_name=..., observation=..., outcome='WIN'|'LOSS'|'BE', r_multiple=..., ticket=...)`.
 
 ---
 
-### Example E: The Pre-CPI Supply Ceiling Trap
-* **Market Context**: A BUY_STOP was placed at 4350.52 — above three stacked unmitigated bearish FVGs (4347.63–4350.03) — more than 4 hours before a CPI release. Velocity at placement was 39 t/m (LOW_COMPRESSION). The trade triggered, immediately entered a -$224 drawdown, and is sitting below entry with CPI 2h47m away.
-* **The Cognitive Thought Process (correct version)**:
-  1. *Audit Entry Coordinate*: Three bearish FVGs stacked between 4347–4350 are unmitigated overhead supply. A BUY_STOP above them triggers the entry AT the supply ceiling, not through it. This violates Rule 8.
-  2. *Check R:R*: Entry 4350.52, SL 4337, TP 4361 → Risk 13.5 pts, Reward 10.5 pts → R:R 0.78:1. Negative R:R. This trade should never have been placed as structured (Rule 9).
-  3. *Check Timing*: CPI is 4+ hours away. Tape velocity 39 t/m (pre-event thin tape). Directional stop order before a Tier-1 catalyst violates Rule 7.
-  4. *Correct Architecture Would Have Been*:
-     - Pre-CPI: `BUY_LIMIT @ 4339.50` | SL 4326 | TP 4361 | 0.10 lots → R:R 1.69:1 ✅, inside the range, sized for binary uncertainty.
-     - At CPI print (watch fires): Pull Perplexity for the actual print → cool CPI: arm `BUY_STOP 4350.50` (0.30 lots) → hot CPI: arm `SELL_STOP 4337` (0.30 lots) → inline: no trade.
-  5. *Lesson*: The structural analysis (DIX accumulation, DXY exhaustion, Middle East floor) was correct. The direction lean was correct. The **entry architecture was wrong** — correct thesis, wrong execution. Thesis quality does not compensate for structural entry errors.
+## 2. PROVEN WINNING HUMAN STEERING DIRECTIVES
+
+The trading desk's $3,680 profit across 14 winning trades was driven by clear human steering principles:
+
+1. **User Msg 893 (Sizing & Target Discipline)**:
+   - Available lot range: **0.50 to 1.00 lots** scaled for high-certainty setups.
+   - **Target 1 Only (Master Directive 6)**: Focus 100% of execution on the single, high-certainty structural target (**4 to 10 points**).
+   - Bank wins cleanly in 10 to 30 minutes at structural liquidity boundaries. Do not leave lingering distant targets that allow profits to evaporate.
+
+2. **User Msg 1076 (Stop-Breakout Architecture)**:
+   - Stop attempting blind limit retracement catches in front of aggressive momentum.
+   - Enter via **BUY_STOP** or **SELL_STOP** at key breakout coordinates where price cannot easily retrace back, confirming that buyers/sellers have definitively displaced price through the level.
+   - Anchor SL firmly behind a verified structural hold (swing pivot, FVG base, or POC shelf).
+
+3. **Rule 0 (Tape Over Headlines)**:
+   - News headlines generate thematic narrative; live tape CVD and price structure dictate physical auction reality.
+   - If news narrative contradicts live tape CVD, Level 2 depth, or CHoCH structure, **trust the tape**. Never trade against aggressive tape divergence based solely on a headline narrative.
+
+4. **Rule 2.4 (Price-Direction Discriminator)**:
+   - Directional confirmation requires verified price displacement with momentum in the trade direction. Do not front-run anticipated moves without tick acceleration and delta expansion.
+
+5. **Principle 0 (A Wake Is Not A Signal)**:
+   - A cadence ping or brainstorm prompt is an observation cycle, NOT a mandate to trade.
+   - If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, the high-conviction decision is:
+     `DECISION: NO ACTION / WAIT — Standing flat`
+
+---
+
+## 3. CASE STUDIES: THE 5 MASTER WINNING TRADES
+
+> [!IMPORTANT]
+> **CRITICAL DIRECTIVE: VALUE THE THOUGHT PROCESS STYLE — THESE ARE NOT RIGID RULES TO BE FOLLOWED.**
+> Markets are fluid, non-stationary auction environments. The case studies below demonstrate how OpenCode observed raw tape pressure, formulated directional conviction from macro catalysts, reasoned through pullbacks, and anchored invalidations.
+
+### 🏆 Win 1 (Ticket #538062016): The Structural Shelf Re-Anchor & Early Scratch
+* **Trade Data**: BUY 0.10 lots @ 4406.43 -> 4407.50 (+48.7m duration | Net +$10.08).
+* **Thought Process Style**:
+  1. **Macro & Value Area Context**: During London-NY overlap, gold held ground above the 4400 psychological barrier and retested Volume POC (4401.0).
+  2. **Tape Reading**: M5 Bullish FVG (4398.5–4398.9) was defending price. 5-minute CVD printed +0.28 and 10-bar net delta rose to +12.9%, confirming passive institutional limit buyers were absorbing sell market orders at the shelf.
+  3. **Stop Loss Anchoring**: Placed at 4397.50, safely below the 4398.5 Bull FVG floor. Even though price consolidated between 4405–4406 for over 40 minutes, the pullback never breached the 4398 support block.
+  4. **The Exit Decision**: At 4407.50, tape velocity spiked to 125 t/m with an aggressive seller displacement block (-256 delta), indicating an H4 FVG supply wall rejection. OpenCode scratched the trade for +$10 rather than greedily holding into supply ahead of the US session.
+
+### 🏆 Win 2 (Ticket #538204233): The M5 Bear FVG Premium Fade
+* **Trade Data**: SELL 0.50 lots @ 4395.33 -> 4394.57 (+10.1m duration | Net +$34.92).
+* **Thought Process Style**:
+  1. **Algorithmic Premium Placement**: Staged a `SELL_LIMIT` at 4395.30 inside an unmitigated M5 Bearish FVG. In balanced markets, the initial touch of a fresh M5 Bear FVG triggers immediate institutional algorithm selling. The limit order caught the exact high tick at 4395.33.
+  2. **Stop Loss Defense**: Positioned at 4397.50 (above the M5 FVG ceiling). The rejection was immediate, dropping price to 4394 within minutes.
+  3. **Adaptive Macro Pivot**: OpenCode banked profit at 4394.57 because its live news feed detected a macro shift: DXY was slipping, US yields were softening, and buyers were mounting an aggressive bid to reclaim $4,400. OpenCode took profit early to avoid fighting the emerging bullish impulse.
+
+### 🏆 Win 3 (Ticket #538213397): The M15 Breakout Stop & Roadway Highway Run
+* **Trade Data**: BUY 1.00 lots @ 4397.75 -> 4401.96 (+19.3m duration | Net +$414.84).
+* **Thought Process Style**:
+  1. **Breakout Stop Trigger (`BUY_STOP`)**: Right after closing the short, OpenCode staged a `BUY_STOP` at 4397.50 (the breakout level above the M15 Bear FVG 4396.2–4396.9).
+  2. **Reasoning in Logs**: *"M15 bear FVG break = premium entry. 90% news momentum is weak USD + safe-haven bid + gold reclaiming $4,400. Clearing the M15 FVG opens the roadway to 4402."*
+  3. **Stop Loss Anchoring**: Placed at 4393.30 beneath the prior M5 swing low and reclaimed FVG base. Once buyers punched through the FVG with +11% delta, old resistance flipped into new support.
+  4. **Target Discipline**: TP set at 4402.00 (just under major 4403.0 overhead ask wall). Hit TP cleanly at 4401.96.
+
+### 🏆 Win 4 (Ticket #538243241): The Shelf Defense & Higher Timeframe Magnet
+* **Trade Data**: BUY 0.70 lots @ 4403.63 -> 4413.16 (+43.0m duration | Net +$662.78).
+* **Thought Process Style**:
+  1. **Entry Alignment**: Entered long at 4403.53 (M15 Bear FVG top shelf). 10-bar delta was +25.7%, M1 prints were +84/+89, Level 2 book showed a +0.58 bid wall at 4403.02, and velocity was 113 t/m. Macro wire confirmed DXY dropping to 98.647 and US-Canada tariff escalation.
+  2. **Stop Loss Anchoring & The Crucial Hold**: Placed SL at 4398.50. When price pulled back from 4406.4 to 4402.1 (-$100 floating drawdown), OpenCode diagnosed:
+     > *"Price poked M15 bear FVG top and got a mild rejection back toward POC 4401 — an expected tug at supply, NOT a structural break. 10b delta +21.3% still positive, bid wall 4401.8 sits right under price. SL 4398.5 sits safely behind the M15 Bull FVG (4399.2–4399.5). HOLD — pressing-zone rejection is not a reversal."*
+     Price bounced off 4401.8 and expanded upward.
+  3. **Consequent Encroachment (CE) Magnet**: TP set at 4412.50. The H1 Bear FVG (4409.3–4417.3) had its 50% midpoint at 4413.3. Price filled the 4412.5 TP at 4413.16.
+
+### 🏆 Win 5 (Ticket #538349210): The Absorption-Maturity Breakout
+* **Trade Data**: BUY 0.50 lots @ 4401.06 -> 4413.17 (+14.4m duration | Net +$602.42).
+* **Thought Process Style**:
+  1. **Bifurcated Setup**: Price pulled back from 4414 to 4395. OpenCode staged a `BUY_STOP` at 4401.06 (above the M5 Bear FVG midpoint at 4400.4).
+  2. **Absorption Diagnosis**: Brainstorm diagnosed: *"10-bar delta improved from -35.6% to -11.2%, last M1 printed +167/+44 delta, absorption phase is mature. Firing breakout prong."*
+  3. **Stop Loss Anchoring**: Placed at 4395.50 (just below absorption floor at 4396.0). Passive institutional buyers formed a hard floor.
+  4. **Target Execution**: TP set at 4415.10 (M5 roadway upper boundary). Exited cleanly at 4413.17 for +$602.42.
+
+---
+
+## 4. THE 6 REPLICABLE WINNING ARCHETYPES
+
+| Archetype | Entry Mechanism | Sizing | TP Target | SL Anchor | Example Ticket |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. News Stop-Breakout** | `BUY_STOP` / `SELL_STOP` after headline print & 10b delta > +10% | 0.50 - 1.00 L | 4 - 10 pts (Target 1 only) | Behind breakout pivot / reclaimed FVG base | #538213397, #539752295 |
+| **2. Absorption Maturity Reversal** | `BUY_STOP` / `SELL_STOP` once delta diverges & selling/buying velocity dies | 0.50 - 1.00 L | 5 - 12 pts (POC or FVG CE) | Behind absorption floor/ceiling | #538349210, #539745323 |
+| **3. Shelf Defense Hold** | Existing position held through retest; bid/ask wall defended | 0.50 - 0.70 L | HTF FVG Consequent Encroachment | Behind defending FVG shelf | #538243241, #539827942 |
+| **4. Balanced Range Premium Fade** | `SELL_LIMIT` at fresh M5 Bear FVG / `BUY_LIMIT` at Bull FVG | 0.30 - 0.50 L | Range equilibrium / POC (3 - 5 pts) | Just beyond FVG outer edge | #538204233 |
+| **5. Post-Event Expansion** | Stop order armed 5m after Tier-1 data print in direction of surprise | 0.50 - 1.00 L | 8 - 15 pts | Behind initial release spike base | #536923071, #537153660 |
+| **6. Structural Shelf Scratch** | Early take-profit when counter-velocity spikes at opposing HTF supply | 0.10 - 0.50 L | Immediate price (scratch profit) | N/A (early exit on supply wall) | #538062016, #539779137 |
+
+---
+
+## 5. AUTOPSY: WHAT NEVER TO DO (THE PRE-CPI SUPPLY TRAP)
+
+* **The Historical Error (Ticket #540398606)**:
+  - A `BUY_STOP` was placed at 4350.52 — directly into three stacked unmitigated bearish FVGs (4347–4350) — 4.4 hours before US CPI.
+  - Tape velocity was 39 t/m (thin pre-catalyst compression).
+  - R:R was 0.78:1 (Risk 13.5 pts vs Reward 10.5 pts).
+  - Result: The stop triggered on pre-news noise, lingered underwater, and got slaughtered when CPI released inline.
+* **The Forensic Invalidation**:
+  1. *Rule 7 Violation*: Directional stop placed hours before Tier-1 release.
+  2. *Rule 8 Violation*: BUY_STOP placed above unmitigated bearish supply.
+  3. *Rule 9 Violation*: R:R below 1.5:1 floor.
+  4. *Principle 0 Violation*: Failure to return `NO ACTION / WAIT` in quiet pre-news chop.
+* **The Permanent Lesson**: Directional bias does not justify bad architecture. In quiet pre-catalyst tape, the winning posture is 100% standing flat.
+
