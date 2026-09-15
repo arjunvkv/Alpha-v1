@@ -1,11 +1,8 @@
 {
-  "session_id": "ses_f71395dcfffe96GT8VTifqiKr9",
-  "session_title": "Escanor v12",
-  "opencode_session_id": "ses_f71395dcfffe96GT8VTifqiKr9",
-  "opencode_session_title": "Escanor v12",
+  "session_id": "ses_f5a9d8d0fffeQs0RHzT1R43kwc",
+  "session_title": "Escanor v24 (Champion Mother Replica)",
   "opencode_api_url": "http://127.0.0.1:4096",
-  "dossier_interval_seconds": 240,
-  "active_trade_interval_seconds": 120,
   "dossier_streaming_enabled": true,
-  "updated_at": "2026-09-11 04:43:00 UTC"
+  "dossier_interval_seconds": 120,
+  "active_trade_interval_seconds": 120
 }

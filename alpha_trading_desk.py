@@ -180,7 +180,7 @@ def post_to_opencode_session(speaker: str, message: str):
 
         # For urgent alerts, wait until OpenCode becomes idle before dispatching
         if sid and is_urgent:
-            for _ in range(60):
+            for _ in range(120):
                 # Check if watch was cancelled while waiting for OpenCode to be idle
                 if watch_id:
                     try:
@@ -195,8 +195,12 @@ def post_to_opencode_session(speaker: str, message: str):
                         pass
 
                 if is_opencode_idle(sid):
+                    time.sleep(0.5)
                     break
                 time.sleep(1.0)
+            else:
+                LOG.warning(f"⚡ [ALERT DEFERRED] OpenCode session '{title}' ({sid}) remained busy after 120s. Avoiding turn interruption; alert prompt deferred.")
+                return
 
         target_sids = set()
         if sid:
@@ -438,6 +442,8 @@ class ConsolidatedTradingDaemon:
         self.next_turn_type = "DOSSIER"
         self.has_dispatched_initial_dossier = False
         self.last_session_id = None
+        self.dossiers_since_brainstorm = 0
+        self.last_dispatched_turn_type = ""
 
         # Wire live error monitoring into Desk Daemon (H4)
         from monitor.error_monitor import error_monitor
@@ -828,16 +834,19 @@ class ConsolidatedTradingDaemon:
 
         # Calculate required interval based on active vs idle state
         if has_active_trades:
-            # Active trade cadence: 1m -> 1m -> 1m -> Brainstorm -> 5m gap
-            if self.just_sent_active_brainstorm:
-                required_interval = 300.0  # 5 min gap after brainstorm message
-            else:
-                required_interval = float(active_trade_interval)  # 60.0s (1m)
-        else:
-            # Idle cadence: 4m (240s)
+            # Active trade cadence: Pure 2-minute position reviews (120s)
             self.active_burst_step = 0
             self.just_sent_active_brainstorm = False
-            required_interval = float(dossier_interval)
+            required_interval = float(active_trade_interval)  # 120.0s (2m)
+        else:
+            self.active_burst_step = 0
+            self.just_sent_active_brainstorm = False
+            if self.last_dispatched_turn_type == "BRAINSTORM":
+                # After the news / brainstorm message, let there be a 4 min gap (240s) for next dossier
+                required_interval = 240.0
+            else:
+                # 2 min dossiers every 2 min
+                required_interval = float(dossier_interval)
 
         # Evaluate active persistent watches against live tick price using UniversalWatcherEngine
         triggered_watch = None
@@ -851,17 +860,33 @@ class ConsolidatedTradingDaemon:
                 if w_tick:
                     w_bid = float(getattr(w_tick, "bid", 0.0))
                     w_ask = float(getattr(w_tick, "ask", 0.0))
-                    last_t = getattr(self.watcher_engine, "last_ticks", {}).get(w_sym, {"bid": w_bid, "ask": w_ask})
+                    _live_tape = {}
+                    try:
+                        from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
+                        _flow_engine = CumulativeVolumeDeltaEngine()
+                        _m = _flow_engine.get_symbol_cvd(w_sym)
+                        _live_tape = {
+                            "velocity": _m.get("tick_velocity_tpm", 0.0),
+                            "spread": _m.get("live_spread_pts", 0.0),
+                            "cvd_10b": _m.get("recent_10_bar_delta", 0.0),
+                            "cum_cvd": _m.get("cumulative_volume_delta", 0.0)
+                        }
+                    except Exception as _fl_err:
+                        LOG.debug(f"Cadence tape snapshot err: {_fl_err}")
+
                     trig = self.watcher_engine.evaluate_watch(
                         watch=w,
                         live_tick={"bid": w_bid, "ask": w_ask, "price": (w_bid + w_ask) / 2.0},
-                        last_tick=last_t
+                        last_tick=self.watcher_engine.last_ticks.get(w_sym, {"bid": w_bid, "ask": w_ask}),
+                        tape_metrics=_live_tape,
+                        positions=open_tickets
                     )
                     if trig:
                         triggered_watch = w
-                        _ev_store.update_watch(w["id"], status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
-                        w["status"] = "TRIGGERED"
-                        LOG.info(f"⚡ WATCH TRIGGERED: {w['id']} -> {trig.get('trigger_reason', '')} (Live bid: {w_bid})")
+                        triggered_watch_prompt = trig.get("prompt")
+                        _ev_store.update_watch(w["id"], status="COMPLETED", triggered_at=datetime.now(timezone.utc).isoformat())
+                        w["status"] = "COMPLETED"
+                        LOG.info(f"⚡ WATCH TRIGGERED & CLEARED: {w['id']} -> {trig.get('trigger_reason', '')} (Live bid: {w_bid})")
                         break
         except Exception as _w_store_err:
             LOG.debug(f"Watch store err: {_w_store_err}")
@@ -874,6 +899,8 @@ class ConsolidatedTradingDaemon:
             self.has_dispatched_initial_dossier = False
             self.last_dispatch_time = now_ts
             self.next_turn_type = "DOSSIER"
+            self.dossiers_since_brainstorm = 0
+            self.last_dispatched_turn_type = ""
             self.dispatch_startup_ping(sid, title)
 
         ready_for_dispatch = False
@@ -898,31 +925,45 @@ class ConsolidatedTradingDaemon:
                 trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if has_active_trades else "SCHEDULED_REASSESSMENT")
 
             if has_active_trades:
-                # Active trade pattern: 1m dossier -> 1m dossier -> 1m dossier -> brainstorm message -> 5m gap
+                # Active trade pattern: Strictly pure Active Position Reviews every 2 minutes (NO brainstorm distractions in-flight)
                 self.just_sent_active_brainstorm = False
-                self.active_burst_step = (self.active_burst_step % 4) + 1
-                if self.active_burst_step == 4:
-                    is_brainstorm_turn = True
-                    self.just_sent_active_brainstorm = True
-                else:
-                    is_brainstorm_turn = False
+                is_brainstorm_turn = False
+                self.last_dispatched_turn_type = "ACTIVE_POSITION_REVIEW"
+            elif triggered_watch is not None:
+                is_brainstorm_turn = False
+                self.last_dispatched_turn_type = "WATCH_TRIGGER"
             else:
-                # Idle pattern: alternate DOSSIER and BRAINSTORM (Dossier -> 4m -> Brainstorm -> 4m -> Dossier)
-                if self.next_turn_type == "BRAINSTORM":
+                # Idle pattern: 2 min dossiers every 2 min, brainstorm goes every 7th dossier
+                if self.dossiers_since_brainstorm >= 7:
                     is_brainstorm_turn = True
+                    self.dossiers_since_brainstorm = 0
+                    self.last_dispatched_turn_type = "BRAINSTORM"
                     self.next_turn_type = "DOSSIER"
+                    LOG.info("📰 Cadence: Dispatched BRAINSTORM (90% News Drilldown) after 7 dossiers. Next interval: 4 minutes.")
                 else:
                     is_brainstorm_turn = False
-                    self.next_turn_type = "BRAINSTORM"
+                    self.dossiers_since_brainstorm += 1
+                    self.last_dispatched_turn_type = "DOSSIER"
+                    if self.dossiers_since_brainstorm >= 7:
+                        self.next_turn_type = "BRAINSTORM"
+                    else:
+                        self.next_turn_type = "DOSSIER"
+                    LOG.info(f"📊 Cadence: Dispatched DOSSIER #{self.dossiers_since_brainstorm}/7. Next interval: 2 minutes.")
+
 
             try:
-                from tradingagents.time_helper import get_market_time_context
+                from tradingagents.time_helper import get_market_time_context, get_upcoming_transitions_summary
                 _t_ctx = get_market_time_context()
                 _utc_fmt = _t_ctx["current_clocks"]["utc"]["formatted"]
+                _ist_fmt = _t_ctx["current_clocks"]["ist"]["formatted"]
                 _ny_fmt = _t_ctx["current_clocks"]["new_york_et"]["formatted"]
                 _lon_fmt = _t_ctx["current_clocks"]["london_bst"]["formatted"]
                 _sess = _t_ctx["active_session"]
-                _time_str = f"UTC: {_utc_fmt} | NY (ET): {_ny_fmt} | London: {_lon_fmt} | Active Session: {_sess}"
+                _gates_summary = get_upcoming_transitions_summary(_t_ctx, max_count=3)
+                _time_str = (
+                    f"UTC: {_utc_fmt} | IST: {_ist_fmt} | NY (ET): {_ny_fmt} | London: {_lon_fmt} | Active Session: {_sess}\n"
+                    f"SESSION GATES (DETERMINISTIC ZERO-MENTAL-MATH): {_gates_summary}"
+                )
             except Exception:
                 _time_str = f"UTC: {datetime.now(timezone.utc).isoformat()}"
 
@@ -934,10 +975,11 @@ class ConsolidatedTradingDaemon:
                 _regime_badge = ""
 
             if triggered_watch is not None:
-                prompt = (
+                prompt = triggered_watch_prompt if 'triggered_watch_prompt' in locals() and triggered_watch_prompt else (
                     f"⚡ ALPHA EVIDENCE WAKE — WATCH_TRIGGER\n"
                     f"{_time_str}\n"
                     f"WATCH ALERT: {triggered_watch['id']} TRIGGERED at target price {triggered_watch.get('target_price')}!\n"
+                    f"• Reason Title: {triggered_watch.get('title') or triggered_watch.get('condition')}\n"
                     f"• Condition: {triggered_watch.get('condition')}\n"
                     f"• Instruction: {triggered_watch.get('instruction')}\n"
                     f"• Reason: {triggered_watch.get('reason')}\n\n"
@@ -951,25 +993,19 @@ class ConsolidatedTradingDaemon:
                     f"{_time_str}\n\n"
                     "=== INSTITUTIONAL BRAINSTORM: 90% NEWS DRILLDOWN ===\n"
                     "Brainstorm with 5 new targeted questions about current macro/micro conditions based strictly on live breaking news and physical tape realities.\n\n"
-                    "PRINCIPLE 0 — A WAKE IS NOT A SIGNAL:\n"
-                    "• This brainstorm is an analytical audit cycle, NOT a directive to manufacture orders.\n"
-                    "• If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION DECISION IS: `DECISION: NO ACTION / WAIT — Standing flat`.\n"
-                    "• Never force trades into quiet chop. Patience is the primary weapon of the winning desk.\n\n"
                     "MANDATORY 90% NEWS RESEARCH SUITE VIA PROXIMA MCP (EXECUTE ALL IN PARALLEL):\n"
-                    "Formulate your own search queries dynamically based on your current thought process and whatever market catalysts you need to research. YOU MUST CALL THE FULL RESEARCH SUITE IN PARALLEL:\n"
-                    "  • 2x `proxima_ask_perplexity`: 2 parallel Perplexity queries on breaking headlines, macro releases, and wire alerts.\n"
-                    "  • 2x `proxima_deep_search(query=..., type='news', timeframe='today')`: 2 parallel deep AI research queries for in-depth background, flows, and chronological details.\n"
-                    "  • 2x `proxima_ddg_search(query=...)`: 2 parallel live web searches across primary sources and wires.\n"
-                    "  • 2x `proxima_deep_search(query=..., type='reddit')` or `proxima_ddg_search(query='... site:reddit.com')`: 2 parallel live Reddit sentiment/discussion searches for retail positioning and sentiment chatter.\n"
-                    "  • `proxima_web_scrape(url=...)`: To fetch full text if specific article/statement URLs are returned.\n"
-                    "  • `get_fred_observations(series_id='DFII10')`: For 10Y real yields (TIPS).\n"
-                    "• STRICT NEGATIVE CONSTRAINT: ZERO PROBABILITY QUERIES. Never ask 'what is the probability', 'will it break', or seek speculative forecasts. Query only for factual prints, actual data points, and verbatim quotes.\n\n"
-                    "EXECUTION ARCHITECTURE (WHEN CATALYST ALIGNS):\n"
-                    "• Available lots: 0.50 to 1.00 lots scaled for high certainty (User Msg 893).\n"
-                    "• Target 1 Only: 4 to 10 point closer structural TPs banked cleanly in 10 to 30 minutes.\n"
-                    "• Stop-Breakout Entry: Enter via BUY_STOP / SELL_STOP at key breakout levels where price cannot easily retrace back, with SL anchored behind a verified structural hold (User Msg 1076).\n"
-                    "• Directive 8: 30 to 60m absolute event silence before Tier-1 releases (CPI, PPI, FOMC, NFP, GDP). Stand flat.\n"
-                    "• Order Integrity & Hygiene: If you decide to cancel or modify any pending order, call cancel_pending_order or update_position in this exact turn."
+                    "Formulate your own search queries dynamically based on your current thought process and market catalysts:\n"
+                    "  • 2x `proxima_ask_perplexity`: Breaking headlines, macro releases, wire alerts.\n"
+                    "  • 2x `proxima_deep_search(query=..., type='news', timeframe='today')`: Deep AI research queries for in-depth background.\n"
+                    "  • 2x `proxima_ddg_search(query=...)`: Live web searches across primary sources and wires.\n"
+                    "  • 2x `proxima_deep_search(query=..., type='reddit')` or `proxima_ddg_search(query='... site:reddit.com')`: Retail sentiment chatter.\n"
+                    "  • `proxima_web_scrape(url=...)`: Fetch full text if specific article/statement URLs returned.\n"
+                    "  • `get_fred_observations(series_id='DFII10')`: 10Y real yields (TIPS).\n"
+                    "• STRICT NEGATIVE CONSTRAINT: ZERO PROBABILITY QUERIES. Query only for factual prints, actual data points, and verbatim quotes.\n\n"
+                    "CADENCE ACTION DIRECTIVE (AGENTS.MD PERMANENT SYSTEM PROMPT GOVERNS):\n"
+                    "• Mid-air equilibrium between shelves? Stand flat with patience (`DECISION: NO ACTION / WAIT`).\n"
+                    "• Fresh structural shelf (FVG CE / POC / OB) within 2 to 7 pts? Pre-stage Prong A limit order on MT5 or Prong B watcher trigger now.\n"
+                    "• Sizing floor: 0.50L–1.00L. Mode A TP: 5–6 pts. Mode B TP: 10–12 pts. Record phenomena via `record_pattern_observation`."
                 )
             elif has_active_trades:
                 prompt = (
@@ -982,45 +1018,41 @@ class ConsolidatedTradingDaemon:
                     "  • `alpha-daemon-mcp_get_account_status()`: Floating PnL, equity, active ticket status.\n"
                     "  • `alpha-daemon-mcp_get_live_microstructure(symbol='XAUUSD')`: Tick velocity and adverse flow check.\n"
                     "  • `alpha-daemon-mcp_get_measured_cvd(symbol='XAUUSD')`: Live tick CVD trend.\n\n"
-                    "MANDATORY ACTIVE POSITION MANAGEMENT RULES:\n"
-                    "• MANAGE VIA SL & TP ONLY: Use `update_position` for all adjustments.\n"
-                    "• NO TRAILING when price is in profit.\n"
-                    "• FORBID PANIC KILLS: Never market-kill an active triggered trade out of fear or minor counter-wicks if HTF structure and CVD flow support the thesis. Retest pullbacks into structural shelves are normal.\n"
-                    "• Target 1 Bank: Let the trade work to the 4 to 10 pt structural TP. If tape prints massive opposing institutional block or confirmed structural break, advance SL or exit on strong invalidation.\n"
-                    "• POST-TRADE FORENSIC AUTOPSY: When the trade closes (SL/TP), immediately call `alpha-daemon-mcp_record_trade_observation` with the root cause, execution vs macro critique, and reusable lesson."
+                    "MANDATORY ACTIVE POSITION MANAGEMENT RULES (GOODS ENGINE):\n"
+                    "• MANAGE VIA SL & TP ONLY: Use `update_position` for all adjustments (`BREAK_EVEN`, `FULL_EXIT`, or SL/TP calibrate).\n"
+                    "• NO MECHANICAL TICK TRAILING: Continuous pip/tick trailing is strictly FORBIDDEN. Never drag SL a few points behind live price inside the retail noise band (which chokes trades).\n"
+                    "• STRUCTURAL SHELF RATCHETING ONLY (Granger Rule 1.4): Keep hard structural invalidation anchor intact. You may ratchet SL ONLY behind a newly confirmed physical M5/M15 swing shelf or FVG boundary with a 3 to 5 point buffer once price achieves confirmed displacement. Never trail in free space.\n"
+                    "• FORBID PANIC KILLS: Minor counter-wicks and planned retests into the entry shelf are normal structural noise. Allow the trade to breathe within the defined SL budget as long as HTF structure and CVD flow support the thesis.\n"
+                    "• BREAKEVEN (BE) DEFENSE & STALL GUARD WATCHER (WINNING DESK BLUEPRINT): Once price achieves +3 to +5 points of displacement (or within 2 pts of TP), update SL to Entry/Breakeven (`update_position`). To protect profits without mechanical pip-choking, ARM A 500ms STALL GUARD WATCH (`register_watch`) 2.5 pts behind live price! If price reverses 2.5 pts, exit immediately via `update_position` FULL_EXIT to bank gains; otherwise let it glide into full TP.\n"
+                    "• BREAKOUT CONTINUATION STACKING: In Mode B trend cascades, pre-calculate Leg 2 entry milestone below TP1; the instant TP1 fills, deploy Leg 2 (`SELL_STOP` / `BUY_STOP`) without multi-cadence delay.\n"
+                    "• 20-MINUTE AUCTION STAGNATION RULE: Winning setups bank Target 1 in 10 to 20 minutes (median: 15m). If price completely stalls around the entry coordinate for 20+ minutes, tape velocity collapses into compression (<50 t/m), and adverse CVD builds, the auction continuation has failed — do not wait for a hard stop; execute an immediate early exit or scratch via `update_position`. (If price is trending with positive displacement, ride with BE defense).\n"
+                    "• Target 1 Bank: Bank profits cleanly at the 5 to 6 pt (Mode A) or 10 to 12 pt (Mode B) structural TP (capped below 12 pts). Never gamble on unanchored 25+ pt runner fantasies.\n"
+                    "• POST-TRADE FORENSIC AUTOPSY: The instant the trade closes (SL, TP, or early exit), immediately call `alpha-daemon-mcp_record_trade_observation` with the root cause, execution vs macro critique, and reusable lesson."
                 )
             else:
                 prompt = (
                     f"{_time_str}\n\n"
-                    "=== ALPHA CADENCE BRIEFING: EVIDENCE-FIRST CIO AUDIT ===\n"
-                    "Your primary role is gathering the news (we don't want to miss any) followed by 10% technicals with reverse engineering -> Pure Thought Process.\n\n"
-                    "PRINCIPLE 0 — A WAKE IS NOT A SIGNAL:\n"
-                    "• A cadence wake is an observation cycle, NOT a mandate to trade.\n"
-                    "• If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed macro/micro catalyst, YOUR HIGH-CONVICTION DECISION IS:\n"
-                    "  `DECISION: NO ACTION / WAIT — Standing flat`\n"
-                    "• Never force or fabricate orders into quiet chop. Stand flat with patience until true edge appears.\n\n"
-                    "DIRECTIVE 8 — EVENT PROXIMITY DEFENSE:\n"
-                    "• Absolute order lockout 30 to 60 minutes before and 5 minutes after any Tier-1 macro release (CPI, PPI, FOMC, NFP, GDP).\n"
-                    "• Directional stop orders before Tier-1 releases are strictly forbidden. Stand flat.\n\n"
-                    "PROVEN WINNING EXECUTION BLUEPRINT (HUMAN STEERING & HISTORICAL WINS):\n"
-                    "• Available lots: 0.50 to 1.00 lots scaled for high-certainty setups (User Msg 893).\n"
-                    "• Target 1 Only: 4 to 10 point closer structural TPs banked cleanly in 10 to 30 minutes (Directive 6).\n"
-                    "• Stop-Breakout Entry Architecture: Enter via BUY_STOP or SELL_STOP at key breakout coordinates where price cannot easily retrace back, confirming displacement through key levels (User Msg 1076).\n"
-                    "• Structural SL Grounding: Anchor SL firmly behind a verified structural hold (swing pivot, FVG base, POC shelf). Never place SL in a liquidity suction path (Rule 6).\n"
-                    "• Rule 0: Tape over headlines (trust live tape CVD / structure over news narrative if they diverge).\n"
-                    "• Rule 2.4: Price-direction discriminator (verified displacement with momentum in trade direction).\n"
-                    "• R:R Floor: Minimum 1.5:1 reward-to-risk required on every setup before entry (Rule 9).\n"
-                    "• Order Integrity & Hygiene: Cancel stale pending orders immediately when invalidated.\n\n"
-                    "MANDATORY 10% TECHNICAL AUDIT SUITE VIA ALPHA MCP (EXECUTE IN PARALLEL):\n"
-                    "Directly call the registered FastMCP and Proxima tools in parallel (do NOT browse filesystem or search scripts):\n"
+                    f"=== ALPHA CADENCE BRIEFING: EVIDENCE-FIRST TECHNICAL AUDIT (Dossier #{self.dossiers_since_brainstorm}/7) ===\n"
+                    "Audit physical microstructure and market regime context -> Pure Thought Process -> High-Conviction Decision.\n\n"
+                    "MANDATORY 10% TECHNICAL AUDIT SUITE VIA ALPHA MCP (EXECUTE ALL IN PARALLEL EVERY TURN):\n"
                     "  • `alpha-daemon-mcp_get_market_regime_context(symbol='XAUUSD')` (or `get_market_regime_context`): Live broker quotes, spread, CVD, 4M footprint bars, multi-timeframe trend & RSI.\n"
-                    "  • `alpha-daemon-mcp_get_fvg_matrix(symbol='XAUUSD')` (or `get_fvg_matrix`): Multi-timeframe Fair Value Gaps across M1/M5/M15/H1/H4.\n"
+                    "  • `alpha-daemon-mcp_get_fvg_matrix(symbol='XAUUSD')` (or `get_fvg_matrix`): Multi-timeframe Fair Value Gaps across M1/M5/M15/H1/H4 (identify nearest 50% CE).\n"
                     "  • `alpha-daemon-mcp_get_live_microstructure(symbol='XAUUSD')` (or `get_live_microstructure`): Tape velocity TPM, adverse flow warnings, and micro air-pocket checks.\n"
                     "  • `alpha-daemon-mcp_get_measured_cvd(symbol='XAUUSD')` (or `get_measured_cvd`): Measured tick CVD and buyer vs seller aggression delta.\n"
-                    "  • `read(path='C:/Trading/Alpha/logs/institutional_deep_book.md')`: Full institutional book with Order Blocks, Breaker Blocks, Wyckoff Phase classifications, Equal Highs/Lows, and Fibonacci confluences.\n"
-                    "  • `read(path='C:/Trading/Alpha/logs/unified_learning_memory.json')` (or `alpha-daemon-mcp_get_book_page(page_number=1)`): Unified Learning Memory with documented historical traps and lessons.\n"
-                    "  • `alpha-daemon-mcp_get_pending_orders()` and `alpha-daemon-mcp_get_active_watches()`: Live pending ladder and armed watch status.\n"
-                    "  • Proxima parallel news sweep (`proxima_ask_perplexity`, `proxima_deep_search`, `proxima_ddg_search`).\n"
+                    "  • `read(path='C:/Trading/Alpha/logs/institutional_deep_book.md')`: Volume Profile (POC/VAH/VAL), Retail Stop Clusters (BSL/SSL magnets), Order Blocks, and VWAP bands.\n"
+                    "  • `alpha-daemon-mcp_get_pending_orders()` and `alpha-daemon-mcp_get_active_watches(include_closed=False)`: Live pending ladder and active watch status.\n"
+                    "  • `alpha-daemon-mcp_get_market_time_context(target_time=\"...\")`: Multi-timezone clocks (UTC / IST / NY ET) and deterministic session gate countdowns.\n"
+                    "  • On-Demand ULM Trap Check: When vetting a setup, call `search_unified_memory(query='<setup>')` or `search_book(keyword='...')` to check documented historical traps and lessons. (NEVER read the full 400KB JSON file into context).\n\n"
+                    "CORE CADENCE MANDATE (AGENTS.MD & CHAMPION HUMAN DIRECTIVES GOVERN):\n"
+                    "0. Immediate Momentum Entry & Quick Profits (User Msg 95 & 893): Always enter the premium/discount zone immediately when news arrives aligned with technicals; do not wait long for the news move to fade. Size 0.50–1.00 lots to bank quick, sure-shot closer TP wins (4 to 10 pts) backed by full technicals.\n"
+                    "1. Mid-Air Equilibrium? -> High-conviction decision: `DECISION: NO ACTION / WAIT — Standing flat`. Never force market orders into quiet chop.\n"
+                    "2. Fresh Structural Shelf (FVG CE / POC / OB <=25% filled) within 2 to 5 pts? -> PRE-STAGE pending order (`place_pending_order` BUY_LIMIT/SELL_LIMIT) directly on MT5! Do NOT proliferate passive sensor watches. The <100 t/m limit gate applies strictly to APPROACH velocity into structure, NEVER to rejection velocity away from the level.\n"
+                    "3. Champion 0.9L Stack & Directional Stops (User Msg 1076): Instead of waiting for retracement catches, stage directional stop orders (`SELL_STOP` / `BUY_STOP` 0.40–0.50L) 1.0–2.0 pts beyond the level where price cannot retrace back, with an 8.0–10.0 pt SL and 7.0–10.0 pt TP.\n"
+                    "4. Champion Sizing & SL Breathing Room: Sizing is strictly 0.40–1.00L ($300-$500 dollar risk = 0.3-0.5% account risk). Stop Loss MUST be given 6.0 to 10.0 points of structural clearance behind the HTF origin shelf/extreme. Squeezing micro-stops into 1.5–2.5 pts in gold is strictly banned!\n"
+                    "5. Champion Targets: Mode A TP: 4.0 to 10.0 pts. Mode B TP: 10.0 to 18.0 pts (HTF FVG CE / liquidity milestones).\n"
+                    "6. No Panic Kill & Conviction: Once an order is staged or filled with an 8-pt structural stop and 8–12 pt target, LET IT WORK. Strict ban on canceling orders or panic-killing trades on normal 1-minute candle noise.\n"
+                    "7. Anti-Cannibalization Ladder Protocol: NEVER place an inner rung limit order whose SL sits below/inside the entry of a higher rung! Either stage a singular champion order or ensure all rungs share the outer origin SL.\n"
+                    "8. Record notable auction phenomena or stand-down rationale via `record_pattern_observation`."
                 )
             post_to_opencode_session("", prompt)
 
@@ -1150,9 +1182,9 @@ class ConsolidatedTradingDaemon:
         """Ultra-fast 500ms real-time loop tracking MT5 pending order fills, price triggers, and tape kinetics."""
         import MetaTrader5 as mt5
         from tradingagents.evidence_state import EvidenceStateStore
-        from tradingagents.tape_metrics import CumulativeVolumeDeltaEngine
+        from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
 
-        LOG.info("🚀 Starting 500ms Universal Real-Time Watcher Task...")
+        LOG.info("🚀 Starting 500ms Universal Real-Time Watcher Task (Pure Structural & Tape Execution)...")
         ev_store = EvidenceStateStore()
         cvd_engine = CumulativeVolumeDeltaEngine()
 
@@ -1167,14 +1199,17 @@ class ConsolidatedTradingDaemon:
                     # Gather high-speed live tape snapshot for XAUUSD
                     live_tape = {}
                     try:
-                        flow = cvd_engine.get_cvd_metrics("XAUUSD")
+                        flow = cvd_engine.get_symbol_cvd("XAUUSD")
                         live_tape = {
-                            "velocity": flow.get("delta_velocity", 0.0),
-                            "spread": flow.get("spread_points", 0.0),
-                            "cvd_10b": flow.get("net_delta", 0.0)
+                            "velocity": flow.get("tick_velocity_tpm", 0.0),
+                            "spread": flow.get("live_spread_pts", 0.0),
+                            "cvd_10b": flow.get("recent_10_bar_delta", 0.0),
+                            "current_m1_delta": flow.get("current_m1_delta", 0.0),
+                            "micro_delta_4m": flow.get("micro_delta_4m", 0.0),
+                            "cum_cvd": flow.get("cumulative_volume_delta", 0.0)
                         }
-                    except Exception:
-                        pass
+                    except Exception as _fl_err:
+                        LOG.debug(f"Watcher tape snapshot err: {_fl_err}")
 
                     # 1. Evaluate pending order fills (Split-Second Alert!)
                     fill_alerts = self.watcher_engine.check_pending_order_fills(
@@ -1187,8 +1222,8 @@ class ConsolidatedTradingDaemon:
                         if fa.get("watch"):
                             w_id = fa["watch"].get("id") or fa["watch"].get("watch_id")
                             if w_id:
-                                ev_store.update_watch(w_id, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
-                                fa["watch"]["status"] = "TRIGGERED"
+                                ev_store.update_watch(w_id, status="COMPLETED", triggered_at=datetime.now(timezone.utc).isoformat())
+                                fa["watch"]["status"] = "COMPLETED"
                         LOG.info(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']} {fa['volume']} lots @ {fa['price']:.2f})")
                         log_local_llm_monitoring(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']})")
                         post_to_opencode_session("OpenCode (CIO)", fa["prompt"])
@@ -1216,18 +1251,23 @@ class ConsolidatedTradingDaemon:
                                 live_tick={"bid": bid, "ask": ask, "price": (bid + ask) / 2.0},
                                 last_tick=last_t,
                                 tape_metrics=tape_data,
-                                positions=current_positions,
-                                recent_headlines=[]
+                                positions=current_positions
                             )
                             if trig:
                                 wid = trig["watch_id"]
-                                ev_store.update_watch(wid, status="TRIGGERED", triggered_at=datetime.now(timezone.utc).isoformat())
-                                w["status"] = "TRIGGERED"
-                                LOG.info(f"⚡ WATCH TRIGGERED: {wid} -> {trig['trigger_reason']}")
-                                log_local_llm_monitoring(f"⚡ WATCH TRIGGERED: {wid} ({trig['trigger_reason']})")
+                                now_iso = datetime.now(timezone.utc).isoformat()
+                                # User mandate: All watches clear immediately upon trigger!
+                                ev_store.update_watch(wid, status="COMPLETED", triggered_at=now_iso)
+                                w["status"] = "COMPLETED"
+                                LOG.info(f"⚡ WATCH TRIGGERED & CLEARED: {wid} -> {trig['trigger_reason']}")
+                                log_local_llm_monitoring(f"⚡ WATCH TRIGGERED & CLEARED: {wid} ({trig['trigger_reason']})")
                                 post_to_opencode_session("OpenCode (CIO)", trig["prompt"])
 
-                        self.watcher_engine.last_ticks[sym] = {"bid": bid, "ask": ask}
+                        self.watcher_engine.last_ticks[sym] = {
+                            "bid": bid,
+                            "ask": ask,
+                            "last_cvd": float(live_tape.get("cvd_10b", 0.0))
+                        }
 
                 await asyncio.sleep(0.5)
             except asyncio.CancelledError:

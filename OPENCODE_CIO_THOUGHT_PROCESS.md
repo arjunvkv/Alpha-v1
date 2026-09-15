@@ -60,7 +60,7 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - If R:R < 1.5: move TP to further structural target, tighten SL to closer anchor, or skip the trade. Negative R:R trades are categorically forbidden.
 
 10. **Pre- & Post-Trade Memory Protocol — Separation of Process vs. Outcome (Rule 10)**:
-    - **Pre-Entry Audit**: Before proposing or placing ANY order, audit Unified Learning Memory (`read(filePath='C:/Trading/Alpha/logs/unified_learning_memory.json')`). Verify that the proposed setup does not repeat a documented historical failure.
+    - **Pre-Entry Audit**: Before proposing or placing ANY order, audit relevant historical lessons via MCP: call `search_unified_memory(query='<setup/pattern>')` or `search_book(keyword='...')`. NEVER read the full 400KB JSON file into context. Verify that the proposed setup does not repeat a documented historical failure.
     - **Post-Trade Forensic Archiving**: The instant any trade closes, conduct a forensic autopsy: Was the outcome due to execution quality or genuine macro surprise? You MUST call `alpha-daemon-mcp_record_trade_observation(symbol='XAUUSD', pattern_name=..., observation=..., outcome='WIN'|'LOSS'|'BE', r_multiple=..., ticket=...)`.
 
 ---
@@ -68,6 +68,12 @@ Traditional models fail when treating price in isolation, chasing indicator cros
 ## 2. PROVEN WINNING HUMAN STEERING DIRECTIVES
 
 The trading desk's $3,680 profit across 14 winning trades was driven by clear human steering principles:
+
+0. **User Msg 95 (Immediate Momentum Entry & Quick-Profit Sizing Floor — The Mother Directive)**:
+   - *"Always try to enter the premium zone when the news like these arrives immediately aligned with technicals do not wait for long for the news move to fade. Also increase the lot size and reduce the tp distance for fast quick profits ranging from 0.5-1 lot. Always follow this."*
+   - Enter immediately at the structural boundary when news confirms directional gravity. Do not wait for multi-hour retracements that allow the catalyst momentum to evaporate.
+   - Sizing: **0.50 to 1.00 lots**.
+   - Target: **4 to 10 points** for fast, high-probability TP execution.
 
 1. **User Msg 893 (Sizing & Target Discipline)**:
    - Available lot range: **0.50 to 1.00 lots** scaled for high-certainty setups.
@@ -148,15 +154,16 @@ The trading desk's $3,680 profit across 14 winning trades was driven by clear hu
 | **1. News Stop-Breakout** | `BUY_STOP` / `SELL_STOP` after headline print & 10b delta > +10% | 0.50 - 1.00 L | 4 - 10 pts (Target 1 only) | Behind breakout pivot / reclaimed FVG base | #538213397, #539752295 |
 | **2. Absorption Maturity Reversal** | `BUY_STOP` / `SELL_STOP` once delta diverges & selling/buying velocity dies | 0.50 - 1.00 L | 5 - 12 pts (POC or FVG CE) | Behind absorption floor/ceiling | #538349210, #539745323 |
 | **3. Shelf Defense Hold** | Existing position held through retest; bid/ask wall defended | 0.50 - 0.70 L | HTF FVG Consequent Encroachment | Behind defending FVG shelf | #538243241, #539827942 |
-| **4. Balanced Range Premium Fade** | `SELL_LIMIT` at fresh M5 Bear FVG / `BUY_LIMIT` at Bull FVG | 0.30 - 0.50 L | Range equilibrium / POC (3 - 5 pts) | Just beyond FVG outer edge | #538204233 |
+| **4. Balanced Range Premium Fade** | `SELL_LIMIT` at fresh M5 Bear FVG / `BUY_LIMIT` at Bull FVG (<=25% filled) | 0.50 L (Floor) | Range equilibrium / POC (5 - 6 pts) | 3 - 5 pts beyond FVG outer edge (Granger Rule 1.4) | #538204233 |
 | **5. Post-Event Expansion** | Stop order armed 5m after Tier-1 data print in direction of surprise | 0.50 - 1.00 L | 8 - 15 pts | Behind initial release spike base | #536923071, #537153660 |
 | **6. Structural Shelf Scratch** | Early take-profit when counter-velocity spikes at opposing HTF supply | 0.10 - 0.50 L | Immediate price (scratch profit) | N/A (early exit on supply wall) | #538062016, #539779137 |
 
 ---
 
-## 5. AUTOPSY: WHAT NEVER TO DO (THE PRE-CPI SUPPLY TRAP)
+## 5. AUTOPSIES: WHAT NEVER TO DO (THE TRAP ARCHIVE)
 
-* **The Historical Error (Ticket #540398606)**:
+### Autopsy 1: The Pre-CPI Supply Trap (Ticket #540398606)
+* **The Historical Error**:
   - A `BUY_STOP` was placed at 4350.52 — directly into three stacked unmitigated bearish FVGs (4347–4350) — 4.4 hours before US CPI.
   - Tape velocity was 39 t/m (thin pre-catalyst compression).
   - R:R was 0.78:1 (Risk 13.5 pts vs Reward 10.5 pts).
@@ -167,4 +174,21 @@ The trading desk's $3,680 profit across 14 winning trades was driven by clear hu
   3. *Rule 9 Violation*: R:R below 1.5:1 floor.
   4. *Principle 0 Violation*: Failure to return `NO ACTION / WAIT` in quiet pre-news chop.
 * **The Permanent Lesson**: Directional bias does not justify bad architecture. In quiet pre-catalyst tape, the winning posture is 100% standing flat.
+
+### Autopsy 2: The Exhausted Shelf & Repair-Grind Trap (Ticket #542072476)
+* **The Historical Error**:
+  - A `SELL_LIMIT` was placed at 4293.77 targeting the 50% CE of an M15 Bearish FVG.
+  - The resident M5 Bearish FVG (4294.53–4296.27) was **already 73% to 84% filled/mitigated** by previous candles.
+  - Footprint blocks were printing positive (+96, +243, +196, +106) with expanding upward displacement (+2.7 to +3.7 pts) and Level 2 bid walls stepping up (4293.66 -> 4294.85 -> 4295.92) in an institutional "Rip to Fill" repair grind.
+  - The Stop Loss was set at 4297.30, a mere **0.08 points** behind the M15 FVG base at 4297.22 (zero buffer).
+  - Result: The trade was filled at 4294.02 and stopped out at 4297.35 in 4m 47s (-$166.50, -1.02R).
+* **The Forensic Invalidation**:
+  1. *Freshness Violation*: Faded a shelf that was >70% mitigated (stale shelf with exhausted limit sell inventory).
+  2. *Absorption Misinterpretation*: Confused negative cumulative CVD with bearish divergence during an active passive limit buying grind (positive footprint blocks + lifting bid walls).
+  3. *Rule 6 / Granger Rule 1.4 Violation*: SL placed 0.08 points behind the shelf inside retail stop-hunt wick suction, ignoring the mandatory 3.0–5.0 pt buffer.
+  4. *Late-NY Dead-Zone Violation*: Entered at 20:20 UTC (15:20 ET) in the illiquid 40-minute pre-roll vacuum.
+* **The Permanent Lesson**:
+  1. Only fade fresh shelves (<=25% filled). Never fade an FVG >50% mitigated.
+  2. Do NOT short if consecutive footprint blocks are positive with upward displacement >2.5 pts and bid walls are ascending.
+  3. Ground the hard SL at least 3.0 to 5.0 points behind the structural boundary, never 0.08 points.
 
