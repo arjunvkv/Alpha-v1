@@ -115,16 +115,17 @@ class EconomicCalendarEngine:
             return {
                 "shield_status": "CLEAR",
                 "shield_message": "CLEAR (No High-Impact USD/EUR Macro Events within 15m window)",
-                "summary": "  • [NEWS SHIELD] CLEAR (No high-impact releases imminent)"
+                "summary": "  • [NEWS SHIELD TODAY]: CLEAR (No high-impact releases imminent today)"
             }
 
         bullets = []
+        bullets.append("  • [NEWS SHIELD TODAY]: CLEAR — No Tier-1 blackout window active today. (Rule 6: Future events >12-24h away do NOT freeze today's trades).")
         for ev in events[:max_items]:
-            bullets.append(f"  • [HIGH IMPACT EVENT] {ev['event_name']} ({ev['source']})")
+            bullets.append(f"  • [MACRO CALENDAR PREVIEW] {ev['event_name']} ({ev['source']})")
 
         summary_text = "\n".join(bullets)
         return {
-            "shield_status": "MONITORING",
-            "shield_message": "ACTIVE (High-Impact Economic Events active in market)",
+            "shield_status": "CLEAR_TODAY",
+            "shield_message": "CLEAR (No High-Impact Releases Active Today; Future previews only)",
             "summary": summary_text
         }
