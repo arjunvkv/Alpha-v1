@@ -63,6 +63,11 @@ Traditional models fail when treating price in isolation, chasing indicator cros
     - **Pre-Entry Audit**: Before proposing or placing ANY order, audit relevant historical lessons via MCP: call `search_unified_memory(query='<setup/pattern>')` or `search_book(keyword='...')`. NEVER read the full 400KB JSON file into context. Verify that the proposed setup does not repeat a documented historical failure.
     - **Post-Trade Forensic Archiving**: The instant any trade closes, conduct a forensic autopsy: Was the outcome due to execution quality or genuine macro surprise? You MUST call `alpha-daemon-mcp_record_trade_observation(symbol='XAUUSD', pattern_name=..., observation=..., outcome='WIN'|'LOSS'|'BE', r_multiple=..., ticket=...)`.
 
+11. **Post-Loss Reset & Anti-Martingale Discipline (Rule 11)**:
+    - **Targeted Reset, NOT a Blanket Market Freeze**: Stand flat on the *same failed direction/setup* for 15 minutes to avoid emotional revenge churn.
+    - **Trade What Is Active Right Now (User Msg 63 & 937)**: Rule 11 is NEVER a blanket freeze on valid opposing institutional flow. When price forms a verified structural reversal, shelf retest, or clear directional opportunity, standing frozen while a clean 10–15 point move unfolds violates Directive 1.
+    - **Sizing Floor**: Sizing on post-loss setups must NOT exceed **0.50 lots** with a mandatory **6.0 to 10.0 point structural SL**. Never let an artificial freeze block an obvious champion winner.
+
 ---
 
 ## 2. PROVEN WINNING HUMAN STEERING DIRECTIVES
