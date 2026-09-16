@@ -112,6 +112,7 @@ def _normalize_symbol(symbol: str) -> str:
 @mcp.tool()
 def mcp_alpha_register_watch(
     symbol: str = "XAUUSD",
+    title: str = "",
     condition: str = "",
     instruction: str = "",
     target_price: float = None,
@@ -122,10 +123,24 @@ def mcp_alpha_register_watch(
     target_ticket: int = None,
     tolerance: float = 0.50,
     min_velocity: float = None,
+    max_velocity: float = None,
+    min_cvd: float = None,
+    max_cvd: float = None,
+    target_cvd: float = None,
+    cvd_flip: str = "",
+    target_pnl: float = None,
     max_spread: float = None,
-    is_recurring: bool = False
+    is_recurring: bool = False,
+    keywords: Any = None
 ) -> str:
-    """Create or update a universal persistent watch (price, pending order fill, velocity spike, spread blowout, or news keyword)."""
+    """Create or update a universal persistent watch (single technical or multi-criteria composite).
+    
+    Supports:
+        - Reason Title: Specify a clear title (e.g. title="Demand Zone Reclaim & CVD Surge") so OpenCode knows why it triggered.
+        - Single Technical Watch: only velocity (min_velocity or max_velocity), only CVD (min_cvd, max_cvd, or cvd_flip), only spread, only price, or only position PnL.
+        - Multiple Matching (Composite Confluence): attach min_velocity, min_cvd/max_cvd, cvd_flip to ANY price watch. All populated criteria must match simultaneously (strict AND confluence).
+        - Lifecycle: Auto-clears immediately upon trigger.
+    """
     from tradingagents.watcher_engine import parse_watch_condition, WatchConditionType
     sym = _normalize_symbol(symbol)
 
@@ -134,9 +149,16 @@ def mcp_alpha_register_watch(
         target_price=target_price,
         direction=direction,
         condition_type=condition_type,
-        target_ticket=target_ticket
+        target_ticket=target_ticket,
+        explicit_keywords=keywords
     )
     final_cond_type = condition_type.upper() if condition_type else parsed["condition_type"]
+    if final_cond_type == "NEWS_KEYWORD":
+        return json.dumps({
+            "status": "REJECTED_BY_STANDING_ORDERS",
+            "error": "NEWS_KEYWORD watches are deprecated. Per Standing Orders Section 7: OpenCode owns 100% of news & macro synthesis via Proxima sweeps. The 500ms daemon watcher is strictly reserved for pure structural execution. Please translate your catalyst into a deterministic structural trigger: PRICE_CROSS_ABOVE, PRICE_CROSS_BELOW, PRICE_TOUCH, or ORDER_FILL."
+        }, indent=2)
+
     final_price = float(target_price) if target_price is not None else parsed["target_price"]
     final_ticket = int(target_ticket) if target_ticket is not None else parsed["target_ticket"]
     final_dir = (direction or parsed["direction"]).upper()
@@ -144,16 +166,24 @@ def mcp_alpha_register_watch(
     params = {
         "tolerance": float(tolerance) if tolerance is not None else parsed["tolerance"],
         "min_velocity": float(min_velocity) if min_velocity is not None else parsed["min_velocity"],
+        "max_velocity": float(max_velocity) if max_velocity is not None else parsed["max_velocity"],
+        "min_cvd": float(min_cvd) if min_cvd is not None else parsed["min_cvd"],
+        "max_cvd": float(max_cvd) if max_cvd is not None else parsed["max_cvd"],
+        "target_cvd": float(target_cvd) if target_cvd is not None else parsed["target_cvd"],
+        "cvd_flip": str(cvd_flip).upper() if cvd_flip else "",
+        "target_pnl": float(target_pnl) if target_pnl is not None else None,
         "max_spread": float(max_spread) if max_spread is not None else parsed["max_spread"],
         "target_ticket": final_ticket,
         "keywords": parsed["keywords"],
-        "is_recurring": bool(is_recurring)
+        "is_recurring": False  # Enforced: All watches auto-clear immediately upon trigger
     }
 
+    final_title = title or reason or condition or instruction or f"Watching {sym} [{final_cond_type}]"
     desc = condition or instruction or reason or f"Watching {sym} [{final_cond_type}] @ {final_price}"
     watch = evidence_state.upsert_watch({
         "id": watch_id or None,
         "symbol": sym,
+        "title": final_title,
         "condition": desc,
         "condition_type": final_cond_type,
         "instruction": instruction,
@@ -168,9 +198,33 @@ def mcp_alpha_register_watch(
     return json.dumps({"status": "REGISTERED", "watch": watch}, indent=2)
 
 @mcp.tool()
-def mcp_alpha_get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
-    """Fetch persistent watches restored across MCP/daemon restarts."""
-    return json.dumps(evidence_state.get_watches(_normalize_symbol(symbol) if symbol else None, include_closed), indent=2)
+def mcp_alpha_get_active_watches(symbol: str = None, include_closed: bool = False) -> str:
+    """Fetch persistent active watches. Returns clean, compact watch definitions with zero redundant fields to prevent context bloat."""
+    raw_watches = evidence_state.get_watches(_normalize_symbol(symbol) if symbol else None, include_closed)
+    clean_watches = []
+    for w in raw_watches:
+        if not isinstance(w, dict):
+            continue
+        clean_w = {
+            "id": w.get("id"),
+            "status": w.get("status"),
+            "symbol": w.get("symbol"),
+            "title": w.get("title") or w.get("reason", "Watch Alert"),
+            "target_price": w.get("target_price"),
+            "condition_type": w.get("condition_type"),
+            "reason": w.get("reason") or w.get("condition", "")
+        }
+        # Include specific trigger gates if configured
+        params = w.get("params", {})
+        if isinstance(params, dict) and params:
+            gates = {}
+            for k in ("min_velocity", "max_velocity", "min_cvd", "max_cvd", "cvd_flip", "max_spread", "target_pnl"):
+                if params.get(k) is not None:
+                    gates[k] = params[k]
+            if gates:
+                clean_w["gates"] = gates
+        clean_watches.append(clean_w)
+    return json.dumps(clean_watches, indent=2)
 
 @mcp.tool()
 def mcp_alpha_update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
@@ -262,6 +316,21 @@ def mcp_alpha_execute_market_order(
     if not final_sl or float(final_sl) <= 0:
         return json.dumps({"status":"VALIDATION_FAILED","error":"Explicit stop loss is required; no automatic fallback is permitted."}, indent=2)
     vol = float(volume)
+    
+    # Enforce Rule 4 Hard Structural Stop Floor on XAUUSD (5.5 - 10.0 points clearance)
+    sym_norm = _normalize_symbol(symbol)
+    if sym_norm == "XAUUSD":
+        _init_mt5()
+        import MetaTrader5 as mt5
+        tick_info = mt5.symbol_info_tick(sym_norm)
+        if tick_info:
+            ref_price = tick_info.ask if side.lower().strip() == "buy" else tick_info.bid
+            sl_dist = abs(ref_price - final_sl)
+            if sl_dist < 5.5:
+                return json.dumps({
+                    "status": "VALIDATION_FAILED",
+                    "error": f"RULE 4 VIOLATION: Cramped Stop Loss detected ({sl_dist:.2f} pts). XAUUSD ATR and normal Brownian noise require at least 5.5 to 10.0 points of structural clearance. Setting a {sl_dist:.2f} pt stop guarantees getting wiped out by normal 1-minute equilibrium wicks before the move unfolds."
+                }, indent=2)
     
     read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {final_sl}, TP: {final_tp})")
     
@@ -455,6 +524,15 @@ def mcp_alpha_place_pending_order(
                 "error": "Price must be a positive number greater than 0."
             }, indent=2)
 
+        # Enforce Rule 4 Hard Structural Stop Floor on XAUUSD (5.5 - 10.0 points clearance)
+        if sym == "XAUUSD":
+            sl_dist = abs(target_price - final_sl)
+            if sl_dist < 5.5:
+                return json.dumps({
+                    "status": "VALIDATION_FAILED",
+                    "error": f"RULE 4 VIOLATION: Cramped Stop Loss detected ({sl_dist:.2f} pts from planned entry {target_price}). XAUUSD ATR and normal Brownian noise require at least 5.5 to 10.0 points of structural clearance. Setting a {sl_dist:.2f} pt stop guarantees getting wiped out by normal 1-minute equilibrium wicks before the move unfolds. Anchor SL behind the true HTF origin shelf."
+                }, indent=2)
+
         # Pre-validate price distance against live market quotes to prevent MT5 Retcode 10015
         tick_info = mt5.symbol_info_tick(sym)
         if tick_info:
@@ -590,6 +668,48 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -
 def cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -> str:
     """Cancel / remove active pending orders on MT5."""
     return mcp_alpha_cancel_pending_order(order_ticket, symbol)
+
+@mcp.tool()
+def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
+    """Modify price, Stop Loss (sl), or Take Profit (tp) of an existing pending order on MT5."""
+    _init_mt5()
+    try:
+        import MetaTrader5 as mt5
+        orders = mt5.orders_get(ticket=int(order_ticket))
+        if not orders:
+            return json.dumps({"status": "FAILED", "error": f"Pending order #{order_ticket} not found"}, indent=2)
+        o = orders[0]
+        final_price = float(price) if price and float(price) > 0 else o.price_open
+        final_sl = float(sl) if sl and float(sl) > 0 else o.sl
+        final_tp = float(tp) if tp and float(tp) > 0 else o.tp
+        req = {
+            "action": mt5.TRADE_ACTION_MODIFY,
+            "order": int(order_ticket),
+            "price": final_price,
+            "sl": final_sl,
+            "tp": final_tp,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_RETURN,
+        }
+        res = mt5.order_send(req)
+        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            return json.dumps({
+                "status": "MODIFIED",
+                "order_ticket": order_ticket,
+                "price": final_price,
+                "sl": final_sl,
+                "tp": final_tp,
+                "retcode": res.retcode,
+                "message": f"Order #{order_ticket} successfully modified: price={final_price}, sl={final_sl}, tp={final_tp}"
+            }, indent=2)
+        return json.dumps({"status": "FAILED", "order_ticket": order_ticket, "error": res.comment if res else "Unknown error"}, indent=2)
+    except Exception as err:
+        return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
+
+@mcp.tool()
+def modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
+    """Modify price, Stop Loss (sl), or Take Profit (tp) of an existing pending order on MT5."""
+    return mcp_alpha_modify_pending_order(order_ticket, price, sl, tp)
 
 @mcp.tool()
 def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
@@ -1022,13 +1142,84 @@ def mcp_alpha_get_book_page(page_number: int = 1) -> str:
     return json.dumps(UnifiedLearningMemory().get_page(page_number), indent=2)
 
 @mcp.tool()
-def mcp_alpha_search_book(keyword: str, symbol: str = "") -> str:
-    """Search Pattern Book / ULM by keyword and optional symbol. Evidence only; does not authorize execution."""
+def mcp_alpha_search_book(keyword: str, symbol: str = "", limit: int = 5) -> str:
+    """Search Unified Learning Memory (ULM) / Pattern Book by keyword/setup and optional symbol. Returns 100% untruncated pure recorded observations and trade outcomes in dense, syntax-free markdown."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     sym_clean = symbol if symbol and str(symbol).strip().upper() not in ("", "NONE", "NULL", "ALL") else None
     sym_log = f" for symbol {sym_clean}" if sym_clean else ""
     read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for keyword '{keyword}'{sym_log}")
-    return json.dumps(UnifiedLearningMemory().search(keyword, symbol=sym_clean), indent=2)
+    ulm = UnifiedLearningMemory()
+    data = ulm._load()
+    patterns = data.get("patterns", {})
+    
+    raw_q = (keyword or "").strip()
+    if not raw_q:
+        return "No keyword provided for pattern search."
+        
+    q_lower = raw_q.lower()
+    import re
+    compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
+    tokens = [t for t in re.split(r"[\s_\-]+", q_lower) if t]
+    
+    scored_results = []
+    for pat in patterns.values():
+        if not isinstance(pat, dict):
+            continue
+        p_sym = str(pat.get("symbol", "")).upper()
+        if sym_clean and p_sym and p_sym != sym_clean and p_sym != "ALL":
+            continue
+        p_name = str(pat.get("pattern_name", "")).lower()
+        p_id = str(pat.get("pattern_id", "")).lower()
+        p_desc = str(pat.get("description", "")).lower()
+        p_obs = " ".join([str(o.get("observation", "")) for o in pat.get("observations", []) if isinstance(o, dict)]).lower()
+        
+        hay = f"{p_sym} {p_name} {p_id} {p_desc} {p_obs}"
+        hay_compressed = re.sub(r"[^a-zA-Z0-9]", "", hay)
+        
+        score = 0
+        if q_lower in hay:
+            score += 100
+        elif compressed_query and compressed_query in hay_compressed:
+            score += 80
+            
+        matched_tokens = sum(1 for t in tokens if t in hay)
+        score += matched_tokens * 15
+        if score > 0:
+            scored_results.append((score, pat))
+            
+    scored_results.sort(key=lambda x: x[0], reverse=True)
+    top_matches = [item[1] for item in scored_results[:max(1, int(limit))]]
+    
+    if not top_matches:
+        return f"No matching patterns found for query: '{keyword}'"
+        
+    out_blocks = [f"## ULM PATTERN SEARCH RESULTS ({len(top_matches)} matches for '{keyword}')\n"]
+    for idx, pat in enumerate(top_matches, 1):
+        out_blocks.append(f"[{idx}] " + ulm.format_pattern_markdown(pat))
+        out_blocks.append("\n" + "-"*60 + "\n")
+        
+    return "\n".join(out_blocks)
+
+@mcp.tool()
+def mcp_alpha_get_pattern_details(pattern_name: str, symbol: str = "XAUUSD") -> str:
+    """Retrieve 100% of the complete, untruncated chronological observations, autopsies, and trade outcomes for a specific pattern."""
+    from tradingagents.unified_learning_memory import UnifiedLearningMemory
+    ulm = UnifiedLearningMemory()
+    pat = ulm.get_pattern(symbol, pattern_name)
+    if not pat:
+        pat = ulm.get_pattern("ALL", pattern_name)
+    if not pat:
+        # Fuzzy search fallback
+        data = ulm._load()
+        for k, p in data.get("patterns", {}).items():
+            if pattern_name.upper().replace(" ", "_") in k.upper().replace(" ", "_"):
+                pat = p
+                break
+    if not pat:
+        return f"Pattern '{pattern_name}' not found in Unified Learning Memory for symbol '{symbol}'."
+        
+    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Details)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Inspected pattern details for '{pattern_name}'")
+    return ulm.format_pattern_markdown(pat, max_observations=20)
 
 @mcp.tool()
 def mcp_alpha_get_book_index() -> str:
@@ -1613,6 +1804,7 @@ def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = 
 @mcp.tool()
 def register_watch(
     symbol: str = "XAUUSD",
+    title: str = "",
     condition: str = "",
     instruction: str = "",
     target_price: float = None,
@@ -1623,15 +1815,51 @@ def register_watch(
     target_ticket: int = None,
     tolerance: float = 0.50,
     min_velocity: float = None,
+    max_velocity: float = None,
+    min_cvd: float = None,
+    max_cvd: float = None,
+    target_cvd: float = None,
+    cvd_flip: str = "",
+    target_pnl: float = None,
     max_spread: float = None,
-    is_recurring: bool = False
+    is_recurring: bool = False,
+    keywords: Any = None
 ) -> str:
-    """Create or update an objective persistent watch for the trading desk daemon to monitor (condition, target_price, direction, reason, condition_type, target_ticket)."""
-    return mcp_alpha_register_watch(symbol, condition, instruction, target_price, reason, direction, watch_id, condition_type, target_ticket, tolerance, min_velocity, max_spread, is_recurring)
+    """Create or update an objective persistent watch with a descriptive Reason Title.
+    
+    Supports:
+    - Single Technical Watch: only velocity (min_velocity or max_velocity), only CVD (min_cvd, max_cvd, cvd_flip), only spread, only price, or only position PnL.
+    - Multiple Matching at Once (Composite Confluence): combine price + velocity + CVD (e.g. target_price=4345.0, min_velocity=100.0, min_cvd=50.0). All specified criteria must match simultaneously (AND confluence).
+    - Descriptive Reason Title: OpenCode must supply title='...' so the alert explains exactly why it woke.
+    - Auto-Clearing: Watch automatically clears immediately upon trigger.
+    """
+    return mcp_alpha_register_watch(
+        symbol=symbol,
+        title=title,
+        condition=condition,
+        instruction=instruction,
+        target_price=target_price,
+        reason=reason,
+        direction=direction,
+        watch_id=watch_id,
+        condition_type=condition_type,
+        target_ticket=target_ticket,
+        tolerance=tolerance,
+        min_velocity=min_velocity,
+        max_velocity=max_velocity,
+        min_cvd=min_cvd,
+        max_cvd=max_cvd,
+        target_cvd=target_cvd,
+        cvd_flip=cvd_flip,
+        target_pnl=target_pnl,
+        max_spread=max_spread,
+        is_recurring=is_recurring,
+        keywords=keywords
+    )
 
 @mcp.tool()
-def get_active_watches(symbol: str = None, include_closed: bool = True) -> str:
-    """Fetch persistent watches tracked by the trading desk (includes ACTIVE, TRIGGERED, and CANCELLED unless include_closed=False)."""
+def get_active_watches(symbol: str = None, include_closed: bool = False) -> str:
+    """Fetch persistent watches tracked by the trading desk. Defaults to ACTIVE watches only (include_closed=False) to prevent context bloat."""
     return mcp_alpha_get_active_watches(symbol, include_closed)
 
 @mcp.tool()
@@ -1674,7 +1902,13 @@ def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = Fals
         _global_arbiter = CatalystArbiterEngine()
     sym = _normalize_symbol(symbol)
     read_logger.log_dossier_read("OpenCode CIO (MCP Telemetry Context)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested raw physical market telemetry for {sym}")
-    return json.dumps(_global_arbiter.get_market_regime(sym, force_refresh=force_refresh), indent=2)
+    raw_res = _global_arbiter.get_market_regime(sym, force_refresh=force_refresh)
+    # Token optimization: Remove prompt duplicate badge and redundant 1m series (covered by 4m horizon)
+    if isinstance(raw_res, dict):
+        raw_res.pop("compact_prompt_badge", None)
+        if "raw_metrics" in raw_res and isinstance(raw_res["raw_metrics"], dict):
+            raw_res["raw_metrics"].pop("raw_footprints_30_m1", None)
+    return json.dumps(raw_res, indent=2)
 
 @mcp.tool()
 def get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
@@ -1763,9 +1997,25 @@ def get_fvg_matrix(symbol: str = "XAUUSD") -> str:
 
 
 @mcp.tool()
-def search_book(keyword: str, symbol: str = None) -> str:
-    """Search Pattern Book / ULM by keyword and symbol."""
-    return mcp_alpha_search_book(keyword, symbol)
+def search_book(keyword: str, symbol: str = None, limit: int = 5) -> str:
+    """Search Pattern Book / ULM by keyword and symbol for historical lessons and documented traps. Returns compact results (default top 5)."""
+    return mcp_alpha_search_book(keyword, symbol or "", limit)
+
+@mcp.tool()
+def search_unified_memory(query: str, symbol: str = "XAUUSD", limit: int = 5) -> str:
+    """Targeted search of Unified Learning Memory (ULM) for historical traps, setup lessons, and post-trade autopsies. Returns 100% untruncated pure recorded observations in clean markdown."""
+    return mcp_alpha_search_book(query, symbol, limit)
+
+@mcp.tool()
+def get_pattern_details(pattern_name: str, symbol: str = "XAUUSD") -> str:
+    """Retrieve 100% of the complete, untruncated chronological observations, autopsies, and trade outcomes for a specific pattern."""
+    return mcp_alpha_get_pattern_details(pattern_name, symbol)
+
+@mcp.tool()
+def get_relevant_traps(setup_type: str = "ALL", symbol: str = "XAUUSD") -> str:
+    """Instantly retrieve documented historical traps (e.g. FVG ceiling traps, thin tape drift, suction path SLs) for a given setup type."""
+    q = f"{setup_type} trap" if setup_type and setup_type != "ALL" else "trap"
+    return mcp_alpha_search_book(q, symbol, limit=5)
 
 @mcp.tool()
 def get_book_index() -> str:
