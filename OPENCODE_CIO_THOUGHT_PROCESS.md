@@ -44,6 +44,7 @@ Traditional models fail when treating price in isolation, chasing indicator cros
 7. **Pre-Catalyst Order Lockout — Event Proximity Defense (Rule 7 & Master Directive 8)**:
    - Absolute order lockout **30 to 60 minutes before and 5 minutes after** any Tier-1 macro catalyst (CPI, PPI, FOMC, NFP, GDP). Pre-catalyst stop orders are directional bets on a binary event outcome — speculation disguised as technical entries.
    - Stand completely flat through the event freeze window. Let the initial knee-jerk liquidity sweep exhaust. Arm directional orders only after the actual data print and tape reaction confirm directional momentum.
+   - **NO SESSION OPEN FREEZE (ZERO "JUDAS SHIELDS")**: The 30-minute lockout applies EXCLUSIVELY to scheduled Tier-1 macro releases (CPI, PPI, FOMC, NFP, GDP). It NEVER applies to session opens (London Open 07:00 UTC or NY Open 13:30 UTC). Session opens are the highest-liquidity windows of the day — trade active structural shelves (Prong A) and confirmed Turtle Soup reclaims (Prong B) immediately without any artificial 15-minute freeze.
 
 8. **FVG-Aligned Entry Architecture — Enter From Structure, Exit Into Structure (Rule 8)**:
    - **LONG entries**:
