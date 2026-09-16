@@ -52,6 +52,9 @@ Traditional models fail when treating price in isolation, chasing indicator cros
      - `SELL_LIMIT` → place at the **supply shelf** (bearish FVG CE, OB bottom, or VAH). TP at the demand cluster below.
      - `SELL_STOP` → place **only BELOW a demand zone that has already been fully absorbed/broken**, confirming seller strength through support. Never place a SELL_STOP below an unmitigated bullish FVG cluster.
    - The universal principle: **Enter from structure, exit into structure.** Limit orders enter from the near zone. Stop orders confirm penetration of the far zone. Never invert this.
+   - **Banning the False 'Knife-Catch' Veto on Fresh Shelf Retests**: Pulling back 1.5 to 3.5 points into a fresh, unmitigated M5/M15 Bull FVG CE (or Bear FVG CE) during an active trending session is the textbook Prong A discount resting limit entry (Precedent #538204233), NOT 'knife-catching'. Vetoing valid shelf retests is strictly forbidden.
+   - **Breakout Velocity in London/NY**: In London and NY sessions, tape velocity between **65 and 90 t/m with expanding CVD delta and stepping L2 walls is FULLY AUTHORIZED institutional continuation**. NEVER demand >100 t/m to take an orderly London breakout! Only <50 t/m is dead tape.
+   - **Do What's Revolving Right Now (User Directives Msg 63, 16 & 937)**: When 4TF trend (H4, H1, M15, M5) is aligned in one direction, COT is heavily positioned, and Level 2 walls are stepping in that direction, NEVER hold a passive counter-trend watch 20–25 points away from price while refusing to trade the active 5–10 point roadway right in front of you! Trade the side of the table that is actively revolving right now.
 
 9. **R:R Floor of 1.5:1 — Mandatory Pre-Entry Check (Rule 9)**:
    - Every order placed must have a minimum reward-to-risk ratio of **1.5:1** before entry:

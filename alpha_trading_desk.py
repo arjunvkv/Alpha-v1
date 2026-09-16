@@ -1056,9 +1056,33 @@ class ConsolidatedTradingDaemon:
                 )
             post_to_opencode_session("", prompt)
 
-
+            if is_brainstorm_turn:
+                self._schedule_post_news_rules_reminder(delay_seconds=240.0)
 
         return has_active_trades
+
+    def _schedule_post_news_rules_reminder(self, delay_seconds: float = 240.0):
+        """Schedules a reminder message 4 minutes after the news drilldown message directing OpenCode to check master rule files."""
+        def _reminder_worker():
+            time.sleep(delay_seconds)
+            reminder_msg = (
+                "=== STANDING DESK ORDERS & MASTER RULES REMINDER ===\n"
+                "4 minutes have elapsed since your 90% News Drilldown. Follow your standing rules.\n\n"
+                "Review the master rules and winning directives before finalizing your decisions:\n"
+                "• Master Agent Standing Orders: C:/Trading/AGENTS.md\n"
+                "• OpenCode CIO Thought Process & Playbook: C:/Trading/Alpha/OPENCODE_CIO_THOUGHT_PROCESS.md\n\n"
+                "MANDATORY EXECUTION AUDIT:\n"
+                "Please check the rule files above to ensure your active thought process, velocity gates, and staging decisions strictly align with desk standards:\n"
+                "1. Trade what is active right in front of you (User Directives Msg 63, 16 & 937).\n"
+                "2. London/NY trending velocity (65–90 t/m) is authorized continuation — do NOT use false >100 t/m gates to veto valid breakouts or shelf retests.\n"
+                "3. Never call a normal 1–3 pt pullback into a fresh M5/M15 FVG CE 'knife-catching' — that is the primary Prong A resting limit entry.\n"
+                "4. When 4TF trend, COT, and bid walls are aligned, do not hold passive 25-pt counter-trend watches while leaving active roadways un-staged.\n"
+                "5. Never leave an identified edge un-staged in prose (Principle 0). Pre-stage pending orders directly on MT5 with 6.0–10.0 pt structural stops."
+            )
+            post_to_opencode_session("Desk Supervisor (Rules Reminder)", reminder_msg)
+
+        t = threading.Thread(target=_reminder_worker, daemon=True, name="PostNewsRulesReminder")
+        t.start()
 
     async def _probe_execution_watcher_task(self):
         """Watcher task (Dollar-based auto exit is OFF)."""
