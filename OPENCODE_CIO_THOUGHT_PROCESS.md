@@ -27,6 +27,7 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - Minor counter-wicks during a trending impulse are normal retests of intermediate structural shelves.
    - If higher-timeframe market structure and underlying order flow support the thesis, floating drawdown is noise, not an invalidation.
    - Manage risk through predefined structural invalidation anchors (SL) and realistic liquidity targets (TP). **FORBID PANIC KILLS & NO MECHANICAL TRAILING**.
+   - **STRICT BAN ON PREMATURE BREAKEVENS & STALL GUARDS**: Never move Stop Loss to entry/breakeven after a +3 to +5 point move, and never arm 2.5 pt stall guard watchers. Gold's 5m ATR is 3.5–6.0 pts; normal entry shelf retests routinely wick $\pm 0.5$ to $1.5$ pts around entry before expanding. Moving to BE turns massive winners into scratches or commission losses (Forensic Proof: Trade #543466610 collapsed 10.1 pts into profit after being wicked out at BE by 0.01 pt!). Once entered with a 6.0–10.0 pt structural stop, LET THE TRADE WORK to full Target 1 or hard structural invalidation.
 
 5. **Pre-Catalyst Low Velocity vs. Real Absorption (Rule 5)**:
    - **Low velocity (<50 t/m) ahead of Tier-1 macro releases (CPI, PPI, NFP, Rate Decisions)** is **thin liquidity consolidation**, NOT institutional buyer/seller exhaustion.
