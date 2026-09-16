@@ -682,6 +682,16 @@ def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: fl
         final_price = float(price) if price and float(price) > 0 else o.price_open
         final_sl = float(sl) if sl and float(sl) > 0 else o.sl
         final_tp = float(tp) if tp and float(tp) > 0 else o.tp
+
+        # Enforce Rule 4 Hard Structural Stop Floor on XAUUSD (5.5 - 10.0 points clearance)
+        if o.symbol.upper() == "XAUUSD" and final_sl > 0:
+            sl_dist = abs(final_price - final_sl)
+            if sl_dist < 5.5:
+                return json.dumps({
+                    "status": "VALIDATION_FAILED",
+                    "error": f"RULE 4 VIOLATION: Cramped Stop Loss detected ({sl_dist:.2f} pts from order price {final_price}). XAUUSD ATR and normal Brownian noise require at least 5.5 to 10.0 points of structural clearance. Setting a {sl_dist:.2f} pt stop guarantees getting wiped out by normal 1-minute equilibrium wicks before the move unfolds. Anchor SL behind the true HTF origin shelf."
+                }, indent=2)
+
         req = {
             "action": mt5.TRADE_ACTION_MODIFY,
             "order": int(order_ticket),
