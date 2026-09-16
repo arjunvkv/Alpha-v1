@@ -32,10 +32,13 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - **Low velocity (<50 t/m) ahead of Tier-1 macro releases (CPI, PPI, NFP, Rate Decisions)** is **thin liquidity consolidation**, NOT institutional buyer/seller exhaustion.
    - In thin books, resting order walls are easily shattered with minimal aggression. Never confuse quiet drift under a resistance wall with passive absorption. True absorption requires **active delta divergence** (CVD expanding aggressively opposite price with rising volume).
 
-6. **Liquidity Magnet Awareness & Stop Loss Grounding (Rule 6)**:
+6. **Liquidity Magnet Awareness & Stop Loss Grounding (Rule 6 & Rule 4 Supremacy)**:
+   - **Hard Structural Stop Floor (5.5 to 10.0 Points Minimum)**: Total SL distance from entry coordinate MUST strictly be $\ge 5.5\text{ to }10.0\text{ points}$. Gold's 5m ATR is 3.5–6.0 pts with 0.4–0.5 pt spread. Squeezing stops below 5.5 pts guarantees premature stop-out by normal equilibrium noise (the root cause of recent losses).
+   - If the local shelf boundary is close to entry (1–3 pts), you CANNOT set a cramped 2–4 pt stop! Anchor SL behind the overarching M15/H1 swing extreme or origin shelf with at least 5.5 to 10.0 pts total clearance.
+   - Scale the Take Profit target accordingly to maintain **R:R >= 1.5:1** (Rule 9). If the required structural clearance makes R:R < 1.5:1, **do not take the trade**.
    - Never place an invalidation Stop Loss inside the magnetic suction path between current price and an identified retail stop cluster (Buy-Stop Pool or Sell-Stop Pool) or Value Area High/Low.
    - If an overhead Buy-Stop Pool exists, price will magnetically seek that liquidity pool before any genuine structural rejection can occur.
-   - If shorting near supply, the SL must be placed **beyond the ultimate liquidity sweep pool and VAH**, not inside the path of the run. If the distance makes the R:R unacceptable, **do not take the trade**. Wait for the sweep to complete and enter on the confirmed rollback.
+   - If shorting near supply, the SL must be placed **beyond the ultimate liquidity sweep pool and VAH**, not inside the path of the run. Wait for the sweep to complete and enter on the confirmed rollback.
 
 7. **Pre-Catalyst Order Lockout — Event Proximity Defense (Rule 7 & Master Directive 8)**:
    - Absolute order lockout **30 to 60 minutes before and 5 minutes after** any Tier-1 macro catalyst (CPI, PPI, FOMC, NFP, GDP). Pre-catalyst stop orders are directional bets on a binary event outcome — speculation disguised as technical entries.
