@@ -1045,7 +1045,7 @@ class ConsolidatedTradingDaemon:
                     "  • Live Broker & Microstructure: `alpha-daemon-mcp_get_market_regime_context(symbol='XAUUSD')` (quotes, spread, CVD, 4M footprint), `alpha-daemon-mcp_get_live_microstructure(symbol='XAUUSD')` (velocity TPM), `alpha-daemon-mcp_get_measured_cvd(symbol='XAUUSD')` (tick CVD delta).\n"
                     "  • Structural Matrix & Orders: `alpha-daemon-mcp_get_fvg_matrix(symbol='XAUUSD')`, `alpha-daemon-mcp_get_pending_orders()`, `alpha-daemon-mcp_cancel_pending_order()`, `alpha-daemon-mcp_get_active_watches(include_closed=False)`.\n"
                     "  • Graphiti Temporal Memory Suite: `graphiti-memory-mcp_graphiti_search_facts(patterns=[...])` (Mandatory Step 2.5: recall past walks, winning signatures & recorded stumbles) + `graphiti-memory-mcp_graphiti_add_episode(patterns=[...], outcome='WIN'|'TRAP', lesson='...')` (wire observed traps or clean expansions while flat).\n"
-                    "  • On-Demand ULM Trap Check: Call `search_unified_memory(query='<setup>')` or `search_book(keyword='...')` to check legacy autopsies.\n\n"
+                    "  • Dominant Walks Audit: Call `graphiti-memory-mcp_graphiti_get_pattern_walks(symbol='XAUUSD')` for global base rates.\n\n"
                     "THE 5-STEP PURE REASONING COGNITIVE PROTOCOL (MANDATORY IN EVERY DECISION THOUGHT):\n"
                     "Before proposing, staging, or executing ANY trade, your internal reasoning MUST answer these steps in pure thought:\n"
                     "0. QUESTION 0 (4TF STRUCTURAL TREND): 4TF Bullish -> ALL SELLS FORBIDDEN. 4TF Bearish -> ALL BUYS FORBIDDEN. MIXED_TIMEFRAMES -> Stand flat unless Tier-1 news or confirmed sweep/reclaim. Ban fading overbought/oversold RSI!\n"

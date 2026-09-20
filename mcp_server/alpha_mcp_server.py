@@ -331,6 +331,13 @@ def mcp_alpha_execute_market_order(
                     "status": "VALIDATION_FAILED",
                     "error": f"RULE 4 VIOLATION: Cramped Stop Loss detected ({sl_dist:.2f} pts). XAUUSD ATR and normal Brownian noise require at least 5.5 to 10.0 points of structural clearance. Setting a {sl_dist:.2f} pt stop guarantees getting wiped out by normal 1-minute equilibrium wicks before the move unfolds."
                 }, indent=2)
+            if final_tp > 0:
+                tp_dist = abs(ref_price - final_tp)
+                if tp_dist > 10.0 and "MACRO_EXPANSION" not in str(comment).upper():
+                    return json.dumps({
+                        "status": "VALIDATION_FAILED",
+                        "error": f"MOTHER DIRECTIVE (MSG 95/893) VIOLATION: Oversized Take Profit ({tp_dist:.2f} pts). On intraday structural trades, Target 1 MUST be strictly 4.0 to 8.0 points (maximum 10.0 pts) into the nearest opposing shelf or Daily Pivot to bank quick high-certainty wins. Never stretch TP to {tp_dist:.2f} pts to chase a paper 2:1 R:R (which caused Loss #544302915)! Adjust TP to <= 8.0-10.0 pts."
+                    }, indent=2)
     
     read_logger.log_dossier_read("OpenCode CIO (MCP Market Order)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Market Order: {side.upper()} {vol} lots on {symbol} (SL: {final_sl}, TP: {final_tp})")
     
@@ -532,6 +539,15 @@ def mcp_alpha_place_pending_order(
                     "status": "VALIDATION_FAILED",
                     "error": f"RULE 4 VIOLATION: Cramped Stop Loss detected ({sl_dist:.2f} pts from planned entry {target_price}). XAUUSD ATR and normal Brownian noise require at least 5.5 to 10.0 points of structural clearance. Setting a {sl_dist:.2f} pt stop guarantees getting wiped out by normal 1-minute equilibrium wicks before the move unfolds. Anchor SL behind the true HTF origin shelf."
                 }, indent=2)
+
+            # Enforce Mother Directive (Msg 95 & 893) Realistic Target 1 Calibration (4.0 - 8.0 pts, max 10.0 pts)
+            if final_tp > 0:
+                tp_dist = abs(target_price - final_tp)
+                if tp_dist > 10.0 and "MACRO_EXPANSION" not in str(tag).upper():
+                    return json.dumps({
+                        "status": "VALIDATION_FAILED",
+                        "error": f"MOTHER DIRECTIVE (MSG 95/893) VIOLATION: Oversized Take Profit ({tp_dist:.2f} pts from planned entry {target_price}). On intraday structural setups, Target 1 MUST be strictly 4.0 to 8.0 points (maximum 10.0 pts) anchored to the nearest opposing shelf or Daily Pivot to bank quick high-certainty wins. Never stretch TP to {tp_dist:.2f} pts merely to force a 2:1 paper R:R (which caused Loss #544302915 where an +8.03 pt profit reversed into a stop-out)! Adjust TP to <= 8.0-10.0 pts."
+                    }, indent=2)
 
         # Pre-validate price distance against live market quotes to prevent MT5 Retcode 10015
         tick_info = mt5.symbol_info_tick(sym)
@@ -1113,20 +1129,45 @@ async def query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
 
 @mcp.tool()
 def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
-    """Record pattern evidence in Unified Learning Memory. Evidence is unlimited; no hit threshold authorizes execution."""
+    """Record pattern evidence in Unified Learning Memory & Graphiti Temporal Memory. Evidence is unlimited; no hit threshold authorizes execution."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
-    return json.dumps(UnifiedLearningMemory().record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value), indent=2)
+    res = UnifiedLearningMemory().record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value)
+    try:
+        from tradingagents.pattern_memory_engine import PatternMemoryEngine
+        out_norm = "WIN" if str(outcome).upper() in ("WIN", "PROFIT", "SUCCESS") else ("TRAP" if str(outcome).upper() in ("TRAP", "LOSS", "FAIL") else "STUDY")
+        PatternMemoryEngine().add_episode(
+            patterns=[pattern_name],
+            outcome=out_norm,
+            lesson=observation,
+            symbol=symbol or "XAUUSD",
+            source="MCP_RECORD_PATTERN"
+        )
+    except Exception as e:
+        LOG.debug(f"PatternMemoryEngine sync error in record_pattern: {e}")
+    return json.dumps(res, indent=2)
 
 @mcp.tool()
 def mcp_alpha_record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
-    """Commit verified trade outcomes, lessons, and pattern observations into Pattern Book & Unified Learning Memory."""
+    """Commit verified trade outcomes, lessons, and pattern observations into Pattern Book, Unified Learning Memory & Graphiti."""
     from tradingagents.unified_learning_memory import UnifiedLearningMemory
     sym = _normalize_symbol(symbol)
     read_logger.log_dossier_read("OpenCode CIO (MCP Record Trade Observation)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded trade observation for {sym}: [{pattern_name}] {observation[:60]}... (Outcome: {outcome}, R: {r_multiple})")
     ulm = UnifiedLearningMemory()
     r_val = float(r_multiple) if r_multiple is not None else 0.0
     res = ulm.record_pattern(symbol=sym, pattern_name=pattern_name, observation=observation, outcome=outcome, ticket=str(ticket) if ticket is not None else None, r_value=r_val)
+    try:
+        from tradingagents.pattern_memory_engine import PatternMemoryEngine
+        out_norm = "WIN" if str(outcome).upper() in ("WIN", "PROFIT", "SUCCESS") else ("TRAP" if str(outcome).upper() in ("TRAP", "LOSS", "FAIL") else "STUDY")
+        PatternMemoryEngine().add_episode(
+            patterns=[pattern_name],
+            outcome=out_norm,
+            lesson=f"MT5 ticket #{ticket} | {observation}" if ticket else observation,
+            symbol=sym,
+            source="MCP_RECORD_TRADE"
+        )
+    except Exception as e:
+        LOG.debug(f"PatternMemoryEngine sync error in record_trade: {e}")
     return json.dumps({
         "status": "SUCCESS",
         "symbol": sym,
@@ -1170,6 +1211,19 @@ def mcp_alpha_search_book(keyword: str, symbol: str = "", limit: int = 5) -> str
     import re
     compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
     tokens = [t for t in re.split(r"[\s_\-]+", q_lower) if t]
+    stop_words = {"in", "the", "a", "an", "at", "to", "of", "on", "and", "or", "is", "for", "with", "by", "from", "space"}
+    meaningful_tokens = [t for t in tokens if len(t) >= 3 and t not in stop_words]
+    
+    # High-speed Graphiti Temporal Memory intercept
+    try:
+        from tradingagents.pattern_memory_engine import PatternMemoryEngine
+        raw_tags = [t.strip().upper() for t in re.split(r"[\s,|]+", raw_q) if t.strip()]
+        if raw_tags:
+            graph_facts = PatternMemoryEngine().search_facts(patterns=raw_tags, symbol=sym_clean or "XAUUSD")
+            if graph_facts and "No previous walk matches combo" not in graph_facts:
+                return f"## GRAPHITI TEMPORAL MEMORY FACTS (via search_book)\n\n{graph_facts}"
+    except Exception as e:
+        LOG.debug(f"PatternMemoryEngine intercept error in search_book: {e}")
     
     scored_results = []
     for pat in patterns.values():
@@ -1185,16 +1239,21 @@ def mcp_alpha_search_book(keyword: str, symbol: str = "", limit: int = 5) -> str
         
         hay = f"{p_sym} {p_name} {p_id} {p_desc} {p_obs}"
         hay_compressed = re.sub(r"[^a-zA-Z0-9]", "", hay)
+        hay_words = set(re.findall(r"[a-zA-Z0-9]+", hay))
         
         score = 0
         if q_lower in hay:
             score += 100
-        elif compressed_query and compressed_query in hay_compressed:
+        elif compressed_query and len(compressed_query) >= 4 and compressed_query in hay_compressed:
             score += 80
             
-        matched_tokens = sum(1 for t in tokens if t in hay)
-        score += matched_tokens * 15
-        if score > 0:
+        matched_tokens = sum(1 for t in meaningful_tokens if t in hay_words)
+        if len(meaningful_tokens) == 1 and matched_tokens == 1:
+            score += 30
+        elif len(meaningful_tokens) > 1 and matched_tokens >= 2:
+            score += matched_tokens * 15
+            
+        if score >= 25:
             scored_results.append((score, pat))
             
     scored_results.sort(key=lambda x: x[0], reverse=True)
@@ -1205,7 +1264,40 @@ def mcp_alpha_search_book(keyword: str, symbol: str = "", limit: int = 5) -> str
         
     out_blocks = [f"## ULM PATTERN SEARCH RESULTS ({len(top_matches)} matches for '{keyword}')\n"]
     for idx, pat in enumerate(top_matches, 1):
-        out_blocks.append(f"[{idx}] " + ulm.format_pattern_markdown(pat))
+        pname = pat.get("pattern_name") or pat.get("pattern_id") or "UNKNOWN"
+        sym = pat.get("symbol", "ALL")
+        state = pat.get("state", "ACTIVE")
+        count = pat.get("occurrence_count", 0)
+        outcomes = pat.get("outcomes", [])
+        obs_list = pat.get("observations", [])
+
+        # Calculate verified track record
+        wins = sum(1 for o in outcomes if (isinstance(o.get("r_value"), (int, float)) and o.get("r_value") > 0) or "WIN" in str(o.get("outcome", "")).upper())
+        losses = sum(1 for o in outcomes if (isinstance(o.get("r_value"), (int, float)) and o.get("r_value") <= 0) or "LOSS" in str(o.get("outcome", "")).upper())
+        net_r = sum(float(o.get("r_value", 0.0)) for o in outcomes if isinstance(o.get("r_value"), (int, float)))
+        rec_str = f"{wins}W-{losses}L ({net_r:+.2f}R)" if (wins + losses) > 0 else "OBSERVED (No closed trades)"
+
+        # Latest key observation / forensic lesson
+        latest_obs = ""
+        if obs_list:
+            for ob in reversed(obs_list):
+                txt = (ob.get("observation") if isinstance(ob, dict) else str(ob)) or ""
+                if txt.strip():
+                    latest_obs = txt.strip()
+                    break
+        if not latest_obs and pat.get("description"):
+            latest_obs = str(pat.get("description")).strip()
+
+        # Trim latest_obs to ~280 chars cleanly
+        if len(latest_obs) > 280:
+            latest_obs = latest_obs[:277] + "..."
+
+        card = [
+            f"### [{idx}] {pname} [{sym}] (State: {state} | Observed: {count}x | Proven Record: {rec_str})",
+            f"- **Key Takeaway / Forensic Lesson**: {latest_obs or 'No notes recorded.'}",
+            f"- **Deep Drilldown**: Call `get_pattern_details(pattern_name='{pname}')` for complete chronological timeline."
+        ]
+        out_blocks.append("\n".join(card))
         out_blocks.append("\n" + "-"*60 + "\n")
         
     return "\n".join(out_blocks)
@@ -1692,12 +1784,29 @@ def mcp_alpha_record_decision_snapshot(
 
 @mcp.tool()
 def mcp_alpha_get_measured_cvd(symbol: str = "XAUUSD") -> str:
-    """Fetch measured Cumulative Volume Delta (CVD) and Delta Exhaustion / Absorption metrics directly from MT5 ticks."""
+    """Fetch measured Cumulative Volume Delta (CVD), Delta Exhaustion / Absorption, and Crowd Entrapment Telemetry directly from MT5 ticks."""
     from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
+    from tradingagents.crowd_liquidity_engine import CrowdLiquidityEngine
     sym = _normalize_symbol(symbol)
     read_logger.log_dossier_read("OpenCode CIO (MCP CVD Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried measured CVD for {sym}")
     engine = CumulativeVolumeDeltaEngine()
-    return json.dumps(engine.get_symbol_cvd(sym), indent=2)
+    cvd_dict = engine.get_symbol_cvd(sym)
+    try:
+        crowd_engine = CrowdLiquidityEngine()
+        cvd_dict["crowd_liquidity"] = crowd_engine.get_live_crowd_liquidity_payload(sym)
+    except Exception as _cr_err:
+        LOG.debug(f"Crowd liquidity merge failed: {_cr_err}")
+    return json.dumps(cvd_dict, indent=2)
+
+
+@mcp.tool()
+def mcp_alpha_get_crowd_liquidity_vector(symbol: str = "XAUUSD") -> str:
+    """Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics. Use to audit who is trapped, evaluate stop-run distance and sweep status, and locate liquidity cascades. AGENTS.md strictly governs all staging, sizing (0.5-1.0L), and structural stops (6-10 pts)."""
+    from tradingagents.crowd_liquidity_engine import CrowdLiquidityEngine
+    sym = _normalize_symbol(symbol)
+    read_logger.log_dossier_read("OpenCode CIO (Crowd Liquidity Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried crowd liquidity vector for {sym}")
+    engine = CrowdLiquidityEngine()
+    return json.dumps(engine.get_live_crowd_liquidity_payload(sym), indent=2)
 
 
 def _sync_backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 60, offset: int = 0) -> str:
@@ -1946,6 +2055,11 @@ def get_measured_cvd(symbol: str = "XAUUSD") -> str:
     return mcp_alpha_get_measured_cvd(symbol)
 
 @mcp.tool()
+def get_crowd_liquidity_vector(symbol: str = "XAUUSD") -> str:
+    """Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics. Use to audit who is trapped, evaluate stop-run distance and sweep status, and locate liquidity cascades. AGENTS.md strictly governs all staging, sizing (0.5-1.0L), and structural stops (6-10 pts)."""
+    return mcp_alpha_get_crowd_liquidity_vector(symbol)
+
+@mcp.tool()
 def get_trade_forensics(symbol: str = "XAUUSD") -> str:
     """Deep forensics on closed trades: Win rate %, net R, FVG fill %, RSI regime, and spread distribution."""
     return mcp_alpha_get_trade_forensics(symbol)
@@ -2056,6 +2170,7 @@ def list_desk_tools() -> str:
         {"name":"get_full_institutional_profile","description":"Calculated market structure and cross-market evidence."},
         {"name":"get_live_microstructure","description":"Current measured spread, tick velocity, order-book and CVD evidence."},
         {"name":"get_measured_cvd","description":"Measured tick CVD and delta evidence."},
+        {"name":"get_crowd_liquidity_vector","description":"Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics."},
         {"name":"get_fvg_matrix","description":"Multi-timeframe FVG geometry."},
         {"name":"get_fred_observations","description":"Vintage-aware FRED/ALFRED macro observations."},
         {"name":"backtest_thesis","description":"Historical empirical replay evidence; never an automatic signal."},
@@ -2100,6 +2215,7 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_full_institutional_profile": lambda: mcp_alpha_get_full_institutional_profile(args.get("symbol","XAUUSD")),
         "get_live_microstructure": lambda: mcp_alpha_get_live_microstructure(args.get("symbol","XAUUSD")),
         "get_measured_cvd": lambda: mcp_alpha_get_measured_cvd(args.get("symbol","XAUUSD")),
+        "get_crowd_liquidity_vector": lambda: mcp_alpha_get_crowd_liquidity_vector(args.get("symbol","XAUUSD")),
         "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol","XAUUSD")),
         "get_fred_observations": lambda: mcp_alpha_get_fred_observations(**args),
         "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
