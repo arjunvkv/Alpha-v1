@@ -187,6 +187,27 @@ class TradeForensicsEngine:
                 )
                 ulm.reconcile_links()
 
+                # Wire closed trade walk into Graphiti Temporal Memory
+                try:
+                    from tradingagents.pattern_memory_engine import PatternMemoryEngine
+                    _pme = PatternMemoryEngine()
+                    tags = [f"{side.upper()}_EXECUTION"]
+                    if f_context and isinstance(f_context, dict):
+                        align = f_context.get("4tf_alignment", "")
+                        if "BULLISH" in str(align).upper():
+                            tags.append("4TF_BULLISH")
+                        elif "BEARISH" in str(align).upper():
+                            tags.append("4TF_BEARISH")
+                    if duration_sec < 900:
+                        tags.append("MOMENTUM_EXPANSION_ENTRY")
+                    else:
+                        tags.append("STRUCTURAL_SHELF_HOLD")
+                    outcome_tag = "WIN" if pnl_type == "WIN" else "TRAP"
+                    lesson_note = f"MT5 trade ticket #{pos_id} closed {pnl_type} (${profit:+.2f}). Comment: {exit_deal.comment or 'Live MT5 Deal'}"
+                    _pme.add_episode(patterns=tags, outcome=outcome_tag, lesson=lesson_note, symbol=symbol, source="MT5_DEAL_SYNC")
+                except Exception as _pme_err:
+                    LOG.error(f"Error syncing MT5 deal into Graphiti memory: {_pme_err}")
+
         if new_records > 0:
             # Recompute summary statistics
             all_trades = existing_journal.get("trades", [])

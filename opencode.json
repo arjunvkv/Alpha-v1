@@ -10,6 +10,13 @@
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ]
     },
+    "graphiti-memory-mcp": {
+      "command": "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+      "args": [
+        "-u",
+        "C:\\Trading\\Alpha\\mcp_server\\graphiti_mcp_server.py"
+      ]
+    },
     "proxima": {
       "command": "node",
       "args": [
@@ -24,6 +31,16 @@
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
         "-u",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
+      ],
+      "enabled": true,
+      "timeout": 300000
+    },
+    "graphiti-memory-mcp": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+        "-u",
+        "C:\\Trading\\Alpha\\mcp_server\\graphiti_mcp_server.py"
       ],
       "enabled": true,
       "timeout": 300000
