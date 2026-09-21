@@ -68,6 +68,50 @@ def graphiti_add_episode(patterns: list, outcome: str, lesson: str = "", symbol:
 
 
 @mcp.tool()
+def graphiti_record_observation(patterns: list, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD") -> str:
+    """
+    Record an active pattern combination and market observation into Graphiti Temporal Memory.
+    MANDATORY ON EVERY CYCLE: Call this on routine cadence turns and brainstorm turns to record the
+    active pattern walk, order flow state, and observational thesis.
+    Outcomes:
+    - 'STUDY': Routine per-cycle market observation, equilibrium, or standing-flat audit.
+    - 'WIN': Clean directional expansion or executed winning trade.
+    - 'TRAP': Avoided retail trap, fake breakout, or stop hunt collapse.
+    Updates pattern occurrence counts, last_seen timestamps, and reinforces temporal walk weights.
+    """
+    try:
+        p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
+        res = _engine.add_episode(patterns=p_list, outcome=outcome, lesson=observation, symbol=symbol, source="PER_CYCLE_OBSERVATION")
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        LOG.error(f"Error in graphiti_record_observation: {e}")
+        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
+
+
+@mcp.tool()
+def record_pattern_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", ticket: str = None, r_value=None, patterns: list = None) -> str:
+    """
+    Record pattern observation into Graphiti Temporal Memory (Backward-compatible drop-in alias).
+    Accepts either pattern_name (single tag) or patterns (list of tags).
+    MANDATORY ON EVERY CYCLE: Call this on each cadence turn to ensure continuous institutional memory.
+    """
+    try:
+        p_list = []
+        if patterns:
+            p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
+        elif pattern_name:
+            p_list = [pattern_name]
+        else:
+            p_list = ["MARKET_OBSERVATION"]
+        res = _engine.add_episode(patterns=p_list, outcome=outcome, lesson=observation, symbol=symbol or "XAUUSD", source="PER_CYCLE_OBSERVATION")
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        LOG.error(f"Error in record_pattern_observation: {e}")
+        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
+
+
+
+@mcp.tool()
 def graphiti_get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6) -> str:
     """
     Retrieve the top dominant winning walks and documented trap fingerprints currently

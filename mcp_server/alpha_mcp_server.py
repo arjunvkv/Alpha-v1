@@ -1904,9 +1904,58 @@ def list_desk_tools() -> str:
         {"name":"clear_completed_watches","description":"Clear triggered/cancelled watches from disk."},
         {"name":"mark_watches_observed","description":"Batch-mark objective watches observed."},
         {"name":"mark_evidence_read","description":"Batch-mark evidence read."},
-        {"name":"get_market_regime_context","description":"Retrieve pure real-time physical market telemetry, tape kinetics, and macro yields."}
+        {"name":"get_market_regime_context","description":"Retrieve pure real-time physical market telemetry, tape kinetics, and macro yields."},
+        {"name":"record_pattern_observation","description":"Record pattern evidence directly into Graphiti Temporal Memory on every observation cycle."},
+        {"name":"record_trade_observation","description":"Commit verified trade outcomes and autopsy lessons into Graphiti Temporal Memory."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
+
+
+@mcp.tool()
+def record_pattern_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", ticket: str = None, r_value=None, patterns: list = None) -> str:
+    """
+    Record pattern observation into Graphiti Temporal Memory.
+    MANDATORY ON EVERY CYCLE: Call this on each cadence turn (both when trading and standing flat)
+    to continuously train Graphiti memory on market dynamics and structural reality.
+    """
+    try:
+        from tradingagents.pattern_memory_engine import PatternMemoryEngine
+        if patterns:
+            p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
+        elif pattern_name:
+            p_list = [pattern_name]
+        else:
+            p_list = ["MARKET_OBSERVATION"]
+        res = PatternMemoryEngine().add_episode(
+            patterns=p_list,
+            outcome=outcome,
+            lesson=observation,
+            symbol=symbol or "XAUUSD",
+            source="MCP_RECORD_PATTERN"
+        )
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
+
+
+@mcp.tool()
+def record_trade_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
+    """Commit verified trade outcomes and autopsy lessons into Graphiti Temporal Memory."""
+    try:
+        from tradingagents.pattern_memory_engine import PatternMemoryEngine
+        p_list = [pattern_name] if pattern_name else ["TRADE_FORENSIC"]
+        note = f"{observation} (R: {r_multiple}, Ticket: {ticket})" if ticket else observation
+        res = PatternMemoryEngine().add_episode(
+            patterns=p_list,
+            outcome=outcome,
+            lesson=note,
+            symbol=symbol or "XAUUSD",
+            source="MCP_RECORD_TRADE"
+        )
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
+
 
 
 @mcp.tool()
@@ -1944,7 +1993,9 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "clear_completed_watches": lambda: mcp_alpha_clear_completed_watches(args.get("symbol")),
         "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
         "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[])),
-        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"), args.get("force_refresh", False))
+        "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"), args.get("force_refresh", False)),
+        "record_pattern_observation": lambda: record_pattern_observation(**args),
+        "record_trade_observation": lambda: record_trade_observation(**args)
     }
 
     if name in fn_map:

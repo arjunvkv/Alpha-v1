@@ -30,12 +30,13 @@ Traditional models fail when treating price in isolation, chasing indicator cros
      - A child getting scared on their first swim does not mean abandoning swimming forever!
      - Past stumbles or traps recorded in memory provide **clarity on specific execution pitfalls** (e.g. runaway approach velocity without CVD stall, or fading 4TF trend), **NEVER a blanket fear or permanent ban on a pattern**.
      - When current physical conditions and 4TF market structure align cleanly, step into the water with confidence.
-   - **Continuous Observational Learning (`graphiti_add_episode`)**:
-     - On trade close, wire the result into memory.
-     - When standing flat and an avoided trap collapses (e.g. retail chases $4,400 apex or equal highs and dumps), call `graphiti_add_episode(..., outcome='TRAP', lesson='...')`.
-      - When a clean move launches without us on board, call `graphiti_add_episode(..., outcome='WIN', lesson='...')`.
-      - Learn continuously from every single cycle!
-    - *Exclusive Memory Primacy*: All pattern validation, trap discrimination, and observational learning run exclusively through Graphiti Temporal Memory (`graphiti_search_facts`, `graphiti_get_pattern_walks`, `graphiti_add_episode`, `graphiti_prune_decayed`). Legacy ULM tools are completely retired from the daemon.
+   - **Continuous Observational Learning (`graphiti_record_observation` / `record_pattern_observation`)**:
+     - **MANDATORY ON EVERY CYCLE**: Call `graphiti-memory-mcp_graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')` (or `record_pattern_observation`).
+     - Routine standing-flat observation / equilibrium audit: `outcome='STUDY'`.
+     - When standing flat and an avoided trap collapses (e.g. retail chases apex or equal highs and dumps): `outcome='TRAP'`.
+     - When a clean move launches without us on board or banks winning TP: `outcome='WIN'`.
+     - Learn and reinforce memory continuously from every single cycle!
+   - *Exclusive Memory Primacy*: All pattern validation, trap discrimination, and observational learning run exclusively through Graphiti Temporal Memory (`graphiti_search_facts`, `graphiti_get_pattern_walks`, `graphiti_record_observation`, `record_pattern_observation`, `graphiti_add_episode`, `graphiti_prune_decayed`). Legacy ULM tools are completely retired from the daemon.
 
 5. **Position Discipline, Noise Tolerance & The Champion Hold Mandate (Rule 4 — Win 4 Precedent #538243241)**:
    - Minor counter-wicks during a trending impulse are normal retests of intermediate structural shelves.
