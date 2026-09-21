@@ -409,7 +409,7 @@ def kill_all_daemons() -> int:
             cmd = proc.info.get('cmdline')
             if cmd:
                 cmd_str = ' '.join(cmd).lower()
-                if 'intelligent_daemon' in cmd_str or 'alpha_trading_desk' in cmd_str or 'alpha_mcp_server' in cmd_str:
+                if 'intelligent_daemon' in cmd_str or 'alpha_trading_desk' in cmd_str:
                     proc.kill()
                     killed_count += 1
                     LOG.info(f"Killed process PID {proc.pid}: {cmd_str[:80]}")
