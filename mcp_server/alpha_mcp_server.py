@@ -1126,240 +1126,6 @@ async def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fun
 async def query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """7-Layer Local LLM Analyst Desk alias."""
     return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
-
-@mcp.tool()
-def mcp_alpha_record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
-    """Record pattern evidence in Unified Learning Memory & Graphiti Temporal Memory. Evidence is unlimited; no hit threshold authorizes execution."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Record Pattern)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded research pattern: [{symbol.upper()}] {pattern_name}")
-    res = UnifiedLearningMemory().record_pattern(symbol, pattern_name, observation, outcome=outcome, ticket=ticket, r_value=r_value)
-    try:
-        from tradingagents.pattern_memory_engine import PatternMemoryEngine
-        out_norm = "WIN" if str(outcome).upper() in ("WIN", "PROFIT", "SUCCESS") else ("TRAP" if str(outcome).upper() in ("TRAP", "LOSS", "FAIL") else "STUDY")
-        PatternMemoryEngine().add_episode(
-            patterns=[pattern_name],
-            outcome=out_norm,
-            lesson=observation,
-            symbol=symbol or "XAUUSD",
-            source="MCP_RECORD_PATTERN"
-        )
-    except Exception as e:
-        LOG.debug(f"PatternMemoryEngine sync error in record_pattern: {e}")
-    return json.dumps(res, indent=2)
-
-@mcp.tool()
-def mcp_alpha_record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
-    """Commit verified trade outcomes, lessons, and pattern observations into Pattern Book, Unified Learning Memory & Graphiti."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Record Trade Observation)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded trade observation for {sym}: [{pattern_name}] {observation[:60]}... (Outcome: {outcome}, R: {r_multiple})")
-    ulm = UnifiedLearningMemory()
-    r_val = float(r_multiple) if r_multiple is not None else 0.0
-    res = ulm.record_pattern(symbol=sym, pattern_name=pattern_name, observation=observation, outcome=outcome, ticket=str(ticket) if ticket is not None else None, r_value=r_val)
-    try:
-        from tradingagents.pattern_memory_engine import PatternMemoryEngine
-        out_norm = "WIN" if str(outcome).upper() in ("WIN", "PROFIT", "SUCCESS") else ("TRAP" if str(outcome).upper() in ("TRAP", "LOSS", "FAIL") else "STUDY")
-        PatternMemoryEngine().add_episode(
-            patterns=[pattern_name],
-            outcome=out_norm,
-            lesson=f"MT5 ticket #{ticket} | {observation}" if ticket else observation,
-            symbol=sym,
-            source="MCP_RECORD_TRADE"
-        )
-    except Exception as e:
-        LOG.debug(f"PatternMemoryEngine sync error in record_trade: {e}")
-    return json.dumps({
-        "status": "SUCCESS",
-        "symbol": sym,
-        "pattern_name": pattern_name,
-        "observation": observation,
-        "outcome": outcome,
-        "r_multiple": r_val,
-        "record": res
-    }, indent=2)
-
-@mcp.tool()
-def mcp_alpha_record_pattern_outcome(symbol: str, pattern_name: str, outcome: str, ticket: str = None, r_value=None) -> str:
-    """Attach a historical outcome to a pattern. Has no execution effect."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Outcome)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Updated pattern outcome: [{symbol.upper()}] {pattern_name} -> {outcome}")
-    return json.dumps(UnifiedLearningMemory().update_pattern_outcome(symbol, pattern_name, outcome, ticket=ticket, r_value=r_value), indent=2)
-
-@mcp.tool()
-def mcp_alpha_get_book_page(page_number: int = 1) -> str:
-    """Retrieve specific page of Pattern Book. Reference only; does not authorize execution."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Book Page)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Read Pattern Book page {page_number}")
-    return json.dumps(UnifiedLearningMemory().get_page(page_number), indent=2)
-
-@mcp.tool()
-def mcp_alpha_search_book(keyword: str, symbol: str = "", limit: int = 5) -> str:
-    """Search Unified Learning Memory (ULM) / Pattern Book by keyword/setup and optional symbol. Returns 100% untruncated pure recorded observations and trade outcomes in dense, syntax-free markdown."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    sym_clean = symbol if symbol and str(symbol).strip().upper() not in ("", "NONE", "NULL", "ALL") else None
-    sym_log = f" for symbol {sym_clean}" if sym_clean else ""
-    read_logger.log_dossier_read("OpenCode CIO (MCP Search Book)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Searched Pattern Book for keyword '{keyword}'{sym_log}")
-    ulm = UnifiedLearningMemory()
-    data = ulm._load()
-    patterns = data.get("patterns", {})
-    
-    raw_q = (keyword or "").strip()
-    if not raw_q:
-        return "No keyword provided for pattern search."
-        
-    q_lower = raw_q.lower()
-    import re
-    compressed_query = re.sub(r"[^a-zA-Z0-9]", "", q_lower)
-    tokens = [t for t in re.split(r"[\s_\-]+", q_lower) if t]
-    stop_words = {"in", "the", "a", "an", "at", "to", "of", "on", "and", "or", "is", "for", "with", "by", "from", "space"}
-    meaningful_tokens = [t for t in tokens if len(t) >= 3 and t not in stop_words]
-    
-    # High-speed Graphiti Temporal Memory intercept
-    try:
-        from tradingagents.pattern_memory_engine import PatternMemoryEngine
-        raw_tags = [t.strip().upper() for t in re.split(r"[\s,|]+", raw_q) if t.strip()]
-        if raw_tags:
-            graph_facts = PatternMemoryEngine().search_facts(patterns=raw_tags, symbol=sym_clean or "XAUUSD")
-            if graph_facts and "No previous walk matches combo" not in graph_facts:
-                return f"## GRAPHITI TEMPORAL MEMORY FACTS (via search_book)\n\n{graph_facts}"
-    except Exception as e:
-        LOG.debug(f"PatternMemoryEngine intercept error in search_book: {e}")
-    
-    scored_results = []
-    for pat in patterns.values():
-        if not isinstance(pat, dict):
-            continue
-        p_sym = str(pat.get("symbol", "")).upper()
-        if sym_clean and p_sym and p_sym != sym_clean and p_sym != "ALL":
-            continue
-        p_name = str(pat.get("pattern_name", "")).lower()
-        p_id = str(pat.get("pattern_id", "")).lower()
-        p_desc = str(pat.get("description", "")).lower()
-        p_obs = " ".join([str(o.get("observation", "")) for o in pat.get("observations", []) if isinstance(o, dict)]).lower()
-        
-        hay = f"{p_sym} {p_name} {p_id} {p_desc} {p_obs}"
-        hay_compressed = re.sub(r"[^a-zA-Z0-9]", "", hay)
-        hay_words = set(re.findall(r"[a-zA-Z0-9]+", hay))
-        
-        score = 0
-        if q_lower in hay:
-            score += 100
-        elif compressed_query and len(compressed_query) >= 4 and compressed_query in hay_compressed:
-            score += 80
-            
-        matched_tokens = sum(1 for t in meaningful_tokens if t in hay_words)
-        if len(meaningful_tokens) == 1 and matched_tokens == 1:
-            score += 30
-        elif len(meaningful_tokens) > 1 and matched_tokens >= 2:
-            score += matched_tokens * 15
-            
-        if score >= 25:
-            scored_results.append((score, pat))
-            
-    scored_results.sort(key=lambda x: x[0], reverse=True)
-    top_matches = [item[1] for item in scored_results[:max(1, int(limit))]]
-    
-    if not top_matches:
-        return f"No matching patterns found for query: '{keyword}'"
-        
-    out_blocks = [f"## ULM PATTERN SEARCH RESULTS ({len(top_matches)} matches for '{keyword}')\n"]
-    for idx, pat in enumerate(top_matches, 1):
-        pname = pat.get("pattern_name") or pat.get("pattern_id") or "UNKNOWN"
-        sym = pat.get("symbol", "ALL")
-        state = pat.get("state", "ACTIVE")
-        count = pat.get("occurrence_count", 0)
-        outcomes = pat.get("outcomes", [])
-        obs_list = pat.get("observations", [])
-
-        # Calculate verified track record
-        wins = sum(1 for o in outcomes if (isinstance(o.get("r_value"), (int, float)) and o.get("r_value") > 0) or "WIN" in str(o.get("outcome", "")).upper())
-        losses = sum(1 for o in outcomes if (isinstance(o.get("r_value"), (int, float)) and o.get("r_value") <= 0) or "LOSS" in str(o.get("outcome", "")).upper())
-        net_r = sum(float(o.get("r_value", 0.0)) for o in outcomes if isinstance(o.get("r_value"), (int, float)))
-        rec_str = f"{wins}W-{losses}L ({net_r:+.2f}R)" if (wins + losses) > 0 else "OBSERVED (No closed trades)"
-
-        # Latest key observation / forensic lesson
-        latest_obs = ""
-        if obs_list:
-            for ob in reversed(obs_list):
-                txt = (ob.get("observation") if isinstance(ob, dict) else str(ob)) or ""
-                if txt.strip():
-                    latest_obs = txt.strip()
-                    break
-        if not latest_obs and pat.get("description"):
-            latest_obs = str(pat.get("description")).strip()
-
-        # Trim latest_obs to ~280 chars cleanly
-        if len(latest_obs) > 280:
-            latest_obs = latest_obs[:277] + "..."
-
-        card = [
-            f"### [{idx}] {pname} [{sym}] (State: {state} | Observed: {count}x | Proven Record: {rec_str})",
-            f"- **Key Takeaway / Forensic Lesson**: {latest_obs or 'No notes recorded.'}",
-            f"- **Deep Drilldown**: Call `get_pattern_details(pattern_name='{pname}')` for complete chronological timeline."
-        ]
-        out_blocks.append("\n".join(card))
-        out_blocks.append("\n" + "-"*60 + "\n")
-        
-    return "\n".join(out_blocks)
-
-@mcp.tool()
-def mcp_alpha_get_pattern_details(pattern_name: str, symbol: str = "XAUUSD") -> str:
-    """Retrieve 100% of the complete, untruncated chronological observations, autopsies, and trade outcomes for a specific pattern."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    ulm = UnifiedLearningMemory()
-    pat = ulm.get_pattern(symbol, pattern_name)
-    if not pat:
-        pat = ulm.get_pattern("ALL", pattern_name)
-    if not pat:
-        # Fuzzy search fallback
-        data = ulm._load()
-        for k, p in data.get("patterns", {}).items():
-            if pattern_name.upper().replace(" ", "_") in k.upper().replace(" ", "_"):
-                pat = p
-                break
-    if not pat:
-        return f"Pattern '{pattern_name}' not found in Unified Learning Memory for symbol '{symbol}'."
-        
-    read_logger.log_dossier_read("OpenCode CIO (MCP Pattern Details)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Inspected pattern details for '{pattern_name}'")
-    return ulm.format_pattern_markdown(pat, max_observations=20)
-
-@mcp.tool()
-def mcp_alpha_get_book_index() -> str:
-    """Get high-level index and summary of Pattern Book. Reference only; does not authorize execution."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Book Index)", "MANDATORY_PRE_EXECUTION_AUDIT", "Read Pattern Book index")
-    return json.dumps(UnifiedLearningMemory().get_index(), indent=2)
-
-@mcp.tool()
-def mcp_alpha_get_full_book() -> str:
-    """Retrieve full structured catalog and overview of Pattern Book / ULM."""
-    from tradingagents.unified_learning_memory import UnifiedLearningMemory
-    read_logger.log_dossier_read("OpenCode CIO (MCP Full Book)", "MANDATORY_PRE_EXECUTION_AUDIT", "Retrieved full Pattern Book")
-    ulm = UnifiedLearningMemory()
-    data = ulm._load()
-    pats = data.get("patterns", {})
-    exps = data.get("experiences", {})
-    catalog = [
-        {
-            "pattern_id": p.get("pattern_id", k),
-            "pattern_name": p.get("pattern_name", k),
-            "symbol": p.get("symbol", "ALL"),
-            "evidence_provenance": p.get("evidence_provenance", "SEEDED"),
-            "outcomes_count": len(p.get("outcomes", [])),
-            "observations_count": len(p.get("observations", []))
-        }
-        for k, p in list(pats.items())[:100]
-    ]
-    return json.dumps({
-        "status": "SUCCESS",
-        "canonical_store": ulm.path,
-        "total_patterns": len(pats),
-        "total_experiences": len(exps),
-        "total_recorded_outcomes": sum(len(p.get("outcomes", [])) for p in pats.values() if isinstance(p, dict)),
-        "pattern_catalog_sample": catalog,
-        "note": f"Full database contains {len(pats)} patterns and {len(exps)} experiences on disk. Use get_book_page(page_number) for complete paginated retrieval or search_book(keyword) for specific queries."
-    }, indent=2)
-
 @mcp.tool()
 def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:
     """Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps (FVG) and 50% Consequent Encroachment levels."""
@@ -2094,20 +1860,6 @@ def record_decision_snapshot(
         **kwargs
     )
 
-@mcp.tool()
-def record_trade_observation(symbol: str, pattern_name: str, observation: str, outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
-    """Commit verified trade outcomes & lessons into Pattern Book & ULM."""
-    return mcp_alpha_record_trade_observation(symbol, pattern_name, observation, outcome, r_multiple, ticket)
-
-@mcp.tool()
-def record_pattern_observation(symbol: str, pattern_name: str, observation: str, outcome: str = None, ticket: str = None, r_value=None) -> str:
-    """Record pattern evidence in Unified Learning Memory."""
-    return mcp_alpha_record_pattern_observation(symbol, pattern_name, observation, outcome, ticket, r_value)
-
-# @mcp.tool()
-# def get_multi_instrument_ledger() -> str:
-#     """Full 134-position portfolio breakdown disabled per operational instruction."""
-#     pass
 
 @mcp.tool()
 def get_live_microstructure(symbol: str = "XAUUSD") -> str:
@@ -2120,41 +1872,6 @@ def get_fvg_matrix(symbol: str = "XAUUSD") -> str:
     return mcp_alpha_get_fvg_matrix(symbol)
 
 
-@mcp.tool()
-def search_book(keyword: str, symbol: str = None, limit: int = 5) -> str:
-    """Search Pattern Book / ULM by keyword and symbol for historical lessons and documented traps. Returns compact results (default top 5)."""
-    return mcp_alpha_search_book(keyword, symbol or "", limit)
-
-@mcp.tool()
-def search_unified_memory(query: str, symbol: str = "XAUUSD", limit: int = 5) -> str:
-    """Targeted search of Unified Learning Memory (ULM) for historical traps, setup lessons, and post-trade autopsies. Returns 100% untruncated pure recorded observations in clean markdown."""
-    return mcp_alpha_search_book(query, symbol, limit)
-
-@mcp.tool()
-def get_pattern_details(pattern_name: str, symbol: str = "XAUUSD") -> str:
-    """Retrieve 100% of the complete, untruncated chronological observations, autopsies, and trade outcomes for a specific pattern."""
-    return mcp_alpha_get_pattern_details(pattern_name, symbol)
-
-@mcp.tool()
-def get_relevant_traps(setup_type: str = "ALL", symbol: str = "XAUUSD") -> str:
-    """Instantly retrieve documented historical traps (e.g. FVG ceiling traps, thin tape drift, suction path SLs) for a given setup type."""
-    q = f"{setup_type} trap" if setup_type and setup_type != "ALL" else "trap"
-    return mcp_alpha_search_book(q, symbol, limit=5)
-
-@mcp.tool()
-def get_book_index() -> str:
-    """Get high-level index and summary of Pattern Book."""
-    return mcp_alpha_get_book_index()
-
-@mcp.tool()
-def get_book_page(page_number: int = 1) -> str:
-    """Read a specific page from Pattern Book."""
-    return mcp_alpha_get_book_page(page_number)
-
-@mcp.tool()
-def get_full_book() -> str:
-    """Retrieve full dump of Pattern Book / ULM."""
-    return mcp_alpha_get_full_book()
 
 @mcp.tool()
 def get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: int = 100, position_id: int = 0) -> str:
@@ -2174,12 +1891,7 @@ def list_desk_tools() -> str:
         {"name":"get_fvg_matrix","description":"Multi-timeframe FVG geometry."},
         {"name":"get_fred_observations","description":"Vintage-aware FRED/ALFRED macro observations."},
         {"name":"backtest_thesis","description":"Historical empirical replay evidence; never an automatic signal."},
-        {"name":"search_book","description":"Targeted Pattern Book search."},
-        {"name":"get_book_index","description":"Pattern Book index."},
-        {"name":"get_book_page","description":"Specific Pattern Book page."},
         {"name":"record_decision_snapshot","description":"Persist factual pre-decision context."},
-        {"name":"record_trade_observation","description":"Persist verified trade outcome."},
-        {"name":"record_pattern_observation","description":"Persist pattern evidence."},
         {"name":"execute_trade","description":"Execute only with explicit validated volume, SL and TP."},
         {"name":"place_pending_order","description":"Place only an explicitly specified pending order."},
         {"name":"cancel_pending_order","description":"Cancel a pending order."},
@@ -2219,12 +1931,7 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol","XAUUSD")),
         "get_fred_observations": lambda: mcp_alpha_get_fred_observations(**args),
         "backtest_thesis": lambda: mcp_alpha_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
-        "search_book": lambda: mcp_alpha_search_book(args.get("keyword",args.get("query","")),args.get("symbol")),
-        "get_book_index": mcp_alpha_get_book_index,
-        "get_book_page": lambda: mcp_alpha_get_book_page(args.get("page_number",1)),
         "record_decision_snapshot": lambda: mcp_alpha_record_decision_snapshot(**args),
-        "record_trade_observation": lambda: mcp_alpha_record_trade_observation(args.get("symbol","XAUUSD"),args.get("pattern_name",""),args.get("observation",""),args.get("outcome","STUDY"),args.get("r_multiple",0.0),args.get("ticket")),
-        "record_pattern_observation": lambda: mcp_alpha_record_pattern_observation(args.get("symbol","XAUUSD"),args.get("pattern_name",""),args.get("observation",""),args.get("outcome"),args.get("ticket"),args.get("r_value")),
         "execute_trade": lambda: mcp_alpha_execute_trade(args.get("symbol",""),args.get("side",""),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0)),
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
         "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0))),

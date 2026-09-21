@@ -1032,7 +1032,7 @@ class ConsolidatedTradingDaemon:
                     "• BREAKOUT CONTINUATION STACKING: In Mode B trend cascades, pre-calculate Leg 2 entry milestone below TP1; the instant TP1 fills, deploy Leg 2 (`SELL_STOP` / `BUY_STOP`) without multi-cadence delay.\n"
                     "• 20-MINUTE AUCTION STAGNATION (GENUINE DEAD TAPE ONLY): If price completely stalls within ±1.0 pt of entry for 20+ continuous minutes WITH velocity collapsed into dead compression (<40 t/m) and adverse CVD building, you may scratch. However, if price has made any structural expansion (>3 pts) and is merely executing a normal retest, HOLD FIRM behind your structural stop.\n"
                     "• Target 1 Bank (User Msg 95 & 893): Bank profits cleanly at the 4.0 to 8.0 pt Mode A structural TP (strictly capped <=8.0–10.0 pts into nearest opposing pivot/shelf). NEVER stretch TP beyond 10 pts to chase paper 2:1 R:R (which caused Loss #544302915 where +8.03 pt profit reversed into a loss)!\n"
-                    "• POST-TRADE FORENSIC AUTOPSY: The instant the trade closes (SL, TP, or early exit), immediately call `alpha-daemon-mcp_record_trade_observation` and `graphiti_add_episode` with the root cause and reusable lesson."
+                    "• POST-TRADE FORENSIC AUTOPSY: The instant the trade closes (SL, TP, or early exit), immediately call `graphiti-memory-mcp_graphiti_add_episode` with the root cause and reusable lesson."
                 )
             else:
                 prompt = (

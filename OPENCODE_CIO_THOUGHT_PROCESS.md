@@ -33,9 +33,9 @@ Traditional models fail when treating price in isolation, chasing indicator cros
    - **Continuous Observational Learning (`graphiti_add_episode`)**:
      - On trade close, wire the result into memory.
      - When standing flat and an avoided trap collapses (e.g. retail chases $4,400 apex or equal highs and dumps), call `graphiti_add_episode(..., outcome='TRAP', lesson='...')`.
-     - When a clean move launches without us on board, call `graphiti_add_episode(..., outcome='WIN', lesson='...')`.
-     - Learn continuously from every single cycle!
-   - *Full Memory Primacy*: All pattern checks run through Graphiti Temporal Memory (`graphiti_search_facts`, `graphiti_get_pattern_walks`). Legacy searches seamlessly delegate to Graphiti under the hood.
+      - When a clean move launches without us on board, call `graphiti_add_episode(..., outcome='WIN', lesson='...')`.
+      - Learn continuously from every single cycle!
+    - *Exclusive Memory Primacy*: All pattern validation, trap discrimination, and observational learning run exclusively through Graphiti Temporal Memory (`graphiti_search_facts`, `graphiti_get_pattern_walks`, `graphiti_add_episode`, `graphiti_prune_decayed`). Legacy ULM tools are completely retired from the daemon.
 
 5. **Position Discipline, Noise Tolerance & The Champion Hold Mandate (Rule 4 — Win 4 Precedent #538243241)**:
    - Minor counter-wicks during a trending impulse are normal retests of intermediate structural shelves.
