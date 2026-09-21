@@ -1065,8 +1065,9 @@ class ConsolidatedTradingDaemon:
                 )
             post_to_opencode_session("", prompt)
 
-            # Dispatch mandatory rule reminder after the news or brainstorm message once every cycle
-            self._schedule_post_news_rules_reminder(delay_seconds=60.0)
+            # Dispatch mandatory rule reminder strictly after the brainstorm turn only, once per cycle
+            if is_brainstorm_turn:
+                self._schedule_post_news_rules_reminder(delay_seconds=60.0)
 
         return has_active_trades
 
