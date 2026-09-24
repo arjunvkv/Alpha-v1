@@ -1,0 +1,734 @@
+{
+  "alpha": [
+    {
+      "id": "ses_f94cc99aeffeG2ujMqKoJmDRuK",
+      "title": "Alpha v14",
+      "total_messages": 627,
+      "order_calls": 7,
+      "dossiers": 80,
+      "brainstorms": 30,
+      "sample_decisions": [
+        "**DECISION: HOLD. No replan.** The BUY LIMIT at 4480 is filling on the pullback. CVD +1,892, delta pressure +40.5%, 4TF bullish leaning \u2014 all confirm the thesis. NFP at 12:30 UTC.",
+        "**DECISION: HOLD. BUY LIMIT at 4480 positioned perfectly at fresh FVG CE. 4TF_STRONG_BULLISH_CONFLUENCE confirmed. NFP at 12:30 UTC (~3.5h away).**",
+        "**DECISION: HOLD. Do not panic kill.** The position is well-positioned:",
+        "**DECISION:** HOLD. Position is healthy at +$84.60 with CVD recovering, spread tightening, and 4+ hours until NFP. All three watch triggers armed (4490 early harvest, NFP reaction, TP extension to 4590+). **No changes needed.**",
+        "**DECISION: HOLD.** The early harvest watch at 4490 is only **$6.67 away** \u2014 it could trigger any moment. CVD divergence is a watch factor but not a strong invalidation. Let the watch handle the Phase 1 take at 4490 (50% at 4490, SL\u2192breakeven). **No manual changes needed.**"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\nUTC: 2026-09-04 06:58:34 UTC | NY (ET): 2026-09-04 02:58:34 AM EDT | London: 2026-09-04 07:58:34 BST | Active Session: ASIAN_SESSION\nActive instruments: XAUUSD\nOpen positions: 0\nReason: periodic state chan"
+      ],
+      "sample_brainstorm": [
+        "Now let me brainstorm 5 questions and research them with Proxima.\n\n---\n\n## \ud83e\udde0 5-QUESTION BRAINSTORM: MARKET CONDITIONS\n\n---\n\n### **QUESTION 1: Waller Dovish Pivot + Weak NFP Compound Effect**\n*\"With Fed's Waller signaling rate-hold ('give disinflation"
+      ]
+    },
+    {
+      "id": "ses_f90489d64ffew9vscUg7L5Hsh6",
+      "title": "Alpha v16",
+      "total_messages": 74,
+      "order_calls": 0,
+      "dossiers": 12,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE - SCHEDULED_REASSESSMENT\nUTC: 2026-09-05 03:59:17 UTC | NY (ET): 2026-09-04 11:59:17 PM EDT | London: 2026-09-05 04:59:17 BST | Active Session: WEEKEND_MARKET_CLOSED\nActive instruments: XAUUSD\nOpen positions: 0\nReason: periodic st"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f93636939ffeKRd7RloHva7dlf",
+      "title": "Alpha v15",
+      "total_messages": 539,
+      "order_calls": 7,
+      "dossiers": 83,
+      "brainstorms": 6,
+      "sample_decisions": [
+        "### DECISION: **NO TRADE \u2014 CONDITIONAL HOLD**",
+        "### DECISION: **NO TRADE \u2014 THESIS WEAKENING**",
+        "### DECISION: **NO TRADE**",
+        "### DECISION: **CANCEL SHORT WATCH \u2014 NO TRADE**",
+        "### DECISION: **WAIT \u2014 Setup Still Alive**"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\nUTC: 2026-09-04 13:40:09 UTC | NY (ET): 2026-09-04 09:40:09 AM EDT | London: 2026-09-04 14:40:09 BST | Active Session: LONDON_NY_OVERLAP\nActive instruments: XAUUSD\nOpen positions: 0\nReason: periodic state "
+      ],
+      "sample_brainstorm": [
+        "I now have a comprehensive evidence picture. Let me synthesize the 5 brainstorming questions and the critical news-driven analysis. Let me note the key data I've gathered:\n\n**FRED data (concrete):**\n- US 10Y yield: 4.77% (09/03) \u2014 rising trend from 4"
+      ]
+    },
+    {
+      "id": "ses_f9a2c101bffe582pNZqLaJybyK",
+      "title": "Alpha v13",
+      "total_messages": 1493,
+      "order_calls": 16,
+      "dossiers": 266,
+      "brainstorms": 46,
+      "sample_decisions": [
+        "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+        "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+        "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+        "1. **CLASSIFY DECISION:** NEW_TRADE_INVESTIGATION.",
+        "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION)."
+      ],
+      "sample_dossier": [
+        "[Alpha Daemon] ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\nUTC: 2026-09-03T06:07:36.986684+00:00\nActive instruments: XAUUSD\nOpen positions: 0\nReason: periodic state changed or review interval elapsed.\n\nDo NOT request a full dossier. Start a fresh re"
+      ],
+      "sample_brainstorm": [
+        "Now I have all the data. Let me compile the full 10-question analysis and brainstorm the setup.\n\n## FULL 10-QUESTION MASTER MARKET ANALYSIS\n\n**Q1 [Account & Risk]:**\n- Balance: $97,276.10 | Equity: $97,276.10\n- 0 positions, 0 pending orders\n- Full av"
+      ]
+    },
+    {
+      "id": "ses_f9d5fe7bbffebDToZDmcOBR3RB",
+      "title": "Alpha v12",
+      "total_messages": 438,
+      "order_calls": 1,
+      "dossiers": 110,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "### \ud83c\udfaf DECISION: FLAT \u2014 NO ENTRY",
+        "### \ud83c\udfaf DECISION: FLAT \u2014 NO ENTRY",
+        "### \ud83c\udfaf DECISION: FLAT \u2014 NO ENTRY",
+        "### \ud83c\udfaf DECISION: FLAT \u2014 NO ENTRY",
+        "### \ud83c\udfaf DECISION: FLAT \u2014 DISCIPLINE HOLDS"
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE POSITION REVIEW (1-Min Active Trade Review):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-09-02 20:33:54 IST | UTC: 2026-09-02 15:03:54 UTC | SCAN CYCLE: #32\n  \u2022 Live Evidence Dossier (39 lines): fil"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f9ccfa939ffeMJsBhAgj59O7Bt",
+      "title": "Alpha Net Node",
+      "total_messages": 84,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f9e9f552fffeci3eYYDmw4xEOp",
+      "title": "Alpha v11",
+      "total_messages": 670,
+      "order_calls": 3,
+      "dossiers": 120,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "- USER DECISION: presented option to re-arm vs stay flat with carry-forward \u2014 no explicit instruction given before next CIO dossier; grid was re-armed manually with `place_pending_order`."
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-09-02 14:45:17 IST | UTC: 2026-09-02 09:15:17 UTC | SCAN CYCLE: #2\n  \u2022 Live Evidence Dossier (33 lines):"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f9eab4f27ffeZquC32Mzgc05tL",
+      "title": "Alpha Granger v10",
+      "total_messages": 2,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f9eaf0180ffedoLLcPEkouK4Rt",
+      "title": "Alpha Granger v10",
+      "total_messages": 3,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa231398affep3t2AL8iiaDT4P",
+      "title": "Alpha Granger v9 (Active MCP)",
+      "total_messages": 877,
+      "order_calls": 10,
+      "dossiers": 171,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-09-01 22:03:00 IST | UTC: 2026-09-01 16:33:00 UTC | SCAN CYCLE: #2\n  \u2022 Live Evidence Dossier (25 lines):"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fb15b2b27ffezJfLoCEJP5a95r",
+      "title": "Alpha-Gravity",
+      "total_messages": 842,
+      "order_calls": 0,
+      "dossiers": 47,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (Initial Review):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-30 03:00:04 IST\n  \u2022 UTC: 2026-08-29 21:30:04 UTC\n  \u2022 STUDY CYCLE: 1\n\n=== AVAILABLE EVIDENCE / SYSTEM DIRECTI"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa78d8cbaffeRr42l7ZJDurb6H",
+      "title": "Alpha Granger v9 (Active MCP)",
+      "total_messages": 2433,
+      "order_calls": 0,
+      "dossiers": 440,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "### \ud83c\udfaf DECISION: STAND ASIDE",
+        "### \ud83c\udfaf DECISION: STANDBY \u2014 NO TRIGGER YET",
+        "**DECISION: The setup is CLOSE but not yet validated.** I'll wait for the delta to convincingly turn UP (2+ consecutive rising positive prints) while price holds the M5 bullish FVG floor (4432.42). ",
+        "**DECISION:** Maintain the current SELL (532601221)."
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-31 21:10:21 IST\n  \u2022 UTC: 2026-08-31 15:40:21 UTC\n  \u2022 STUDY CYCLE: 2\n\n=== AVAILABLE EVIDENCE / SYSTEM "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa9d5bf54ffeguIWaOBmfeJLXe",
+      "title": "Alpha Granger v8",
+      "total_messages": 1576,
+      "order_calls": 8,
+      "dossiers": 290,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "**DECISION: STAND DOWN / NO TRADE.** ",
+        "**DECISION: NO TRADE \u2014 STAND DOWN / FLAT.** ",
+        "**DECISION: NO TRADE \u2014 STAND DOWN.** Same as cycle 2646 \u2014 the direction hasn't aligned. The CE placement is necessary but not sufficient; 4TF is bearish and delta is negative. A long here would be counter-trend with the bear-trap flag active.",
+        "**DECISION: NO TRADE \u2014 STAND DOWN / FLAT.** Price is slicing lower through both CEs with aggressive selling and no absorption. This is a waterfall continuation \u2014 attempting either side is a trap with my hard-won base rates (both `Counter-Trend|BUY` 27.6% and exhausted-chase shorting -$1,370). Capital preservation is the trade.",
+        "**DECISION: STILL NO TRADE \u2014 but this is now an ARMED-WATCH situation, not a flat-and-ignore.**"
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-31 10:24:04 IST\n  \u2022 UTC: 2026-08-31 04:54:04 UTC\n  \u2022 STUDY CYCLE: 2\n\n=== AVAILABLE EVIDENCE / SYSTEM "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa94fda55ffeiMhDSs1PYI5sal",
+      "title": "Check full alpha MCP",
+      "total_messages": 22,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa95420c7ffeOCpt8fszGTangi",
+      "title": "Google Proxy Alpha MCP Verification",
+      "total_messages": 3,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fac48a438ffeZy7I3QMvxHGbQX",
+      "title": "Alpha-Granger v2",
+      "total_messages": 291,
+      "order_calls": 0,
+      "dossiers": 1,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-31 10:12:24 IST\n  \u2022 UTC: 2026-08-31 04:42:24 UTC\n  \u2022 STUDY CYCLE: 2\n\n=== AVAILABLE EVIDENCE / SYSTEM "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fa9e880fcffeAL4kB5o8053JSJ",
+      "title": "Alpha granger v7",
+      "total_messages": 27,
+      "order_calls": 0,
+      "dossiers": 4,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "**DECISION: STAND DOWN / NO TRADE** \u2705",
+        "## \ud83d\udccb DECISION: **STAND DOWN \u2014 FLAT, NO TRADE** \u2705"
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-31 10:12:24 IST\n  \u2022 UTC: 2026-08-31 04:42:24 UTC\n  \u2022 STUDY CYCLE: 2\n\n=== AVAILABLE EVIDENCE / SYSTEM "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fabeeed64ffeTmUMmx13636RDE",
+      "title": "Alpha v6",
+      "total_messages": 26,
+      "order_calls": 0,
+      "dossiers": 1,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-31 10:12:24 IST\n  \u2022 UTC: 2026-08-31 04:42:24 UTC\n  \u2022 STUDY CYCLE: 2\n\n=== AVAILABLE EVIDENCE / SYSTEM "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fb2eb6b52ffeqMc2TBOet5xjhx",
+      "title": "Alpha v5",
+      "total_messages": 416,
+      "order_calls": 0,
+      "dossiers": 57,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (Initial Review):\n=== ALPHA AGENT STUDY UPDATE ===\n  \u2022 CURRENT TIME: 2026-08-29 16:38:55 IST\n  \u2022 UTC: 2026-08-29 11:08:55 UTC\n  \u2022 STUDY CYCLE: 1\n\n=== AVAILABLE EVIDENCE / SYSTEM DIRECTI"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fb243590bffe5IxDwtIjJFf7ER",
+      "title": "Alpha Scan analysis",
+      "total_messages": 85,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fb9642e7affeHSS0rTuObAN8Go",
+      "title": "Alpha v4",
+      "total_messages": 2708,
+      "order_calls": 0,
+      "dossiers": 577,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "### \ud83c\udfaf CIO DECISION: THE CORRECTION IN ACTION",
+        "### \ud83c\udfaf CIO DECISION: THE \"CORRECTION\" IS DISCIPLINE, NOT DESPERATION",
+        "### \ud83c\udfaf CIO DECISION: THE \"TRAP\" IS CONFIRMED",
+        "### \ud83c\udfaf CIO DECISION: THE SELL-STOP MAGNET IS THE TRIGGER",
+        "### \ud83d\udeab DECISION: STAY FLAT \u2014 NO TRADE EXECUTION"
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (Initial Review):\n=== MANDATORY SYSTEM DIRECTIVES (MANDATE) ===\n  \u2022 MASTER MANDATES MANUAL: file:///C:/Trading/Alpha/OPENCODE_MANDATES.md (MANDATORY: Audit strategy, memory buckets & li"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fb2f5f16fffeKkGxdCFiW030ex",
+      "title": "Conversation Title: **Multi-Layer Alpha Desk: Gold Strategy & Session Setup**",
+      "total_messages": 3,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fbc43f148ffeSd5TBajZmNP1C0",
+      "title": "Alpha fixer",
+      "total_messages": 190,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "**MANDATORY FINAL DECISION:**",
+        "### \ud83d\udee1\ufe0f **MANDATORY FINAL DECISION: EXECUTED & AUDITED DESK FLOW**"
+      ],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_fc28140eaffeFGt54CBqh24cNi",
+      "title": "Alpha v3",
+      "total_messages": 3171,
+      "order_calls": 0,
+      "dossiers": 854,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "## \ud83d\udcca CIO EXECUTIVE POSITION REVIEW (2-Min Cycle) \u2014 DECISION: HOLD BOTH, NO ORDERS WARRANTED",
+        "## \ud83d\udcca CIO EXECUTIVE POSITION REVIEW (2-Min Cycle) \u2014 DECISION: HOLD BOTH, NO ORDERS WARRANTED",
+        "## \ud83d\udcca CIO EXECUTIVE POSITION REVIEW (2-Min Cycle) \u2014 DECISION: HOLD BOTH, NO ORDERS WARRANTED",
+        "## \ud83d\udcca CIO EXECUTIVE POSITION REVIEW (Daemon Startup) \u2014 DECISION: HOLD BOTH, NO ORDERS WARRANTED",
+        "## \ud83d\udcca CIO EXECUTIVE POSITION REVIEW (2-Min Cycle) \u2014 DECISION: HOLD BOTH, NO ORDERS WARRANTED"
+      ],
+      "sample_dossier": [
+        "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE DESK BRIEFING (Daemon Startup Initial Review):\nMASTER DIRECTIVE MANUAL REF: Reference C:\\Trading\\Alpha\\OPENCODE_CIO_OPERATING_SYSTEM.md for full MCP & multi-source rules.\n\n=== LOCAL LLM MULTI-AGENT THINKING & A"
+      ],
+      "sample_brainstorm": []
+    }
+  ],
+  "escanor": [
+    {
+      "id": "ses_f6b1d4dfeffefX4co819RjA5cb",
+      "title": "Escanor v18",
+      "total_messages": 11,
+      "order_calls": 0,
+      "dossiers": 1,
+      "brainstorms": 1,
+      "sample_decisions": [
+        "PRINCIPLE 0 \u2014 A WAKE IS NOT A SIGNAL: A cadence ping or brainstorm prompt is an observation cycle, NOT a mandate to trade. If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION OUTPUT IS: `DECISION: NO ACTION / WAIT \u2014 Standing flat`.",
+        "**DECISION: NO ACTION / WAIT \u2014 Standing flat**",
+        "  `DECISION: NO ACTION / WAIT \u2014 Standing flat`",
+        "**DECISION: NO ACTION / WAIT \u2014 Standing flat**",
+        "\u2022 If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION DECISION IS: `DECISION: NO ACTION / WAIT \u2014 Standing flat`."
+      ],
+      "sample_dossier": [
+        "UTC: 2026-09-12 09:16:35 UTC | NY (ET): 2026-09-12 05:16:35 AM EDT | London: 2026-09-12 10:16:35 BST | Active Session: WEEKEND_MARKET_CLOSED\n\n=== ALPHA CADENCE BRIEFING: EVIDENCE-FIRST TECHNICAL AUDIT ===\nAudit physical microstructure and market regi"
+      ],
+      "sample_brainstorm": [
+        "UTC: 2026-09-12 10:20:29 UTC | NY (ET): 2026-09-12 06:20:29 AM EDT | London: 2026-09-12 11:20:29 BST | Active Session: WEEKEND_MARKET_CLOSED\n\n=== INSTITUTIONAL BRAINSTORM: 90% NEWS DRILLDOWN ===\nBrainstorm with 5 new targeted questions about current "
+      ]
+    },
+    {
+      "id": "ses_f6ec54dc8ffecoS0hYWUM97Flx",
+      "title": "Escanor v17",
+      "total_messages": 474,
+      "order_calls": 1,
+      "dossiers": 64,
+      "brainstorms": 80,
+      "sample_decisions": [
+        "PRINCIPLE 0 \u2014 A WAKE IS NOT A SIGNAL: A cadence ping or brainstorm prompt is an observation cycle, NOT a mandate to trade. If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION OUTPUT IS: `DECISION: NO ACTION / WAIT \u2014 Standing flat`.",
+        "> **DECISION: NO ACTION / WAIT \u2014 Standing flat**",
+        "  `DECISION: NO ACTION / WAIT \u2014 Standing flat`",
+        "> **DECISION: NO ACTION / WAIT \u2014 Standing flat**",
+        "\u2022 If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION DECISION IS: `DECISION: NO ACTION / WAIT \u2014 Standing flat`."
+      ],
+      "sample_dossier": [
+        "UTC: 2026-09-11 16:13:23 UTC | NY (ET): 2026-09-11 12:13:23 PM EDT | London: 2026-09-11 17:13:23 BST | Active Session: NEW_YORK_SESSION\n\n=== ALPHA CADENCE BRIEFING: EVIDENCE-FIRST CIO AUDIT ===\nYour primary role is gathering the news (we don't want t"
+      ],
+      "sample_brainstorm": [
+        "UTC: 2026-09-11 16:17:28 UTC | NY (ET): 2026-09-11 12:17:28 PM EDT | London: 2026-09-11 17:17:28 BST | Active Session: NEW_YORK_SESSION\n\n=== INSTITUTIONAL BRAINSTORM: 90% NEWS DRILLDOWN ===\nBrainstorm with 5 new targeted questions about current macro"
+      ]
+    },
+    {
+      "id": "ses_f708806b6ffe7HabOOcXeonIoA",
+      "title": "Escanor v16",
+      "total_messages": 447,
+      "order_calls": 11,
+      "dossiers": 1,
+      "brainstorms": 21,
+      "sample_decisions": [
+        "## DECISION: HOLD ORDER \u2014 NO CHANGE",
+        "### DECISION: HOLD ORDER \u2014 NO CHANGE",
+        "### DECISION: HOLD \u2014 NO MODIFICATION",
+        "### DECISION: HOLD \u2014 NO MODIFICATION",
+        "### DECISION: HOLD \u2014 NO MODIFICATION"
+      ],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\nUTC: 2026-09-11 12:08:53 UTC | NY (ET): 2026-09-11 08:08:53 AM EDT | London: 2026-09-11 13:08:53 BST | Active Session: LONDON_SESSION\nWATCH ALERT: watch_6d5b6d0ce1438115 TRIGGERED at target price 4327.0!\n\u2022 Condit"
+      ],
+      "sample_brainstorm": [
+        "## FULL 90% NEWS INTELLIGENCE SYNTHESIS \u2014 08:05 UTC\n\n### NEW INTELLIGENCE ACQUIRED (Since Last Sweep)\n\n| Finding | Source | Impact |\n|---|---|---|\n| **Gold ETF August: RECORD $18B inflow**, 4,189 tonnes (all-time high) | Perplexity + Deep Search | **"
+      ]
+    },
+    {
+      "id": "ses_f708d4513ffefkcFm0BDV2tkII",
+      "title": "Escanor v15",
+      "total_messages": 5,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f70983ebbffeKd3qk9blXruN2f",
+      "title": "Escanor v14",
+      "total_messages": 23,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 1,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": [
+        "Executing full 90% news suite in parallel, keyed to my current thought process.\n\n**5 BRAINSTORM QUESTIONS (market-state, from the new news):**\n1. The Saudi East-West pipeline \"fire/damage\" report \u2014 is it confirmed by Aramco, and does a hit on that ar"
+      ]
+    },
+    {
+      "id": "ses_f70a2a77effe3Ze7eV07GBnpbM",
+      "title": "Escanor v13",
+      "total_messages": 18,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f71395dcfffe96GT8VTifqiKr9",
+      "title": "Escanor v12",
+      "total_messages": 173,
+      "order_calls": 1,
+      "dossiers": 1,
+      "brainstorms": 7,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\nUTC: 2026-09-11 05:34:19 UTC | NY (ET): 2026-09-11 01:34:19 AM EDT | London: 2026-09-11 06:34:19 BST | Active Session: ASIAN_SESSION\nWATCH ALERT: watch_6dac3a97a24d3a7e TRIGGERED at target price 4339.6!\n\u2022 Conditi"
+      ],
+      "sample_brainstorm": [
+        "**=== BRAINSTORM: 5 NEWS-FOCUSED QUESTIONS (current market state only) ===**\n\n1. **Hormuz/oil escalation:** What are the *actual reported* facts on the U.S.\u2013Iran military exchanges, the Houthi seizure of Yemen's Mocha port, and the exact Brent/spot o"
+      ]
+    },
+    {
+      "id": "ses_f717e5650ffeMHWDYjmd6D6Z0l",
+      "title": "Escanor v11",
+      "total_messages": 85,
+      "order_calls": 2,
+      "dossiers": 3,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\nUTC: 2026-09-11 04:07:31 UTC | NY (ET): 2026-09-11 12:07:31 AM EDT | London: 2026-09-11 05:07:31 BST | Active Session: ASIAN_SESSION\n[RAW REALITY] Bid: 4312.6 | Ask: 4313.0 | Spr: 44 pts | Vel: 123 t/m | CVD 5m: "
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f737f5903ffeoKxbwPymA6gs1G",
+      "title": "Escanor v10",
+      "total_messages": 197,
+      "order_calls": 2,
+      "dossiers": 3,
+      "brainstorms": 1,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\nUTC: 2026-09-10 18:09:34 UTC | NY (ET): 2026-09-10 02:09:34 PM EDT | London: 2026-09-10 19:09:34 BST | Active Session: NEW_YORK_SESSION\n[RAW REALITY] Bid: 4342.8 | Ask: 4343.3 | Spr: 45 pts | Vel: 197 t/m | CVD 5"
+      ],
+      "sample_brainstorm": [
+        "Now I have comprehensive intelligence. Let me present the brainstorm and replan.\n\n---\n\n## 5 BRAINSTORM QUESTIONS \u2014 NEW NEWS ANALYSIS\n\n**Q1: TANKER WAR ESCALATION vs. SAFE HAVEN PARADOX**\nUS destroyed 5 Iranian tankers on Sept 8; Iran retaliated attac"
+      ]
+    },
+    {
+      "id": "ses_f745a6001ffee0OE5If26Hn1K1",
+      "title": "Escanor v9",
+      "total_messages": 307,
+      "order_calls": 15,
+      "dossiers": 40,
+      "brainstorms": 42,
+      "sample_decisions": [
+        "**DECISION: HOLD. No action required.**",
+        "**DECISION: HOLD. Pending short remains correctly placed \u2014 evidence reinforces it.**",
+        "**DECISION: HOLD \u2014 no changes. Thesis intact on all tiers.**",
+        "**DECISION: HOLD \u2014 no order changes. News reinforced the exact direction of the staged short.**",
+        "**DECISION: HOLD \u2014 pending order intact; news strengthened in favor of the staged short.**"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\nUTC: 2026-09-10 14:10:04 UTC | NY (ET): 2026-09-10 10:10:04 AM EDT | London: 2026-09-10 15:10:04 BST | Active Session: LONDON_NY_OVERLAP\n[RAW REALITY] Bid: 4364.9 | Ask: 4365.3 | Spr: 44 pts | Vel: 31 t/m "
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-10 14:14:05 UTC | NY (ET): 2026-09-10 10:14:05 AM EDT | London: 2026-09-10 15:14:05 BST | Active Session: LONDON_NY_OVERLAP\n[RAW REALITY] Bid: 4360.8 | Ask: 4361.2 | Spr: 39 pts | Vel: 32 t/m | CVD"
+      ]
+    },
+    {
+      "id": "ses_f7aa410f8ffe5efMsOjffSh3Tx",
+      "title": "Escanor v8",
+      "total_messages": 1406,
+      "order_calls": 26,
+      "dossiers": 307,
+      "brainstorms": 207,
+      "sample_decisions": [
+        "**DECISION: NO ACTION / WAIT**",
+        "### DECISION: **NO TRADE / WAIT**",
+        "### DECISION: WAIT / NO TRADE",
+        "### DECISION: WAIT / NO TRADE (watches still correct)",
+        "### DECISION: WAIT / NO TRADE (unchanged)"
+      ],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-09 08:54:41 UTC | NY (ET): 2026-09-09 04:54:41 AM EDT | London: 2026-09-09 09:54:41 BST | Active Session: LONDON_SESSION\n[RAW REALITY] Bid: 4401.9 | Ask: 4402.3 | Spr: 37 pts | Vel: 73 t/m | CVD 5m"
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-09 08:54:41 UTC | NY (ET): 2026-09-09 04:54:41 AM EDT | London: 2026-09-09 09:54:41 BST | Active Session: LONDON_SESSION\n[RAW REALITY] Bid: 4401.9 | Ask: 4402.3 | Spr: 37 pts | Vel: 73 t/m | CVD 5m"
+      ]
+    },
+    {
+      "id": "ses_f7b2e9902ffeSHxS0UkpwQb7z1",
+      "title": "Escanor v7",
+      "total_messages": 198,
+      "order_calls": 1,
+      "dossiers": 37,
+      "brainstorms": 21,
+      "sample_decisions": [
+        "### DECISION: NO TRADE \u2014 STRUCTURE NOT MET",
+        "### DECISION: NO NEW ENTRY, NO NEW WATCHES",
+        "**DECISION: DO NOT ENTER LONG.** The pattern at the 4397-4400 zone does not meet the absorption standard:",
+        "**DECISION: Stand aside. No trade.**",
+        "DECISION: Stand aside. No new trade. Both watches stay armed. But I should REASSESS the SHORT watch because the velocity gate will likely fail during London flow \u2014 the watch requires velocity <80 which contradicts active London session flow (148 t/m). "
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SESSION_START_AUDIT\nUTC: 2026-09-09 06:21:00 UTC | NY (ET): 2026-09-09 02:21:00 AM EDT | Active Session: ASIAN_SESSION\n[RAW REALITY] Bid: 4399.3 | Ask: 4399.8 | Spr: 45 pts | Vel: 35 t/m | CVD 5m: -0.30 | 10b Net Delta: +23.4%\n-"
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-09 06:24:21 UTC | NY (ET): 2026-09-09 02:24:21 AM EDT | London: 2026-09-09 07:24:21 BST | Active Session: ASIAN_SESSION\n[RAW REALITY] Bid: 4399.8 | Ask: 4400.2 | Spr: 45 pts | Vel: 80 t/m | CVD 5m:"
+      ]
+    },
+    {
+      "id": "ses_f7ef41361ffeqnG0F1BBlZCyQI",
+      "title": "Escanor v6",
+      "total_messages": 918,
+      "order_calls": 11,
+      "dossiers": 200,
+      "brainstorms": 135,
+      "sample_decisions": [
+        "**DECISION: FLAT, NO TRADE.** I'll re-arm the spring to fire on a **post-V pullback/retest** of the 4381\u20134384 zone, so it catches the phase-2 exhaustion without chasing the snapback. Also noting CVD positive now shifts the skew \u2014 if price consolidates above 4384 rather than retesting, the fade short is no longer the setup, and I'd look at the POC reclaim (4400) for a mean-reversion.",
+        "**DECISION: NO TRADE.** Account flat $99,546.78, ladder 2\u00d7@4382 intact, guard + floor watch armed, nothing triggered. No reprice (no goalpost movement): the reclaim either reaches 4382 and fills (retest short into bear FVG supply) or fails and revisits the floor (watch armed). Even a floor tag now would gate NO BUY (measured CVD exhaustion FALSE, no CVD turn).",
+        "- **22:06 wake \u2014 first tape motion in ~2h:** diagnosed V-reclaim (floor held, price +9.5 \u2192 4357.1 \u2192 sell-back to 4354.3); flow arbitration (measured CVD authoritative \u2192 gates fail); new H1 bear FVG 4377-4385 shelf confirmed ladder @4382 sits inside it; **DECISION: NO TRADE, no reprice, no goalpost movement**; floor watch not triggered; Tokyo 00:00 next.",
+        "**DECISION: NO TRADE \u2014 WAIT.** No new news (only stale Centrus/small-cap energy RSS noise, zero gold catalysts; blank calendar until ECB 33.7h). All instruments correctly staged:"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 ACTIVE_POSITION_REVIEW\nUTC: 2026-09-08 12:47:27 UTC | NY (ET): 2026-09-08 08:47:27 AM EDT | London: 2026-09-08 13:47:27 BST | Active Session: LONDON_SESSION\n\u26a1 REGIME: GEOPOLITICAL_SHOCK_DRIFT | Pricing Power: TAPE_MOMENTUM_41%_T"
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-08 12:52:11 UTC | NY (ET): 2026-09-08 08:52:11 AM EDT | London: 2026-09-08 13:52:11 BST | Active Session: LONDON_SESSION\n\u26a1 REGIME: MACRO_DIRECTIONAL_PRESSURE | Pricing Power: MACRO_YIELD_58%_TECHNI"
+      ]
+    },
+    {
+      "id": "ses_f82d47cf2ffe7PpezY1HrHlfPz",
+      "title": "Escanor v2",
+      "total_messages": 427,
+      "order_calls": 4,
+      "dossiers": 93,
+      "brainstorms": 44,
+      "sample_decisions": [
+        "### DECISION: NO TRADE / WAIT \u2014 Sizing 0.2 continues to be pre-committed",
+        "## DECISION: NO TRADE / WAIT \u2014 sizing cap remains 0.2",
+        "## DECISION: NO TRADE / WAIT \u2014 0.2 cap held, watch tighter"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\nUTC: 2026-09-07 18:43:24 UTC | NY (ET): 2026-09-07 02:43:24 PM EDT | London: 2026-09-07 19:43:24 BST | Active Session: NEW_YORK_SESSION\n\u26a1 REGIME: GEOPOLITICAL_SHOCK_DRIFT | Pricing Power: TAPE_MOMENTUM_41%"
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\nUTC: 2026-09-07 18:47:27 UTC | NY (ET): 2026-09-07 02:47:27 PM EDT | London: 2026-09-07 19:47:27 BST | Active Session: NEW_YORK_SESSION\n\u26a1 REGIME: GEOPOLITICAL_SHOCK_DRIFT | Pricing Power: TAPE_MOMENTUM_41%_TECH"
+      ]
+    },
+    {
+      "id": "ses_f7f1d2b97ffeyl79NhceXhuvQK",
+      "title": "Escanor v5",
+      "total_messages": 56,
+      "order_calls": 2,
+      "dossiers": 14,
+      "brainstorms": 0,
+      "sample_decisions": [
+        "**CIO DECISION: NO ACTION / WAIT**",
+        "**DECISION: HOLD & PREPARE \u2014 the SELL_LIMIT @4411 is the correct structural fade.**",
+        "**REASONING CYCLE COMPLETE \u2014 DECISION: WAIT / HOLD (No New Execution)**",
+        "**DECISION: NO EXECUTION.** Accumulation divergence + failing delta gate + sub-2.5R tier-1 = the earlier pre-set binary in watch_0c15d185edef5415 resolves to **RAID**, not expansion. Re-arming the rollover watch with a stricter genuine-initiative gate:",
+        "**DECISION: NO TRADE \u2014 RAID CLASSIFICATION, STAND ASIDE**"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\n\u23f1\ufe0f [CADENCE NOTE: 4-minute gap between each message/dossier \u2014 plan and pre-position triggers/watches accordingly.]\nUTC: 2026-09-08 12:07:52 UTC | NY (ET): 2026-09-08 08:07:52 AM EDT | London: 2026-09-08 13"
+      ],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f7f56b857ffeEBFZkWt59SBzsa",
+      "title": "Escanor v4",
+      "total_messages": 28,
+      "order_calls": 0,
+      "dossiers": 4,
+      "brainstorms": 2,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\n\u23f1\ufe0f [CADENCE NOTE: 4-minute gap between each message/dossier \u2014 plan and pre-position triggers/watches accordingly.]\nUTC: 2026-09-08 11:46:55 UTC | NY (ET): 2026-09-08 07:46:55 AM EDT | London: 2026-09-08 12:46:55 "
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER\n\u23f1\ufe0f [CADENCE NOTE: 4-minute gap between each message/dossier \u2014 plan and pre-position triggers/watches accordingly.]\nUTC: 2026-09-08 11:46:55 UTC | NY (ET): 2026-09-08 07:46:55 AM EDT | London: 2026-09-08 12:46:55 "
+      ]
+    },
+    {
+      "id": "ses_f806495f8ffeLEPS4QB7urgYPS",
+      "title": "Escanor v3",
+      "total_messages": 444,
+      "order_calls": 13,
+      "dossiers": 97,
+      "brainstorms": 63,
+      "sample_decisions": [
+        "**DECISION: HOLD \u2014 no order changes.** Position fully managed by SL/TP; next action only on fill/invalidation.",
+        "**DECISION: HOLD, no new orders.** Position self-manages; recompute at London open (07:00 UTC, 11m) when the binary prints.",
+        "**STATE CONFIRMED \u2014 DECISION: HOLD / WAIT.** All directives adhered to; no order or watch changes warranted this wake.",
+        "**DECISION: HOLD, no changes.** Position now risk-free; let SL/TP govern.",
+        "**DECISION: HOLD, no changes.** BE SL governs; position is risk-free."
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT\n\u23f1\ufe0f [CADENCE NOTE: 4-minute gap between each message/dossier \u2014 plan and pre-position triggers/watches accordingly.]\nUTC: 2026-09-08 06:22:31 UTC | NY (ET): 2026-09-08 02:22:31 AM EDT | London: 2026-09-08 07"
+      ],
+      "sample_brainstorm": [
+        "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN\n\u23f1\ufe0f [CADENCE NOTE: 4-minute gap between each message/dossier \u2014 plan and pre-position triggers/watches accordingly.]\nUTC: 2026-09-08 06:28:21 UTC | NY (ET): 2026-09-08 02:28:21 AM EDT | London: 2026-09-08 07:28:2"
+      ]
+    },
+    {
+      "id": "ses_f83f4c997ffeN7AZBk0c2C6w1z",
+      "title": "Escanor v1",
+      "total_messages": 511,
+      "order_calls": 4,
+      "dossiers": 101,
+      "brainstorms": 18,
+      "sample_decisions": [
+        "**DECISION: HOLD \u2014 no change.** Velocity and delta both cooling, suggesting the bullish push is exhausting. FVG 26% fill is not yet a close above the gap top (4408.85). Let this resolve.",
+        "**DECISION: Preemptively widen SL to 4417.00** to protect against a spike-through stop hunt, positioning it behind the M15 FVG resistance at 4416.20. This is a legitimate structural reposition \u2014 the current tight SL (1.69 pts) is inside normal spread noise (45 pts) and highly vulnerable to a wick.",
+        "**DECISION: HOLD \u2014 no change.** SL 4410.25, TP 4354.36 intact. The exhausted-FVG setup + HTF bearish + falling CVD all support the short. No panic, no premature management. Let it resolve."
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 ACTIVE_POSITION_REVIEW\nUTC: 2026-09-07 13:26:01 UTC | NY (ET): 2026-09-07 09:26:01 AM EDT | London: 2026-09-07 14:26:01 BST | Active Session: LONDON_NY_OVERLAP\nActive instruments: XAUUSD\nOpen positions: 1\nReason: periodic state "
+      ],
+      "sample_brainstorm": [
+        "---\n\n## 5-QUESTION NEWS BRAINSTORM \u2014 Sep 7, 2026 | 10:03 AM EDT | LONDON_NY_OVERLAP\n\n### CONTEXT SNAPSHOT\n\n| Factor | Value | Signal |\n|--------|-------|--------|\n| **Position** | SELL 0.35 @ 4396.18, SL 4410.25, TP 4354.36 | **-$398.30** |\n| **Price"
+      ]
+    },
+    {
+      "id": "ses_f83dc6d2dffeNDoT8xwgsWbfWA",
+      "title": "Escanor",
+      "total_messages": 21,
+      "order_calls": 0,
+      "dossiers": 4,
+      "brainstorms": 2,
+      "sample_decisions": [
+        "**DECISION: HOLD \u2014 NO ACTION**"
+      ],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 ACTIVE_POSITION_REVIEW\nUTC: 2026-09-07 14:03:17 UTC | NY (ET): 2026-09-07 10:03:17 AM EDT | London: 2026-09-07 15:03:17 BST | Active Session: LONDON_NY_OVERLAP\nActive instruments: XAUUSD\nOpen positions: 1\nReason: periodic state "
+      ],
+      "sample_brainstorm": [
+        "**MARKET TIME VERIFIED:**\n- UTC: 14:07 | NY: 10:07 AM EDT | London: 15:07 BST\n- **Active Session: LONDON_NY_OVERLAP** (peak liquidity)\n- US macro release COMPLETED (12:30 UTC) \u2014 jobs data already priced\n- London close in **1h 52m** \u2014 watch for positi"
+      ]
+    },
+    {
+      "id": "ses_f83e8d5fdffeiLTPr0H98C3pJo",
+      "title": "Escanor",
+      "total_messages": 2,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    },
+    {
+      "id": "ses_f83e7bb1bffe1Rl7svJLmIsWJt",
+      "title": "Escanor",
+      "total_messages": 43,
+      "order_calls": 0,
+      "dossiers": 6,
+      "brainstorms": 1,
+      "sample_decisions": [],
+      "sample_dossier": [
+        "ALPHA EVIDENCE WAKE \u2014 ACTIVE_POSITION_REVIEW\nUTC: 2026-09-07 13:40:29 UTC | NY (ET): 2026-09-07 09:40:29 AM EDT | London: 2026-09-07 14:40:29 BST | Active Session: LONDON_NY_OVERLAP\nActive instruments: XAUUSD\nOpen positions: 1\nReason: periodic state "
+      ],
+      "sample_brainstorm": [
+        "---\n\n## 5-QUESTION BRAINSTORM + CROWD LIQUIDITY RESEARCH\n\n### CURRENT STATE SNAPSHOT (13:52 UTC)\n\n| Element | Value |\n|---|---|\n| **Position** | SELL #536482415, 0.35 lots @ 4396.18 |\n| **Current** | 4403.03 (-$239.75) |\n| **SL/TP** | 4410.25 / 4354."
+      ]
+    },
+    {
+      "id": "ses_f845eaba9ffed8wO4UndQf4lPM",
+      "title": "Escanor",
+      "total_messages": 2,
+      "order_calls": 0,
+      "dossiers": 0,
+      "brainstorms": 0,
+      "sample_decisions": [],
+      "sample_dossier": [],
+      "sample_brainstorm": []
+    }
+  ]
+}

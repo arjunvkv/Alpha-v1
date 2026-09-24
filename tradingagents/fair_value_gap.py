@@ -103,11 +103,18 @@ class FairValueGapEngine:
                             filled_range = gap_top - lowest_subsequent
                             fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 1e-6)) * 100.0)), 1)
                             mitigated = (fill_pct >= 100.0)
-                            status = "MITIGATED" if mitigated else "PARTIALLY_FILLED"
+                            if mitigated:
+                                status = "MITIGATED"
+                            elif fill_pct > 50.0:
+                                status = "STALE_EXHAUSTED"
+                            else:
+                                status = "PARTIALLY_FILLED"
                         else:
                             fill_pct = 0.0
                             mitigated = False
                             status = "FRESH"
+
+                        is_fade_eligible = (not mitigated) and (fill_pct <= 25.0)
 
                         fvg_entry = {
                             "type": "BULLISH_FVG",
@@ -120,12 +127,8 @@ class FairValueGapEngine:
                             "candle_time": datetime.datetime.fromtimestamp(rates[i-1]['time'], datetime.timezone.utc).strftime("%Y-%m-%d %H:%M"),
                             "fill_pct": fill_pct,
                             "status": status,
-                            "mitigated": mitigated,
-                            "is_stale": is_stale,
-                            "last_tick_time": tick_time_str,
-                            "market_status": market_status,
-                            "formula_id": "MAX_LIFETIME_PENETRATION_V1",
-                            "provenance": f"MT5_{tf_name}_CANDLES"
+                            "is_fade_eligible": is_fade_eligible,
+                            "mitigated": mitigated
                         }
                         fvgs.append(fvg_entry)
 
@@ -155,11 +158,18 @@ class FairValueGapEngine:
                             filled_range = highest_subsequent - gap_bottom
                             fill_pct = round(min(100.0, max(0.0, (filled_range / max(gap_size, 1e-6)) * 100.0)), 1)
                             mitigated = (fill_pct >= 100.0)
-                            status = "MITIGATED" if mitigated else "PARTIALLY_FILLED"
+                            if mitigated:
+                                status = "MITIGATED"
+                            elif fill_pct > 50.0:
+                                status = "STALE_EXHAUSTED"
+                            else:
+                                status = "PARTIALLY_FILLED"
                         else:
                             fill_pct = 0.0
                             mitigated = False
                             status = "FRESH"
+
+                        is_fade_eligible = (not mitigated) and (fill_pct <= 25.0)
 
                         fvg_entry = {
                             "type": "BEARISH_FVG",
@@ -172,12 +182,8 @@ class FairValueGapEngine:
                             "candle_time": datetime.datetime.fromtimestamp(rates[i-1]['time'], datetime.timezone.utc).strftime("%Y-%m-%d %H:%M"),
                             "fill_pct": fill_pct,
                             "status": status,
-                            "mitigated": mitigated,
-                            "is_stale": is_stale,
-                            "last_tick_time": tick_time_str,
-                            "market_status": market_status,
-                            "formula_id": "MAX_LIFETIME_PENETRATION_V1",
-                            "provenance": f"MT5_{tf_name}_CANDLES"
+                            "is_fade_eligible": is_fade_eligible,
+                            "mitigated": mitigated
                         }
                         fvgs.append(fvg_entry)
 
@@ -222,7 +228,8 @@ class FairValueGapEngine:
         
         tf = nearest.get("timeframe", "M15")
         f_type = "Bull" if "BULLISH" in nearest.get("type", "") else "Bear"
-        return f"FVG: {tf} {f_type} [{nearest.get('bottom')}-{nearest.get('top')}] (CE: {nearest.get('consequent_encroachment')}) [{nearest.get('status')}]"
+        fill_p = nearest.get("fill_pct", 0.0)
+        return f"FVG: {tf} {f_type} [{nearest.get('bottom')}-{nearest.get('top')}] (CE: {nearest.get('consequent_encroachment')}) [Fill: {fill_p}%]"
 
     # Clean method alias
     get_fvg_matrix = get_symbol_fvg_matrix

@@ -95,6 +95,16 @@ class MT5DataHarness:
                 "formatted_table": "No historical candle data available."
             }
 
+        # Deduce broker timezone offset (e.g. FTMO EET/EEST is UTC+3) so timestamps represent true UTC
+        broker_offset_sec = 0
+        try:
+            tick = mt5.symbol_info_tick(sym)
+            if tick and tick.time:
+                utc_now_sec = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                broker_offset_sec = int(round((tick.time - utc_now_sec) / 3600.0)) * 3600
+        except Exception:
+            broker_offset_sec = 0
+
         candle_list = []
         table_lines = [
             f"# Historical Candle Series for {sym} ({timeframe}) - {len(rates)} Bars",
@@ -103,7 +113,8 @@ class MT5DataHarness:
         ]
 
         for idx, r in enumerate(rates):
-            ts = datetime.datetime.fromtimestamp(r['time'], datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
+            utc_ts_sec = r['time'] - broker_offset_sec
+            ts = datetime.datetime.fromtimestamp(utc_ts_sec, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
             o, h, l, c = float(r['open']), float(r['high']), float(r['low']), float(r['close'])
             vol = int(r['tick_volume'])
             spread = int(r['spread'])

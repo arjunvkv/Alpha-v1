@@ -73,15 +73,28 @@ class DeepDossierLogger:
         except Exception as _arb_dossier_err:
             LOG.debug(f"Arbiter dossier block error: {_arb_dossier_err}")
 
+        # Live World Events & Macro Wire Stream
+        try:
+            from tradingagents.world_events import LiveWorldEventsEngine
+            _we_engine = LiveWorldEventsEngine(enable_background_polling=False)
+            _live_evs = _we_engine.fetch_live_events()
+            if _live_evs:
+                md_lines.append(f"### 🌐 Live World Events & Sovereign Wires (Top {_live_evs[:3]})")
+                for _ev in _live_evs[:3]:
+                    md_lines.append(f"- `[{_ev.get('category', 'WIRE')}]` **{_ev.get('source', '')}** ({_ev.get('pub_date', '')}): {_ev.get('title', '')}")
+                md_lines.append("")
+        except Exception as _we_err:
+            LOG.debug(f"World events dossier block error: {_we_err}")
+
         md_lines.append(f"## 📋 Cadence-Tiered Market Analysis Protocol (OpenCode CIO Mandate)")
         md_lines.append(f"### ⚡ Tier 1: High-Frequency Dynamic Core (Every Wake / Price Movement)")
         md_lines.append(f"0. **Q0 (Raw Physical Telemetry - MANDATORY)**: `get_market_regime_context` — Raw quotes, tape velocity, CVD ratio, 4m interval displacement, cross-asset lead, and volume air pockets.")
         md_lines.append(f"1. **Q1 (Account & Orders)**: `get_account_status`, `get_pending_orders`, `get_active_watches` — Equity, margin utilization, pending tickets, and live armed watches.")
-        md_lines.append(f"2. **Q6 (FVG Matrix)**: `get_fvg_matrix` — Unmitigated H4/H1/M15/M5 FVGs, 50% Consequent Encroachment (CE), fill %.")
+        md_lines.append(f"2. **Q6 (FVG Matrix)**: `get_fvg_matrix` — Unmitigated H4/H1/M15/M5 FVGs, 50% Consequent Encroachment (CE), fill % (Fresh <=25% = FADE_OK; Stale >50% = FADE_BANNED).")
         md_lines.append(f"3. **Q7/Q8 (Order Flow & Microstructure)**: `get_live_microstructure` — Real-time spread (pts), M1 tick velocity (t/m), order book depth imbalance, and raw_cvd_full (cumulative volume delta, absorption, exhaustion).")
         md_lines.append(f"4. **Q10 (Execution & Staging)**: `place_pending_order`, `execute_trade`, `update_position`, `register_watch` — Stage/manage limits or SL/TP.\n")
         md_lines.append(f"### 🕒 Tier 2: Periodic & Event-Driven Refresh (Brainstorm Turns / Macro Event)")
-        md_lines.append(f"5. **Q2 (Breaking News & Event Research)**: Proxima MCP in Brainstorm Turns (2x `proxima_ask_perplexity`, 2x `proxima_deep_search(news)`, 2x `proxima_ddg_search`, 2x `proxima_deep_search(reddit)`, `proxima_web_scrape`; 8 parallel calls, hard numbers only, zero probability queries).")
+        md_lines.append(f"5. **Q2 (Breaking News & Event Research)**: `get_live_world_events` for instant institutional wires + Proxima MCP (1x `proxima_ask_perplexity` for dynamic causal inquiry, 1x `proxima_deep_search(news)` for macro flow depth; hard numbers & wire quotes only, zero DDG/Reddit bloat).")
         md_lines.append(f"6. **Q3 (Macro Rates & Real Yields)**: `get_fred_observations` — US Treasury 10Y/2Y yields, real yields (DFII10), breakeven inflation.")
         md_lines.append(f"7. **Q4/Q5 (Volume Profile & Structure)**: `get_full_institutional_profile` — Point of Control (POC), Value Area (VAH/VAL 70%), VWAP sigma bands.")
         md_lines.append(f"8. **Q9 (Thesis Validation)**: `backtest_thesis`, Proxima MCP — Empirically validate proposed thesis before new trade entry ($R:R \\ge 2.5:1$).\n")

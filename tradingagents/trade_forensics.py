@@ -38,8 +38,8 @@ class TradeForensicsEngine:
     def sync_closed_trades(self, days_back: int = 7) -> Dict[str, Any]:
         """Scans MT5 deal history and enriches the Trade Journal with forensic entry context."""
         self._ensure_mt5()
-        now_dt = datetime.datetime.now(datetime.timezone.utc)
-        from_dt = now_dt - datetime.timedelta(days=days_back)
+        now_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+        from_dt = now_dt - datetime.timedelta(days=days_back + 1)
         
         deals = mt5.history_deals_get(from_dt, now_dt)
         if deals is None or len(deals) == 0:
@@ -277,6 +277,15 @@ class TradeForensicsEngine:
 
             if ticket_int > 0:
                 match = next((t for t in trades if t.get("ticket") == ticket_int), None)
+                if not match:
+                    self.sync_closed_trades(days_back=7)
+                    if JOURNAL_FILE.exists():
+                        try:
+                            with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
+                                fresh_data = json.load(f)
+                            match = next((t for t in fresh_data.get("trades", []) if t.get("ticket") == ticket_int), None)
+                        except Exception:
+                            pass
                 if match:
                     return {"status": "SUCCESS", "trade": match}
                 return {"status": "TICKET_NOT_FOUND", "ticket": ticket_int}

@@ -191,6 +191,10 @@ class CatalystArbiterEngine:
         air_pocket_above = []
         pdh_price = 0.0
         pdl_price = 0.0
+        day_high = 0.0
+        day_low = 0.0
+        day_rel = 0.50
+        day_eq = 0.0
         dist_pdh_pts = 0.0
         dist_pdl_pts = 0.0
         nearest_fvg_below = None
@@ -288,12 +292,25 @@ class CatalystArbiterEngine:
 
                 # PDH & PDL from D1 rates
                 d1_rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_D1, 0, 3)
+                day_high = 0.0
+                day_low = 0.0
+                day_rel = 0.50
+                day_eq = 0.0
                 if d1_rates is not None and len(d1_rates) >= 2:
                     pdh_price = round(float(d1_rates[-2]['high']), 2)
                     pdl_price = round(float(d1_rates[-2]['low']), 2)
                     if curr_bid > 0:
                         dist_pdh_pts = round(pdh_price - curr_bid, 2)
                         dist_pdl_pts = round(curr_bid - pdl_price, 2)
+                
+                # Active Intraday Dealing Range from today's live D1 bar
+                if d1_rates is not None and len(d1_rates) >= 1:
+                    day_high = round(float(d1_rates[-1]['high']), 2)
+                    day_low = round(float(d1_rates[-1]['low']), 2)
+                    if day_high > day_low:
+                        day_eq = round((day_high + day_low) / 2.0, 2)
+                        if curr_bid > 0:
+                            day_rel = round((curr_bid - day_low) / (day_high - day_low), 3)
 
                 # Volume POC and Low Volume Nodes (Air Pockets) from M5 distribution
                 r_m5 = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M5, 0, 150)
@@ -374,7 +391,7 @@ class CatalystArbiterEngine:
                         # 60 Real Physical OHLC bars (rounded to 1 decimal place: 0.10)
                         raw_ohlc_60b[tf_name] = [
                             [round(float(r['open']), 1), round(float(r['high']), 1), round(float(r['low']), 1), round(float(r['close']), 1)]
-                            for r in r_100[-60:]
+                            for r in r_100[-3:]
                         ]
         except Exception as _detail_err:
             LOG.debug(f"Extended tape and volume profiling error: {_detail_err}")
@@ -546,7 +563,7 @@ class CatalystArbiterEngine:
             next_ev_str = "None scheduled today"
 
         badge_line1 = f"[RAW REALITY] Bid: {curr_bid:.1f} | Ask: {curr_ask:.1f} | Spr: {live_spread_pts} pts | Vel: {tick_velocity_tpm:.0f} t/m | CVD 5m: {cvd_5m_ratio:+.2f} | 10b Net Delta: {cvd_10b_pressure:+.1f}%"
-        badge_line2 = f"- Coordinates: POC {poc_price:.1f} | PDL {pdl_price:.1f} ({dist_pdl_pts:+.1f}) | PDH {pdh_price:.1f} ({dist_pdh_pts:+.1f}) | FVG Below: {fvg_below_str} | FVG Above: {fvg_above_str}"
+        badge_line2 = f"- Coordinates: POC {poc_price:.1f} | Day Range [{day_low:.1f} - {day_high:.1f}] Rel: {day_rel:.2f} (50% Eq: {day_eq:.1f}) | PDL {pdl_price:.1f} ({dist_pdl_pts:+.1f}) | PDH {pdh_price:.1f} ({dist_pdh_pts:+.1f}) | FVG Below: {fvg_below_str} | FVG Above: {fvg_above_str}"
         badge_line4 = f"- 4M Footprint Deltas (30b=120m): {deltas_4m_str}"
         badge_line5 = f"- 4M Displacements (pts): {disp_4m_str}"
         badge_line6 = f"- M1 Recent (Last 10m): Deltas {m1_recent_deltas_str} | Prices {m1_recent_prices_str}"
@@ -592,8 +609,12 @@ class CatalystArbiterEngine:
                 },
                 "structural_auction": {
                     "poc_price": poc_price,
-                    "nearest_air_pocket_below": air_pocket_below,
-                    "nearest_air_pocket_above": air_pocket_above,
+                    "day_high": day_high,
+                    "day_low": day_low,
+                    "day_rel": day_rel,
+                    "day_equilibrium": day_eq,
+                    "nearest_air_pocket_below": air_pocket_below if air_pocket_below else "OPEN_ROADWAY_EXPANSION_ZONE",
+                    "nearest_air_pocket_above": air_pocket_above if air_pocket_above else "OPEN_ROADWAY_EXPANSION_ZONE",
                     "pdh_price": pdh_price,
                     "pdl_price": pdl_price,
                     "distance_to_pdh_pts": dist_pdh_pts,

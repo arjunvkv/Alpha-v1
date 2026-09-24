@@ -463,22 +463,23 @@ class ConsolidatedTradingDaemon:
             f"=== ALPHA TRADING DESK DAEMON ONLINE ===\n"
             f"Session: {title} ({sid})\n"
             f"Current UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape) | Briefing: {active_mins}-Min active / {dossier_mins}-Min idle\n\n"
-            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===\n"
-            f"OpenCode is the sole market reasoner and CIO. The daemon only observes and wakes a new investigation.\n"
-            f"PRINCIPLE 0 — A WAKE IS NOT A SIGNAL: A cadence ping or brainstorm prompt is an observation cycle, NOT a mandate to trade. If market conditions are in equilibrium, quiet consolidation, or lacking a confirmed catalyst, YOUR HIGH-CONVICTION OUTPUT IS: `DECISION: NO ACTION / WAIT — Standing flat`.\n"
-            f"MANDATORY ON EVERY WAKE (STEP 0): You MUST directly call the registered FastMCP tool: `alpha-daemon-mcp_get_market_regime_context(symbol='XAUUSD')` or `get_market_regime_context(symbol='XAUUSD')`.\n"
-            f"Do NOT explore directories, read codebase files, or search for scripts. All tools are natively registered in your MCP tool environment.\n"
-            f"Audit live broker quotes, spread, raw tape velocity, CVD ratio, 4m interval displacement, and auction air pockets.\n"
-            f"No autonomous order placement, auto-harvest, score gate, or dossier conclusion is authoritative.\n\n"
-            f"=== PROVEN WINNING EXECUTION BLUEPRINT (HUMAN STEERING & HISTORICAL WINS) ===\n"
-            f"• Sizing & Target Discipline: Available lots 0.50 to 1.00 lots scaled for high certainty. Target 1 Only: 4 to 10 pt closer structural TPs banked cleanly in 10 to 30 minutes.\n"
-            f"• Stop-Breakout Entry: BUY_STOP / SELL_STOP where price cannot retrace back, SL anchored behind verified structural hold.\n"
-            f"• Directive 8: 30 to 60 min absolute event silence before Tier-1 releases (CPI, PPI, FOMC, NFP, GDP). Stand flat.\n"
-            f"• Rule 0: Tape over headlines (trust live tape CVD / structure over narrative if they diverge).\n"
-            f"• Rule 2.4: Price-direction discriminator (verified displacement in trade direction).\n\n"
-            f"=== MCP TOOLS DIRECTORY & USAGE GUIDE ===\n"
-            f"Directly invoke atomic tools in parallel: alpha-daemon-mcp_get_market_regime_context, alpha-daemon-mcp_get_live_microstructure, alpha-daemon-mcp_get_fvg_matrix, alpha-daemon-mcp_get_measured_cvd, alpha-daemon-mcp_get_full_institutional_profile, alpha-daemon-mcp_get_account_status, alpha-daemon-mcp_get_pending_orders, alpha-daemon-mcp_place_pending_order, alpha-daemon-mcp_execute_market_order, alpha-daemon-mcp_cancel_pending_order, alpha-daemon-mcp_modify_pending_order, alpha-daemon-mcp_execute_trade, alpha-daemon-mcp_update_position, alpha-daemon-mcp_register_watch, alpha-daemon-mcp_get_active_watches, alpha-daemon-mcp_cancel_watch, alpha-daemon-mcp_clear_completed_watches, and Proxima news tools (proxima_ask_perplexity, proxima_deep_search, proxima_ddg_search).\n"
+            f"Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active | Briefing: Turn A (4-Min Physical Dossier) <-> Turn B (8-Min 5-Question Macro Repricing)\n\n"
+            f"=== EVIDENCE-FIRST AUTHORITY & MANDATORY 5-POD ADVERSARIAL PROTOCOL ===\n"
+            f"OpenCode is the sole operational CIO and trade decision-maker. The daemon only observes and wakes a new investigation.\n"
+            f"MANDATORY ON EVERY WAKE: Evaluate through all 5 Pod lenses (Macro Wire Gravity, Order Flow CVD, 4TF Technical Geometry, Adversarial Counter-Trap, Execution Arbiter).\n\n"
+            f"=== PROVEN WINNING EXECUTION BLUEPRINT (ALPHA GRANGER 7-LAYER CHAMPION DESK) ===\n"
+            f"• Trade What Is Revolving Around Right Now: Trade the active present. Never freeze or wait for tomorrow's calendar events when edge exists on the table.\n"
+            f"• 7-Layer Institutional Conviction: High-conviction execution requires 7-layer alignment (COT, real yields DFII10, 4TF EMAs/RSI, FVG CE coordinates, Bull vs Bear debate) via `query_analyst_desk` (Conviction >= 7.0/10).\n"
+            f"• Sizing Realism & Growth Blueprint: Sizing is 0.50 to 1.00 lots (1.00L standard on high conviction >= 8.0/10 + 4TF alignment; 0.50L on baseline 7.0-7.9).\n"
+            f"• Positive Asymmetric R:R (>= 1.5:1 to 2.5:1+ Floor): Every trade must target opposing structural liquidity (opposing FVG CE, POC, Value Area boundary, or liquidity sweep) that provides at least 1.5x the stop distance. Inverted negative R:R (<1.5:1) is strictly vetoed!\n"
+            f"• Structural SL Grounding: Anchor SL firmly behind HTF structural invalidation + 1.5x ATR14 buffer (6.0 to 12.0 pts). Never squeeze stops into 2-point noise wicks.\n"
+            f"• Mechanical Bracket Discipline: Once filled, LET THE BROKER TERMINAL MANAGE SL/TP. Stop cutting winners early out of micro-fear; let the mathematical 1.5R to 3R target run to completion (banking +$1,000 to +$2,500 per win). Once > +1.0R in profit, trail SL behind structural swing shelves with a 3–5 pt buffer (BE -> +1R -> +2R).\n"
+            f"• NO PASSIVE WATCH SENSOR LOOPS: Pre-stage orders directly on MT5 book. Never substitute `register_watch` for real broker execution.\n\n"
+            f"=== RESTORED ON-DEMAND CHAMPION TOOLS ===\n"
+            f"  • Post-Trade Forensics: `alpha_get_trade_forensics(ticket=...)`\n"
+            f"  • Empirical Replay / Backtesting: `alpha_backtest_thesis(query=..., symbol='XAUUSD', timeframe='M5', bars=60)`\n"
+            f"  • Decision Grounding: `alpha_record_decision_snapshot(...)`\n"
+            f"  • Memory: `graphiti_record_observation()`, `graphiti_search_facts()`, `graphiti_add_episode()`\n"
         )
 
     async def run_cycle(self):
@@ -834,19 +835,19 @@ class ConsolidatedTradingDaemon:
 
         # Calculate required interval based on active vs idle state
         if has_active_trades:
-            # Active trade cadence: Calm 5-minute position reviews (300s) to prevent over-deliberation
-            self.active_burst_step = 0
-            self.just_sent_active_brainstorm = False
-            required_interval = float(active_trade_interval)  # 300.0s (5m)
+            # Active trade cadence: Calm 180s (3m) interval to give the trade room to breathe
+            # Prevents LLM panic cuts and micro-fear while maintaining steady telemetry oversight
+            if self.just_sent_active_brainstorm:
+                required_interval = 300.0  # 5 min breathe gap after in-flight audit
+                self.just_sent_active_brainstorm = False
+            else:
+                required_interval = float(active_trade_interval) if active_trade_interval >= 180 else 180.0
         else:
             self.active_burst_step = 0
             self.just_sent_active_brainstorm = False
-            if self.last_dispatched_turn_type == "BRAINSTORM":
-                # After the news / brainstorm message, let there be a 4 min gap (240s) for next dossier
-                required_interval = 240.0
-            else:
-                # 2 min dossiers every 2 min
-                required_interval = float(dossier_interval)
+            # Idle Cadence: Alternating Turn A (Physical Dossier, 4 min) <-> Turn B (5-Question Macro Repricing, 4 min)
+            # Both turns run on a 4-minute (240s) interval, completing a full 8-minute A <-> B cycle
+            required_interval = float(dossier_interval) if dossier_interval >= 180 else 240.0
 
         # Evaluate active persistent watches against live tick price using UniversalWatcherEngine
         triggered_watch = None
@@ -925,31 +926,32 @@ class ConsolidatedTradingDaemon:
                 trigger = "STARTUP" if is_startup else ("ACTIVE_POSITION_REVIEW" if has_active_trades else "SCHEDULED_REASSESSMENT")
 
             if has_active_trades:
-                # Active trade pattern: Calm Active Position Reviews every 5 minutes (NO brainstorm distractions in-flight)
-                self.just_sent_active_brainstorm = False
-                is_brainstorm_turn = False
-                self.last_dispatched_turn_type = "ACTIVE_POSITION_REVIEW"
+                # Active trade pattern: 1m review x 3 -> in-flight audit -> 5m gap
+                self.active_burst_step = (self.active_burst_step % 4) + 1
+                if self.active_burst_step == 4:
+                    is_brainstorm_turn = True
+                    self.just_sent_active_brainstorm = True
+                    self.last_dispatched_turn_type = "ACTIVE_BRAINSTORM"
+                    LOG.info("⚡ Cadence: Dispatched Active In-Flight Audit (Step 4/4). Next interval: 5-minute breathe gap (300s).")
+                else:
+                    is_brainstorm_turn = False
+                    self.just_sent_active_brainstorm = False
+                    self.last_dispatched_turn_type = "ACTIVE_POSITION_REVIEW"
+                    LOG.info(f"⚡ Cadence: Dispatched Active Position Review (Step {self.active_burst_step}/4). Next interval: 1 minute.")
             elif triggered_watch is not None:
                 is_brainstorm_turn = False
                 self.last_dispatched_turn_type = "WATCH_TRIGGER"
             else:
-                # Idle pattern: 2 min dossiers every 2 min, brainstorm goes every 7th dossier
-                if self.dossiers_since_brainstorm >= 7:
-                    is_brainstorm_turn = True
-                    self.dossiers_since_brainstorm = 0
+                # Idle pattern: Turn A (Physical Dossier) <-> Turn B (5-Question Macro Repricing)
+                is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
+                if is_brainstorm_turn:
                     self.last_dispatched_turn_type = "BRAINSTORM"
                     self.next_turn_type = "DOSSIER"
-                    LOG.info("📰 Cadence: Dispatched BRAINSTORM (90% News Drilldown) after 7 dossiers. Next interval: 4 minutes.")
+                    LOG.info("📰 Cadence: Dispatched Turn B (5-Question Macro Repricing Evaluation). Next interval: 4 minutes.")
                 else:
-                    is_brainstorm_turn = False
-                    self.dossiers_since_brainstorm += 1
                     self.last_dispatched_turn_type = "DOSSIER"
-                    if self.dossiers_since_brainstorm >= 7:
-                        self.next_turn_type = "BRAINSTORM"
-                    else:
-                        self.next_turn_type = "DOSSIER"
-                    LOG.info(f"📊 Cadence: Dispatched DOSSIER #{self.dossiers_since_brainstorm}/7. Next interval: 2 minutes.")
-
+                    self.next_turn_type = "BRAINSTORM"
+                    LOG.info("📊 Cadence: Dispatched Turn A (Physical Microstructure Dossier with 4TF Header). Next interval: 4 minutes (Turn B).")
 
             try:
                 from tradingagents.time_helper import get_market_time_context, get_upcoming_transitions_summary
@@ -984,131 +986,125 @@ class ConsolidatedTradingDaemon:
                     f"• Instruction: {triggered_watch.get('instruction')}\n"
                     f"• Reason: {triggered_watch.get('reason')}\n\n"
                     f"=== INSTANT DECISIVE EXECUTION AUDIT (ZERO-DELAY BROKER ACTION) ===\n"
-                    f"1. DIRECT STAGING / EXECUTION: If a breaking catalyst, active kinetic surge (expanding velocity + CVD delta surge), or Turtle Soup reclaim is active right at structure, IMMEDIATELY call `execute_market_order` (BUY/SELL) with 0.50–1.00L, 5.5–10 pt SL, and 4–8 pt TP! If tape is quietly consolidating 2–5 pts from structure, IMMEDIATELY deploy the pre-planned order (`place_pending_order` BUY_LIMIT/SELL_LIMIT/BUY_STOP/SELL_STOP) on MT5 in this very turn! Do not defer execution or staging to a secondary turn.\n"
-                    f"2. PARALLEL TELEMETRY CONFIRMATION: Call `get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}')` in parallel to ground the fill.\n"
-                    f"3. HARD SIZING & STOPS: 0.50–1.00L sizing, 6.0–10.0 pt structural SL, 4.0–8.0 pt Mode A TP. Spread-compensated limits (+0.35 on BUY_LIMIT, -0.35 on SELL_LIMIT)."
+                    f"1. DIRECT STAGING / EXECUTION: If a breaking catalyst, active kinetic surge (expanding velocity + CVD delta surge), or Turtle Soup reclaim is active right at structure, IMMEDIATELY call `alpha_execute_market_order` (BUY/SELL) with 0.40–1.00L, 6.0–10.0 pt SL, and Mode A (4–8 pt) or Extended Mode B (12–20 pt) TP! If tape is quietly consolidating 2–5 pts from structure, IMMEDIATELY deploy the pre-planned order (`alpha_place_pending_order` BUY_LIMIT/SELL_LIMIT/BUY_STOP/SELL_STOP) on MT5 in this very turn! Do not defer execution or staging to a secondary turn.\n"
+                    f"2. PARALLEL TELEMETRY CONFIRMATION: Call `alpha_get_market_regime_context(symbol='{triggered_watch.get('symbol', 'XAUUSD')}')` in parallel to ground the fill.\n"
+                    f"3. HARD SIZING & STOPS: 0.40–0.50L baseline, 6.0–10.0 pt structural SL, 4.0–8.0 pt Mode A TP (or 12.0–20.0 pt Extended TP). Spread-compensated limits (+0.35 on BUY_LIMIT, -0.35 on SELL_LIMIT).\n"
+                    f"4. 5-POD ADVERSARIAL EVALUATION MANDATORY."
                 )
-            elif is_brainstorm_turn:
+            elif has_active_trades and is_brainstorm_turn:
+                # Active trade burst step 4: In-Flight Audit before 5-minute breathe gap
                 prompt = (
+                    f"⚡ ALPHA IN-FLIGHT MACRO & STRUCTURE AUDIT (Active Trade Step 4/4)\n"
                     f"{_time_str}\n\n"
-                    "=== INSTITUTIONAL BRAINSTORM: 90% NEWS DRILLDOWN ===\n"
-                    "Brainstorm with 5 new targeted questions about current macro/micro conditions based strictly on live breaking news and physical tape realities.\n\n"
-                    "MANDATORY 90% NEWS RESEARCH SUITE VIA PROXIMA MCP (EXECUTE ALL IN PARALLEL):\n"
-                    "Formulate your own search queries dynamically based on your current thought process and market catalysts:\n"
-                    "  • 2x `proxima_ask_perplexity`: Breaking headlines, macro releases, wire alerts.\n"
-                    "  • 2x `proxima_deep_search(query=..., type='news', timeframe='today')`: Deep AI research queries for in-depth background.\n"
-                    "  • 2x `proxima_ddg_search(query=...)`: Live web searches across primary sources and wires.\n"
-                    "  • 2x `proxima_deep_search(query=..., type='reddit')` or `proxima_ddg_search(query='... site:reddit.com')`: Retail sentiment chatter.\n"
-                    "  • `proxima_web_scrape(url=...)`: Fetch full text if specific article/statement URLs returned.\n"
-                    "  • `get_fred_observations(series_id='DFII10')`: 10Y real yields (TIPS).\n"
-                    "  • `alpha-daemon-mcp_get_full_institutional_profile(symbol='XAUUSD')` OR `read(filePath='C:/Trading/Alpha/logs/institutional_deep_book.md')`: Volume Profile (POC/VAH/VAL), Institutional VWAP bands, Retail Stop Clusters (BSL/SSL magnets), and COT.\n"
-                    "  • `graphiti-memory-mcp_graphiti_get_pattern_walks(symbol='XAUUSD')`: Review dominant winning walks & trap fingerprints to recalibrate mental model.\n"
-                    "• STRICT NEGATIVE CONSTRAINT: ZERO PROBABILITY QUERIES. Query only for factual prints, actual data points, and verbatim quotes.\n\n"
-                    "CADENCE ACTION DIRECTIVE (AGENTS.MD PERMANENT SYSTEM PROMPT GOVERNS):\n"
-                    "• Mid-air equilibrium between shelves? Stand flat with patience (`DECISION: NO ACTION / WAIT`).\n"
-                    "• Breaking news or active kinetic breakout/reclaim at structure? Execute IMMEDIATELY via `execute_market_order` (BUY/SELL, 0.50–1.00L, 5.5–10 pt SL, 4–8 pt Mode A TP). Fresh structural shelf (FVG CE / POC / OB) within 2 to 7 pts? Pre-stage Prong A limit or Prong B stop on MT5 now.\n"
-                    "• Sizing floor: 0.50L–1.00L. Mode A TP: 4.0–8.0 pts (bank fast into nearest pivot/shelf per User Msg 95). NEVER stretch TP beyond 8–10 pts for paper R:R. Continuous learning: record observed traps or clean expansions via `graphiti_add_episode`."
+                    f"Active positions in flight: {len(open_tickets)}\n"
+                    f"Notice: A 5-minute uninterrupted breathe gap (300s) begins immediately after this review.\n\n"
+                    f"STEP 0 (MANDATORY IN-FLIGHT PARALLEL AUDIT & CONTINUOUS FACT GROUNDING):\n"
+                    f"  • `alpha_get_market_regime_context(symbol='XAUUSD')`: Live quotes, spread, CVD, 4M footprint deltas.\n"
+                    f"  • `alpha_get_account_status()`: Current floating PnL, margin utilization.\n"
+                    f"  • `graphiti_search_facts(patterns=['<IN_FLIGHT_STATE_TAGS>'])`: Contrast live in-flight retest/drawdown against past win/stumble walks (Pillar 1: Past stumble is NOT a veto unless adverse condition is active today).\n"
+                    f"  • `proxima_ask_perplexity(message=\"Gold XAUUSD breaking news headlines in last 15 minutes\")`: Check surprise breaking wires.\n"
+                    f"  • `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`: Record in-flight trade dynamics.\n\n"
+                    f"IN-FLIGHT POSITION ARBITRATION (MECHANICAL BRACKET SUPREMACY):\n"
+                    f"1. Is the overarching macro narrative still intact?\n"
+                    f"2. Has price reached Mode A TP (4.0–8.0 pts) or is it expanding toward Extended Mode B (12.0–20.0 pts)?\n"
+                    f"3. DEFAULT DIRECTIVE: HOLD_BRACKET. The MT5 broker terminal manages your structural SL and TP. Normal intraday candle wicks and retest pullbacks (0.5–2.0 pts past entry) are expected noise and MUST NOT be cut.\n"
+                    f"4. BANNED MANUAL CUTS (CONST_NO_PREMATURE_CUT): Cutting positions manually on normal noise causes bleed and is strictly prohibited. Early manual exit via `alpha_update_position` is reserved ONLY for Tier-1 news within 30m or a completed M15 close beyond invalidation.\n\n"
+                    f"FORMAT YOUR VERDICT VIA THE 5-POD PROTOCOL:\n"
+                    f"### POD 1: MACRO & CATALYST PERMISSION\n"
+                    f"### POD 2: ORDER FLOW & TAPE REALITY\n"
+                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS\n"
+                    f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & FACT GROUNDING)\n"
+                    f"- Cite `graphiti_search_facts`: Does live in-flight tape match holding victory or defense failure?\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (HOLD_BRACKET / TRAIL_SL)\n"
+                    f"- Default Action: HOLD_BRACKET. Let the pre-set structural bracket run to completion.\n"
                 )
             elif has_active_trades:
+                # Active trade burst: Calm 3-minute position review
                 prompt = (
-                    f"⚡ ALPHA EVIDENCE WAKE — ACTIVE POSITION REVIEW\n"
+                    f"⚡ ALPHA EVIDENCE WAKE — ACTIVE POSITION REVIEW (Step {self.active_burst_step}/4)\n"
                     f"{_time_str}\n\n"
-                    "ACTIVE TRADE AUDIT & RISK MANAGEMENT PROTOCOL:\n"
-                    "An active position is currently in flight. Execute immediate physical audit:\n\n"
-                    "STEP 0 (MANDATORY): Call FastMCP tools in parallel:\n"
-                    "  • `alpha-daemon-mcp_get_market_regime_context(symbol='XAUUSD')` (or `get_market_regime_context`): Live broker quote, spread, CVD, 4M footprint bars.\n"
-                    "  • `alpha-daemon-mcp_get_account_status()`: Floating PnL, equity, active ticket status.\n"
-                    "  • `alpha-daemon-mcp_get_live_microstructure(symbol='XAUUSD')`: Tick velocity and adverse flow check.\n"
-                    "  • `alpha-daemon-mcp_get_measured_cvd(symbol='XAUUSD')`: Live tick CVD trend.\n\n"
-                    "MANDATORY ACTIVE POSITION MANAGEMENT RULES (GOODS ENGINE):\n"
-                    "• MANAGE VIA SL & TP ONLY: Use `update_position` for all adjustments (`BREAK_EVEN`, `FULL_EXIT`, or SL/TP calibrate).\n"
-                    "• NO MECHANICAL TICK TRAILING: Continuous pip/tick trailing is strictly FORBIDDEN. Never drag SL a few points behind live price inside the retail noise band (which chokes trades).\n"
-                    "• STRUCTURAL SHELF RATCHETING ONLY (Granger Rule 1.4): Keep hard structural invalidation anchor intact. You may ratchet SL ONLY behind a newly confirmed physical M5/M15 swing shelf or FVG boundary with a 3 to 5 point buffer once price achieves confirmed displacement. Never trail in free space.\n"
-                    "• FORBID PANIC KILLS: Minor counter-wicks and planned retests into the entry shelf are normal structural noise. Allow the trade to breathe within the defined SL budget as long as HTF structure and CVD flow support the thesis.\n"
-                    "• STRICT BAN ON PREMATURE BREAKEVEN (NO BE SHIFTS) ON NORMAL WICKS: Once an order is filled with its structural Stop Loss, DO NOT move SL to entry/breakeven after +3 pts in quiet tape! Normal retests wick 0.5–1.5 pts past entry. LET NORMAL NOISE WORK.\n"
-                    "• CHAMPION HOLD MANDATE & STRICT NO-SCRATCH DISCIPLINE (WIN 4 FORENSIC #538243241): Once filled with a 5.5–10 pt structural SL and Mode A TP (4–8 pts), LET THE BROKER HANDLE SL AND TP! Continuous tick-trailing, moving SL to BE on minor wicks, and panic-scratching on 1-minute delta flickers or relief wicks are STRICTLY FORBIDDEN. Authorized early manual exits are restricted to: (1) Emergency Tier-1 News Shield (<30m to CPI/FOMC), (2) verified HTF (M15/H1) structural close beyond invalidation, (3) 20m dead-tape stagnation (<30 t/m), or (4) Intermediate Defense Shelf Annihilation & Adverse Flow Acceleration (the declared defense shelf is 100% mitigated, an M5 candle closes decisively beyond the shelf, and order flow shows persistent adverse delta acceleration with consecutive adverse footprint blocks and defense wall failure -> mandatory controlled FULL_EXIT to preserve capital).\n"
-                    "• STRICT BAN ON SHIFTING GOALPOSTS BEYOND HARD STOP LOSS: When an intermediate defense shelf breaks, never rationalize holding by citing support/resistance that lies at or beyond your hard Stop Loss!\n"
-                    "• NO STALL GUARDS / NO 2.5 PT REVERSAL SCRATCHES: Strict ban on arming 2.5 pt stall guard watchers that panic-kill positions on normal pullbacks. Gold trends via impulse-retest cycles; cutting trades on a 2.5 pt pullback cuts the winning horse right before the race.\n"
-                    "• BREAKOUT CONTINUATION STACKING: In Mode B trend cascades, pre-calculate Leg 2 entry milestone below TP1; the instant TP1 fills, deploy Leg 2 (`SELL_STOP` / `BUY_STOP`) without multi-cadence delay.\n"
-                    "• 20-MINUTE AUCTION STAGNATION (GENUINE DEAD TAPE ONLY): If price completely stalls within ±1.0 pt of entry for 20+ continuous minutes WITH velocity collapsed into dead compression (<40 t/m) and adverse CVD building, you may scratch. However, if price has made any structural expansion (>3 pts) and is merely executing a normal retest, HOLD FIRM behind your structural stop.\n"
-                    "• Target 1 Bank (User Msg 95 & 893): Bank profits cleanly at the 4.0 to 8.0 pt Mode A structural TP (strictly capped <=8.0–10.0 pts into nearest opposing pivot/shelf). NEVER stretch TP beyond 10 pts to chase paper 2:1 R:R (which caused Loss #544302915 where +8.03 pt profit reversed into a loss)!\n"
-                    "• POST-TRADE FORENSIC AUTOPSY: The instant the trade closes (SL, TP, or early exit), immediately call `graphiti-memory-mcp_graphiti_add_episode` with the root cause and reusable lesson."
+                    f"ACTIVE TRADE AUDIT & CONTINUOUS FACT GROUNDING PROTOCOL:\n"
+                    f"An active position is currently in flight. Execute immediate physical audit & memory grounding:\n\n"
+                    f"STEP 0 (MANDATORY IN PARALLEL — TAPE + FACTS):\n"
+                    f"  • `alpha_get_market_regime_context(symbol='XAUUSD')`: Live broker quote, spread, CVD, 4M footprint deltas.\n"
+                    f"  • `alpha_get_account_status()`: Floating PnL, equity, active ticket status.\n"
+                    f"  • `graphiti_search_facts(patterns=['<IN_FLIGHT_STATE_TAGS>'])`: Ground in-flight retest/pressure against past walks (Pillar 1: Stumble is NOT a veto unless adverse condition is active today; Pillar 4: Zero mental ticket recall).\n"
+                    f"  • `alpha_get_live_microstructure(symbol='XAUUSD')`: Tick velocity and adverse flow check.\n"
+                    f"  • `alpha_get_measured_cvd(symbol='XAUUSD')`: Live tick CVD trend.\n"
+                    f"  • `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`: Permanently record in-flight trade dynamics into Graphiti memory.\n\n"
+                    f"MANDATORY ACTIVE POSITION MANAGEMENT RULES (CHAMPION HOLD MANDATE):\n"
+                    f"• DEFAULT DIRECTIVE: HOLD_BRACKET. Let the MT5 terminal manage the pre-staged SL and TP brackets.\n"
+                    f"• CONST_NO_PREMATURE_CUT (IMMUTABLE): Cutting trades manually on normal retest wicks (0.5–2.0 pts) is an immediate failure of discipline and strictly FORBIDDEN. Normal noise breathing is required for asymmetric winners.\n"
+                    f"• NO MECHANICAL TICK TRAILING: Continuous pip/tick trailing is strictly FORBIDDEN. Never drag SL a few points behind live price inside the retail noise band.\n"
+                    f"• STRUCTURAL SHELF RATCHETING ONLY: Keep hard structural invalidation anchor intact. You may ratchet SL ONLY behind a newly confirmed physical M5/M15 swing shelf or FVG boundary with a 3 to 5 point buffer once price achieves confirmed displacement (> +1.0R advance).\n"
+                    f"• STRICT BAN ON PREMATURE BREAKEVEN: DO NOT move SL to entry/breakeven after +2-3 pts! Normal retests wick past entry. LET NORMAL NOISE WORK.\n"
+                    f"• CHAMPION HOLD MANDATE: Authorized early manual exits are restricted strictly to: (1) Emergency Tier-1 News Shield (<30m to CPI/FOMC), (2) verified HTF (M15/H1) structural close beyond invalidation, (3) 20m dead-tape stagnation (<30 t/m), or (4) Intermediate Defense Shelf Annihilation with persistent adverse delta acceleration.\n"
+                    f"• TARGET BANKING: Bank profits cleanly at Mode A TP (4.0–8.0 pts) OR let ride to Extended Mode B TP (12.0–20.0 pts) when targeting major H1/H4 imbalances.\n"
+                    f"• POST-TRADE FORENSIC AUTOPSY: The instant the trade closes (SL, TP, or early exit), call `alpha_get_trade_forensics(ticket=...)`, `graphiti_add_episode`, AND calibrate rules via `rules_promote_rule` or `rules_demote_rule`.\n\n"
+                    f"EVALUATE VIA 5-POD ADVERSARIAL PROTOCOL (POD 5 VERDICT MUST BE HOLD_BRACKET UNLESS AN AUTHORIZED EMERGENCY EXCEPTION IS VERIFIED)."
+                )
+            elif is_brainstorm_turn:
+                # Turn B: Dynamic 5-Question News & Macro Repricing Evaluation (Champion Alpha v14 Format)
+                prompt = (
+                    f"ALPHA 5-QUESTION NEWS & MACRO BRAINSTORM TURN (Turn B) — {trigger}\n"
+                    f"{_time_str}\n"
+                    f"Active instruments: {', '.join(self.instruments)}\n"
+                    f"Open positions: {len(open_tickets)}\n\n"
+                    f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
+                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=15)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, and (6) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
+                    f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
+                    f"CORE REPRICING EVALUATION VECTORS (LEAN CAUSAL DISCOVERY):\n"
+                    f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=15)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
+                    f"2. Q-NEWS-2 [Displacement vs. Catalyst Reconciliation]: Reconcile today's active leg displacement and session timing (from the header above) against live wires. Is current price expansion backed by a real sovereign catalyst, or is it an overnight/session liquidity hunt in an informational vacuum?\n"
+                    f"3. Q-NEWS-3 [Dynamic Deep Inquiry & 7-Layer Replan]: Based on the active leg and wire clues from Q1/Q2, dynamically formulate your targeted search query (do NOT use static keywords). Target the specific transmission channel driving this session: Call 1x `proxima_ask_perplexity(message=\"...\")`, 1x `alpha_query_analyst_desk(symbol='XAUUSD')` for Bull vs Bear arguments, and audit/replan active resting limit/stop orders with `alpha_get_pending_orders(symbol='ALL')`.\n"
+                    f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags describing your active thesis (e.g. ['BSL_SWEEP', '4TF_BEARISH'] or ['PREMATURE_FADE', 'BSL_DOORSTEP']) and call 1x `graphiti_search_facts(patterns=[...])`. Contrast live tape against both the winning condition and failure pitfall.\n"
+                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 to 2.5:1+, 12.0–25.0 pts)? -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
+                    f"MANDATORY 5-POD ADVERSARIAL FORMAT:\n"
+                    f"### POD 1: MACRO & CATALYST PERMISSION\n"
+                    f"- Live Wire Headlines: Quote verbatim wires from `alpha_get_live_world_events` and Perplexity.\n"
+                    f"- Macro Causality Classification: Classify definitively as `GENUINE_MACRO_CATALYST` (runway open) vs `LIQUIDITY_HUNT_IN_VACUUM` (stop hunt in thin book; do NOT chase breakout momentum).\n"
+                    f"- Macro Directional Permission: DFII10 (10Y Real Yield TIPS), US10Y nominal, and DXY trend alignment.\n"
+                    f"### POD 2: ORDER FLOW & TAPE REALITY\n"
+                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS\n"
+                    f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
+                    f"- Automated Bull vs Bear Debate: Review `alpha_query_analyst_desk` debate breakdown (bull arguments vs bear arguments) and regime conflict warnings.\n"
+                    f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION\n"
                 )
             else:
+                # Turn A: Physical Microstructure Dossier with 4TF Header Streamed in Text
                 prompt = (
+                    f"=== ALPHA CADENCE BRIEFING: PHYSICAL DOSSIER & MICROSTRUCTURE AUDIT (Turn A) ===\n"
                     f"{_time_str}\n\n"
-                    f"=== ALPHA CADENCE BRIEFING: EVIDENCE-FIRST PURE REASONING AUDIT (Dossier #{self.dossiers_since_brainstorm}/7) ===\n"
-                    "Gather raw evidence (Macro Wire + Real Yields + Tape Physics) -> Pure Thought Process (5-Step Protocol) -> High-Conviction Decision.\n\n"
-                    "MANDATORY EVIDENCE SUITE (INVOKE IN PARALLEL EVERY TURN):\n"
-                    "  • Macro & Yield Grounding: `proxima_ask_perplexity` / `proxima_ddg_search` (breaking wires) + `alpha-daemon-mcp_get_fred_observations(series_id='DFII10')` (10Y real yields).\n"
-                    "  • Institutional Profile: `alpha-daemon-mcp_get_full_institutional_profile(symbol='XAUUSD')` (POC, VAH, VAL, Retail BSL/SSL stop pools).\n"
-                    "  • Live Broker & Microstructure: `alpha-daemon-mcp_get_market_regime_context(symbol='XAUUSD')` (quotes, spread, CVD, 4M footprint), `alpha-daemon-mcp_get_live_microstructure(symbol='XAUUSD')` (velocity TPM), `alpha-daemon-mcp_get_measured_cvd(symbol='XAUUSD')` (tick CVD delta).\n"
-                    "  • Structural Matrix & Orders: `alpha-daemon-mcp_get_fvg_matrix(symbol='XAUUSD')`, `alpha-daemon-mcp_get_pending_orders()`, `alpha-daemon-mcp_cancel_pending_order()`, `alpha-daemon-mcp_get_active_watches(include_closed=False)`.\n"
-                    "  • Graphiti Temporal Memory Suite: `graphiti-memory-mcp_graphiti_search_facts(patterns=[...])` (Step 2.5: recall past walks, winning signatures & recorded stumbles) + `graphiti-memory-mcp_graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')` (MANDATORY EVERY CYCLE: permanently record your active pattern walk & market observations into memory; backward-compatible alias `record_pattern_observation`).\n"
-                    "  • Dominant Walks Audit: Call `graphiti-memory-mcp_graphiti_get_pattern_walks(symbol='XAUUSD')` for global base rates.\n\n"
-                    "THE 5-STEP PURE REASONING COGNITIVE PROTOCOL (MANDATORY IN EVERY DECISION THOUGHT):\n"
-                    "Before proposing, staging, or executing ANY trade, your internal reasoning MUST answer these steps in pure thought:\n"
-                    "0. QUESTION 0 (4TF STRUCTURAL TREND): 4TF Bullish -> ALL SELLS FORBIDDEN. 4TF Bearish -> ALL BUYS FORBIDDEN. MIXED_TIMEFRAMES -> Stand flat unless Tier-1 news or confirmed sweep/reclaim. Ban fading overbought/oversold RSI!\n"
-                    "1. QUESTION 1 (MACRO CATALYST): What breaking wire news, real yield change (DFII10), or geopolitical catalyst is driving movement right now? Macro flow must not contradict the trade!\n"
-                    "2. QUESTION 2 (COORDINATES — ORIGIN VS DESTINATION & THE SACRED RUNWAY): Where did this leg start, and where is the magnetic destination pool (BSL/SSL)? Opposing FVGs in the middle of the runway are fuel, NOT resistance to fade!\n"
-                    "2.5. QUESTION 2.5 (GRAPHITI MEMORY SEARCH & PER-CYCLE RECORDING): Formulate active 2-3 pattern combination (e.g. ['4TF_BEARISH_LEANING', 'M5_BEAR_FVG_UNMITIGATED', 'CVD_ABSORPTION']). Call `graphiti_search_facts(patterns=[...])`. Resilient Swimmer: past stumbles show specific pitfalls, not blanket fears. MANDATORY ON EVERY TURN: Call `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')` to continuously record your observed market dynamics, order flow state, and trading thesis into Graphiti memory.\n"
-                    "3. QUESTION 3 (TAPE PHYSICS & CVD FLOW): What is raw CVD delta and velocity? Never fade aggressive delta or climactic surges!\n"
-                    "4. QUESTION 4 (VEHICLE EVALUATION — IMMEDIATE MARKET VS PRE-STAGED PENDING VS STAND FLAT):\n"
-                    "   • Option A (Immediate Market Execution — Prong C / User Msg 95): If momentum is active (>90–100 t/m + aligned CVD surge) or macro news arrives with open roadway to a destination magnet, execute IMMEDIATELY via `execute_market_order`! Do not delay or passively pre-stage when price is actively moving!\n"
-                    "   • Option B (Pre-Staged Pending Order — Prong A/B): If price is quietly consolidating 2–5 pts from a fresh shelf (<90 t/m), pre-stage `BUY_LIMIT`/`SELL_LIMIT` at boundary, OR pre-stage `BUY_STOP`/`SELL_STOP` 1.0–2.0 pts beyond consolidation with 6–10 pt structural SL and 4–8 pt Mode A TP.\n"
-                    "   • Option C (Stand Flat): Ambiguous tape, dead compression, or approaching opposing HTF resistance -> Stand flat with high conviction.\n"
-                    "SYNTHESIS & THE RUNWAY TRAVERSAL MANDATE (FORENSIC PROOF #545795172):\n"
-                    "• The Runway Traversal Mandate: When a catalyst arrives aligned with 4TF trend, and current price has 4.0 to 8.0 points of open runway TO an identified destination magnet (BSL/SSL or FVG CE), MANDATORY VEHICLE IS IMMEDIATE MARKET EXECUTION (`execute_market_order`). Anchor TP at or just before the magnet!\n"
-                    "• STRICT PROHIBITION: NEVER stage a pending breakout stop (`BUY_STOP`/`SELL_STOP`) beyond/above the destination magnet when price is already in the runway! Trade the runway TO the magnet, never buy the breakout of the magnet!\n"
-                    "• EXTENDED MOVE & APEX EXHAUSTION FILTER: Breakout stops are strictly vetoed if the destination magnet is tagged/swept, CVD absorption divergence is active, or price is displaced into major psychological round numbers ($XX00/$XX50) without a base. If trend is expanding with aligned CVD and unmitigated roadway ahead, continuation is authorized!\n"
-                    "• Champion Sizing & SL Floor: 0.40–1.00L. Hard structural SL 6.0–10.0 pts. Mode A TP: 4.0–8.0 pts into nearest pivot/shelf."
+                    f"{full_4tf_reveal_block}"
+                    f"=== PHYSICAL BROKER METRICS & REGIME ===\n"
+                    f"{_regime_badge}\n\n"
+                    f"MANDATE & DISCIPLINE (AGENTS.md):\n"
+                    f"• Principle 0: A wake is an observation cycle, NOT a trade mandate. Standing flat in quiet chop is your high-conviction decision.\n"
+                    f"• Execution Standard: When 7-layer edge is confirmed, enforce 0.50-1.00L sizing, structural SL (6.0-12.0 pts), and positive R:R >= 1.5:1 to 2.5:1+ into opposing structural liquidity. Direct MT5 execution/pre-staging only (no passive watch loops).\n\n"
+                    f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"
+                    f"  1. 7-Layer Synthesis & Raw Telemetry: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`\n"
+                    f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=['TAG1', 'TAG2'])` using 2-3 scale-invariant tags of your own formulation matching your live thesis (e.g. `['BSL_SWEEP', '4TF_BEARISH']`). Returns <80-token contrast card.\n"
+                    f"  • Pre-Flight Thesis Replay (Before new shelf orders): `alpha_backtest_thesis(...)` to confirm positive expectancy.\n"
+                    f"  • Direct MT5 Execution: `alpha_place_pending_order()`, `alpha_execute_market_order()`, `alpha_cancel_pending_order()`, `alpha_update_position()`\n"
+                    f"  • Observational Learning: `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`\n"
+                    f"  *(Note: Deep news searches and FRED observations are reserved for periodic Turn B every 3rd/4th dossier to prevent prompt bloat)*\n\n"
+                    f"AUTONOMOUS CIO EVALUATION (THE 5-POD ADVERSARIAL PROTOCOL):\n"
+                    f"Format your response cleanly:\n"
+                    f"### POD 1: MACRO & CATALYST PERMISSION\n"
+                    f"### POD 2: ORDER FLOW & TAPE REALITY\n"
+                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS\n"
+                    f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
+                    f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION\n"
                 )
             post_to_opencode_session("", prompt)
-
-            # Dispatch mandatory rule reminder strictly after the brainstorm turn only, once per cycle
-            if is_brainstorm_turn:
-                self._schedule_post_news_rules_reminder(delay_seconds=60.0)
 
         return has_active_trades
 
     def _schedule_post_news_rules_reminder(self, delay_seconds: float = 60.0):
-        """Schedules a mandatory rule audit wake 60s after the news/brainstorm message directing OpenCode to check all rule files."""
-        if hasattr(self, "_rules_reminder_timer") and self._rules_reminder_timer is not None:
-            try:
-                self._rules_reminder_timer.cancel()
-            except Exception:
-                pass
-
-        def _reminder_worker():
-            reminder_msg = (
-                "⚡ ALPHA EVIDENCE WAKE — MANDATORY STANDING RULES & PLAYBOOK AUDIT\n"
-                "Evidence & News gathering cycle active. You are under a STRICT INSTITUTIONAL MANDATE to cross-check and enforce all rules encoded in the following rule repository before finalizing your execution decisions or standing flat:\n\n"
-                "MASTER RULE REPOSITORY (MANDATORY TO CHECK & ENFORCE):\n"
-                "• Master Agent Standing Orders & Directional Mandate: C:/Trading/AGENTS.md\n"
-                "• OpenCode CIO Thought Process & Execution Playbook: C:/Trading/Alpha/OPENCODE_CIO_THOUGHT_PROCESS.md\n"
-                "• Trade Journal Self-Correction Rules & Autopsies: C:/Trading/Alpha/logs/trade_journal_memory.json (and C:/Trading/Alpha/logs/trade_journal_memory.md)\n"
-                "• Anti-Retail Liquidity Traps Deep Guide: C:/Trading/agent/rules/08_ANTI_RETAIL_TRAPS_DEEP_GUIDE.md\n"
-                "• Master Agent Trader Rules & Intraday Horizon Manifesto: C:/Trading/agent/MASTER_AGENT_RULES.md\n"
-                "• System Trading Rules & Desk Mandates: C:/Trading/TRADING_RULES.md\n"
-                "• Core Rule Suite: C:/Trading/agent/rules/ (01_LIQUIDITY_TRAPS.md to 07_FULL_SYSTEM_CAPABILITIES.md)\n\n"
-                "MANDATORY EXECUTION AUDIT CHECKLIST:\n"
-                "You MUST verify each of these criteria against the live market state and encoded rule files before finalizing:\n"
-                "1. 4TF Trend Mandate (Question 0): 4TF Bullish -> BUYS ONLY. 4TF Bearish -> SHORTS ONLY. MIXED_TIMEFRAMES -> Stand flat or Turtle Soup sweep reclaims only. ZERO fading overbought/oversold RSI!\n"
-                "2. Sacred Runway Traversal (Forensic #545795172): If 4.0 to 8.0 pts of open roadway exists to an identified destination magnet (BSL/SSL or FVG CE), execute IMMEDIATELY via market order and bank AT the magnet. NEVER stage pending breakout stops beyond the magnet at the apex!\n"
-                "3. Semantic Distinction: A Buy-Stop Pool (BSL) or Sell-Stop Pool (SSL) is a DESTINATION TARGET TO EXIT, NEVER an entry coordinate for a broker BUY_STOP or SELL_STOP!\n"
-                "4. Boundary-First & 2-Rung Split Ladder: In trending flow, stage limits at the Outer Shelf Boundary + spread buffer, or split 0.25L Boundary + 0.25L 50% CE. Never demand deep 50% CE in strong momentum.\n"
-                "5. Symmetrical Pending Stops: In quiet pre-breakout tape (<80 t/m), pre-staging BUY_STOP or SELL_STOP 1.0–2.0 pts beyond consolidation has ZERO velocity blocks!\n"
-                "6. Champion Hold & SL Floor: 5.5 to 10.0 pt structural Stop Loss. Mode A TP 4.0 to 8.0 pts. STRICT BAN ON PREMATURE BREAK-EVEN SHIFTS ON NORMAL NOISE. Let the trade work to hard SL or TP!\n"
-                "7. Controlled Early Exit Condition: Controlled manual exit (FULL_EXIT) is authorized ONLY if your declared defense shelf is 100% mitigated, an M5 candle closes decisively outside it, AND order flow accelerates adversely relative to session volume. Never shift goalposts beyond hard SL!\n"
-                "8. Trade What Is Active Right Now: Focus on the active 5–10 pt roadway right in front of you (User Directives Msg 63, 16 & 937). Never sit frozen for multi-day calendar events when active flow is presenting clean structural edges.\n"
-                "9. Graphiti Temporal Memory & The Resilient Swimmer: Call `graphiti_search_facts(patterns=[...])` before finalizing. Do not fear past stumbles; note the specific pitfall and trade with courage when conditions align. If you stood flat on an avoided trap or clean expansion, wire it into memory with `graphiti_add_episode`."
-            )
-            post_to_opencode_session("Desk Supervisor (Rules Reminder)", reminder_msg)
-
-        self._rules_reminder_timer = threading.Timer(delay_seconds, _reminder_worker)
-        self._rules_reminder_timer.daemon = True
-        self._rules_reminder_timer.name = "PostNewsRulesReminderTimer"
-        self._rules_reminder_timer.start()
+        """Dynamic messages disabled per user directive; audit cadence is defined in the cadence dossier."""
+        pass
 
     async def _probe_execution_watcher_task(self):
         """Watcher task (Dollar-based auto exit is OFF)."""

@@ -44,8 +44,8 @@ def load_session_config() -> Dict[str, Any]:
 def get_opencode_session() -> Tuple[str, str, str]:
     """Returns (session_id, session_title, opencode_api_url) dynamically."""
     cfg = load_session_config()
-    sid = cfg.get("session_id") or cfg.get("opencode_session_id") or DEFAULT_SESSION_ID
-    title = cfg.get("session_title") or cfg.get("opencode_session_title") or DEFAULT_SESSION_TITLE
+    sid = cfg.get("session_id") or cfg.get("active_session_id") or cfg.get("opencode_session_id") or DEFAULT_SESSION_ID
+    title = cfg.get("session_title") or cfg.get("active_session_title") or cfg.get("opencode_session_title") or DEFAULT_SESSION_TITLE
     api_url = cfg.get("opencode_api_url") or cfg.get("api_url") or DEFAULT_API_URL
     return str(sid), str(title), str(api_url)
 
@@ -108,12 +108,12 @@ def set_dossier_streaming(enabled: bool) -> bool:
 
 
 def get_dossier_interval_seconds() -> int:
-    """Returns dynamic scheduled dossier interval in seconds (default 300s = 5 min)."""
+    """Returns dynamic scheduled dossier interval in seconds (default 120s = 2 min)."""
     cfg = load_session_config()
     try:
-        return int(cfg.get("dossier_interval_seconds", 300))
+        return int(cfg.get("dossier_interval_seconds", 120))
     except Exception:
-        return 300
+        return 120
 
 
 def set_dossier_interval_seconds(seconds: int) -> bool:
@@ -134,12 +134,12 @@ def set_dossier_interval_seconds(seconds: int) -> bool:
 
 
 def get_active_trade_interval_seconds() -> int:
-    """Returns dynamic active trade review interval in seconds (default 60s = 1 min)."""
+    """Returns dynamic active trade review interval in seconds (default 300s = 5 min)."""
     cfg = load_session_config()
     try:
-        return int(cfg.get("active_trade_interval_seconds", 60))
+        return int(cfg.get("active_trade_interval_seconds", 300))
     except Exception:
-        return 60
+        return 300
 
 
 def set_active_trade_interval_seconds(seconds: int) -> bool:

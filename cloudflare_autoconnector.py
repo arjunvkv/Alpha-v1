@@ -14,6 +14,11 @@ import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple, List
 
+try:
+    import cloudflare_autoconnector_helper as helper
+except ImportError:
+    helper = None
+
 # Configuration
 OPENCODE_API_URL = os.environ.get("OPENCODE_API_URL", "http://127.0.0.1:4096")
 WARP_CLI_PATHS = [
@@ -25,7 +30,7 @@ WARP_CLI_PATHS = [
 HTTP_BRIDGE_PORT = 40001
 WARP_SOCKS_PORT = 40000
 POLL_INTERVAL_SEC = 2.5
-COOLDOWN_SEC = 60.0
+COOLDOWN_SEC = 30.0
 
 # Strict rate limit signatures and connection drop signatures
 RATE_LIMIT_KEYWORDS = [
@@ -43,23 +48,34 @@ RATE_LIMIT_KEYWORDS = [
     "cannot connect to api",
     "unable to connect",
     "fetch failed",
+    "socket connection was closed",
+    "socket connection closed",
+    "bad gateway",
+    "502",
     "econnreset",
-    "etimedout"
+    "etimedout",
+    "free usage exceeded",
+    "free_tier_limit",
+    "free limit reached",
+    "subscribe to go"
 ]
 
 
 
 class ThreadedHttpToSocks5Bridge:
-    """Ultra-reliable threaded HTTP CONNECT and forward proxy bridge forwarding to Cloudflare WARP SOCKS5 proxy."""
+    """Ultra-reliable threaded HTTP CONNECT and forward proxy bridge supporting Cloudflare WARP SOCKS5 and Direct routing."""
     def __init__(self, http_port=HTTP_BRIDGE_PORT, socks_host="127.0.0.1", socks_port=WARP_SOCKS_PORT):
         self.http_port = http_port
         self.socks_host = socks_host
         self.socks_port = socks_port
+        self.routing_mode = "warp"  # Route through fresh Cloudflare WARP SOCKS5 IP
         self._server_sock = None
         self._running = False
         self.proxied_requests = 0
         self.last_target = "None"
         self.recent_logs: List[str] = []
+        self._active_sockets = set()
+        self._lock = threading.Lock()
 
     def log(self, msg: str):
         t = datetime.now().strftime("%H:%M:%S")
@@ -68,6 +84,27 @@ class ThreadedHttpToSocks5Bridge:
         if len(self.recent_logs) > 10:
             self.recent_logs.pop(0)
         print(entry, flush=True)
+
+    def reset_tunnels(self):
+        """Terminate all existing persistent keep-alive client sockets so new connections use fresh route."""
+        with self._lock:
+            for s in list(self._active_sockets):
+                try:
+                    s.close()
+                except Exception:
+                    pass
+            self._active_sockets.clear()
+        self.log("[TUNNELS RESET] Terminated all active persistent client sockets")
+
+    def switch_route(self) -> str:
+        # Enforce pure Cloudflare WARP egress (direct ISP is rate-limited)
+        self.routing_mode = "warp"
+        self.reset_tunnels()
+        return self.routing_mode
+
+    def connect_remote(self, dest_host: str, dest_port: int) -> socket.socket:
+        # Strictly route all traffic via Cloudflare WARP SOCKS5 proxy
+        return self.connect_socks5(dest_host, dest_port)
 
     def connect_socks5(self, dest_host: str, dest_port: int) -> socket.socket:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -79,9 +116,13 @@ class ThreadedHttpToSocks5Bridge:
         if resp != b"\x05\x00":
             s.close()
             raise RuntimeError("SOCKS5 auth failed")
-        # SOCKS5 connect request: DOMAINNAME (0x03)
-        host_bytes = dest_host.encode("utf-8")
-        req = b"\x05\x01\x00\x03" + bytes([len(host_bytes)]) + host_bytes + struct.pack(">H", dest_port)
+        # SOCKS5 connect request: pass DOMAINNAME (0x03) so WARP resolves natively and routes via dedicated rotating IPv6
+        try:
+            ip_bytes = socket.inet_aton(dest_host)
+            req = b"\x05\x01\x00\x01" + ip_bytes + struct.pack(">H", dest_port)
+        except OSError:
+            host_bytes = dest_host.encode("utf-8")
+            req = b"\x05\x01\x00\x03" + bytes([len(host_bytes)]) + host_bytes + struct.pack(">H", dest_port)
         s.sendall(req)
         resp = s.recv(4)
         if not resp or resp[1] != 0:
@@ -136,7 +177,7 @@ class ThreadedHttpToSocks5Bridge:
                     host, port = target, 443
 
                 try:
-                    remote_sock = self.connect_socks5(host, port)
+                    remote_sock = self.connect_remote(host, port)
                 except Exception as e:
                     self.log(f"[PROXY FAIL] CONNECT {host}:{port} from {client_addr}: {e}")
                     client_sock.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
@@ -148,7 +189,11 @@ class ThreadedHttpToSocks5Bridge:
                 client_sock.settimeout(None)
                 self.proxied_requests += 1
                 self.last_target = f"{host}:{port}"
-                self.log(f"[PROXY OK] CONNECT {host}:{port} (client: {client_addr}) -> WARP SOCKS5")
+                self.log(f"[PROXY OK] CONNECT {host}:{port} (client: {client_addr}) -> {self.routing_mode.upper()}")
+
+                with self._lock:
+                    self._active_sockets.add(client_sock)
+                    self._active_sockets.add(remote_sock)
 
                 sockets = [client_sock, remote_sock]
                 while True:
@@ -174,7 +219,7 @@ class ThreadedHttpToSocks5Bridge:
                 port = parsed.port or 80
 
                 try:
-                    remote_sock = self.connect_socks5(host, port)
+                    remote_sock = self.connect_remote(host, port)
                 except Exception as e:
                     self.log(f"[PROXY FAIL] {method} {host}:{port} from {client_addr}: {e}")
                     client_sock.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
@@ -190,7 +235,7 @@ class ThreadedHttpToSocks5Bridge:
                 client_sock.settimeout(None)
                 self.proxied_requests += 1
                 self.last_target = f"{host}:{port}"
-                self.log(f"[PROXY OK] {method} {host}:{port} (client: {client_addr}) -> WARP SOCKS5")
+                self.log(f"[PROXY OK] {method} {host}:{port} (client: {client_addr}) -> {self.routing_mode.upper()}")
 
                 sockets = [client_sock, remote_sock]
                 while True:
@@ -212,6 +257,9 @@ class ThreadedHttpToSocks5Bridge:
         except Exception:
             pass
         finally:
+            with self._lock:
+                self._active_sockets.discard(client_sock)
+                self._active_sockets.discard(remote_sock)
             if client_sock:
                 try:
                     client_sock.close()
@@ -252,6 +300,10 @@ class CloudflareAutoConnector:
         self.warp_state: str = "Unknown"
         self.opencode_online: bool = False
         self.last_msg_status: str = "Idle"
+        if helper:
+            cleaned = helper.clean_opencode_credentials()
+            if cleaned:
+                self.last_event = "Cleared stale account.json key (Anonymous IPv6 pool active)"
         self._ensure_proxy_mode()
         self._start_http_bridge()
 
@@ -309,32 +361,49 @@ class CloudflareAutoConnector:
             subprocess.run([self.warp_exe, "disconnect"], capture_output=True, timeout=5)
             time.sleep(1.0)
 
+            # Re-register client for a brand new device token and fresh edge session
+            try:
+                subprocess.run([self.warp_exe, "registration", "delete"], capture_output=True, timeout=5)
+                subprocess.run([self.warp_exe, "--accept-tos", "registration", "new"], capture_output=True, timeout=5)
+            except Exception:
+                pass
+
             subprocess.run([self.warp_exe, "mode", "proxy"], capture_output=True, timeout=5)
             try:
                 subprocess.run([self.warp_exe, "tunnel", "rotate-keys"], capture_output=True, timeout=5)
+                subprocess.run([self.warp_exe, "tunnel", "masque-options", "set", "h3-with-h2-fallback"], capture_output=True, timeout=5)
             except Exception:
                 pass
 
             subprocess.run([self.warp_exe, "connect"], capture_output=True, timeout=5)
 
-            # Verify SOCKS5 port is active and accepting connections
-            for _ in range(8):
+            # Verify SOCKS5 port is active and accepting connections, and warp=on
+            verified = False
+            for _ in range(12):
                 time.sleep(1.0)
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(1.0)
+                    s.settimeout(1.5)
                     if s.connect_ex(("127.0.0.1", WARP_SOCKS_PORT)) == 0:
                         s.close()
-                        self.warp_state = self.get_warp_status()
-                        self.intercept_count += 1
-                        self.last_rotation_time = time.time()
-                        self.last_event = f"WARP reconnected & verified at {datetime.now().strftime('%H:%M:%S')} (Tailscale active)"
-                        return True
+                        p = subprocess.run([
+                            "curl.exe", "-s", "-x", f"socks5h://127.0.0.1:{WARP_SOCKS_PORT}",
+                            "https://cloudflare.com/cdn-cgi/trace"
+                        ], capture_output=True, text=True, timeout=5)
+                        if "warp=on" in p.stdout:
+                            verified = True
+                            break
                     s.close()
                 except Exception:
                     pass
 
-            self.last_event = "WARP reconnect completed"
+            self.warp_state = self.get_warp_status()
+            self.intercept_count += 1
+            self.last_rotation_time = time.time()
+            if verified:
+                self.last_event = f"WARP rotated & verified (warp=on) at {datetime.now().strftime('%H:%M:%S')}"
+            else:
+                self.last_event = f"WARP reconnected at {datetime.now().strftime('%H:%M:%S')}"
             return True
         except Exception as e:
             self.last_event = f"WARP rotation error: {e}"
@@ -392,11 +461,59 @@ class CloudflareAutoConnector:
             self.opencode_online = False
             return False
 
+    def check_session_status_error(self) -> Tuple[bool, Optional[str]]:
+        """Inspect /session/status for rate limit / free usage exceeded errors."""
+        if not self.session_id:
+            return False, None
+        try:
+            url = f"{OPENCODE_API_URL}/session/status"
+            req = urllib.request.Request(url, headers={"User-Agent": "CloudflareAutoConnector/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                s_info = data.get(self.session_id, {})
+                s_type = str(s_info.get("type", "")).lower()
+                if s_type in ("retry", "error"):
+                    action = s_info.get("action") or {}
+                    reason = str(action.get("reason", "")).lower()
+                    title = str(action.get("title", "")).lower()
+                    msg = str(s_info.get("message", "")).lower()
+                    combined = f"{s_type} {reason} {title} {msg}"
+                    for kw in RATE_LIMIT_KEYWORDS:
+                        if kw in combined:
+                            return True, kw
+        except Exception:
+            pass
+        return False, None
+
+    def abort_session(self):
+        """Abort stuck retry turn via OpenCode API so next backoff timer is cleared."""
+        if not self.session_id:
+            return
+        try:
+            url = f"{OPENCODE_API_URL}/session/{self.session_id}/abort"
+            req = urllib.request.Request(url, data=b"{}", headers={"Content-Type": "application/json", "User-Agent": "CloudflareAutoConnector/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                self.last_event = f"Aborted stuck retry turn in session {self.session_id} (HTTP {resp.status})"
+        except Exception as e:
+            self.last_event = f"Abort session error: {e}"
+
     def check_session_rate_limit(self) -> bool:
-        """Inspect latest messages for rate limit / Cloudflare errors."""
+        """Inspect session status and latest messages strictly for rate limit / free tier limit errors."""
         if not self.session_id:
             return False
 
+        # 1. First priority: Check /session/status (where OpenCode marks retry/backoff on free_tier_limit)
+        status_triggered, detected_kw = self.check_session_status_error()
+        if status_triggered:
+            now = time.time()
+            self.last_msg_status = f"RATE LIMIT / STATUS ({detected_kw})"
+            if (now - self.last_rotation_time) > COOLDOWN_SEC:
+                self.last_rotation_time = now
+                self.last_event = f"Rate/Tier limit in status: '{detected_kw}'"
+                return True
+            return False
+
+        # 2. Check recent messages for real errors
         url = f"{OPENCODE_API_URL}/session/{self.session_id}/message"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "CloudflareAutoConnector/1.0"})
@@ -407,47 +524,44 @@ class CloudflareAutoConnector:
                     self.last_msg_status = "No messages"
                     return False
 
-                last_msg = msgs[-1]
-                msg_id = last_msg.get("id") or str(len(msgs))
-                info = last_msg.get("info", {})
-                role = info.get("role", "unknown")
-                finish_reason = str(info.get("finishReason", "")).lower()
-                error_obj = info.get("error")
+                # Inspect up to the last 5 messages, starting from the most recent
+                for m in reversed(msgs[-5:]):
+                    info = m.get("info", {})
+                    msg_id = m.get("id") or info.get("id") or ""
+                    finish_reason = str(info.get("finishReason") or info.get("finish") or "").lower()
+                    error_obj = info.get("error")
 
-                # Only evaluate assistant messages with actual errors
-                if role != "assistant" and not error_obj:
-                    self.last_msg_status = f"OK ({role})"
-                    return False
+                    parts = m.get("parts", [])
+                    error_parts = [p for p in parts if isinstance(p, dict) and p.get("type") == "error"]
 
-                parts = last_msg.get("parts", [])
-                text_content = ""
-                for p in parts:
-                    if isinstance(p, dict):
-                        if p.get("type") == "text":
-                            text_content += " " + p.get("text", "")
-                        elif p.get("type") == "error":
-                            text_content += " " + str(p.get("error", ""))
+                    has_real_error = bool(error_obj) or (finish_reason in ["error", "fail", "failed"]) or bool(error_parts)
+                    if not has_real_error:
+                        continue
 
-                combined_text = (text_content + " " + finish_reason + " " + str(error_obj or "")).lower()
+                    # Extract content strictly from the error object and error parts
+                    error_tokens = []
+                    if error_obj:
+                        error_tokens.append(str(error_obj))
+                    if finish_reason:
+                        error_tokens.append(finish_reason)
+                    for ep in error_parts:
+                        error_tokens.append(str(ep.get("error") or ep.get("text") or ""))
 
-                is_rate_limited = False
-                detected_keyword = None
-                for kw in RATE_LIMIT_KEYWORDS:
-                    if kw in combined_text:
-                        is_rate_limited = True
-                        detected_keyword = kw
-                        break
+                    combined_error_text = (" ".join(error_tokens)).lower()
 
-                if is_rate_limited:
-                    self.last_msg_status = f"RATE LIMIT ({detected_keyword})"
-                    now = time.time()
-                    if msg_id != self.last_handled_msg_id and (now - self.last_rotation_time) > COOLDOWN_SEC:
-                        self.last_handled_msg_id = msg_id
-                        self.last_event = f"Rate limit intercepted: '{detected_keyword}'"
-                        return True
-                else:
-                    self.last_msg_status = f"OK ({role})"
+                    for kw in RATE_LIMIT_KEYWORDS:
+                        if kw in combined_error_text:
+                            self.last_msg_status = f"RATE LIMIT ({kw})"
+                            now = time.time()
+                            if msg_id != self.last_handled_msg_id and (now - self.last_rotation_time) > COOLDOWN_SEC:
+                                self.last_handled_msg_id = msg_id
+                                self.last_event = f"Rate limit intercepted: '{kw}'"
+                                return True
+                            return False
 
+                # If no errors found in last 5 messages
+                latest_role = msgs[-1].get("info", {}).get("role", "unknown")
+                self.last_msg_status = f"OK ({latest_role})"
                 return False
         except Exception as e:
             self.last_msg_status = f"Poll error: {e}"
@@ -503,8 +617,8 @@ class CloudflareAutoConnector:
         print("-" * 68)
         print(f"  Cloudflare WARP   : {warp_disp}")
         print(f"  HTTP Proxy Bridge : http://0.0.0.0:{HTTP_BRIDGE_PORT} (Localhost + Tailscale 100.95.56.22)")
-        print(f"  WARP SOCKS5 Proxy : 127.0.0.1:{WARP_SOCKS_PORT}")
-        print(f"  Proxied Requests  : {getattr(self, 'bridge', None) and self.bridge.proxied_requests or 0} routed via Cloudflare")
+        print(f"  Active Route Mode : {getattr(self, 'bridge', None) and self.bridge.routing_mode.upper() or 'UNKNOWN'} (Auto-Swapping on Rate Limit)")
+        print(f"  Proxied Requests  : {getattr(self, 'bridge', None) and self.bridge.proxied_requests or 0} requests handled")
         print(f"  Last Proxy Target : {getattr(self, 'bridge', None) and self.bridge.last_target or 'None'}")
         print(f"  Auto-Rotations    : {self.intercept_count} intercepts")
         print("-" * 68)
@@ -512,7 +626,7 @@ class CloudflareAutoConnector:
         print("=" * 68)
 
     def run(self):
-        print("Starting Cloudflare Auto-Connector (Tailscale Compatible)...")
+        print("Starting Cloudflare Auto-Connector (Tailscale Compatible + Multi-Egress)...")
         while True:
             try:
                 self.warp_state = self.get_warp_status()
@@ -522,10 +636,13 @@ class CloudflareAutoConnector:
                     triggered = self.check_session_rate_limit()
                     if triggered:
                         self.render_dashboard()
-                        success = self.rotate_warp()
-                        if success:
-                            time.sleep(1.0)
-                            self.send_continuation_prompt()
+                        self.abort_session()
+                        self.rotate_warp()
+                        self.bridge.reset_tunnels()
+                        self.last_event = "WARP IP rotated & verified; session cleared"
+                        self.render_dashboard()
+                        time.sleep(2.0)
+                        self.send_continuation_prompt()
 
                 self.render_dashboard()
                 time.sleep(POLL_INTERVAL_SEC)

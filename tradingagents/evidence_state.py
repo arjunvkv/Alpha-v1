@@ -127,11 +127,19 @@ class EvidenceStateStore:
 
     def update_watch(self, watch_id: str, **changes):
         with self._locked():
-            state = self._load(); row = state["watches"].get(watch_id)
+            state = self._load()
+            target_id = watch_id
+            row = state["watches"].get(target_id)
+            if not row and not target_id.startswith("watch_"):
+                target_id = f"watch_{watch_id}"
+                row = state["watches"].get(target_id)
+            if not row and watch_id.startswith("watch_"):
+                target_id = watch_id.replace("watch_", "", 1)
+                row = state["watches"].get(target_id)
             if not row: return None
             row.update({k: v for k, v in changes.items() if v is not None})
             row["updated_at"] = utc_now()
-            state["watches"][watch_id] = row
+            state["watches"][target_id] = row
             self._save(state)
             return row
 

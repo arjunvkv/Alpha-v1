@@ -317,7 +317,56 @@ class UnifiedLearningMemory:
         self._save(data); return self._pattern_response(pat, "OUTCOME_ATTACHED")
 
     def _pattern_response(self, pat: Dict[str, Any], status: str) -> Dict[str, Any]:
-        return {"status": status, "symbol": pat["symbol"], "pattern_name": pat["pattern_name"], "count": pat["occurrence_count"], "state": pat.get("state", "ACTIVE"), "outcomes_recorded": len(pat.get("outcomes", [])), "review_required": True, "decision_authority": "AGENT_ONLY", "observation": pat.get("description", "")}
+        obs = pat.get("description", "")
+        # Pure knowledge preservation: ZERO truncation. OpenCode receives 100% of recorded observations.
+        return {
+            "status": status,
+            "symbol": pat["symbol"],
+            "pattern_name": pat["pattern_name"],
+            "count": pat["occurrence_count"],
+            "state": pat.get("state", "ACTIVE"),
+            "outcomes_recorded": len(pat.get("outcomes", [])),
+            "outcomes": pat.get("outcomes", []),
+            "observations_count": len(pat.get("observations", [])),
+            "review_required": True,
+            "decision_authority": "AGENT_ONLY",
+            "observation": obs
+        }
+
+    def format_pattern_markdown(self, pat: Dict[str, Any], max_observations: int = 5) -> str:
+        """Renders 100% pure recorded knowledge in dense, syntax-free markdown.
+        Eliminates JSON boilerplate while retaining every word of recorded observations and autopsies."""
+        pname = pat.get("pattern_name") or pat.get("pattern_id") or "UNKNOWN"
+        sym = pat.get("symbol", "ALL")
+        state = pat.get("state", "ACTIVE")
+        count = pat.get("occurrence_count", 0)
+        outcomes = pat.get("outcomes", [])
+        obs_list = pat.get("observations", [])
+
+        lines = [f"### PATTERN: {pname} [{sym}] (State: {state} | Recorded: {count})"]
+        
+        if outcomes:
+            lines.append("**Verified Trade Outcomes**:")
+            for o in outcomes:
+                t_str = f"Ticket #{o.get('ticket')}" if o.get("ticket") else "No Ticket"
+                r_str = f" | Realized R: {o.get('r_value'):+.2f}R" if o.get("r_value") is not None else ""
+                lines.append(f"  - Outcome: {o.get('outcome')} ({t_str}{r_str}) [{o.get('ts', '')}]")
+        
+        if obs_list:
+            lines.append("**Pure Recorded Observations & Forensic Notes**:")
+            # Display up to max_observations, prioritizing the latest detailed ones
+            selected_obs = obs_list[-max_observations:] if len(obs_list) > max_observations else obs_list
+            for idx, ob in enumerate(selected_obs, 1):
+                ts = ob.get("timestamp") or "N/A"
+                src = ob.get("source") or "UNIFIED"
+                obs_text = (ob.get("observation") or "").strip()
+                lines.append(f"  [{idx}] ({ts} via {src}):")
+                lines.append(f"      {obs_text}")
+        elif pat.get("description"):
+            lines.append("**Description / Observation**:")
+            lines.append(f"  {pat.get('description').strip()}")
+
+        return "\n".join(lines)
 
     def get_pattern(self, symbol: str, pattern_name: str) -> Optional[Dict[str, Any]]: return self._load()["patterns"].get(_norm(symbol, pattern_name))
 

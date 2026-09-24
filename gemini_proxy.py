@@ -239,11 +239,13 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
         res = {
             "object": "list",
             "data": [
-                {"id": "gemini-flash-lite-latest", "object": "model", "owned_by": "google"},
+                {"id": "gemini-3.5-flash", "object": "model", "owned_by": "google"},
+                {"id": "gemini-3.1-pro-preview", "object": "model", "owned_by": "google"},
                 {"id": "gemini-flash-latest", "object": "model", "owned_by": "google"},
-                {"id": "gemini-3.1-flash-lite", "object": "model", "owned_by": "google"},
                 {"id": "gemini-3.5-flash-lite", "object": "model", "owned_by": "google"},
-                {"id": "gemini-3.6-flash", "object": "model", "owned_by": "google"}
+                {"id": "gemini-3.1-flash-lite", "object": "model", "owned_by": "google"},
+                {"id": "3.5-flash", "object": "model", "owned_by": "google"},
+                {"id": "3.1-pro", "object": "model", "owned_by": "google"}
             ]
         }
         self.wfile.write(json.dumps(res).encode('utf-8'))
@@ -264,22 +266,29 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     declared_tool_names.append(name)
             default_tool_name = declared_tool_names[0] if declared_tool_names else "mcp_alpha_get_account_status"
 
-            # Normalize model name for Google Generative AI
-            req_model = payload.get('model', 'gemini-3.5-flash-lite')
+            # Normalize model name for Proxima engine
+            req_model = str(payload.get('model', 'gemini-3.5-flash')).lower()
             model_remap = {
-                'gemini-2.5-flash-lite': 'gemini-3.5-flash-lite',
-                '3.1-flash-lite': 'gemini-3.1-flash-lite',
-                '3.5-flash-lite': 'gemini-3.5-flash-lite',
-                '3.6-flash': 'gemini-3.6-flash',
-                '3.7-flash': 'gemini-3.7-flash',
-                '3.5-flash': 'gemini-3.5-flash',
-                '2.5-flash': 'gemini-2.5-flash',
-                '2.5-pro': 'gemini-2.5-pro',
-                '3.1-pro': 'gemini-3.1-pro-preview',
-                'gemini-3.1-pro': 'gemini-3.1-pro-preview',
-                'gemini': 'gemini-3.5-flash-lite'
+                'gemini-2.5-flash-lite': '3.1-flash-lite',
+                '3.1-flash-lite': '3.1-flash-lite',
+                'gemini-3.1-flash-lite': '3.1-flash-lite',
+                '3.5-flash-lite': '3.1-flash-lite',
+                'gemini-3.5-flash-lite': '3.1-flash-lite',
+                '3.6-flash': '3.5-flash',
+                '3.7-flash': '3.5-flash',
+                '3.5-flash': '3.5-flash',
+                'gemini-3.5-flash': '3.5-flash',
+                'gemini-flash-latest': '3.5-flash',
+                '2.5-flash': '3.5-flash',
+                'gemini-2.5-flash': '3.5-flash',
+                '2.5-pro': '3.1-pro',
+                'gemini-2.5-pro': '3.1-pro',
+                '3.1-pro': '3.1-pro',
+                'gemini-3.1-pro': '3.1-pro',
+                'gemini-3.1-pro-preview': '3.1-pro',
+                'gemini': 'gemini'
             }
-            payload['model'] = model_remap.get(req_model.lower(), req_model)
+            payload['model'] = model_remap.get(req_model, '3.5-flash')
 
             # Step 0: Intelligent Auto-Compress Mechanism
             messages = payload.get('messages', [])
@@ -289,7 +298,7 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
 
             start_t = time.time()
             record_proxy_event("inbound_request", {
-                "model": payload.get('model', 'gemini-3.5-flash-lite'),
+                "model": payload.get('model', '3.5-flash'),
                 "turn_count": len(messages),
                 "last_message_preview": (messages[-1].get("content")[:300] if messages else ""),
                 "tools_declared": declared_tool_names
@@ -317,79 +326,47 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                     if m.get('content') is None or m.get('content') == '':
                         m['content'] = "{}"
 
-            # Step 2: Determine Auth
-            auth_header = f"Bearer {get_active_gemini_key()}"
+            # Step 2: Route directly to Proxima on Port 3211
             is_stream = payload.get('stream', False)
+            proxima_endpoints = [
+                "http://127.0.0.1:3211/v1/chat/completions",
+                "http://127.0.0.1:3210/v1/chat/completions"
+            ]
             response = None
             last_error = None
-            max_retries = 6
-            retry_delay = 1.0
-            consecutive_429 = 0
 
-            # Step 3: Pure Google Gemini Execution with Instant 1st-Strike Key Rotation & Model Cascade
-            fallback_models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite']
-            current_model_idx = 0
-            
-            for attempt in range(max_retries):
-                current_key = get_active_gemini_key()
-                auth_header = f"Bearer {current_key}"
-                
-                # If repeated 429s across keys, cascade to next high-availability model
-                if attempt >= 2 and current_model_idx < len(fallback_models) - 1:
-                    current_model_idx += 1
-                    payload['model'] = fallback_models[current_model_idx]
-                    print(f"🔄 [Gemini Proxy Model-Cascade] Swapping to high-availability model: {payload['model']}", file=sys.stderr)
-                
+            for ep in proxima_endpoints:
                 req = urllib.request.Request(
-                    GOOGLE_URL,
+                    ep,
                     data=json.dumps(payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': 'Mozilla/5.0'}
+                    headers={'Content-Type': 'application/json', 'Authorization': 'Bearer proxima-local', 'User-Agent': 'OpenCodeGeminiProxy/1.0'}
                 )
                 try:
-                    response = _cloudflare_opener.open(req, timeout=30)
+                    response = urllib.request.urlopen(req, timeout=120)
                     if response:
                         break
-                except urllib.error.HTTPError as e:
-                    last_error = e
-                    if e.code in [429, 503, 500]:
-                        # Instant 1st-Strike Rotation: Switch to next API key immediately!
-                        new_k = rotate_default_gemini_key()
-                        print(f"⚡ [Gemini Proxy Instant-Rotator] Key #{ACTIVE_KEY_INDEX} hit {e.code}. Swapped to Key #{ACTIVE_KEY_INDEX} (Attempt {attempt+1}/{max_retries})...", file=sys.stderr)
-                        time.sleep(0.8)
-                    else:
-                        raise e
                 except Exception as e:
                     last_error = e
-                    print(f"[Gemini Proxy Network Handler] Network hiccup ({e}). Retrying in 1.0s...", file=sys.stderr)
-                    time.sleep(1.0)
+                    continue
 
-            # Step 4: Fallback to Port 3210 if all Google keys are exhausted
             if response is None:
-                print("⚠️ [Gemini Proxy Safety Fallback] All Google API keys currently rate-limited. Routing request to Port 3210...", file=sys.stderr)
-                try:
-                    fallback_req = urllib.request.Request(
-                        "http://127.0.0.1:3210/v1/chat/completions",
-                        data=json.dumps({"model": "3.5-flash", "messages": payload.get("messages", [])}).encode("utf-8"),
-                        headers={"Content-Type": "application/json"}
-                    )
-                    response = urllib.request.urlopen(fallback_req, timeout=20)
-                except Exception as fb_err:
-                    print(f"[Gemini Proxy Fallback Error] {fb_err}", file=sys.stderr)
-                    raise last_error or fb_err
+                raise last_error or RuntimeError("Failed to connect to Proxima engine on port 3211/3210")
 
             self.send_response(200)
             for k, v in response.getheaders():
-                if k.lower() not in ['transfer-encoding', 'content-length']:
+                if k.lower() not in ['transfer-encoding', 'content-length', 'connection']:
                     self.send_header(k, v)
             self.send_header('Access-Control-Allow-Origin', '*')
 
             if is_stream:
                 self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
                 self.send_header('Cache-Control', 'no-cache')
+                self.send_header('Connection', 'close')
                 self.end_headers()
                 accumulated_content = []
                 accumulated_reasoning = []
                 accumulated_tool_calls = {}
+                sent_done = False
                 for line in response:
                     line_str = line.decode('utf-8', errors='ignore')
                     if line_str.startswith('data: ') and not line_str.startswith('data: [DONE]'):
@@ -425,11 +402,20 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
                                 line = f"data: {json.dumps(chunk_data)}\n\n".encode('utf-8')
                         except Exception:
                             pass
+                    elif 'data: [DONE]' in line_str:
+                        sent_done = True
                     try:
                         self.wfile.write(line)
                         self.wfile.flush()
                     except (ConnectionResetError, BrokenPipeError):
                         break
+
+                if not sent_done:
+                    try:
+                        self.wfile.write(b"data: [DONE]\n\n")
+                        self.wfile.flush()
+                    except (ConnectionResetError, BrokenPipeError):
+                        pass
 
                 elapsed_ms = round((time.time() - start_t) * 1000, 1)
                 record_proxy_event("outbound_stream_complete", {

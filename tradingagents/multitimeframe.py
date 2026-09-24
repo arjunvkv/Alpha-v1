@@ -51,22 +51,42 @@ class MultiTimeframeAnalyst:
             bull_count = 0.0
             bear_count = 0.0
 
+            def _calc_ema(series: List[float], period: int) -> float:
+                if len(series) < period:
+                    return sum(series) / len(series) if series else 0.0
+                k = 2.0 / (period + 1.0)
+                # Seed with SMA of first period elements
+                ema = sum(series[:period]) / period
+                for val in series[period:]:
+                    ema = (val * k) + (ema * (1.0 - k))
+                return ema
+
+            def _calc_rsi(closes: List[float], period: int = 14) -> float:
+                if len(closes) < period + 1:
+                    return 50.0
+                diffs = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+                gains = [max(d, 0.0) for d in diffs]
+                losses = [max(-d, 0.0) for d in diffs]
+                # First average
+                avg_gain = sum(gains[:period]) / period
+                avg_loss = sum(losses[:period]) / period
+                # Wilder's smoothing
+                for i in range(period, len(diffs)):
+                    avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+                    avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+                if avg_loss == 0.0:
+                    return 100.0 if avg_gain > 0.0 else 50.0
+                rs = avg_gain / avg_loss
+                return round(100.0 - (100.0 / (1.0 + rs)), 1)
+
             for prefix, tf in tf_map:
-                rates = mt5.copy_rates_from_pos(symbol, tf, 0, 40)
+                rates = mt5.copy_rates_from_pos(symbol, tf, 0, 100)
                 if rates is not None and len(rates) >= 20:
-                    closes = [r['close'] for r in rates]
+                    closes = [float(r['close']) for r in rates]
                     curr_p = closes[-1]
-                    ema20 = sum(closes[-20:]) / 20.0
-                    ema50 = sum(closes[-min(len(closes), 50):]) / min(len(closes), 50)
-                    
-                    # RSI(14) calculation
-                    diffs = [closes[i] - closes[i-1] for i in range(1, len(closes))]
-                    gains = [d if d > 0 else 0 for d in diffs[-14:]]
-                    losses = [-d if d < 0 else 0 for d in diffs[-14:]]
-                    avg_gain = sum(gains) / 14.0 if gains else 0.0001
-                    avg_loss = sum(losses) / 14.0 if losses else 0.0001
-                    rs = avg_gain / (avg_loss if avg_loss > 0 else 0.0001)
-                    rsi14 = round(100.0 - (100.0 / (1.0 + rs)), 1)
+                    ema20 = _calc_ema(closes, 20)
+                    ema50 = _calc_ema(closes, 50)
+                    rsi14 = _calc_rsi(closes, 14)
 
                     if curr_p > ema20 > ema50:
                         trend = "BULLISH"
@@ -85,8 +105,11 @@ class MultiTimeframeAnalyst:
 
                     res[f"{prefix}_trend"] = trend
                     res[f"{prefix}_rsi"] = rsi14
+                    res[f"{prefix}_close"] = round(curr_p, 3)
                     res[f"{prefix}_ema20"] = round(ema20, 3)
                     res[f"{prefix}_ema50"] = round(ema50, 3)
+                    res[f"{prefix}_dist_ema20_pts"] = round(curr_p - ema20, 3)
+                    res[f"{prefix}_dist_ema50_pts"] = round(curr_p - ema50, 3)
 
             # Determine 4TF Confluence
             if bull_count >= 3.0:

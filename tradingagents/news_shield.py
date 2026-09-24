@@ -38,7 +38,11 @@ class NewsShield:
                                 "impact": ev.get("impact"),
                                 "minutes_away": round(diff_m, 1)
                             }
-                        if -15.0 <= diff_m <= 15.0:
+                        title_upper = str(ev.get("title", "")).upper()
+                        is_fomc = any(k in title_upper for k in ["FOMC", "FED RATE", "INTEREST RATE", "POWELL"])
+                        pre_m = 45.0 if is_fomc else 30.0
+                        post_m = 90.0 if is_fomc else 30.0
+                        if -post_m <= diff_m <= pre_m:
                             freeze_active = True
                     except Exception:
                         continue

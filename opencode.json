@@ -3,29 +3,36 @@
   "model": "opencode/big-pickle",
   "default_agent": "build",
   "mcpServers": {
-    "alpha-daemon-mcp": {
+    "alpha": {
       "command": "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
       "args": [
         "-u",
         "C:\\Trading\\Alpha\\mcp_server\\alpha_mcp_server.py"
       ]
     },
-    "graphiti-memory-mcp": {
+    "graphiti": {
       "command": "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
       "args": [
         "-u",
         "C:\\Trading\\Alpha\\mcp_server\\graphiti_mcp_server.py"
       ]
     },
+    "rules": {
+      "command": "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+      "args": [
+        "-u",
+        "C:\\Trading\\Alpha\\mcp_server\\rule_mcp_server.py"
+      ]
+    },
     "proxima": {
       "command": "node",
       "args": [
-        "C:/Program Files/Proxima/resources/app.asar.unpacked/src/mcp/index.js"
+        "C:/Trading/Alpha/mcp_server/proxima_wrapper.js"
       ]
     }
   },
   "mcp": {
-    "alpha-daemon-mcp": {
+    "alpha": {
       "type": "local",
       "command": [
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
@@ -35,12 +42,32 @@
       "enabled": true,
       "timeout": 300000
     },
-    "graphiti-memory-mcp": {
+    "graphiti": {
       "type": "local",
       "command": [
         "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
         "-u",
         "C:\\Trading\\Alpha\\mcp_server\\graphiti_mcp_server.py"
+      ],
+      "enabled": true,
+      "timeout": 300000
+    },
+    "graphiti_memory_mcp": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+        "-u",
+        "C:\\Trading\\Alpha\\mcp_server\\graphiti_mcp_server.py"
+      ],
+      "enabled": true,
+      "timeout": 300000
+    },
+    "rules": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\arjun\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+        "-u",
+        "C:\\Trading\\Alpha\\mcp_server\\rule_mcp_server.py"
       ],
       "enabled": true,
       "timeout": 300000
@@ -49,7 +76,7 @@
       "type": "local",
       "command": [
         "node",
-        "C:/Program Files/Proxima/resources/app.asar.unpacked/src/mcp/index.js"
+        "C:/Trading/Alpha/mcp_server/proxima_wrapper.js"
       ],
       "enabled": true,
       "timeout": 300000,
@@ -63,11 +90,13 @@
     "explore": {
       "mode": "subagent",
       "description": "Exploration and intelligence gathering subagent with full Proxima and FastMCP tool access",
-      "prompt": "You are an institutional intelligence specialist. You have full access to FastMCP tools under alpha-daemon-mcp (get_fred_observations, get_fvg_matrix, get_full_institutional_profile, get_live_microstructure) and Proxima MCP tools (proxima_ask_perplexity, proxima_deep_search, proxima_ddg_search, proxima_web_scrape). Whenever instructed to gather intelligence or research macro/market conditions, YOU MUST DIRECTLY CALL THESE MCP TOOLS IN PARALLEL (2 Perplexity queries, 2 Deep Research news queries, 2 DDG searches, 2 Reddit sentiment searches for facts/numbers only, zero probability questions). Do not grep or search Python codebase files.",
+      "prompt": "You are an institutional intelligence specialist. You have full access to FastMCP tools under alpha (get_fred_observations, get_fvg_matrix, get_full_institutional_profile, get_live_microstructure) and Proxima MCP tools (proxima_ask_perplexity, proxima_deep_search, proxima_web_scrape). Whenever instructed to gather intelligence or research macro/market conditions, YOU MUST CALL LEAN NEWS DISCOVERY IN PARALLEL (1 targeted Perplexity query for breaking wires, 1 targeted Deep Research news query for macro flow depth; zero DDG or Reddit bloat, hard numbers/quotes only, zero probability questions). Do not grep or search Python codebase files.",
       "permission": "allow"
     }
   },
-  "instructions": [],
+  "instructions": [
+    "AGENTS.md"
+  ],
   "provider": {
     "google-proxy": {
       "name": "Google Proxy",

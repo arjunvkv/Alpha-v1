@@ -1,0 +1,140 @@
+{
+  "Alpha Granger v8 (Aug 31)": {
+    "total_msgs": 1576,
+    "tools_count": 51,
+    "tools": [
+      "alpha-daemon-mcp_mcp_alpha_get_account_status",
+      "alpha-daemon-mcp_mcp_alpha_query_analyst_desk",
+      "alpha-daemon-mcp_mcp_alpha_get_live_microstructure",
+      "alpha-daemon-mcp_mcp_alpha_get_full_institutional_profile",
+      "bash",
+      "alpha-daemon-mcp_call_desk_tool",
+      "alpha-daemon-mcp_mcp_alpha_execute_trade",
+      "alpha-daemon-mcp_get_measured_cvd"
+    ],
+    "sample_prompt": [
+      "[OpenCode (CIO)] OPENCODE CIO EXECUTIVE MULTI-INSTRUMENT DOSSIER (3-Min Scheduled Cycle): === ALPHA AGENT STUDY UPDATE ===   \u2022 CURRENT TIME: 2026-08-3"
+    ],
+    "sample_decisions": [
+      "**DECISION: STAND DOWN / NO TRADE.**",
+      "**DECISION: NO TRADE \u2014 STAND DOWN / FLAT.**",
+      "**DECISION: STILL NO TRADE \u2014 but this is now an ARMED-WATCH situation, not a flat-and-ignore.**",
+      "**DECISION: NO TRADE \u2014 STAND DOWN / FLAT.** The M15 Bullish CE 4428.72 is a good level to watch, but:"
+    ]
+  },
+  "Alpha v13 (Sep 3)": {
+    "total_msgs": 1493,
+    "tools_count": 77,
+    "tools": [
+      "alpha-daemon-mcp_mcp_alpha_get_account_status",
+      "alpha-daemon-mcp_get_active_watches",
+      "alpha-daemon-mcp_call_desk_tool",
+      "alpha-daemon-mcp_get_measured_cvd",
+      "edit",
+      "alpha-daemon-mcp_mcp_alpha_get_trade_forensics",
+      "alpha-daemon-mcp_register_watch",
+      "alpha-daemon-mcp_lookup_common_crawl"
+    ],
+    "sample_prompt": [
+      "[Alpha Daemon] ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT UTC: 2026-09-03T06:07:36.986684+00:00 Active instruments: XAUUSD Open positions: 0 Reason:"
+    ],
+    "sample_decisions": [
+      "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+      "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+      "1. CLASSIFY DECISION: (NEW_TRADE_INVESTIGATION, ACTIVE_POSITION_REVIEW, WATCH_TRIGGER, NO_ACTIONABLE_DECISION).",
+      "1. **CLASSIFY DECISION:** NEW_TRADE_INVESTIGATION."
+    ]
+  },
+  "Alpha v14 (Sep 4)": {
+    "total_msgs": 627,
+    "tools_count": 59,
+    "tools": [
+      "alpha-daemon-mcp_mcp_alpha_get_fred_observations",
+      "alpha-daemon-mcp_mcp_alpha_get_account_status",
+      "alpha-daemon-mcp_mcp_alpha_query_analyst_desk",
+      "proxima_ask_claude",
+      "alpha-daemon-mcp_mcp_alpha_get_live_microstructure",
+      "alpha-daemon-mcp_mcp_alpha_get_full_institutional_profile",
+      "bash",
+      "alpha-daemon-mcp_get_active_watches"
+    ],
+    "sample_prompt": [
+      "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT UTC: 2026-09-04 06:58:34 UTC | NY (ET): 2026-09-04 02:58:34 AM EDT | London: 2026-09-04 07:58:34 BST | Ac"
+    ],
+    "sample_decisions": [
+      "**NOW \u2014 THE DECISION:**",
+      "**DECISION:**",
+      "**FINAL DECISION:**",
+      "**DECISION:**"
+    ]
+  },
+  "Escanor v8 (Sep 9)": {
+    "total_msgs": 1406,
+    "tools_count": 68,
+    "tools": [
+      "alpha-daemon-mcp_mcp_alpha_get_fred_observations",
+      "alpha-daemon-mcp_mcp_alpha_get_account_status",
+      "alpha-daemon-mcp_mcp_alpha_query_analyst_desk",
+      "alpha-daemon-mcp_get_evidence_capabilities",
+      "alpha-daemon-mcp_mark_watches_observed",
+      "alpha-daemon-mcp_mcp_alpha_get_live_microstructure",
+      "proxima_ask_claude",
+      "alpha-daemon-mcp_clear_completed_watches"
+    ],
+    "sample_prompt": [
+      "\u26a1 ALPHA EVIDENCE WAKE \u2014 BRAINSTORM TURN UTC: 2026-09-09 08:54:41 UTC | NY (ET): 2026-09-09 04:54:41 AM EDT | London: 2026-09-09 09:54:41 BST | Active "
+    ],
+    "sample_decisions": [
+      "**DECISION: NO ACTION / WAIT**",
+      "**DECISION: NO ACTION / WAIT**",
+      "**MY DECISION: NO TRADE / WAIT**",
+      "**DECISION: NO TRADE**"
+    ]
+  },
+  "Escanor v9 (Sep 11 morning)": {
+    "total_msgs": 307,
+    "tools_count": 31,
+    "tools": [
+      "alpha-daemon-mcp_mark_watches_observed",
+      "alpha-daemon-mcp_get_active_watches",
+      "alpha-daemon-mcp_get_full_institutional_profile",
+      "alpha-daemon-mcp_get_measured_cvd",
+      "proxima_deep_search",
+      "alpha-daemon-mcp_get_live_microstructure",
+      "alpha-daemon-mcp_get_direct_news",
+      "alpha-daemon-mcp_cancel_watch"
+    ],
+    "sample_prompt": [
+      "ALPHA EVIDENCE WAKE \u2014 SCHEDULED_REASSESSMENT UTC: 2026-09-10 14:10:04 UTC | NY (ET): 2026-09-10 10:10:04 AM EDT | London: 2026-09-10 15:10:04 BST | Ac"
+    ],
+    "sample_decisions": [
+      "**DECISION: HOLD. No action required.**",
+      "**DECISION: HOLD. Pending short remains correctly placed \u2014 evidence reinforces it.**",
+      "**DECISION: HOLD \u2014 no changes. Thesis intact on all tiers.**",
+      "**DECISION: HOLD \u2014 no order changes. News reinforced the exact direction of the staged short.**"
+    ]
+  },
+  "Escanor v16 (Sep 11 night)": {
+    "total_msgs": 447,
+    "tools_count": 30,
+    "tools": [
+      "alpha-daemon-mcp_mcp_alpha_query_analyst_desk",
+      "alpha-daemon-mcp_mark_watches_observed",
+      "alpha-daemon-mcp_get_active_watches",
+      "alpha-daemon-mcp_get_full_institutional_profile",
+      "alpha-daemon-mcp_get_measured_cvd",
+      "proxima_deep_search",
+      "alpha-daemon-mcp_get_book_page",
+      "alpha-daemon-mcp_get_live_microstructure"
+    ],
+    "sample_prompt": [
+      "\u26a1 ALPHA EVIDENCE WAKE \u2014 WATCH_TRIGGER UTC: 2026-09-11 12:08:53 UTC | NY (ET): 2026-09-11 08:08:53 AM EDT | London: 2026-09-11 13:08:53 BST | Active Se"
+    ],
+    "sample_decisions": [
+      "**FINAL DECISION: HOLD THE BUY_STOP AT 4350.5.**",
+      "## DECISION: HOLD ORDER \u2014 NO CHANGE",
+      "### DECISION: HOLD ORDER \u2014 NO CHANGE",
+      "### DECISION: HOLD \u2014 NO MODIFICATION"
+    ]
+  }
+}

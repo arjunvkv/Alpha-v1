@@ -93,14 +93,22 @@ class CumulativeVolumeDeltaEngine:
                 point = getattr(mt5.symbol_info(sym), "point", 0.01) or 0.01
                 live_spread_pts = int(round((tick.ask - tick.bid) / point))
 
-            # M1 velocity calculation
+            # M1 velocity & micro-delta calculation
             m1_rates = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M1, 0, 5)
             if m1_rates is not None and len(m1_rates) > 0:
                 current_m1_velocity = float(m1_rates[-1]['tick_volume'])
                 avg_5m_velocity = round(float(sum(r['tick_volume'] for r in m1_rates) / len(m1_rates)), 1)
+                m1_deltas = [
+                    float(r['tick_volume']) * ((float(r['close']) - float(r['open'])) / max(float(r['high']) - float(r['low']), 1e-6))
+                    for r in m1_rates
+                ]
+                current_m1_delta = round(m1_deltas[-1], 1)
+                micro_delta_4m = round(sum(m1_deltas[-4:]), 1)
             else:
                 current_m1_velocity = 0.0
                 avg_5m_velocity = 0.0
+                current_m1_delta = 0.0
+                micro_delta_4m = 0.0
 
             # Real-time tape velocity posture (M1 is primary; trailing avg confirms persistence)
             if current_m1_velocity >= 180.0:
@@ -155,6 +163,8 @@ class CumulativeVolumeDeltaEngine:
                 "order_book_imbalance": book_imbalance,
                 "cumulative_volume_delta": round(cum_delta, 1),
                 "recent_10_bar_delta": round(recent_10_delta, 1),
+                "current_m1_delta": current_m1_delta,
+                "micro_delta_4m": micro_delta_4m,
                 "delta_pressure_pct": delta_ratio,
                 "delta_trend": delta_trend,
                 "delta_exhaustion": exhaustion,

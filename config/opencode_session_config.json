@@ -1,6 +1,13 @@
 {
-  "session_id": "ses_f3dd9df20ffe0DuBew3B1aKbQN",
-  "session_title": "Escanor v38 (Champion Alpha Desk)",
-  "opencode_session_id": "ses_f3dd9df20ffe0DuBew3B1aKbQN",
-  "opencode_session_title": "Escanor v38 (Champion Alpha Desk)"
+  "session_id": "ses_f2c3bf641ffeu1Kezy6CMCFxu8",
+  "title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
+  "session_title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
+  "active_session_id": "ses_f2c3bf641ffeu1Kezy6CMCFxu8",
+  "active_session_title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
+  "dossier_interval_seconds": 240,
+  "active_trade_interval_seconds": 180,
+  "model": "opencode/big-pickle",
+  "api_url": "http://127.0.0.1:4096",
+  "deployed_at": "2026-09-24 14:13:55 UTC",
+  "description": "Escanor v69 CIO with Mechanical Bracket Supremacy (CONST_NO_PREMATURE_CUT), 3m In-Flight Breathe Gap, and 7-Layer Local LLM Telemetry"
 }

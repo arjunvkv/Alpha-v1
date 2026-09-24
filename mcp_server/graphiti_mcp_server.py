@@ -2,12 +2,11 @@
 ======================================================================
          ALPHA V1 - STANDALONE GRAPHITI MEMORY MCP SERVER
 ======================================================================
-Server Name: graphiti-memory-mcp
+Server Name: graphiti
 Purpose: Standalone FastMCP server providing Graphiti temporal knowledge
          graph memory, associative pattern sequence recall, and continuous
          observational learning to OpenCode.
 
-Completely decoupled from broker daemon (alpha-daemon-mcp).
 Sub-5ms local SQLite execution, zero external API costs.
 ======================================================================
 """
@@ -27,48 +26,57 @@ logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [
 LOG = logging.getLogger("alpha.graphiti.mcp")
 
 from mcp.server.fastmcp import FastMCP
-from tradingagents.pattern_memory_engine import PatternMemoryEngine
+from tradingagents.pattern_memory_engine import PatternMemoryEngine, parse_and_normalize_tags
 
-mcp = FastMCP("graphiti-memory-mcp")
+mcp = FastMCP("graphiti")
 _engine = PatternMemoryEngine()
 
 
+def _extract_tags(patterns: Any = None, **kwargs) -> List[str]:
+    """Extract and normalize pattern tags from direct arg or any known kwarg variant."""
+    p = patterns
+    if p is None:
+        p = (
+            kwargs.get("patterns") or
+            kwargs.get("tags") or
+            kwargs.get("tag") or
+            kwargs.get("pattern") or
+            kwargs.get("patterns_list") or
+            kwargs.get("obs_patterns")
+        )
+    parsed = parse_and_normalize_tags(p)
+    return parsed if parsed else ["4TF_BEARISH"]
+
+
+def _extract_text(text: str = "", **kwargs) -> str:
+    """Extract lesson or observation text from direct arg or any known kwarg variant."""
+    if text:
+        return str(text)
+    for k in ("observation", "lesson", "note", "content", "obs", "msg", "message"):
+        if k in kwargs and kwargs[k]:
+            return str(kwargs[k])
+    return ""
+
+
 @mcp.tool()
-def graphiti_search_facts(patterns: list, symbol: str = "XAUUSD", limit: int = 5) -> str:
+def search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, **kwargs) -> str:
     """
     Search Graphiti temporal pattern memory for past walks matching the active combination of patterns.
     Returns a dense, non-bloated executive fact card (<100 tokens) detailing top winning signatures,
     recorded stumbles, and the Resilient Swimmer contextual pitfall.
     """
     try:
-        p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
-        return _engine.search_facts(patterns=p_list, symbol=symbol, limit=limit)
+        p_list = _extract_tags(patterns, **kwargs)
+        sym = kwargs.get("symbol", symbol) or "XAUUSD"
+        lim = int(kwargs.get("limit", limit) or 5)
+        return _engine.search_facts(patterns=p_list, symbol=sym, limit=lim)
     except Exception as e:
-        LOG.error(f"Error in graphiti_search_facts: {e}")
+        LOG.error(f"Error in search_facts: {e}")
         return f"Graphiti memory search error: {e}"
 
 
 @mcp.tool()
-def graphiti_add_episode(patterns: list, outcome: str, lesson: str = "", symbol: str = "XAUUSD") -> str:
-    """
-    Record a pattern walk episode into Graphiti memory.
-    Call this:
-    1. When any MT5 trade closes (outcome='WIN' or 'TRAP').
-    2. When standing flat and an avoided trap collapses (outcome='TRAP').
-    3. When standing flat and an explosive clean move launches (outcome='WIN').
-    Strengthens the synaptic weight of the walk and updates pattern entity nodes.
-    """
-    try:
-        p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
-        res = _engine.add_episode(patterns=p_list, outcome=outcome, lesson=lesson, symbol=symbol)
-        return json.dumps(res, indent=2)
-    except Exception as e:
-        LOG.error(f"Error in graphiti_add_episode: {e}")
-        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
-
-
-@mcp.tool()
-def graphiti_record_observation(patterns: list, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD") -> str:
+def record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", **kwargs) -> str:
     """
     Record an active pattern combination and market observation into Graphiti Temporal Memory.
     MANDATORY ON EVERY CYCLE: Call this on routine cadence turns and brainstorm turns to record the
@@ -80,64 +88,93 @@ def graphiti_record_observation(patterns: list, observation: str = "", outcome: 
     Updates pattern occurrence counts, last_seen timestamps, and reinforces temporal walk weights.
     """
     try:
-        p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
-        res = _engine.add_episode(patterns=p_list, outcome=outcome, lesson=observation, symbol=symbol, source="PER_CYCLE_OBSERVATION")
+        p_list = _extract_tags(patterns, **kwargs)
+        obs = _extract_text(observation, **kwargs)
+        out = kwargs.get("outcome", outcome) or "STUDY"
+        sym = kwargs.get("symbol", symbol) or "XAUUSD"
+        res = _engine.record_observation(patterns=p_list, observation=obs, outcome=str(out), symbol=str(sym))
         return json.dumps(res, indent=2)
     except Exception as e:
-        LOG.error(f"Error in graphiti_record_observation: {e}")
+        LOG.error(f"Error in record_observation: {e}")
         return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
 
 
 @mcp.tool()
-def record_pattern_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", ticket: str = None, r_value=None, patterns: list = None) -> str:
+def add_episode(patterns: Any = None, outcome: str = "STUDY", lesson: str = "", symbol: str = "XAUUSD", **kwargs) -> str:
     """
-    Record pattern observation into Graphiti Temporal Memory (Backward-compatible drop-in alias).
-    Accepts either pattern_name (single tag) or patterns (list of tags).
-    MANDATORY ON EVERY CYCLE: Call this on each cadence turn to ensure continuous institutional memory.
+    Record a pattern walk episode into Graphiti memory.
+    Call this:
+    1. When any MT5 trade closes (outcome='WIN' or 'TRAP').
+    2. When standing flat and an avoided trap collapses (outcome='TRAP').
+    3. When standing flat and an explosive clean move launches (outcome='WIN').
+    Strengthens the synaptic weight of the walk and updates pattern entity nodes.
     """
     try:
-        p_list = []
-        if patterns:
-            p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
-        elif pattern_name:
-            p_list = [pattern_name]
-        else:
-            p_list = ["MARKET_OBSERVATION"]
-        res = _engine.add_episode(patterns=p_list, outcome=outcome, lesson=observation, symbol=symbol or "XAUUSD", source="PER_CYCLE_OBSERVATION")
+        p_list = _extract_tags(patterns, **kwargs)
+        les = _extract_text(lesson, **kwargs)
+        out = kwargs.get("outcome", outcome) or "STUDY"
+        sym = kwargs.get("symbol", symbol) or "XAUUSD"
+        res = _engine.add_episode(patterns=p_list, outcome=str(out), lesson=les, symbol=str(sym))
         return json.dumps(res, indent=2)
     except Exception as e:
-        LOG.error(f"Error in record_pattern_observation: {e}")
+        LOG.error(f"Error in add_episode: {e}")
         return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
 
 
-
 @mcp.tool()
-def graphiti_get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6) -> str:
+def get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6, **kwargs) -> str:
     """
-    Retrieve the top dominant winning walks and documented trap fingerprints currently
-    strengthened in Graphiti memory. Use during 4-minute brainstorm cycles or session transitions
-    to recalibrate your mental model.
+    Retrieve dominant proven winning walks and documented trap fingerprints for a symbol.
+    Call this on brainstorm turns and periodically to calibrate mental models against global base rates.
     """
     try:
-        return _engine.get_pattern_walks(symbol=symbol, limit=limit)
+        sym = kwargs.get("symbol", symbol) or "XAUUSD"
+        lim = int(kwargs.get("limit", limit) or 6)
+        return _engine.get_pattern_walks(symbol=sym, limit=lim)
     except Exception as e:
-        LOG.error(f"Error in graphiti_get_pattern_walks: {e}")
-        return f"Error retrieving pattern walks: {e}"
+        LOG.error(f"Error in get_pattern_walks: {e}")
+        return f"Graphiti walks retrieval error: {e}"
+
+
+# ======================================================================
+# BACKWARD COMPATIBILITY & LLM HALLUCINATION ALIASES
+# ======================================================================
+@mcp.tool()
+def graphiti_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, **kwargs) -> str:
+    """Backward-compatible alias for search_facts."""
+    return search_facts(patterns=patterns, symbol=symbol, limit=limit, **kwargs)
 
 
 @mcp.tool()
-def graphiti_prune_decayed(decay_rate: float = 0.90) -> str:
-    """
-    Apply natural forgetting / synaptic attenuation to stale, unreinforced one-off noise.
-    Keeps memory clean and prevents ancient obsolete patterns from cluttering recall.
-    """
-    try:
-        return _engine.prune_decayed(decay_rate=decay_rate)
-    except Exception as e:
-        LOG.error(f"Error in graphiti_prune_decayed: {e}")
-        return f"Error applying decay: {e}"
+def graphiti_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", **kwargs) -> str:
+    """Backward-compatible alias for record_observation."""
+    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, **kwargs)
+
+
+@mcp.tool()
+def graphiti_add_episode(patterns: Any = None, outcome: str = "STUDY", lesson: str = "", symbol: str = "XAUUSD", **kwargs) -> str:
+    """Backward-compatible alias for add_episode."""
+    return add_episode(patterns=patterns, outcome=outcome, lesson=lesson, symbol=symbol, **kwargs)
+
+
+@mcp.tool()
+def graphiti_get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6, **kwargs) -> str:
+    """Backward-compatible alias for get_pattern_walks."""
+    return get_pattern_walks(symbol=symbol, limit=limit, **kwargs)
+
+
+@mcp.tool()
+def graphiti_memory_mcp_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, **kwargs) -> str:
+    """Fallback alias for search_facts when model calls graphiti_memory_mcp_search_facts."""
+    return search_facts(patterns=patterns, symbol=symbol, limit=limit, **kwargs)
+
+
+@mcp.tool()
+def graphiti_memory_mcp_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", **kwargs) -> str:
+    """Fallback alias for record_observation when model calls graphiti_memory_mcp_record_observation."""
+    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, **kwargs)
 
 
 if __name__ == "__main__":
-    LOG.info("Starting standalone graphiti-memory-mcp server...")
-    mcp.run()
+    LOG.info("Starting Graphiti Temporal Pattern Memory FastMCP server on stdio...")
+    mcp.run(transport="stdio")

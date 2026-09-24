@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ESCANOR // ALPHA : XAUUSD TACTICAL DESK</title>
+<!-- Google Fonts: Space Grotesk & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-bright": "#37393e",
+            "error": "#ffb4ab",
+            "on-surface-variant": "#d8c3ac",
+            "on-error": "#690005",
+            "on-secondary": "#00373a",
+            "surface-dim": "#111318",
+            "on-primary-container": "#694300",
+            "on-surface": "#e2e2e8",
+            "on-primary-fixed-variant": "#633f00",
+            "outline-variant": "#524433",
+            "on-tertiary": "#003919",
+            "on-secondary-fixed": "#002022",
+            "outline": "#a08e79",
+            "primary-container": "#ffaa00",
+            "surface-variant": "#333539",
+            "on-error-container": "#ffdad6",
+            "primary-fixed": "#ffddb4",
+            "inverse-on-surface": "#2f3035",
+            "background": "#111318",
+            "surface": "#111318",
+            "error-container": "#93000a",
+            "secondary": "#dcfdff",
+            "on-tertiary-fixed-variant": "#005228",
+            "tertiary": "#00f783",
+            "on-tertiary-container": "#00572a",
+            "inverse-surface": "#e2e2e8",
+            "surface-container-highest": "#333539",
+            "on-secondary-container": "#006a6f",
+            "tertiary-fixed-dim": "#00e479",
+            "primary-fixed-dim": "#ffb952",
+            "secondary-fixed": "#6ff6ff",
+            "primary": "#ffcf91",
+            "on-secondary-fixed-variant": "#004f53",
+            "on-background": "#e2e2e8",
+            "surface-container-lowest": "#0c0e12",
+            "secondary-fixed-dim": "#00dce6",
+            "secondary-container": "#00f1fd",
+            "tertiary-container": "#00d772",
+            "surface-container-high": "#282a2e",
+            "on-tertiary-fixed": "#00210c",
+            "tertiary-fixed": "#60ff99",
+            "surface-container-low": "#1a1c20",
+            "surface-container": "#1e2024",
+            "on-primary-fixed": "#291800",
+            "inverse-primary": "#825500",
+            "surface-tint": "#ffb952",
+            "on-primary": "#452b00"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          spacing: {
+            "space-xl": "1.5rem",
+            "space-sm": "0.5rem",
+            "margin-mobile": "0.5rem",
+            "space-md": "0.75rem",
+            "margin": "1rem",
+            "gutter-mobile": "0.5rem",
+            "space-lg": "1rem",
+            "gutter": "0.75rem",
+            "space-xs": "0.25rem"
+          },
+          fontFamily: {
+            "telemetry-xl": ["JetBrains Mono"],
+            "telemetry-sm": ["JetBrains Mono"],
+            "body-md": ["Space Grotesk"],
+            "headline-lg-mobile": ["Space Grotesk"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "telemetry-lg": ["JetBrains Mono"],
+            "headline-sm": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "headline-xl": ["Space Grotesk"],
+            "body-sm": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "telemetry-md": ["JetBrains Mono"],
+            "body-lg": ["Space Grotesk"]
+          },
+          fontSize: {
+            "telemetry-xl": ["32px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "telemetry-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg-mobile": ["26px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["32px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "telemetry-lg": ["20px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-sm": ["20px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-lg": ["36px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "headline-xl": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+            "headline-md": ["24px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.12em", "fontWeight": "700" }],
+            "telemetry-md": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Technical Grid Pattern */
+    .tv-grid-canvas {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(82, 68, 51, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(82, 68, 51, 0.12) 1px, transparent 1px);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #333539;
+      border-radius: 2px;
+    }
+    @keyframes pulse-fast {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .pulse-glow {
+      animation: pulse-fast 1.6s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased overflow-hidden select-none h-screen w-screen flex flex-col font-body-md">
+<!-- TOPNAVBAR (Shared Component Executed Verbatim) -->
+<header class="flex justify-between items-center w-full px-space-lg h-12 z-50 border-b border-outline-variant bg-surface-container-lowest shadow-sm flex-shrink-0">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="terminal">terminal</span>
+<span class="font-headline-sm text-headline-sm text-primary tracking-wider uppercase">ESCANOR // ALPHA : XAUUSD TACTICAL DESK</span>
+</div>
+<!-- Search on left -->
+<div class="hidden lg:flex items-center bg-surface-container-low px-space-sm py-1 rounded border border-outline-variant/60 ml-space-sm">
+<span class="material-symbols-outlined text-outline text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none text-telemetry-sm font-telemetry-sm text-on-surface focus:outline-none w-36 px-space-xs placeholder:text-outline/70" placeholder="CMD ROUTE / CONTRACT..." type="text"/>
+<span class="text-label-caps font-label-caps text-outline bg-surface-container-highest px-1 rounded">⌘K</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="hidden xl:flex items-center gap-space-lg">
+<button class="text-primary border-b-2 border-primary pb-1 font-telemetry-md text-telemetry-md">WAR ROOM</button>
+<button class="text-on-surface-variant font-telemetry-md text-telemetry-md hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 rounded">ORDER ROUTER</button>
+<button class="text-on-surface-variant font-telemetry-md text-telemetry-md hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 rounded">DOM ENGINE</button>
+<button class="text-on-surface-variant font-telemetry-md text-telemetry-md hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 rounded">RISK VECTORS</button>
+<button class="text-on-surface-variant font-telemetry-md text-telemetry-md hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 rounded">COGNITIVE CIO</button>
+</nav>
+<!-- Trailing Actions & Icons -->
+<div class="flex items-center gap-space-sm">
+<div class="hidden md:flex items-center gap-1 bg-surface-container-low px-space-sm py-1 rounded border border-outline-variant/40 mr-1">
+<span class="material-symbols-outlined text-tertiary text-xs pulse-glow" data-icon="radar">radar</span>
+<span class="font-telemetry-sm text-telemetry-sm text-tertiary">FEED 100% NOMINAL</span>
+</div>
+<button class="hidden sm:flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-container-highest text-primary font-label-caps text-label-caps border border-outline-variant rounded transition-colors active:translate-y-px">
+        AUTO-ENGAGE [HOTKEY: SPACE]
+      </button>
+<button class="px-space-sm py-1 bg-error-container/40 hover:bg-error-container text-error font-label-caps text-label-caps border border-error/50 rounded transition-colors active:translate-y-px shadow-[0_0_8px_rgba(147,0,10,0.4)]">
+        KILL SWITCH
+      </button>
+<div class="flex items-center gap-1 border-l border-outline-variant/60 pl-2 ml-1 text-on-surface-variant">
+<button class="p-1 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg" data-icon="tune">tune</span></button>
+<button class="p-1 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg" data-icon="notifications_active">notifications_active</span></button>
+<div class="w-6 h-6 rounded-full border border-primary/50 bg-surface-container-high flex items-center justify-center text-primary text-xs font-telemetry-sm font-bold" title="Chief Risk Quantitative Operator Badge">
+          CR
+        </div>
+</div>
+</div>
+</header>
+<!-- WORKSPACE BODY WITH SIDENAV (COLLAPSED DOCKED STRIP) AND WORKSTATION CANVAS -->
+<div class="flex-1 flex overflow-hidden w-full relative">
+<!-- DOCKED SIDENAV STRIP (Per Shared Component SideNavBar Spec) -->
+<aside class="w-12 md:w-14 bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between items-center py-space-sm z-40 flex-shrink-0">
+<div class="flex flex-col items-center gap-space-sm w-full">
+<!-- Reticle HUD Emblem -->
+<div class="w-8 h-8 rounded border border-primary/40 bg-surface-container-low flex items-center justify-center text-primary" title="Tactical Reticle HUD Emblem - ESCANOR-01">
+<span class="material-symbols-outlined text-base" data-icon="military_tech">military_tech</span>
+</div>
+<div class="w-6 h-px bg-outline-variant/40 my-1"></div>
+<!-- Tab Icons from JSON Spec: COCKPIT (active), DOM L2, LIQUIDITY, MACRO INTEL, QUANT TELEMETRY, SYSTEM KERNEL -->
+<button class="w-10 h-10 rounded flex items-center justify-center bg-surface-container-high text-primary border-l-2 border-primary transition-all" title="COCKPIT [ACTIVE]">
+<span class="material-symbols-outlined text-lg" data-icon="grid_view">grid_view</span>
+</button>
+<button class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="DOM L2">
+<span class="material-symbols-outlined text-lg" data-icon="waterfall_chart">waterfall_chart</span>
+</button>
+<button class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="LIQUIDITY">
+<span class="material-symbols-outlined text-lg" data-icon="hub">hub</span>
+</button>
+<button class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="MACRO INTEL">
+<span class="material-symbols-outlined text-lg" data-icon="public">public</span>
+</button>
+<button class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="QUANT TELEMETRY">
+<span class="material-symbols-outlined text-lg" data-icon="query_stats">query_stats</span>
+</button>
+<button class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="SYSTEM KERNEL">
+<span class="material-symbols-outlined text-lg" data-icon="settings_suggest">settings_suggest</span>
+</button>
+</div>
+<!-- Footer Tab Icons & Halt CTA -->
+<div class="flex flex-col items-center gap-space-sm w-full">
+<button class="w-8 h-8 rounded text-error hover:bg-error-container/30 flex items-center justify-center transition-colors" title="EXECUTE PANIC HALT">
+<span class="material-symbols-outlined text-lg" data-icon="dangerous">dangerous</span>
+</button>
+<div class="w-6 h-px bg-outline-variant/40 my-0.5"></div>
+<div class="flex flex-col items-center text-outline text-[9px] font-telemetry-sm" title="LATENCY: 4.2ms">
+<span class="material-symbols-outlined text-tertiary text-xs" data-icon="speed">speed</span>
+<span>4.2m</span>
+</div>
+<button class="w-8 h-8 text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center" title="STRIKE PROTOCOL">
+<span class="material-symbols-outlined text-base" data-icon="offline_bolt">offline_bolt</span>
+</button>
+</div>
+</aside>
+<!-- TRADINGVIEW WORKSTATION CORE -->
+<main class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest overflow-hidden">
+<!-- AUTHENTIC TRADINGVIEW SUB-TOOLBAR / TIMEFRAME & CIO STEERING DOCK -->
+<div class="h-10 border-b border-outline-variant bg-surface-container-low px-space-md flex items-center justify-between gap-space-md flex-shrink-0">
+<!-- Left: Symbol Details & Monospace OHLC Pill -->
+<div class="flex items-center gap-space-md overflow-x-auto custom-scroll no-scrollbar py-1">
+<!-- Symbol & Provider -->
+<div class="flex items-center gap-2 pr-2 border-r border-outline-variant">
+<span class="w-4 h-4 rounded bg-primary/20 border border-primary/60 flex items-center justify-center text-[9px] font-telemetry-md text-primary font-bold">Au</span>
+<span class="font-telemetry-md text-telemetry-md font-bold text-on-surface tracking-tight">XAUUSD</span>
+<span class="text-body-sm font-body-sm text-outline hidden sm:inline">• Gold Spot / US Dollar • 5m • OANDA</span>
+</div>
+<!-- OHLC Live Monospace Data -->
+<div class="flex items-center gap-2 font-telemetry-sm text-telemetry-sm text-on-surface-variant whitespace-nowrap">
+<span>O <strong class="text-on-surface font-normal">4360.20</strong></span>
+<span>H <strong class="text-on-surface font-normal">4363.45</strong></span>
+<span>L <strong class="text-on-surface font-normal">4359.10</strong></span>
+<span>C <strong class="text-secondary-fixed font-semibold">4361.50</strong></span>
+<span class="text-tertiary font-medium bg-tertiary/10 px-1 py-0.5 rounded border border-tertiary/20">+1.30 (+0.03%)</span>
+</div>
+<!-- Timeframe Selector -->
+<div class="flex items-center gap-1 border-l border-outline-variant pl-2">
+<button class="px-1.5 py-0.5 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-on-surface transition-colors">1m</button>
+<button class="px-2 py-0.5 text-telemetry-sm font-telemetry-sm text-secondary bg-secondary/15 border border-secondary/60 rounded shadow-[0_0_8px_rgba(0,241,253,0.25)] font-bold">5m</button>
+<button class="px-1.5 py-0.5 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-on-surface transition-colors">15m</button>
+<button class="px-1.5 py-0.5 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-on-surface transition-colors">1h</button>
+<button class="px-1.5 py-0.5 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-on-surface transition-colors">4h</button>
+<button class="px-1.5 py-0.5 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-on-surface transition-colors">D</button>
+<div class="h-3 w-px bg-outline-variant/60 mx-1"></div>
+<button class="flex items-center gap-1 text-telemetry-sm font-telemetry-sm text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xs" data-icon="insert_chart">insert_chart</span>
+<span>Indicators</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors" title="Alerts">
+<span class="material-symbols-outlined text-xs" data-icon="notifications">notifications</span>
+</button>
+</div>
+</div>
+<!-- Right: Click-to-Steer Phase 2 Static Controls & Account Pill -->
+<div class="hidden lg:flex items-center gap-space-sm flex-shrink-0">
+<!-- Escanor CIO Status Badge -->
+<div class="flex items-center gap-1.5 bg-surface-container px-2 py-1 rounded border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-tertiary pulse-glow shadow-[0_0_6px_#00f783]"></span>
+<span class="font-label-caps text-label-caps text-on-surface tracking-wider">ESCANOR CIO: <span class="text-tertiary font-bold">STANDING FLAT</span></span>
+</div>
+<!-- Phase 2 Steering Buttons -->
+<div class="flex items-center gap-1 bg-surface-container-lowest p-0.5 rounded border border-outline-variant">
+<button class="opacity-50 cursor-not-allowed flex items-center gap-1 px-2 py-0.5 text-telemetry-sm font-telemetry-sm text-outline border border-outline-variant/50 rounded bg-surface-container-high" disabled="" title="Phase 2 Steering: Armed Execution Mode Locked">
+<span class="material-symbols-outlined text-xs" data-icon="lock">lock</span>
+<span>⚡ ARM SETUP</span>
+</button>
+<button class="opacity-50 cursor-not-allowed flex items-center gap-1 px-2 py-0.5 text-telemetry-sm font-telemetry-sm text-outline border border-outline-variant/50 rounded bg-surface-container-high" disabled="" title="Phase 2 Steering: Break Even Protocol">
+<span class="material-symbols-outlined text-xs" data-icon="lock">lock</span>
+<span>🛡️ SCRATCH / BE</span>
+</button>
+<button class="flex items-center gap-1 px-2.5 py-0.5 text-telemetry-sm font-telemetry-sm text-error bg-error/15 border border-error rounded shadow-[0_0_10px_rgba(255,180,171,0.3)] font-bold">
+<span>🛑 STAND FLAT</span>
+</button>
+</div>
+<!-- Institutional Account Pill -->
+<div class="bg-surface-container-high border border-outline-variant px-2.5 py-1 rounded font-telemetry-sm text-telemetry-sm text-outline flex items-center gap-2">
+<span>BAL: <strong class="text-on-surface font-semibold">$98,515.50</strong></span>
+<span class="text-outline-variant">|</span>
+<span>POS: <strong class="text-on-surface">0 LOTS</strong></span>
+<span class="text-outline-variant">|</span>
+<span>PnL: <strong class="text-tertiary font-semibold">$0.00</strong></span>
+<span class="text-outline-variant">|</span>
+<span class="text-primary font-medium">LEV 1:100</span>
+</div>
+</div>
+</div>
+<!-- CHART AREA SPLIT: DRAWING TOOLS BAR + (CHART + SUB-CHART) + RIGHT METRICS DOCK -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- Authentic Left Drawing Tools Bar -->
+<div class="w-10 bg-surface-container-lowest border-r border-outline-variant flex flex-col items-center py-2 gap-2 z-20 flex-shrink-0 text-on-surface-variant">
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors text-primary bg-surface-container-high/60" title="Crosshair Cursor">
+<span class="material-symbols-outlined text-base" data-icon="crosshair">file_download_done</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Trendline Tool">
+<span class="material-symbols-outlined text-base" data-icon="show_chart">show_chart</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Fibonacci Retracement">
+<span class="material-symbols-outlined text-base" data-icon="reorder">reorder</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Text Note / Callout">
+<span class="material-symbols-outlined text-base" data-icon="title">title</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Brush / Freehand Drawing">
+<span class="material-symbols-outlined text-base" data-icon="brush">brush</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Price &amp; Bar Ruler">
+<span class="material-symbols-outlined text-base" data-icon="straighten">straighten</span>
+</button>
+<div class="w-4 h-px bg-outline-variant/60 my-1"></div>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-colors" title="Zoom In Window">
+<span class="material-symbols-outlined text-base" data-icon="zoom_in">zoom_in</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-error transition-colors mt-auto" title="Clear Tactical Overlays">
+<span class="material-symbols-outlined text-base" data-icon="delete">delete</span>
+</button>
+</div>
+<!-- MAIN CENTRAL CHART CANVAS & BOTTOM INDICATOR STACK -->
+<div class="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative tv-grid-canvas">
+<!-- UPPER 75%: MAIN CANDLESTICK CHART PANE -->
+<div class="relative flex-1 w-full overflow-hidden flex">
+<!-- SVG Candlestick & Technical Layer Engine -->
+<div class="flex-1 relative h-full w-full overflow-hidden cursor-crosshair">
+<!-- SVG CANVAS WITH PRECISE PRICE VECTORS AND OVERLAYS -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 600">
+<!-- BACKGROUND HORIZONTAL GRID LINES (Subtle 20px / institutional style) -->
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="60" y2="60"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="140" y2="140"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="220" y2="220"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="300" y2="300"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="380" y2="380"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="460" y2="460"></line>
+<line stroke="#1e222d" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="540" y2="540"></line>
+<!-- VERTICAL TIMEFRAME DIVIDERS -->
+<line stroke="#181c24" stroke-width="1" x1="160" x2="160" y1="0" y2="600"></line>
+<line stroke="#181c24" stroke-width="1" x1="360" x2="360" y1="0" y2="600"></line>
+<line stroke="#181c24" stroke-width="1" x1="560" x2="560" y1="0" y2="600"></line>
+<line stroke="#181c24" stroke-width="1" x1="760" x2="760" y1="0" y2="600"></line>
+<line stroke="#181c24" stroke-width="1" x1="920" x2="920" y1="0" y2="600"></line>
+<!-- PROPRIETARY TECHNICAL OVERLAYS -->
+<!-- 1. M5 Bearish FVG Box [4363.40 - 4365.25] (15% Filled) -->
+<g id="m5-bear-fvg">
+<rect fill="#93000a" fill-opacity="0.18" height="38" stroke="#ffb4ab" stroke-dasharray="4 2" stroke-width="1" width="580" x="280" y="115"></rect>
+<!-- Partial fill hash line -->
+<rect fill="#ffb4ab" fill-opacity="0.12" height="38" width="87" x="280" y="115"></rect>
+</g>
+<!-- 2. M15 Bullish FVG Box [4343.00 - 4352.40] (Watch Base) -->
+<g id="m15-bull-fvg">
+<rect fill="#00d772" fill-opacity="0.08" height="75" stroke="#00f783" stroke-dasharray="4 4" stroke-width="1" width="760" x="140" y="340"></rect>
+</g>
+<!-- 3. Key Horizontal Price Rays -->
+<!-- Dashed Amber Ray at 4343.60: POC -->
+<line stroke="#ffaa00" stroke-dasharray="6 4" stroke-width="1.5" x1="120" x2="970" y1="410" y2="410"></line>
+<!-- Cyan Hairlines: VAH 4355.08 and VAL 4315.72 -->
+<line stroke="#00f1fd" stroke-opacity="0.75" stroke-width="1" x1="60" x2="970" y1="285" y2="285"></line>
+<line stroke="#00f1fd" stroke-opacity="0.75" stroke-width="1" x1="60" x2="970" y1="560" y2="560"></line>
+<!-- Pulsing Gold/Amber Ray at 4347.70: ACTIVE WATCH [DEMAND REASSESS] -->
+<line opacity="0.9" stroke="#ffcf91" stroke-dasharray="8 3" stroke-width="2" x1="200" x2="970" y1="365" y2="365"></line>
+<!-- Red Dashed Guide at 4351.46 (Retail Sell-Stop Pool) -->
+<line stroke="#ff3366" stroke-dasharray="2 2" stroke-width="1" x1="320" x2="970" y1="325" y2="325"></line>
+<!-- JAPANESE CANDLESTICKS (High-contrast Institutional Rendering) -->
+<!-- Cluster A: Prior consolidation & downswing -->
+<!-- Bar 1 (Green) -->
+<line stroke="#00f783" stroke-width="1.2" x1="120" x2="120" y1="380" y2="440"></line>
+<rect fill="#00f783" height="32" stroke="#00f783" stroke-width="0.5" width="12" x="114" y="395"></rect>
+<!-- Bar 2 (Red) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="150" x2="150" y1="390" y2="455"></line>
+<rect fill="#ff3366" height="38" stroke="#ff3366" stroke-width="0.5" width="12" x="144" y="405"></rect>
+<!-- Bar 3 (Green Pinbar) -->
+<line stroke="#00f783" stroke-width="1.2" x1="180" x2="180" y1="400" y2="475"></line>
+<rect fill="#00f783" height="15" stroke="#00f783" stroke-width="0.5" width="12" x="174" y="415"></rect>
+<!-- Bar 4 (Strong Green Expansion) -->
+<line stroke="#00f783" stroke-width="1.2" x1="210" x2="210" y1="350" y2="425"></line>
+<rect fill="#00f783" height="52" stroke="#00f783" stroke-width="0.5" width="12" x="204" y="360"></rect>
+<!-- Bar 5 (Green push to VAH) -->
+<line stroke="#00f783" stroke-width="1.2" x1="240" x2="240" y1="280" y2="370"></line>
+<rect fill="#00f783" height="68" stroke="#00f783" stroke-width="0.5" width="12" x="234" y="295"></rect>
+<!-- Bar 6 (Doji at High) -->
+<line stroke="#d8c3ac" stroke-width="1.2" x1="270" x2="270" y1="265" y2="310"></line>
+<rect fill="#d8c3ac" height="4" width="12" x="264" y="285"></rect>
+<!-- Bar 7 (Red Reversal) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="300" x2="300" y1="275" y2="345"></line>
+<rect fill="#ff3366" height="42" stroke="#ff3366" stroke-width="0.5" width="12" x="294" y="288"></rect>
+<!-- Bar 8 (Red Continuation) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="330" x2="330" y1="320" y2="385"></line>
+<rect fill="#ff3366" height="45" stroke="#ff3366" stroke-width="0.5" width="12" x="324" y="332"></rect>
+<!-- Bar 9 (Green Bounce at POC) -->
+<line stroke="#00f783" stroke-width="1.2" x1="360" x2="360" y1="355" y2="420"></line>
+<rect fill="#00f783" height="38" stroke="#00f783" stroke-width="0.5" width="12" x="354" y="370"></rect>
+<!-- Bar 10 (Green Re-test) -->
+<line stroke="#00f783" stroke-width="1.2" x1="390" x2="390" y1="310" y2="380"></line>
+<rect fill="#00f783" height="42" stroke="#00f783" stroke-width="0.5" width="12" x="384" y="325"></rect>
+<!-- Bar 11 (Huge Bull Momentum up to FVG) -->
+<line stroke="#00f783" stroke-width="1.2" x1="420" x2="420" y1="180" y2="330"></line>
+<rect fill="#00f783" height="125" stroke="#00f783" stroke-width="0.5" width="12" x="414" y="195"></rect>
+<!-- Bar 12 (FVG Entry Wick rejection) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="450" x2="450" y1="110" y2="215"></line>
+<rect fill="#ff3366" height="55" stroke="#ff3366" stroke-width="0.5" width="12" x="444" y="145"></rect>
+<!-- Bar 13 (Inside bar red) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="480" x2="480" y1="140" y2="220"></line>
+<rect fill="#ff3366" height="48" stroke="#ff3366" stroke-width="0.5" width="12" x="474" y="160"></rect>
+<!-- Bar 14 (Green attempt) -->
+<line stroke="#00f783" stroke-width="1.2" x1="510" x2="510" y1="150" y2="225"></line>
+<rect fill="#00f783" height="35" stroke="#00f783" stroke-width="0.5" width="12" x="504" y="170"></rect>
+<!-- Bar 15 (Red rejection hammer) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="540" x2="540" y1="130" y2="245"></line>
+<rect fill="#ff3366" height="42" stroke="#ff3366" stroke-width="0.5" width="12" x="534" y="185"></rect>
+<!-- Bar 16 (Red drop) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="570" x2="570" y1="210" y2="295"></line>
+<rect fill="#ff3366" height="58" stroke="#ff3366" stroke-width="0.5" width="12" x="564" y="225"></rect>
+<!-- Bar 17 (Consolidation green) -->
+<line stroke="#00f783" stroke-width="1.2" x1="600" x2="600" y1="240" y2="305"></line>
+<rect fill="#00f783" height="36" stroke="#00f783" stroke-width="0.5" width="12" x="594" y="250"></rect>
+<!-- Bar 18 (Red drop through VAH) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="630" x2="630" y1="270" y2="340"></line>
+<rect fill="#ff3366" height="45" stroke="#ff3366" stroke-width="0.5" width="12" x="624" y="282"></rect>
+<!-- Bar 19 (Green small body) -->
+<line stroke="#00f783" stroke-width="1.2" x1="660" x2="660" y1="300" y2="350"></line>
+<rect fill="#00f783" height="20" stroke="#00f783" stroke-width="0.5" width="12" x="654" y="315"></rect>
+<!-- Bar 20 (Red trap into Sell stops) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="690" x2="690" y1="315" y2="385"></line>
+<rect fill="#ff3366" height="48" stroke="#ff3366" stroke-width="0.5" width="12" x="684" y="325"></rect>
+<!-- Bar 21 (Green reclamation) -->
+<line stroke="#00f783" stroke-width="1.2" x1="720" x2="720" y1="290" y2="375"></line>
+<rect fill="#00f783" height="60" stroke="#00f783" stroke-width="0.5" width="12" x="714" y="305"></rect>
+<!-- Bar 22 (Green continuation) -->
+<line stroke="#00f783" stroke-width="1.2" x1="750" x2="750" y1="245" y2="315"></line>
+<rect fill="#00f783" height="45" stroke="#00f783" stroke-width="0.5" width="12" x="744" y="260"></rect>
+<!-- Bar 23 (Red pull back) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="780" x2="780" y1="250" y2="310"></line>
+<rect fill="#ff3366" height="30" stroke="#ff3366" stroke-width="0.5" width="12" x="774" y="270"></rect>
+<!-- Bar 24 (Green impulse) -->
+<line stroke="#00f783" stroke-width="1.2" x1="810" x2="810" y1="190" y2="280"></line>
+<rect fill="#00f783" height="65" stroke="#00f783" stroke-width="0.5" width="12" x="804" y="210"></rect>
+<!-- Bar 25 (Red stall) -->
+<line stroke="#ff3366" stroke-width="1.2" x1="840" x2="840" y1="180" y2="250"></line>
+<rect fill="#ff3366" height="35" stroke="#ff3366" stroke-width="0.5" width="12" x="834" y="200"></rect>
+<!-- Bar 26 (Green inside bar) -->
+<line stroke="#00f783" stroke-width="1.2" x1="870" x2="870" y1="185" y2="240"></line>
+<rect fill="#00f783" height="28" stroke="#00f783" stroke-width="0.5" width="12" x="864" y="198"></rect>
+<!-- Bar 27: LIVE CANDLE (Hovering at 4361.50) -->
+<line stroke="#00e5ff" stroke-width="1.5" x1="900" x2="900" y1="172" y2="238"></line>
+<rect fill="#00e5ff" fill-opacity="0.8" height="26" stroke="#00e5ff" stroke-width="1" width="12" x="894" y="186"></rect>
+<!-- LIVE CURRENT PRICE HORIZONTAL TRACKING LINE -->
+<line opacity="0.85" stroke="#00e5ff" stroke-dasharray="4 3" stroke-width="1" x1="0" x2="1000" y1="199" y2="199"></line>
+<!-- FLOATING TECHNICAL TEXT CALLOUTS ON CANVAS -->
+<!-- Bear FVG Label -->
+<text fill="#ffb4ab" font-family="JetBrains Mono" font-size="10" font-weight="700" x="290" y="130">M5 Bear FVG [4363.40 - 4365.25] (15% Filled)</text>
+<!-- Bull FVG Label -->
+<text fill="#00f783" font-family="JetBrains Mono" font-size="10" font-weight="700" x="150" y="356">M15 Bull FVG [4343.00 - 4352.40] (Watch Base)</text>
+<!-- POC Label -->
+<text fill="#ffaa00" font-family="JetBrains Mono" font-size="10" font-weight="700" x="125" y="405">POC 4343.60</text>
+<!-- VAH / VAL Labels -->
+<text fill="#00f1fd" font-family="JetBrains Mono" font-size="9" font-weight="600" x="65" y="280">VAH 4355.08</text>
+<text fill="#00f1fd" font-family="JetBrains Mono" font-size="9" font-weight="600" x="65" y="555">VAL 4315.72</text>
+<!-- Retail Sell Stop Pool Label -->
+<text fill="#ff3366" font-family="JetBrains Mono" font-size="9" font-weight="600" x="325" y="320">4351.46 (Retail Sell-Stop Pool)</text>
+<!-- Target Active Watch Crosshair & Label -->
+<circle cx="205" cy="365" fill="none" r="4" stroke="#ffcf91" stroke-width="1.5"></circle>
+<line stroke="#ffcf91" stroke-width="1" x1="198" x2="212" y1="365" y2="365"></line>
+<line stroke="#ffcf91" stroke-width="1" x1="205" x2="205" y1="358" y2="372"></line>
+<text fill="#ffcf91" font-family="JetBrains Mono" font-size="10" font-weight="700" x="220" y="362">ACTIVE WATCH: 4347.70 [DEMAND REASSESS]</text>
+</svg>
+<!-- Watermark in Background -->
+<div class="absolute bottom-6 left-6 pointer-events-none opacity-5 font-headline-xl text-headline-xl text-on-surface font-extrabold tracking-widest uppercase">
+                ESCANOR // ALPHA
+              </div>
+</div>
+<!-- RIGHT PRICE SCALE (Y-AXIS) -->
+<div class="w-16 bg-[#131722] border-l border-outline-variant/60 flex flex-col justify-between py-2 text-right pr-2 text-telemetry-sm font-telemetry-sm text-outline flex-shrink-0 relative">
+<div>4385.00</div>
+<div>4380.00</div>
+<div>4375.00</div>
+<div>4370.00</div>
+<div>4365.00</div>
+<!-- LIVE PRICE PILL (4361.50) -->
+<div class="absolute top-[32%] right-0 w-full flex justify-end">
+<div class="bg-secondary-container text-on-secondary font-bold font-telemetry-sm text-[11px] px-1.5 py-0.5 rounded-l shadow-[0_0_12px_rgba(0,241,253,0.6)] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-container-lowest animate-ping"></span>
+                  4361.50
+                </div>
+</div>
+<div>4360.00</div>
+<div>4355.00</div>
+<div>4350.00</div>
+<div>4345.00</div>
+<div>4340.00</div>
+<div>4335.00</div>
+<div>4330.00</div>
+</div>
+</div>
+<!-- LOWER 25%: BOTTOM SEPARATE INDICATOR SUB-PANE (CVD & AGGRESSION) -->
+<div class="h-44 border-t border-outline-variant bg-[#0c0e12] flex flex-col flex-shrink-0 relative">
+<!-- Sub-chart Header Bar -->
+<div class="h-6 px-space-sm bg-[#131722]/80 border-b border-outline-variant/40 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-label-caps font-label-caps text-secondary-fixed font-bold tracking-wider">CVD (Cumulative Volume Delta) &amp; Aggression • 5m</span>
+<span class="text-telemetry-sm font-telemetry-sm text-outline">| Aggression Ratio: 0.82 (Dominant Ask Absorbed)</span>
+</div>
+<div class="flex items-center gap-2">
+<!-- Corner Signal Badge -->
+<div class="bg-primary-container/20 border border-primary-container px-2 py-0.2 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container pulse-glow"></span>
+<span class="text-label-caps font-label-caps text-primary font-bold">BULLISH DELTA DIVERGENCE [WEAK - RULE 5 CAUTION]</span>
+</div>
+<button class="text-outline hover:text-on-surface p-0.5"><span class="material-symbols-outlined text-xs" data-icon="settings">settings</span></button>
+<button class="text-outline hover:text-on-surface p-0.5"><span class="material-symbols-outlined text-xs" data-icon="fullscreen">fullscreen</span></button>
+</div>
+</div>
+<!-- Sub-chart Canvas Area (Delta Bars + CVD Line) -->
+<div class="flex-1 relative flex overflow-hidden">
+<svg class="flex-1 h-full w-full" preserveaspectratio="none" viewbox="0 0 1000 120">
+<!-- Zero Baseline -->
+<line stroke="#333539" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="1000" y1="60" y2="60"></line>
+<!-- Cumulative Volume Delta Histogram Bars (Aggression) -->
+<!-- Cluster 1: Buyer absorption -->
+<rect fill="#00f783" fill-opacity="0.8" height="15" width="10" x="115" y="45"></rect>
+<rect fill="#ff3366" fill-opacity="0.85" height="28" width="10" x="145" y="60"></rect>
+<rect fill="#ff3366" fill-opacity="0.6" height="12" width="10" x="175" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.9" height="28" width="10" x="205" y="32"></rect>
+<rect fill="#00f783" fill-opacity="0.95" height="38" width="10" x="235" y="22"></rect>
+<rect fill="#00f783" fill-opacity="0.5" height="8" width="10" x="265" y="52"></rect>
+<!-- Cluster 2: Heavy aggressive selling into supply -->
+<rect fill="#ff3366" fill-opacity="0.95" height="42" width="10" x="295" y="60"></rect>
+<rect fill="#ff3366" fill-opacity="0.85" height="34" width="10" x="325" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.6" height="12" width="10" x="355" y="48"></rect>
+<rect fill="#00f783" fill-opacity="0.75" height="22" width="10" x="385" y="38"></rect>
+<rect fill="#00f783" fill-opacity="0.95" height="45" width="10" x="415" y="15"></rect>
+<!-- Cluster 3: Exhaustion at high -->
+<rect fill="#ff3366" fill-opacity="0.9" height="48" width="10" x="445" y="60"></rect>
+<rect fill="#ff3366" fill-opacity="0.8" height="35" width="10" x="475" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.4" height="10" width="10" x="505" y="50"></rect>
+<rect fill="#ff3366" fill-opacity="0.7" height="30" width="10" x="535" y="60"></rect>
+<rect fill="#ff3366" fill-opacity="0.95" height="52" width="10" x="565" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.65" height="16" width="10" x="595" y="44"></rect>
+<rect fill="#ff3366" fill-opacity="0.75" height="26" width="10" x="625" y="60"></rect>
+<!-- Cluster 4: Divergence build -->
+<rect fill="#00f783" fill-opacity="0.7" height="18" width="10" x="655" y="42"></rect>
+<rect fill="#ff3366" fill-opacity="0.6" height="22" width="10" x="685" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.8" height="25" width="10" x="715" y="35"></rect>
+<rect fill="#00f783" fill-opacity="0.85" height="32" width="10" x="745" y="28"></rect>
+<rect fill="#ff3366" fill-opacity="0.5" height="14" width="10" x="775" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.9" height="40" width="10" x="805" y="20"></rect>
+<rect fill="#ff3366" fill-opacity="0.6" height="18" width="10" x="835" y="60"></rect>
+<rect fill="#00f783" fill-opacity="0.6" height="12" width="10" x="865" y="48"></rect>
+<!-- Live bar -->
+<rect fill="#00e5ff" fill-opacity="0.95" height="8" width="10" x="895" y="52"></rect>
+<!-- Smooth Cyan Cumulative Volume Delta Flow Line -->
+<path d="M 120 70 Q 200 40 270 50 T 420 30 T 570 85 T 720 50 T 820 28 T 900 35" fill="none" filter="drop-shadow(0 0 4px rgba(0,241,253,0.5))" stroke="#00f1fd" stroke-linecap="round" stroke-width="2.2"></path>
+<!-- Highlight Point on CVD -->
+<circle cx="900" cy="35" fill="#00f1fd" r="3.5" stroke="#0c0e12" stroke-width="1"></circle>
+</svg>
+<!-- CVD Numeric Sub-scale -->
+<div class="w-16 bg-[#131722] border-l border-outline-variant/60 flex flex-col justify-between py-1 text-right pr-2 text-[10px] font-telemetry-sm text-outline flex-shrink-0">
+<span class="text-tertiary">+2.4K</span>
+<span class="text-outline">0</span>
+<span class="text-error">-3.1K</span>
+</div>
+</div>
+<!-- Authentic Bottom Time Scale / Scrub Bar -->
+<div class="h-5 bg-[#131722] border-t border-outline-variant/60 flex items-center justify-between px-space-md text-[10px] font-telemetry-sm text-outline">
+<span>16:00</span>
+<span>16:30</span>
+<span>17:00</span>
+<span>17:30</span>
+<span>18:00</span>
+<span>18:30</span>
+<span class="text-secondary font-bold">18:55 (UTC)</span>
+<span>19:30</span>
+<span class="text-primary font-bold">% log auto</span>
+</div>
+</div>
+</div>
+<!-- RIGHT-HAND COMPACT FLOATING HUD METRICS DOCK (320px Wide TV Watchlist Style) -->
+<aside class="w-80 bg-[#131722] border-l border-outline-variant flex flex-col custom-scroll overflow-y-auto z-30 flex-shrink-0">
+<!-- Dock Header -->
+<div class="p-space-sm bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-base" data-icon="vital_signs">vital_signs</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">TACTICAL TELEMETRY HUD</span>
+</div>
+<span class="text-[10px] font-telemetry-sm text-tertiary bg-tertiary/10 border border-tertiary/30 px-1 rounded">LIVE M5</span>
+</div>
+<div class="p-space-sm space-y-space-sm">
+<!-- CARD A: TAPE VELOCITY & MICROSTRUCTURE -->
+<div class="bg-surface-container-lowest/80 border border-outline-variant/80 rounded p-space-sm shadow-sm">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1 mb-2">
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-caps text-label-caps text-secondary font-bold">TAPE VELOCITY &amp; MICROSTRUCTURE</span>
+</div>
+<span class="text-[10px] font-telemetry-sm text-outline">L2 FEED</span>
+</div>
+<!-- Speedometer Gauge Representation (SVG Arc) -->
+<div class="flex flex-col items-center justify-center my-1 relative">
+<svg class="w-36 h-20" viewbox="0 0 140 80">
+<!-- Outer track arc -->
+<path d="M 20 70 A 50 50 0 0 1 120 70" fill="none" stroke="#282a2e" stroke-linecap="round" stroke-width="10"></path>
+<!-- Low compression active band -->
+<path d="M 20 70 A 50 50 0 0 1 50 28" fill="none" stroke="#ffaa00" stroke-linecap="round" stroke-opacity="0.85" stroke-width="10"></path>
+<!-- Needle indicator pointing to 38 t/m (~35 degrees) -->
+<line stroke="#ffaa00" stroke-linecap="round" stroke-width="2.5" x1="70" x2="48" y1="70" y2="34"></line>
+<circle cx="70" cy="70" fill="#ffaa00" r="4"></circle>
+</svg>
+<div class="text-center -mt-3">
+<div class="font-telemetry-lg text-telemetry-lg font-bold text-primary tracking-tight">38 <span class="text-telemetry-sm font-normal text-outline">t/m</span></div>
+<div class="font-label-caps text-[10px] text-primary-container font-semibold">[LOW COMPRESSION]</div>
+<div class="text-body-sm font-body-sm text-outline">Quiet Consolidation</div>
+</div>
+</div>
+<!-- Segmented Delta Pressure Bar -->
+<div class="mt-2 space-y-1">
+<div class="flex justify-between text-[10px] font-telemetry-sm">
+<span class="text-tertiary">+5.5% Buy Delta</span>
+<span class="text-error">-18.6% Sell Aggression</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden flex">
+<div class="bg-tertiary h-full rounded-l" style="width: 23%"></div>
+<div class="bg-error h-full rounded-r ml-auto" style="width: 77%"></div>
+</div>
+</div>
+<!-- L2 Depth Ladder Summary -->
+<div class="mt-2 pt-2 border-t border-outline-variant/40 grid grid-cols-2 gap-2 text-telemetry-sm font-telemetry-sm">
+<div class="bg-surface-container-low p-1.5 rounded border border-outline-variant/30">
+<span class="text-[9px] font-label-caps text-outline block">SPREAD</span>
+<span class="text-on-surface font-bold">38 pts</span>
+</div>
+<div class="bg-surface-container-low p-1.5 rounded border border-outline-variant/30">
+<span class="text-[9px] font-label-caps text-outline block">BOOK IMBALANCE</span>
+<span class="text-error font-semibold">-13.1% Ask Heavy</span>
+</div>
+<div class="col-span-2 bg-surface-container-high/40 p-1.5 rounded text-[10px] space-y-0.5">
+<div class="flex justify-between text-outline">
+<span>Best Bid:</span>
+<span class="text-tertiary font-mono">10.0L @ 4362.48</span>
+</div>
+<div class="flex justify-between text-outline">
+<span>Best Ask:</span>
+<span class="text-error font-mono">10.0L @ 4363.51</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD B: MACRO GRAVITY RADAR -->
+<div class="bg-surface-container-lowest/80 border border-outline-variant/80 rounded p-space-sm shadow-sm">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1 mb-2">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-primary" data-icon="public">public</span>
+<span class="font-label-caps text-label-caps text-primary font-bold">MACRO GRAVITY RADAR</span>
+</div>
+<span class="text-[9px] font-telemetry-sm text-outline">CORRELATION MATRIX</span>
+</div>
+<!-- Key Macro Matrix Grid -->
+<div class="space-y-1.5 text-telemetry-sm font-telemetry-sm">
+<!-- 10Y Real Yield -->
+<div class="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded border-l-2 border-error">
+<span class="text-outline">10Y Real Yield (DFII10):</span>
+<div class="text-right">
+<span class="text-error font-bold">2.55% ▲</span>
+<span class="text-[9px] block text-error/80 font-normal leading-none">Bearish Headwind</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-1.5">
+<div class="bg-surface-container-low p-1.5 rounded">
+<span class="text-[9px] text-outline block">US 10Y NOMINAL</span>
+<span class="text-on-surface font-bold">4.95%</span>
+<span class="text-[9px] text-error">▲ +3 bps</span>
+</div>
+<div class="bg-surface-container-low p-1.5 rounded">
+<span class="text-[9px] text-outline block">DXY INDEX</span>
+<span class="text-on-surface font-bold">99.10</span>
+<span class="text-[9px] text-tertiary">▼ -0.12%</span>
+</div>
+</div>
+<!-- FOMC Probability -->
+<div class="bg-surface-container-low px-2 py-1 rounded flex justify-between items-center">
+<span class="text-outline text-[11px]">FOMC Hike Odds:</span>
+<span class="text-primary font-bold text-[11px]">88% Price-in</span>
+</div>
+</div>
+</div>
+<!-- CARD C: ESCANOR CIO REASONING FEED -->
+<div class="bg-surface-container-lowest/80 border border-outline-variant/80 rounded p-space-sm shadow-sm">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1 mb-2">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-tertiary pulse-glow" data-icon="psychology">psychology</span>
+<span class="font-label-caps text-label-caps text-tertiary font-bold">ESCANOR CIO REASONING FEED</span>
+</div>
+<span class="text-[9px] font-telemetry-sm text-outline">SYNAPSE LOG</span>
+</div>
+<!-- Terminal Style Reason Logs -->
+<div class="bg-[#0a0c10] border border-outline-variant/50 p-2 rounded font-telemetry-sm text-[11px] space-y-1.5 text-on-surface-variant">
+<div class="leading-relaxed">
+<span class="text-outline">17:56 UTC Cadence:</span><br/>
+<span class="text-error font-medium">• Rejected blind limit into M5 Bear FVG</span>
+</div>
+<div class="leading-relaxed">
+<span class="text-outline">Microstructure:</span><br/>
+<span class="text-primary">• Velocity 38 t/m: dead liquidity chop</span>
+</div>
+<div class="pt-1 border-t border-outline-variant/30 leading-relaxed text-secondary-fixed font-bold">
+                  • DECISION: NO ACTION / WAIT — Standing flat
+                </div>
+</div>
+</div>
+<!-- CARD D: REPAIR & PATTERN MEMORY -->
+<div class="bg-surface-container-lowest/80 border border-outline-variant/80 rounded p-space-sm shadow-sm">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1 mb-2">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-primary" data-icon="history_edu">history_edu</span>
+<span class="font-label-caps text-label-caps text-primary font-bold">REPAIR &amp; PATTERN MEMORY</span>
+</div>
+<span class="text-[9px] font-telemetry-sm text-outline">AUTO-LEARN</span>
+</div>
+<div class="space-y-1 text-telemetry-sm font-telemetry-sm">
+<div class="bg-surface-container-high/40 p-1.5 rounded border border-outline-variant/30 text-[10px]">
+<span class="text-error font-semibold block">Autopsy Applied:</span>
+<span class="text-on-surface font-mono">M5_BearFVG_Supply_Sell</span>
+<span class="text-error font-bold block mt-0.5">(LOSS -0.51R)</span>
+</div>
+<div class="bg-tertiary/10 border border-tertiary/30 p-1.5 rounded text-[10px] text-tertiary font-medium">
+                  ✓ Heuristic lock engaged: No repeated limit trap. Standing flat.
+                </div>
+</div>
+</div>
+</div>
+<!-- Bottom Floating Execution Quick Status -->
+<div class="mt-auto p-space-sm bg-surface-container-low border-t border-outline-variant text-center">
+<div class="flex items-center justify-between text-[10px] font-telemetry-sm text-outline">
+<span>ALGO PROTOCOL:</span>
+<span class="text-tertiary font-semibold">PASSIVE_SNIPER_V4</span>
+</div>
+<div class="text-[9px] font-label-caps text-outline/70 mt-0.5">
+              ALL AUTOMATED RISK POLICIES ENFORCED
+            </div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</body></html>

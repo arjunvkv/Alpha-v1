@@ -10,14 +10,20 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 API_URL = "http://127.0.0.1:4096"
 CONFIG_PATH = Path(r"C:\Trading\Alpha\config\opencode_session_config.json")
+ROOT_CONFIG_PATH = Path(r"C:\Trading\opencode_session_config.json")
 
 print("==================================================")
-print("DEPLOYING ESCANOR v24 (CHAMPION MOTHER REPLICA)")
+print("DEPLOYING ESCANOR v27 (CHAMPION MOTHER CLONE)")
+print("Directory: C:\\Trading")
 print("==================================================")
 
-# 1. Create Session
-session_title = "Escanor v24 (Champion Mother Replica)"
-payload = json.dumps({"title": session_title}).encode("utf-8")
+# 1. Create Session explicitly in C:\Trading
+session_title = "Escanor v27 (Champion Mother Clone)"
+payload = json.dumps({
+    "title": session_title,
+    "directory": r"C:\Trading"
+}).encode("utf-8")
+
 req = urllib.request.Request(
     f"{API_URL}/session",
     data=payload,
@@ -29,7 +35,10 @@ try:
     with urllib.request.urlopen(req) as resp:
         session_obj = json.loads(resp.read().decode("utf-8"))
         session_id = session_obj["id"]
-        print(f"-> SUCCESS: Created Session '{session_title}' with ID: {session_id}")
+        session_dir = session_obj.get("directory", "N/A")
+        print(f"-> SUCCESS: Created Session '{session_title}'")
+        print(f"-> Session ID: {session_id}")
+        print(f"-> Directory:  {session_dir}")
 except Exception as e:
     print(f"-> FAILED to create session: {e}")
     sys.exit(1)
@@ -50,8 +59,8 @@ def send_prompt(text, step_label):
         return False
 
 # 2. SEED MESSAGE 1: Genesis Authority & Telemetry Mandate (Exact v8 Message 0)
-msg1 = """=== ALPHA TRADING DESK DAEMON ONLINE ===
-Session: Escanor v24 (Champion Mother Replica)
+msg1 = f"""=== ALPHA TRADING DESK DAEMON ONLINE ===
+Session: {session_title}
 Daemon: ONLINE | Tick ingestion: 2s | Universal Watcher: 500ms Active (Orders/Price/Tape/News) | Briefing: 2-Min active / 4-Min idle
 
 === EVIDENCE-FIRST AUTHORITY & MANDATORY RAW TELEMETRY AUDIT ===
@@ -66,7 +75,7 @@ Learn how real-time catalyst telemetry, tape kinetics, and bifurcated staging tu
 
 === MCP TOOLS DIRECTORY & USAGE GUIDE ===
 For full reference on all available tools, capabilities, parameters, and workflows, consult: C:\\Trading\\Alpha\\MCP_TOOLS_USAGE_GUIDE.md
-Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_fvg_matrix, get_measured_cvd, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, cancel_watch, clear_completed_watches."""
+Use atomic tools for all actions: get_market_regime_context, get_live_microstructure, get_fvg_matrix, get_measured_cvd, get_full_institutional_profile, get_account_status, get_pending_orders, place_pending_order, execute_trade, update_position, register_watch, get_active_watches, cancel_watch, clear_completed_watches."""
 
 send_prompt(msg1, "Message 1: Genesis Authority Mandate")
 time.sleep(2)
@@ -104,6 +113,7 @@ THE GOLDEN HUMAN STEERING DIRECTIVES (MOTHER CHAMPION BLUEPRINT — 100% WIN RAT
 
 4. USER MSG 63 & 937 (DO WHAT IS REVOLVING AROUND RIGHT NOW):
    - Trade the active present right in front of you. Never sit frozen waiting for tomorrow's calendar releases.
+   - Rule 6: Events >12-24h away (like tomorrow's FOMC) NEVER freeze today's roadway trades.
 
 5. ACTIVE POSITION MANAGEMENT & NO PANIC KILL:
    - NO TRAILING when in profit.
@@ -116,11 +126,14 @@ THE GOLDEN HUMAN STEERING DIRECTIVES (MOTHER CHAMPION BLUEPRINT — 100% WIN RAT
 send_prompt(msg2, "Message 2: Golden Human Steering Doctrine")
 time.sleep(2)
 
-# 4. Update session config hot-reload
+# 4. Update session configs hot-reload
 config_data = {
     "session_id": session_id,
     "session_title": session_title,
+    "opencode_session_id": session_id,
+    "opencode_session_title": session_title,
     "opencode_api_url": API_URL,
+    "api_url": API_URL,
     "dossier_streaming_enabled": True,
     "dossier_interval_seconds": 120,
     "active_trade_interval_seconds": 120
@@ -129,5 +142,8 @@ config_data = {
 with open(CONFIG_PATH, "w", encoding="utf-8") as f:
     json.dump(config_data, f, indent=2)
 
-print(f"\n-> Central session config updated to '{session_title}' ({session_id})")
-print("-> Hot-reloading active. The running daemon will bind to this session automatically!")
+with open(ROOT_CONFIG_PATH, "w", encoding="utf-8") as f:
+    json.dump(config_data, f, indent=2)
+
+print(f"\n-> Both config files updated to '{session_title}' ({session_id})")
+print("-> Hot-reloading active. The running daemon will bind to this session immediately!")

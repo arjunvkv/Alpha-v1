@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ESCANOR // HUD v17 - XAUUSD Tactical Visor Cockpit</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: JetBrains Mono & Space Grotesk -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration Verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-surface": "#e2e2e8",
+            "secondary": "#dcfdff",
+            "outline": "#a08e79",
+            "on-tertiary-fixed-variant": "#005228",
+            "on-tertiary-fixed": "#00210c",
+            "on-error": "#690005",
+            "error": "#ffb4ab",
+            "surface-container-low": "#1a1c20",
+            "on-surface-variant": "#d8c3ac",
+            "tertiary-fixed": "#60ff99",
+            "tertiary-fixed-dim": "#00e479",
+            "surface-bright": "#37393e",
+            "secondary-fixed": "#6ff6ff",
+            "on-background": "#e2e2e8",
+            "on-secondary-fixed-variant": "#004f53",
+            "background": "#111318",
+            "tertiary-container": "#00d772",
+            "inverse-on-surface": "#2f3035",
+            "inverse-primary": "#825500",
+            "on-primary-fixed": "#291800",
+            "surface-variant": "#333539",
+            "surface-container-high": "#282a2e",
+            "error-container": "#93000a",
+            "surface-container": "#1e2024",
+            "surface-container-lowest": "#0c0e12",
+            "primary-fixed": "#ffddb4",
+            "primary": "#ffcf91",
+            "primary-fixed-dim": "#ffb952",
+            "surface-tint": "#ffb952",
+            "secondary-container": "#00f1fd",
+            "on-secondary-container": "#006a6f",
+            "secondary-fixed-dim": "#00dce6",
+            "on-error-container": "#ffdad6",
+            "surface-container-highest": "#333539",
+            "on-primary-container": "#694300",
+            "outline-variant": "#524433",
+            "on-tertiary": "#003919",
+            "tertiary": "#00f783",
+            "surface": "#111318",
+            "on-tertiary-container": "#00572a",
+            "on-secondary": "#00373a",
+            "primary-container": "#ffaa00",
+            "on-primary-fixed-variant": "#633f00",
+            "surface-dim": "#111318",
+            "on-secondary-fixed": "#002022",
+            "on-primary": "#452b00",
+            "on-surface": "#e2e2e8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-sm": "0.5rem",
+            "gutter": "0.75rem",
+            "margin": "1rem",
+            "margin-mobile": "0.5rem",
+            "space-md": "0.75rem",
+            "space-xs": "0.25rem",
+            "space-xl": "1.5rem",
+            "space-lg": "1rem",
+            "gutter-mobile": "0.5rem"
+          },
+          "fontFamily": {
+            "body-sm": ["Space Grotesk"],
+            "telemetry-sm": ["JetBrains Mono"],
+            "headline-lg-mobile": ["Space Grotesk"],
+            "telemetry-md": ["JetBrains Mono"],
+            "label-caps": ["JetBrains Mono"],
+            "headline-sm": ["Space Grotesk"],
+            "body-lg": ["Space Grotesk"],
+            "body-md": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "telemetry-lg": ["JetBrains Mono"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "telemetry-xl": ["JetBrains Mono"],
+            "headline-xl": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+            "telemetry-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+            "headline-lg-mobile": ["26px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "telemetry-md": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.12em", "fontWeight": "700" }],
+            "headline-sm": ["20px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg": ["36px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "telemetry-lg": ["20px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["32px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-md": ["24px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "telemetry-xl": ["32px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-xl": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 16px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* CRT Scanline & Tactical Grid Filter */
+    .scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+    .hud-glow-cyan {
+      box-shadow: 0 0 20px rgba(0, 241, 253, 0.15), inset 0 0 10px rgba(0, 241, 253, 0.05);
+    }
+    .hud-glow-crimson {
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.35), inset 0 0 10px rgba(255, 0, 85, 0.15);
+    }
+    .laser-gold {
+      filter: drop-shadow(0 0 4px #ffaa00);
+    }
+    .laser-cyan {
+      filter: drop-shadow(0 0 4px #00f1fd);
+    }
+    .laser-crimson {
+      filter: drop-shadow(0 0 4px #ff0055);
+    }
+    .laser-green {
+      filter: drop-shadow(0 0 4px #00f783);
+    }
+    @keyframes pulse-beam {
+      0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 6px #ffaa00); }
+      50% { opacity: 0.35; filter: drop-shadow(0 0 2px #ffaa00); }
+    }
+    .animate-pulse-beam {
+      animation: pulse-beam 2.2s infinite ease-in-out;
+    }
+    @keyframes ping-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.4; }
+    }
+    .animate-ping-dot {
+      animation: ping-dot 1.4s infinite ease-in-out;
+    }
+    @keyframes radar-sweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-radar-sweep {
+      animation: radar-sweep 4s linear infinite;
+    }
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .animate-cursor {
+      animation: cursor-blink 1s step-end infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#06080d] text-on-surface h-screen w-screen overflow-hidden relative select-none font-body-sm text-body-sm antialiased">
+<!-- ================================================================= -->
+<!-- FULL-SCREEN BACKGROUND CANDLESTICK CHART CANVAS (M5 XAUUSD)       -->
+<!-- ================================================================= -->
+<div class="absolute inset-0 w-full h-full pointer-events-none z-0">
+<svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Isometric Technical Sub-Grid Pattern -->
+<pattern height="48" id="techGrid" patternunits="userSpaceOnUse" width="48">
+<path d="M 48 0 L 0 0 0 48" fill="none" stroke="#00f1fd" stroke-opacity="0.04" stroke-width="0.75"></path>
+<circle cx="0" cy="0" fill="#00f1fd" fill-opacity="0.18" r="1"></circle>
+</pattern>
+<lineargradient id="bullFvgGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00f1fd" stop-opacity="0.18"></stop>
+<stop offset="100%" stop-color="#00f1fd" stop-opacity="0.03"></stop>
+</lineargradient>
+<lineargradient id="bearFvgGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ff0055" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#ff0055" stop-opacity="0.04"></stop>
+</lineargradient>
+<lineargradient id="goldLaserGlow" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0%" stop-color="#ffaa00" stop-opacity="0.1"></stop>
+<stop offset="30%" stop-color="#ffaa00" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#ffaa00" stop-opacity="0.2"></stop>
+</lineargradient>
+</defs>
+<!-- Background Technical Matrix -->
+<rect fill="url(#techGrid)" height="100%" width="100%"></rect>
+<!-- Horizontal Major Price Guides -->
+<g stroke="#00f1fd" stroke-opacity="0.06" stroke-width="1">
+<line x1="0" x2="100%" y1="120" y2="120"></line>
+<line x1="0" x2="100%" y1="210" y2="210"></line>
+<line x1="0" x2="100%" y1="300" y2="300"></line>
+<line x1="0" x2="100%" y1="390" y2="390"></line>
+<line x1="0" x2="100%" y1="480" y2="480"></line>
+<line x1="0" x2="100%" y1="570" y2="570"></line>
+<line x1="0" x2="100%" y1="660" y2="660"></line>
+<line x1="0" x2="100%" y1="750" y2="750"></line>
+</g>
+<!-- Vertical Timeline Guides -->
+<g stroke="#00f1fd" stroke-dasharray="3,6" stroke-opacity="0.05" stroke-width="1">
+<line x1="220" x2="220" y1="0" y2="100%"></line>
+<line x1="440" x2="440" y1="0" y2="100%"></line>
+<line x1="680" x2="680" y1="0" y2="100%"></line>
+<line x1="920" x2="920" y1="0" y2="100%"></line>
+<line x1="1160" x2="1160" y1="0" y2="100%"></line>
+<line x1="1400" x2="1400" y1="0" y2="100%"></line>
+</g>
+<!-- SPATIAL OVERLAYS: FVG BOXES -->
+<!-- M15 Bull FVG [4343.00 - 4352.40] -->
+<g>
+<rect class="laser-cyan" fill="url(#bullFvgGrad)" height="74" opacity="0.8" stroke="#00f1fd" stroke-dasharray="4,2" stroke-width="1" width="620" x="340" y="420"></rect>
+<text fill="#00f1fd" font-family="'JetBrains Mono'" font-size="10" font-weight="700" letter-spacing="1" x="350" y="438">M15 BULL FVG [4343.00 - 4352.40]</text>
+</g>
+<!-- M5 Bear FVG [4363.40 - 4365.25] -->
+<g>
+<rect class="laser-crimson" fill="url(#bearFvgGrad)" height="42" opacity="0.9" stroke="#ff0055" stroke-dasharray="5,2" stroke-width="1.2" width="560" x="680" y="270"></rect>
+<text fill="#ff0055" font-family="'JetBrains Mono'" font-size="10" font-weight="700" letter-spacing="1" x="690" y="286">M5 BEAR FVG [4363.40 - 4365.25] // DEFENSE ZONE</text>
+</g>
+<!-- LASER HORIZONTAL PRICE LINES -->
+<!-- VAH: 4355.08 -->
+<line opacity="0.4" stroke="#00f1fd" stroke-dasharray="8,4" stroke-width="1" x1="0" x2="100%" y1="360" y2="360"></line>
+<text fill="#00f1fd" font-family="'JetBrains Mono'" font-size="10" opacity="0.6" x="80" y="354">VAH 4355.08</text>
+<!-- POC: 4343.60 (Golden Dashed Laser Line) -->
+<line class="laser-gold" opacity="0.95" stroke="#ffaa00" stroke-dasharray="6,4" stroke-width="1.5" x1="0" x2="100%" y1="465" y2="465"></line>
+<!-- WATCH: 4347.70 [DEMAND REASSESS] (Pulsing Amber Beam) -->
+<line class="laser-gold animate-pulse-beam" stroke="#ffb952" stroke-width="2" x1="0" x2="100%" y1="440" y2="440"></line>
+<g transform="translate(180, 432)">
+<rect fill="#0c0e12" height="16" rx="2" stroke="#ffaa00" stroke-width="1" width="220" x="0" y="0"></rect>
+<text fill="#ffaa00" font-family="'JetBrains Mono'" font-size="9" font-weight="700" x="8" y="12">WATCH 4347.70 [DEMAND REASSESS]</text>
+</g>
+<!-- VAL: 4315.72 -->
+<line opacity="0.4" stroke="#00f1fd" stroke-dasharray="8,4" stroke-width="1" x1="0" x2="100%" y1="680" y2="680"></line>
+<text fill="#00f1fd" font-family="'JetBrains Mono'" font-size="10" opacity="0.6" x="80" y="674">VAL 4315.72</text>
+<!-- LIVE CURRENT PRICE LINE: 4361.50 -->
+<line class="laser-cyan" stroke="#00f1fd" stroke-dasharray="2,2" stroke-width="1.8" x1="0" x2="100%" y1="315" y2="315"></line>
+<!-- CANDLESTICKS DATA SERIES (Realistic M5 Structure around 4361.50) -->
+<!-- C1 (Bullish) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="160" x2="160" y1="540" y2="480"></line>
+<rect fill="#00ff88" height="35" opacity="0.85" rx="1" width="12" x="154" y="495"></rect>
+<!-- C2 (Bearish) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="200" x2="200" y1="510" y2="445"></line>
+<rect fill="#ff0055" height="42" opacity="0.85" rx="1" width="12" x="194" y="460"></rect>
+<!-- C3 (Bullish Pin) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="240" x2="240" y1="520" y2="430"></line>
+<rect fill="#00ff88" height="25" opacity="0.85" rx="1" width="12" x="234" y="465"></rect>
+<!-- C4 (Impulse Bull) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="280" x2="280" y1="465" y2="380"></line>
+<rect fill="#00ff88" height="60" opacity="0.85" rx="1" width="12" x="274" y="390"></rect>
+<!-- C5 (Pullback Bear) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="320" x2="320" y1="420" y2="375"></line>
+<rect fill="#ff0055" height="24" opacity="0.85" rx="1" width="12" x="314" y="388"></rect>
+<!-- C6 (Bull) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="360" x2="360" y1="400" y2="340"></line>
+<rect fill="#00ff88" height="40" opacity="0.85" rx="1" width="12" x="354" y="350"></rect>
+<!-- C7 (Doji) -->
+<line stroke="#ffcf91" stroke-width="1.5" x1="400" x2="400" y1="365" y2="320"></line>
+<rect fill="#ffcf91" height="6" opacity="0.8" rx="1" width="12" x="394" y="342"></rect>
+<!-- C8 (Bear) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="440" x2="440" y1="358" y2="295"></line>
+<rect fill="#ff0055" height="30" opacity="0.85" rx="1" width="12" x="434" y="325"></rect>
+<!-- C9 (Strong Bull Breakout) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="480" x2="480" y1="340" y2="245"></line>
+<rect fill="#00ff88" height="65" opacity="0.85" rx="1" width="12" x="474" y="260"></rect>
+<!-- C10 (Swing High Rejection Bear) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="520" x2="520" y1="230" y2="310"></line>
+<rect fill="#ff0055" height="45" opacity="0.85" rx="1" width="12" x="514" y="250"></rect>
+<!-- C11 (Bear Continuation) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="560" x2="560" y1="285" y2="360"></line>
+<rect fill="#ff0055" height="50" opacity="0.85" rx="1" width="12" x="554" y="295"></rect>
+<!-- C12 (Consolidation Bull) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="600" x2="600" y1="360" y2="320"></line>
+<rect fill="#00ff88" height="20" opacity="0.85" rx="1" width="12" x="594" y="332"></rect>
+<!-- C13 (Bear Re-test) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="640" x2="640" y1="375" y2="315"></line>
+<rect fill="#ff0055" height="28" opacity="0.85" rx="1" width="12" x="634" y="340"></rect>
+<!-- C14 (Bear Drop) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="680" x2="680" y1="410" y2="330"></line>
+<rect fill="#ff0055" height="45" opacity="0.85" rx="1" width="12" x="674" y="355"></rect>
+<!-- C15 (Bull Bounce off POC) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="720" x2="720" y1="475" y2="410"></line>
+<rect fill="#00ff88" height="45" opacity="0.85" rx="1" width="12" x="714" y="420"></rect>
+<!-- C16 (Follow-Through Bull) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="760" x2="760" y1="435" y2="370"></line>
+<rect fill="#00ff88" height="40" opacity="0.85" rx="1" width="12" x="754" y="380"></rect>
+<!-- C17 (Compressing Doji) -->
+<line stroke="#00f1fd" stroke-width="1.5" x1="800" x2="800" y1="395" y2="350"></line>
+<rect fill="#00f1fd" height="12" opacity="0.8" rx="1" width="12" x="794" y="365"></rect>
+<!-- C18 (Impulse into FVG) -->
+<line class="laser-green" stroke="#00ff88" stroke-width="1.5" x1="840" x2="840" y1="380" y2="280"></line>
+<rect fill="#00ff88" height="65" opacity="0.85" rx="1" width="12" x="834" y="300"></rect>
+<!-- C19 (Rejection at 4365) -->
+<line class="laser-crimson" stroke="#ff0055" stroke-width="1.5" x1="880" x2="880" y1="270" y2="335"></line>
+<rect fill="#ff0055" height="38" opacity="0.85" rx="1" width="12" x="874" y="285"></rect>
+<!-- C20 (Active Live Candle 4361.50) -->
+<line class="laser-cyan" stroke="#00f1fd" stroke-width="2" x1="920" x2="920" y1="298" y2="330"></line>
+<rect fill="#00f1fd" height="11" opacity="0.95" rx="1" width="12" x="914" y="310"></rect>
+<!-- Reticle Crosshair at Active Price Node -->
+<circle cx="920" cy="315" fill="none" opacity="0.8" r="7" stroke="#00f1fd" stroke-width="1"></circle>
+<circle class="animate-ping-dot" cx="920" cy="315" fill="#00f1fd" r="2"></circle>
+<!-- BOTTOM OVERLAY: CVD BAR HISTOGRAM -->
+<g transform="translate(100, 770)">
+<line opacity="0.4" stroke="#524433" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="1100" y1="50" y2="50"></line>
+<!-- Delta bars -->
+<rect fill="#00ff88" height="18" opacity="0.6" width="10" x="60" y="32"></rect>
+<rect fill="#ff0055" height="28" opacity="0.6" width="10" x="100" y="50"></rect>
+<rect fill="#ff0055" height="14" opacity="0.5" width="10" x="140" y="50"></rect>
+<rect fill="#00ff88" height="26" opacity="0.7" width="10" x="180" y="24"></rect>
+<rect fill="#00ff88" height="35" opacity="0.8" width="10" x="220" y="15"></rect>
+<rect fill="#ff0055" height="22" opacity="0.6" width="10" x="260" y="50"></rect>
+<rect fill="#ff0055" height="35" opacity="0.7" width="10" x="300" y="50"></rect>
+<rect fill="#ff0055" height="40" opacity="0.8" width="10" x="340" y="50"></rect>
+<rect fill="#00ff88" height="20" opacity="0.6" width="10" x="380" y="30"></rect>
+<rect fill="#ff0055" height="18" opacity="0.5" width="10" x="420" y="50"></rect>
+<rect fill="#ff0055" height="45" opacity="0.9" width="10" x="460" y="50"></rect>
+<rect fill="#ff0055" height="30" opacity="0.7" width="10" x="500" y="50"></rect>
+<rect fill="#00ff88" height="12" opacity="0.5" width="10" x="540" y="38"></rect>
+<rect fill="#ff0055" height="25" opacity="0.6" width="10" x="580" y="50"></rect>
+<rect fill="#00ff88" height="25" opacity="0.65" width="10" x="620" y="25"></rect>
+<rect fill="#00ff88" height="30" opacity="0.75" width="10" x="660" y="20"></rect>
+<rect fill="#00ff88" height="15" opacity="0.6" width="10" x="700" y="35"></rect>
+<rect fill="#00ff88" height="40" opacity="0.9" width="10" x="740" y="10"></rect>
+<rect fill="#ff0055" height="32" opacity="0.75" width="10" x="780" y="50"></rect>
+<rect fill="#00ff88" height="8" opacity="0.8" width="10" x="820" y="42"></rect>
+</g>
+</svg>
+<!-- FLOATING BADGE: POC 4343.60 -->
+<div class="absolute top-[457px] right-24 bg-surface-container-lowest/90 border border-primary text-primary px- space-sm py-0.5 font-label-caps text-label-caps rounded shadow-[0_0_10px_rgba(255,170,0,0.3)]">
+      POC // 4,343.60 GOLD ANCHOR
+    </div>
+<!-- FLOATING BADGE: LIVE PRICE 4361.50 -->
+<div class="absolute top-[303px] right-20 bg-secondary-container/20 border border-secondary-container text-secondary px- space-sm py-1 font-telemetry-sm text-telemetry-sm font-bold rounded flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,241,253,0.4)]">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-ping-dot inline-block"></span>
+      XAUUSD 4,361.50 • ACTIVE TICK
+    </div>
+<!-- FLOATING BADGE: CVD Divergence Indicator -->
+<div class="absolute bottom-16 left-32 bg-black/60 border border-secondary/40 text-secondary px- space-md py-1 font-label-caps text-label-caps rounded backdrop-blur-md flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+      CVD // BULLISH DELTA DIVERGENCE [WEAK]
+    </div>
+<!-- X-Axis Coordinates (Bottom) -->
+<div class="absolute bottom-2 left-32 right-32 flex justify-between font-telemetry-sm text-telemetry-sm text-outline/60">
+<span>16:30 UTC</span>
+<span>17:00 UTC</span>
+<span>17:15 UTC</span>
+<span>17:30 UTC [NY CLOSE PROX]</span>
+<span>17:45 UTC</span>
+<span>18:00 UTC</span>
+</div>
+<!-- Y-Axis Coordinates (Right Edge) -->
+<div class="absolute top-12 bottom-12 right-2 w-14 flex flex-col justify-between items-end font-telemetry-sm text-telemetry-sm text-outline/50 pointer-events-none">
+<span>4380.00</span>
+<span>4372.50</span>
+<span class="text-error font-bold">4365.25</span>
+<span class="text-secondary-container font-bold">4361.50</span>
+<span>4355.00</span>
+<span class="text-primary font-bold">4343.60</span>
+<span>4330.00</span>
+<span>4315.70</span>
+<span>4300.00</span>
+</div>
+</div>
+<!-- CRT Scanline Atmosphere -->
+<div class="absolute inset-0 scanlines z-10 pointer-events-none"></div>
+<!-- Reticle Corner Frame Accents for Full HUD Immersion -->
+<div class="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-secondary-container pointer-events-none z-20"></div>
+<div class="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-secondary-container pointer-events-none z-20"></div>
+<div class="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-secondary-container pointer-events-none z-20"></div>
+<div class="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-secondary-container pointer-events-none z-20"></div>
+<!-- Reticle Center Crosshair Watermark -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-20 z-10">
+<div class="w-16 h-16 border border-secondary-container/40 rounded-full flex items-center justify-center relative">
+<div class="w-1 h-3 bg-secondary-container absolute -top-1.5 left-1/2 -translate-x-1/2"></div>
+<div class="w-1 h-3 bg-secondary-container absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
+<div class="w-3 h-1 bg-secondary-container absolute -left-1.5 top-1/2 -translate-y-1/2"></div>
+<div class="w-3 h-1 bg-secondary-container absolute -right-1.5 top-1/2 -translate-y-1/2"></div>
+<div class="w-1 h-1 bg-secondary-container rounded-full"></div>
+</div>
+</div>
+<!-- ================================================================= -->
+<!-- 1. TOP COMMAND CAPSULE (Floating Centered Glass Pill)              -->
+<!-- ================================================================= -->
+<header class="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap- space-md px- space-lg py-1.5 bg-black/65 backdrop-blur-xl border border-secondary-container/30 rounded-full hud-glow-cyan">
+<!-- Brand / Node Status -->
+<div class="flex items-center gap-1.5 border-r border-outline-variant/60 pr- space-md">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-ping-dot inline-block"></span>
+<span class="font-label-caps text-label-caps text-primary tracking-wider font-bold">ESCANOR // HUD v17</span>
+</div>
+<!-- Ticker & Live Price -->
+<div class="flex items-baseline gap-2">
+<span class="font-headline-sm text-headline-sm text-secondary tracking-tight font-bold">XAUUSD • $4,361.50</span>
+<span class="font-label-caps text-label-caps text-outline bg-surface-container-lowest/80 px-1.5 py-0.5 rounded border border-outline-variant/40">
+        SPREAD: 38 PTS
+      </span>
+</div>
+<!-- Regime Indicator -->
+<div class="bg-error-container/40 border border-error/60 text-error px-2 py-0.5 rounded font-label-caps text-label-caps flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[12px]">warning</span>
+      REGIME: BEARISH CONT • DFII10: 2.55% ▲
+    </div>
+<!-- Click-to-Steer Controls Cluster -->
+<div class="flex items-center gap-1.5 pl- space-sm border-l border-outline-variant/60">
+<div class="px-2 py-1 bg-surface-container-high/60 border border-outline-variant text-on-surface-variant rounded font-label-caps text-label-caps">
+        MODE: AUTO
+      </div>
+<!-- Button: ARM SETUP (Locked) -->
+<button class="flex items-center gap-1 px-2.5 py-1 bg-surface-container/60 hover:bg-surface-container-high text-on-surface-variant/50 border border-outline-variant/40 rounded font-telemetry-sm text-telemetry-sm transition cursor-not-allowed" title="System Safety Interlock Engaged">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span>[⚡ ARM SETUP]</span>
+</button>
+<!-- Button: SCRATCH / BE (Locked) -->
+<button class="flex items-center gap-1 px-2.5 py-1 bg-surface-container/60 hover:bg-surface-container-high text-on-surface-variant/50 border border-outline-variant/40 rounded font-telemetry-sm text-telemetry-sm transition cursor-not-allowed">
+<span class="material-symbols-outlined text-[13px]">shield</span>
+<span>[🛡️ SCRATCH/BE]</span>
+</button>
+<!-- Button: STAND FLAT (Active Emergency Pulse) -->
+<button class="flex items-center gap-1 px-3 py-1 bg-error-container text-on-error border border-error rounded font-telemetry-sm text-telemetry-sm font-bold hud-glow-crimson active:scale-95 transition">
+<span class="material-symbols-outlined text-[13px]">cancel</span>
+<span>[🛑 STAND FLAT]</span>
+</button>
+</div>
+</header>
+<!-- ================================================================= -->
+<!-- 2. TOP-LEFT FLOATING MACRO RADAR WIDGET                           -->
+<!-- ================================================================= -->
+<aside class="absolute top-14 left-4 z-30 w-80 bg-black/60 backdrop-blur-lg border border-secondary-container/20 rounded-lg p- space-md relative hud-glow-cyan">
+<!-- Corner Reticle Brackets -->
+<div class="absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-secondary-container"></div>
+<!-- Header -->
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">public</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">MACRO GRAVITATIONAL MATRIX</span>
+</div>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping-dot"></span>
+</div>
+<!-- 10Y Real Yield Benchmark -->
+<div class="flex items-center justify-between bg-surface-container-lowest/80 p-2 rounded border border-outline-variant/30 mb-2.5">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant">10Y REAL YIELD (DFII10)</div>
+<div class="font-telemetry-lg text-telemetry-lg text-error font-bold tracking-tight">2.55%</div>
+</div>
+<div class="bg-error-container/50 border border-error/70 text-error px-2 py-0.5 font-label-caps text-label-caps rounded">
+        TIDE: BEARISH
+      </div>
+</div>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-3 gap-1.5 mb-2.5 text-center">
+<div class="bg-surface-container/40 p-1.5 rounded border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-on-surface-variant/80">US 10Y NOM</div>
+<div class="font-telemetry-md text-telemetry-md text-secondary font-bold">4.95%</div>
+</div>
+<div class="bg-surface-container/40 p-1.5 rounded border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-on-surface-variant/80">DXY INDEX</div>
+<div class="font-telemetry-md text-telemetry-md text-primary font-bold">99.10</div>
+</div>
+<div class="bg-surface-container/40 p-1.5 rounded border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-on-surface-variant/80">FOMC HIKE</div>
+<div class="font-telemetry-md text-telemetry-md text-error font-bold">88%</div>
+</div>
+</div>
+<!-- Micro Ticker Geopolitical Wire -->
+<div class="bg-surface-container-lowest/90 border-l-2 border-primary px-2 py-1 font-telemetry-sm text-telemetry-sm text-on-surface-variant">
+<div class="truncate text-[10px] text-primary">
+        • Hormuz transits 7/d | Bab el-Mandeb alert | Salalah Mon
+      </div>
+</div>
+</aside>
+<!-- ================================================================= -->
+<!-- 3. TOP-RIGHT FLOATING TAPE SPEEDOMETER & PRESSURE WIDGET          -->
+<!-- ================================================================= -->
+<aside class="absolute top-14 right-4 z-30 w-84 bg-black/60 backdrop-blur-lg border border-secondary-container/20 rounded-lg p- space-md relative hud-glow-cyan">
+<!-- Corner Reticle Brackets -->
+<div class="absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-secondary-container"></div>
+<!-- Header -->
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">speed</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">TAPE VELOCITY &amp; DOM FLUX</span>
+</div>
+<span class="font-telemetry-sm text-telemetry-sm text-tertiary">4.2ms PING</span>
+</div>
+<!-- Radial Tachometer Dial & Metric Cluster -->
+<div class="flex items-center gap-3 mb-2">
+<!-- 110px Circular Tachometer Gauge -->
+<div class="relative w-24 h-24 flex items-center justify-center shrink-0">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<!-- Background arc track -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#1e2024" stroke-dasharray="210" stroke-dashoffset="50" stroke-linecap="round" stroke-width="6"></circle>
+<!-- High-velocity warning red zone -->
+<circle cx="50" cy="50" fill="transparent" opacity="0.6" r="40" stroke="#ff0055" stroke-dasharray="210" stroke-dashoffset="180" stroke-linecap="round" stroke-width="6"></circle>
+<!-- Active Velocity Arc -->
+<circle class="laser-cyan" cx="50" cy="50" fill="transparent" r="40" stroke="#00f1fd" stroke-dasharray="210" stroke-dashoffset="145" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<!-- Needle Core & Readout -->
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-telemetry-lg text-telemetry-lg text-secondary font-bold leading-none">38</span>
+<span class="font-label-caps text-label-caps text-outline text-[9px] mt-0.5">T/M</span>
+</div>
+</div>
+<!-- Velocity Diagnostic & Compression State -->
+<div class="flex-1">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-0.5">MOMENTUM STATE</div>
+<div class="font-telemetry-sm text-telemetry-sm text-primary font-bold mb-1.5 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+          VELOCITY: COMPRESSION
+        </div>
+<div class="font-label-caps text-label-caps text-on-surface-variant/70 text-[9px] leading-tight">
+          ORDER TAPE ABSORPTION OBSERVED UNDER FVG CEILING
+        </div>
+</div>
+</div>
+<!-- Segmented Delta Pressure Ratio Bars -->
+<div class="bg-surface-container-lowest/80 p-2 rounded border border-outline-variant/30">
+<div class="flex justify-between font-telemetry-sm text-telemetry-sm mb-1">
+<span class="text-tertiary font-bold">+5.5% BUY FLOW</span>
+<span class="text-error font-bold">-18.6% SELL AGGR</span>
+</div>
+<!-- Dual-Sided Visual Ratio Bar -->
+<div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary" style="width: 23%;"></div>
+<div class="h-full bg-error" style="width: 77%;"></div>
+</div>
+<div class="flex justify-between font-label-caps text-label-caps text-outline mt-1 text-[9px]">
+<span>ABSORPTION DELTA</span>
+<span>1000 Hz KERNEL FEED</span>
+</div>
+</div>
+</aside>
+<!-- ================================================================= -->
+<!-- 4. BOTTOM-LEFT FLOATING COGNITIVE REASONING TERMINAL              -->
+<!-- ================================================================= -->
+<section class="absolute bottom-6 left-4 z-30 w-96 bg-black/65 backdrop-blur-xl border border-secondary-container/25 rounded-lg p- space-md hud-glow-cyan">
+<!-- Corner Reticle Brackets -->
+<div class="absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-secondary-container"></div>
+<!-- Header -->
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]">psychology</span>
+<span class="font-label-caps text-label-caps text-primary font-bold tracking-wider">COGNITIVE CIO // STREAM</span>
+</div>
+<div class="flex items-center gap-1 text-[10px] font-telemetry-sm text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping-dot"></span>
+        SYNAPSE LIVE
+      </div>
+</div>
+<!-- Monospace Terminal Log Content -->
+<div class="font-telemetry-sm text-telemetry-sm space-y-1.5 bg-surface-container-lowest/90 p-2.5 rounded border border-outline-variant/30 text-on-surface">
+<div class="text-outline-variant flex items-center gap-1 text-[10px]">
+<span>[CADENCE CLOCK: 17:56:23 UTC]</span>
+<span class="text-tertiary">KERNEL::SYNCHRONIZED</span>
+</div>
+<div class="text-secondary font-medium">
+        &gt; 17:56:23 CADENCE AUDIT
+      </div>
+<div class="text-error font-medium">
+        &gt; Rejecting blind limit retrace into M5 Bear FVG
+      </div>
+<div class="text-primary font-medium">
+        &gt; 38 t/m: liquidity compression detected
+      </div>
+<div class="text-tertiary-fixed font-bold bg-tertiary-container/10 px-1.5 py-0.5 rounded border-l-2 border-tertiary inline-block">
+        &gt; DECISION: NO ACTION / WAIT — Standing flat<span class="animate-cursor font-bold">_</span>
+</div>
+</div>
+</section>
+<!-- ================================================================= -->
+<!-- 5. BOTTOM-RIGHT FLOATING ORDER BOOK & ACCOUNT CAPSULE             -->
+<!-- ================================================================= -->
+<aside class="absolute bottom-6 right-4 z-30 w-88 bg-black/65 backdrop-blur-xl border border-secondary-container/25 rounded-lg p- space-md hud-glow-cyan">
+<!-- Corner Reticle Brackets -->
+<div class="absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-secondary-container"></div>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-secondary-container"></div>
+<!-- Top DOM Header & Wyckoff Pill -->
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">waterfall_chart</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">DEPTH L2 DOM // XAUUSD</span>
+</div>
+<span class="bg-primary-container/20 border border-primary text-primary px-1.5 py-0.5 rounded font-label-caps text-label-caps text-[9px] font-bold">
+        PHASE B • EQUILIBRIUM
+      </span>
+</div>
+<!-- Micro DOM Wall Comparison -->
+<div class="space-y-1.5 mb-2.5">
+<!-- Ask Wall -->
+<div class="relative bg-surface-container-lowest/80 p-1.5 rounded border border-error/30 overflow-hidden flex items-center justify-between font-telemetry-sm text-telemetry-sm">
+<div class="absolute right-0 top-0 bottom-0 bg-error/20 w-[68%] pointer-events-none"></div>
+<span class="text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">arrow_drop_down</span>
+          ASK WALL: 10.0L
+        </span>
+<span class="font-telemetry-md text-telemetry-md text-on-surface font-bold z-10">4,363.51</span>
+</div>
+<!-- Spread Separator -->
+<div class="text-center font-label-caps text-label-caps text-outline-variant/70 text-[9px]">
+        ▲ 0.97 PTS SPREAD GAP ▼
+      </div>
+<!-- Bid Wall -->
+<div class="relative bg-surface-container-lowest/80 p-1.5 rounded border border-tertiary/30 overflow-hidden flex items-center justify-between font-telemetry-sm text-telemetry-sm">
+<div class="absolute left-0 top-0 bottom-0 bg-tertiary/20 w-[42%] pointer-events-none"></div>
+<span class="text-tertiary font-bold flex items-center gap-1 z-10">
+<span class="material-symbols-outlined text-[12px]">arrow_drop_up</span>
+          BID WALL: 10.0L
+        </span>
+<span class="font-telemetry-md text-telemetry-md text-on-surface font-bold z-10">4,362.48</span>
+</div>
+</div>
+<!-- Floating Account Telemetry Capsule -->
+<div class="bg-surface-container-high/60 border border-outline-variant/40 rounded p-2 text-center font-telemetry-sm text-telemetry-sm text-on-surface">
+<div class="grid grid-cols-2 gap-1 mb-1">
+<div class="text-left"><span class="text-outline">BAL:</span> <span class="text-secondary font-bold">$98,515.50</span></div>
+<div class="text-right"><span class="text-outline">POS:</span> <span class="text-primary font-bold">0 LOTS</span></div>
+</div>
+<div class="grid grid-cols-2 gap-1 border-t border-outline-variant/30 pt-1 text-[10px]">
+<div class="text-left"><span class="text-outline">PnL:</span> <span class="text-on-surface font-bold">$0.00</span></div>
+<div class="text-right"><span class="text-outline">LEV:</span> <span class="text-secondary font-bold">1:100 MARGIN</span></div>
+</div>
+</div>
+</aside>
+</body></html>

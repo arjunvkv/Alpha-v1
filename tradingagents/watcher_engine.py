@@ -8,6 +8,7 @@ Designed for 500ms execution cycles without blocking or heavy computation.
 
 import re
 import json
+import time
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -25,7 +26,12 @@ class WatchConditionType:
     POSITION_PNL = "POSITION_PNL"
     POSITION_DRAWDOWN = "POSITION_DRAWDOWN"
     VELOCITY_SPIKE = "VELOCITY_SPIKE"
+    VELOCITY_DECAY = "VELOCITY_DECAY"
     SPREAD_SPIKE = "SPREAD_SPIKE"
+    CVD_ABOVE = "CVD_ABOVE"
+    CVD_BELOW = "CVD_BELOW"
+    CVD_FLIP_BULLISH = "CVD_FLIP_BULLISH"
+    CVD_FLIP_BEARISH = "CVD_FLIP_BEARISH"
     NEWS_KEYWORD = "NEWS_KEYWORD"
     CUSTOM = "CUSTOM"
 
@@ -35,7 +41,8 @@ def parse_watch_condition(
     target_price: Optional[float] = None,
     direction: str = "",
     condition_type: str = "",
-    target_ticket: Optional[int] = None
+    target_ticket: Optional[int] = None,
+    explicit_keywords: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Intelligently parses user / LLM natural language or structured condition
@@ -65,6 +72,16 @@ def parse_watch_condition(
         text_lower = text.lower()
         if any(k in text_lower for k in ["fill", "filled", "executed", "order trigger", "probe fill"]):
             cond_type = WatchConditionType.ORDER_FILL
+        elif any(k in text_lower for k in ["cvd flip bull", "cvd bullish flip", "delta flip bull"]):
+            cond_type = WatchConditionType.CVD_FLIP_BULLISH
+        elif any(k in text_lower for k in ["cvd flip bear", "cvd bearish flip", "delta flip bear"]):
+            cond_type = WatchConditionType.CVD_FLIP_BEARISH
+        elif any(k in text_lower for k in ["cvd above", "cvd >", "delta above"]):
+            cond_type = WatchConditionType.CVD_ABOVE
+        elif any(k in text_lower for k in ["cvd below", "cvd <", "delta below"]):
+            cond_type = WatchConditionType.CVD_BELOW
+        elif any(k in text_lower for k in ["velocity decay", "vel decay", "tape stall", "exhaustion", "tape quiet", "low velocity"]):
+            cond_type = WatchConditionType.VELOCITY_DECAY
         elif any(k in text_lower for k in ["velocity", "ticks/min", "tpm", "kinetic"]):
             cond_type = WatchConditionType.VELOCITY_SPIKE
         elif any(k in text_lower for k in ["spread", "spread blowout"]):
@@ -74,8 +91,6 @@ def parse_watch_condition(
                 cond_type = WatchConditionType.POSITION_DRAWDOWN
             else:
                 cond_type = WatchConditionType.POSITION_PNL
-        elif any(k in text_lower for k in ["news", "headline", "geopolitical", "shock", "war", "hormuz", "cpi", "fed"]):
-            cond_type = WatchConditionType.NEWS_KEYWORD
         elif any(k in text_lower for k in ["cross above", "crosses above", "breaks above", "breakout above"]):
             cond_type = WatchConditionType.PRICE_CROSS_ABOVE
         elif any(k in text_lower for k in ["cross below", "crosses below", "breaks below", "breakdown below"]):
@@ -96,12 +111,15 @@ def parse_watch_condition(
     # 3. Extract Target Price safely (DO NOT match 8+ digit tickets as prices!)
     if extracted_target_price is None and cond_type not in (
         WatchConditionType.ORDER_FILL, WatchConditionType.NEWS_KEYWORD,
-        WatchConditionType.VELOCITY_SPIKE, WatchConditionType.SPREAD_SPIKE
+        WatchConditionType.VELOCITY_SPIKE, WatchConditionType.VELOCITY_DECAY,
+        WatchConditionType.SPREAD_SPIKE, WatchConditionType.CVD_ABOVE,
+        WatchConditionType.CVD_BELOW, WatchConditionType.CVD_FLIP_BULLISH,
+        WatchConditionType.CVD_FLIP_BEARISH
     ):
         scrubbed = re.sub(r'#?[0-9]{7,12}', '', text)
         matches = re.findall(r'(?:above|below|at|target|breaks|break|price|level|fvg)?\s*([1-9][0-9]{2,4}(?:\.[0-9]+)?)', scrubbed, re.IGNORECASE)
         if not matches:
-            matches = re.findall(r'([1-9][0-9]{3}(?:\.[0-9]+)?)', scrubbed)
+            matches = re.findall(r' ([1-9][0-9]{3}(?:\.[0-9]+)?) ', scrubbed)
         if matches:
             try:
                 val = float(matches[0])
@@ -110,16 +128,41 @@ def parse_watch_condition(
             except Exception:
                 pass
 
-    # 4. Extract velocity threshold if velocity spike
-    if cond_type == WatchConditionType.VELOCITY_SPIKE or "velocity" in text.lower():
+    # 4. Extract velocity thresholds
+    max_velocity = None
+    if cond_type == WatchConditionType.VELOCITY_DECAY:
+        decay_match = re.search(r'(?:velocity|vel|tpm|decay)\s*(?:<|<=|below)?\s*([0-9]{1,4})', text, re.IGNORECASE)
+        if decay_match:
+            try:
+                max_velocity = float(decay_match.group(1))
+            except Exception:
+                pass
+        if max_velocity is None:
+            max_velocity = 30.0
+    elif cond_type == WatchConditionType.VELOCITY_SPIKE or "velocity" in text.lower():
         vel_match = re.search(r'(?:velocity|tpm|rate)\s*(?:>|>=|above)?\s*([0-9]{2,4})', text, re.IGNORECASE)
         if vel_match:
             try:
                 min_velocity = float(vel_match.group(1))
             except Exception:
                 pass
-        if min_velocity is None:
+        if min_velocity is None and cond_type == WatchConditionType.VELOCITY_SPIKE:
             min_velocity = 100.0
+
+    # 4b. Extract CVD thresholds
+    target_cvd = None
+    min_cvd = None
+    max_cvd = None
+    cvd_match = re.search(r'(?:cvd|delta)\s*(?:>|>=|<|<=|above|below|at)?\s*([+-]?[0-9]{1,6})', text, re.IGNORECASE)
+    if cvd_match:
+        try:
+            target_cvd = float(cvd_match.group(1))
+        except Exception:
+            pass
+    if cond_type == WatchConditionType.CVD_ABOVE:
+        min_cvd = target_cvd if target_cvd is not None else 100.0
+    elif cond_type == WatchConditionType.CVD_BELOW:
+        max_cvd = target_cvd if target_cvd is not None else -100.0
 
     # 5. Extract spread threshold if spread spike
     if cond_type == WatchConditionType.SPREAD_SPIKE or "spread" in text.lower():
@@ -132,16 +175,13 @@ def parse_watch_condition(
         if max_spread is None:
             max_spread = 60.0
 
-    # 6. Extract news keywords if news condition
-    if cond_type == WatchConditionType.NEWS_KEYWORD:
-        quotes = re.findall(r'["\']([^"\']+)["\']', text)
-        if quotes:
-            keywords = quotes
-        else:
-            candidates = ["hormuz", "iran", "israel", "strike", "war", "cpi", "fed", "rate cut", "hike", "saudi", "opec"]
-            keywords = [c for c in candidates if c in text.lower()]
-            if not keywords:
-                keywords = [text.strip()]
+    # 6. Extract news keywords if explicit keywords provided
+    if explicit_keywords:
+        if isinstance(explicit_keywords, str):
+            tokens = re.split(r'\s+(?:OR|or|AND|and)\s+|[,;]\s*', explicit_keywords)
+            keywords = [t.strip().lower() for t in tokens if t.strip()]
+        elif isinstance(explicit_keywords, (list, tuple, set)):
+            keywords = [str(k).strip().lower() for k in explicit_keywords if str(k).strip()]
 
     return {
         "condition_type": cond_type,
@@ -149,6 +189,10 @@ def parse_watch_condition(
         "target_ticket": extracted_ticket,
         "tolerance": tolerance,
         "min_velocity": min_velocity,
+        "max_velocity": max_velocity,
+        "min_cvd": min_cvd,
+        "max_cvd": max_cvd,
+        "target_cvd": target_cvd,
         "max_spread": max_spread,
         "keywords": keywords,
         "direction": dir_clean
@@ -165,6 +209,7 @@ class UniversalWatcherEngine:
         self.last_ticks: Dict[str, Dict[str, float]] = {}
         self.known_positions: Dict[int, Dict[str, Any]] = {}
         self.known_pending_orders: Dict[int, Dict[str, Any]] = {}
+        self.watch_cooldowns: Dict[str, float] = {}
         self.initialized: bool = False
 
     def sync_initial_state(self, positions: List[Any], pending_orders: List[Any]):
@@ -256,10 +301,10 @@ class UniversalWatcherEngine:
                 f"• Fill Price: {p_open:.2f} | Live SL: {sl:.2f} | Live TP: {tp:.2f}\n"
                 f"• Comment: {comment or 'Pending Trigger Executed'}\n"
                 f"• {tape_str}\n\n"
-                f"=== IMMEDIATE ACTION ARMED ===\n"
-                f"1. Pull `get_live_microstructure(symbol='{sym}')` to inspect immediate order flow absorption.\n"
-                f"2. If reaction confirms thesis (+1.0 to +1.5 pts in profit), prepare scale tranche or set safety stop.\n"
-                f"3. If adverse aggressive absorption detected, evaluate immediate early scratch."
+                f"=== CHAMPION BROKER SUPREMACY & HOLD MANDATE ===\n"
+                f"1. VERIFY BROKER SL & TP: Order is filled with a hard 6.0–10.0 pt structural SL and Mode A TP (4.0–8.0 pts) or Extended Mode B TP (12.0–20.0 pts).\n"
+                f"2. NO PANIC SCRATCHES & NO PREMATURE BE: Normal entry shelf retests routinely wick ±0.5 to 1.5 pts past entry. Let the trade breathe behind the structural stop.\n"
+                f"3. 3-Burst & 5-Min Breathe cadence is now engaged. LET THE BROKER MANAGE SL AND TP!"
             )
 
             triggered.append({
@@ -309,8 +354,7 @@ class UniversalWatcherEngine:
         """
         w_id = watch.get("id") or watch.get("watch_id")
         status = (watch.get("status") or "ACTIVE").upper()
-        is_recurring = bool((watch.get("params") or {}).get("is_recurring", False))
-        if status in ("TRIGGERED", "CANCELLED", "COMPLETED") and not is_recurring:
+        if status in ("TRIGGERED", "CANCELLED", "COMPLETED"):
             return None
 
         cond_raw = watch.get("condition", "")
@@ -357,121 +401,207 @@ class UniversalWatcherEngine:
         else:
             last_price = last_mid if last_mid > 0 else last_bid
 
-        triggered = False
-        trigger_reason = ""
-        trigger_val = None
+        title_str = watch.get("title") or cond_raw or f"{watch.get('symbol', 'XAUUSD')} Technical Trigger"
+        matched_criteria = []
+        total_criteria = 0
+        all_passed = True
+        primary_val = curr_price
 
-        if cond_type in (WatchConditionType.PRICE_ABOVE, WatchConditionType.PRICE_CROSS_ABOVE):
+        # 1. Price Criterion (if target_price or price condition specified)
+        has_price_target = (target_price is not None)
+        if has_price_target or cond_type in (
+            WatchConditionType.PRICE_ABOVE, WatchConditionType.PRICE_CROSS_ABOVE,
+            WatchConditionType.PRICE_BELOW, WatchConditionType.PRICE_CROSS_BELOW,
+            WatchConditionType.PRICE_TOUCH
+        ):
             if target_price is not None:
-                if cond_type == WatchConditionType.PRICE_CROSS_ABOVE:
-                    if last_price < target_price and curr_price >= target_price:
-                        triggered = True
-                        trigger_reason = f"Price crossed above {target_price:.2f} (now {curr_price:.2f})"
-                        trigger_val = curr_price
-                else:
-                    if curr_price >= target_price:
-                        triggered = True
-                        trigger_reason = f"Price at/above {target_price:.2f} (live {curr_price:.2f})"
-                        trigger_val = curr_price
-
-        elif cond_type in (WatchConditionType.PRICE_BELOW, WatchConditionType.PRICE_CROSS_BELOW):
-            if target_price is not None:
-                if cond_type == WatchConditionType.PRICE_CROSS_BELOW:
-                    if last_price > target_price and curr_price <= target_price:
-                        triggered = True
-                        trigger_reason = f"Price crossed below {target_price:.2f} (now {curr_price:.2f})"
-                        trigger_val = curr_price
-                else:
-                    if curr_price <= target_price:
-                        triggered = True
-                        trigger_reason = f"Price at/below {target_price:.2f} (live {curr_price:.2f})"
-                        trigger_val = curr_price
-
-        elif cond_type == WatchConditionType.PRICE_TOUCH:
-            if target_price is not None:
+                total_criteria += 1
+                price_matched = False
+                price_detail = ""
                 tol = float(params.get("tolerance", 0.50))
-                dist = abs(curr_price - target_price)
-                if dist <= tol or (last_price < target_price <= curr_price) or (last_price > target_price >= curr_price):
-                    triggered = True
-                    trigger_reason = f"Price touched {target_price:.2f} (delta {dist:.2f} pts, live {curr_price:.2f})"
-                    trigger_val = curr_price
 
-        elif cond_type == WatchConditionType.VELOCITY_SPIKE:
-            min_vel = float(params.get("min_velocity") or 100.0)
+                if cond_type in (WatchConditionType.PRICE_CROSS_ABOVE, "CROSS_ABOVE"):
+                    if (last_price < target_price and curr_price >= target_price) or (curr_price >= target_price and abs(curr_price - target_price) <= max(2.0, tol)):
+                        price_matched = True
+                        price_detail = f"Price crossed above {target_price:.2f} (live {curr_price:.2f})"
+                elif cond_type in (WatchConditionType.PRICE_ABOVE, "ABOVE"):
+                    if curr_price >= target_price:
+                        price_matched = True
+                        price_detail = f"Price at/above {target_price:.2f} (live {curr_price:.2f})"
+                elif cond_type in (WatchConditionType.PRICE_CROSS_BELOW, "CROSS_BELOW"):
+                    if (last_price > target_price and curr_price <= target_price) or (curr_price <= target_price and abs(curr_price - target_price) <= max(2.0, tol)):
+                        price_matched = True
+                        price_detail = f"Price crossed below {target_price:.2f} (live {curr_price:.2f})"
+                elif cond_type in (WatchConditionType.PRICE_BELOW, "BELOW"):
+                    if curr_price <= target_price:
+                        price_matched = True
+                        price_detail = f"Price at/below {target_price:.2f} (live {curr_price:.2f})"
+                else:  # PRICE_TOUCH or default
+                    dist = abs(curr_price - target_price)
+                    if dist <= tol or (last_price < target_price <= curr_price) or (last_price > target_price >= curr_price):
+                        price_matched = True
+                        price_detail = f"Price touched {target_price:.2f} (delta {dist:.2f} pts, live {curr_price:.2f})"
+
+                if price_matched:
+                    matched_criteria.append(f"Price: {price_detail}")
+                    primary_val = curr_price
+                else:
+                    all_passed = False
+
+        # 2. Velocity Minimum Criterion (Surge / Momentum)
+        min_vel = params.get("min_velocity")
+        if min_vel is None and cond_type == WatchConditionType.VELOCITY_SPIKE:
+            min_vel = 100.0
+        if min_vel is not None:
+            total_criteria += 1
             curr_vel = float((tape_metrics or {}).get("velocity", 0.0))
-            if curr_vel >= min_vel:
-                triggered = True
-                trigger_reason = f"Tick velocity spiked to {curr_vel:.1f} t/m (threshold {min_vel:.1f})"
-                trigger_val = curr_vel
+            if curr_vel >= float(min_vel):
+                matched_criteria.append(f"Velocity Surge: {curr_vel:.1f} t/m >= {float(min_vel):.1f} t/m")
+                if not has_price_target:
+                    primary_val = curr_vel
+            else:
+                all_passed = False
 
-        elif cond_type == WatchConditionType.SPREAD_SPIKE:
-            max_spr = float(params.get("max_spread") or 60.0)
+        # 3. Velocity Maximum Criterion (Decay / Exhaustion Floor)
+        max_vel = params.get("max_velocity")
+        if max_vel is None and cond_type == WatchConditionType.VELOCITY_DECAY:
+            max_vel = 30.0
+        if max_vel is not None:
+            total_criteria += 1
+            curr_vel = float((tape_metrics or {}).get("velocity", 0.0))
+            if 0.0 < curr_vel <= float(max_vel):
+                matched_criteria.append(f"Velocity Decay: {curr_vel:.1f} t/m <= {float(max_vel):.1f} t/m (exhaustion floor)")
+                if not has_price_target:
+                    primary_val = curr_vel
+            else:
+                all_passed = False
+
+        # 4. CVD Minimum Criterion (Buyer Accumulation Dominance)
+        min_cvd = params.get("min_cvd")
+        if min_cvd is None and cond_type == WatchConditionType.CVD_ABOVE:
+            min_cvd = params.get("target_cvd") or 100.0
+        if min_cvd is not None:
+            total_criteria += 1
+            curr_cvd = float((tape_metrics or {}).get("cvd_10b", 0.0))
+            if curr_cvd >= float(min_cvd):
+                matched_criteria.append(f"CVD Net Flow: {int(curr_cvd):+d} >= {int(float(min_cvd)):+d} (buyer dominance)")
+                if not has_price_target and min_vel is None:
+                    primary_val = curr_cvd
+            else:
+                all_passed = False
+
+        # 5. CVD Maximum Criterion (Seller Liquidation Dominance)
+        max_cvd = params.get("max_cvd")
+        if max_cvd is None and cond_type == WatchConditionType.CVD_BELOW:
+            max_cvd = params.get("target_cvd") or -100.0
+        if max_cvd is not None:
+            total_criteria += 1
+            curr_cvd = float((tape_metrics or {}).get("cvd_10b", 0.0))
+            if curr_cvd <= float(max_cvd):
+                matched_criteria.append(f"CVD Net Flow: {int(curr_cvd):+d} <= {int(float(max_cvd)):+d} (seller dominance)")
+                if not has_price_target and min_vel is None:
+                    primary_val = curr_cvd
+            else:
+                all_passed = False
+
+        # 6. CVD Directional Flip Criterion (Persistent Active Flow, Dynamic Flip, or Micro-Delta Absorption)
+        cvd_flip = str(params.get("cvd_flip") or ("BULLISH" if cond_type == WatchConditionType.CVD_FLIP_BULLISH else ("BEARISH" if cond_type == WatchConditionType.CVD_FLIP_BEARISH else ""))).upper()
+        if cvd_flip:
+            total_criteria += 1
+            curr_cvd = float((tape_metrics or {}).get("cvd_10b", 0.0))
+            last_cvd = float(self.last_ticks.get(watch.get("symbol", "XAUUSD"), {}).get("last_cvd", 0.0))
+            micro_4m = float((tape_metrics or {}).get("micro_delta_4m", 0.0))
+            m1_delta = float((tape_metrics or {}).get("current_m1_delta", 0.0))
+            
+            if cvd_flip == "BULLISH":
+                if curr_cvd > 0:
+                    matched_criteria.append(f"CVD Flow: Bullish (+{int(curr_cvd):+d} active delta)")
+                elif last_cvd <= 0 and curr_cvd > 0:
+                    matched_criteria.append(f"CVD Flip: Bullish (+{int(curr_cvd):+d} from prior {int(last_cvd):+d})")
+                elif micro_4m > 0 or m1_delta > 0:
+                    matched_criteria.append(f"Micro-Delta Flow: Bullish (M1: {m1_delta:+d} / 4M: {micro_4m:+d})")
+                else:
+                    all_passed = False
+            elif cvd_flip == "BEARISH":
+                if curr_cvd < 0:
+                    matched_criteria.append(f"CVD Flow: Bearish ({int(curr_cvd):+d} active delta)")
+                elif last_cvd >= 0 and curr_cvd < 0:
+                    matched_criteria.append(f"CVD Flip: Bearish ({int(curr_cvd):+d} from prior {int(last_cvd):+d})")
+                elif micro_4m < 0 or m1_delta < 0:
+                    matched_criteria.append(f"Micro-Delta Flow: Bearish (M1: {m1_delta:+d} / 4M: {micro_4m:+d})")
+                else:
+                    all_passed = False
+
+        # 7. Spread Spike Criterion
+        if cond_type == WatchConditionType.SPREAD_SPIKE:
+            total_criteria += 1
             curr_spr = float((tape_metrics or {}).get("spread", 0.0))
+            max_spr = float(params.get("max_spread") or 60.0)
             if curr_spr >= max_spr:
-                triggered = True
-                trigger_reason = f"Spread widened to {curr_spr:.1f} pts (threshold {max_spr:.1f})"
-                trigger_val = curr_spr
+                matched_criteria.append(f"Spread Blowout: {curr_spr:.1f} pts >= {max_spr:.1f} pts")
+                primary_val = curr_spr
+            else:
+                all_passed = False
 
-        elif cond_type in (WatchConditionType.POSITION_PNL, WatchConditionType.POSITION_DRAWDOWN):
+        # 8. Position PnL / Drawdown Criterion
+        if cond_type in (WatchConditionType.POSITION_PNL, WatchConditionType.POSITION_DRAWDOWN) or params.get("target_pnl") is not None:
+            total_criteria += 1
             target_pnl = float(params.get("target_pnl") or (200.0 if cond_type == WatchConditionType.POSITION_PNL else -38.0))
+            pos_matched = False
             for p in (positions or []):
                 p_ticket = getattr(p, "ticket", None) or (p.get("ticket") if isinstance(p, dict) else None)
                 if target_ticket is None or (p_ticket and int(p_ticket) == int(target_ticket)):
                     p_profit = float(getattr(p, "profit", 0.0) or (p.get("profit", 0.0) if isinstance(p, dict) else 0.0))
                     if cond_type == WatchConditionType.POSITION_PNL and p_profit >= target_pnl:
-                        triggered = True
-                        trigger_reason = f"Position #{p_ticket} PnL reached +${p_profit:.2f} (target +${target_pnl:.2f})"
-                        trigger_val = p_profit
+                        pos_matched = True
+                        matched_criteria.append(f"Position #{p_ticket} PnL: +${p_profit:.2f} >= +${target_pnl:.2f}")
+                        primary_val = p_profit
                         break
                     elif cond_type == WatchConditionType.POSITION_DRAWDOWN and p_profit <= target_pnl:
-                        triggered = True
-                        trigger_reason = f"Drawdown alert on position #{p_ticket}: PnL -${abs(p_profit):.2f} (guard -${abs(target_pnl):.2f})"
-                        trigger_val = p_profit
+                        pos_matched = True
+                        matched_criteria.append(f"Position #{p_ticket} Drawdown: -${abs(p_profit):.2f} (guard -${abs(target_pnl):.2f})")
+                        primary_val = p_profit
                         break
+            if not pos_matched:
+                all_passed = False
 
-        elif cond_type == WatchConditionType.NEWS_KEYWORD:
-            kw_list = params.get("keywords") or [cond_raw]
-            for h in (recent_headlines or []):
-                h_lower = h.lower()
-                for kw in kw_list:
-                    if kw.lower() in h_lower:
-                        triggered = True
-                        trigger_reason = f"News headline matched keyword '{kw}': {h[:90]}..."
-                        trigger_val = h
-                        break
-                if triggered:
-                    break
-
-        if not triggered:
+        # If no criteria defined or any condition failed, do not trigger
+        if total_criteria == 0 or not all_passed or len(matched_criteria) < total_criteria:
             return None
 
         tape = tape_metrics or {}
         sym = watch.get("symbol", "XAUUSD")
         tape_summary = (
             f"• Live Tape: Bid {bid:.2f} | Ask {ask:.2f} | Spread {tape.get('spread', round((ask-bid)*10, 1))} pts | "
-            f"Velocity {tape.get('velocity', 0)} t/m | CVD {tape.get('cvd_10b', 0):+d}"
+            f"Velocity {tape.get('velocity', 0)} t/m | CVD {int(tape.get('cvd_10b', 0)):+d}"
         )
+
+        criteria_lines = "\n".join(f"  {i+1}. {c}" for i, c in enumerate(matched_criteria))
+        trigger_summary = f"{len(matched_criteria)}/{total_criteria} criteria met: " + "; ".join(matched_criteria)
 
         prompt = (
             f"⚡ ALPHA EVIDENCE WAKE — WATCH_TRIGGER\n"
             f"WATCH ALERT: {w_id} TRIGGERED!\n"
+            f"• Reason Title: {title_str}\n"
             f"• Condition: {cond_raw or cond_type}\n"
-            f"• Trigger Event: {trigger_reason}\n"
+            f"• Confluence Match ({len(matched_criteria)}/{total_criteria} criteria satisfied):\n"
+            f"{criteria_lines}\n"
             f"• Instruction: {watch.get('instruction', 'Evaluate immediate current-state validation')}\n"
             f"• Rationale: {watch.get('reason', 'N/A')}\n"
             f"{tape_summary}\n\n"
-            f"=== EXECUTION AUDIT ===\n"
-            f"1. STEP 0 (MANDATORY): Call `get_market_regime_context(symbol='{sym}')` for live broker quote, spread, CVD flow, and economic calendar.\n"
-            f"2. RE-VERIFY THESIS: Audit current price against live market structure and tape kinetics.\n"
-            f"3. DECIDE: If confirmed by live tape, execute or stage order; if invalidated, cancel or update watch."
+            f"=== 5-POD ADVERSARIAL EXECUTION AUDIT ===\n"
+            f"1. STEP 0 (MANDATORY): Call `alpha_get_market_regime_context(symbol='{sym}')` for live broker quote, spread, CVD flow, and economic calendar.\n"
+            f"2. EVALUATE VIA 5-POD PROTOCOL: If confirmed by live tape and macro wires, execute direct market or breakout stop directly on MT5 book; if invalidated, stand flat.\n"
+            f"3. NO PASSIVE WATCH SENSOR LOOPS: Pre-stage orders directly on MT5 book."
         )
 
         return {
             "watch": watch,
             "watch_id": w_id,
+            "title": title_str,
             "trigger_type": cond_type,
-            "trigger_reason": trigger_reason,
-            "trigger_value": trigger_val,
+            "trigger_reason": trigger_summary,
+            "trigger_value": primary_val,
             "price": curr_price,
             "prompt": prompt
         }

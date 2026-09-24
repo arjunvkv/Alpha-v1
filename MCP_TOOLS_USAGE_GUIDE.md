@@ -75,24 +75,21 @@ Every OpenCode wake cycle should proceed through this disciplined sequence:
   * `T10YIE`: 10-Year Breakeven Inflation Rate.
 * **When to use**: When evaluating whether real rates provide tailwinds or headwinds for gold pricing.
 
-### Proxima MCP News & Deep Research Suite
+### Proxima MCP Lean News & Catalyst Research Suite
 
-External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP** executing 8 parallel calls. **OpenCode formulates its own search queries dynamically based on its cognitive thought process without hardcoded topic constraints**:
+External narrative, breaking news, and catalyst research must be conducted via **Proxima MCP** executing lean, targeted queries. **OpenCode formulates its own search queries dynamically based on its cognitive thought process without bloat**:
 
-1. **`proxima_ask_perplexity(message: str)`** (Mandatory 2 Calls):
-   * 2 parallel Perplexity queries on breaking headlines, macro releases, and wire alerts.
-2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`** (Mandatory 2 Calls):
-   * 2 parallel deep AI research queries for in-depth background, institutional flows, and chronological details.
-3. **`proxima_ddg_search(query: str)`** (Mandatory 2 Calls):
-   * 2 parallel live web searches across primary sources and wires.
-4. **`proxima_deep_search(query: str, type: str = 'reddit')` or `proxima_ddg_search(query='... site:reddit.com')`** (Mandatory 2 Calls):
-   * 2 parallel live Reddit sentiment/discussion searches to monitor retail positioning, community chatter, and sentiment shifts.
-5. **`proxima_web_scrape(url: str)`**:
-   * Scrapes and converts discovered URLs into clean markdown for source verification.
+1. **`proxima_ask_perplexity(message: str)`** (1 Targeted Call):
+   * Perplexity query on breaking headlines, macro releases, and wire alerts within the last 1–4 hours.
+2. **`proxima_deep_search(query: str, type: str = 'news', timeframe: str = 'today')`** (1 Targeted Call):
+   * Deep AI research query for in-depth background, sovereign bond/yield flows, and macroeconomic gravity.
+3. **`proxima_web_scrape(url: str)`** (Optional):
+   * Scrapes and converts discovered URLs into clean markdown for source verification when needed.
 
 > [!IMPORTANT]
 > **Research Directives**:
-> - Execute all 8 queries in parallel for full 90% catalyst coverage.
+> - Limit to 1–2 targeted queries per cycle (1x Perplexity + 1x Deep Search).
+> - Zero DDG searches and zero Reddit sentiment bloat.
 > - Query strictly for hard numbers, official figures, and verbatim quotes.
 > - **Strictly NO probabilistic queries** (e.g., "what are the odds of breaking 4350?").
 > - Zero RSS / scraped news in Alpha MCP — Proxima is the sole research engine.
@@ -195,10 +192,13 @@ The background daemon scans active persistent watches every 500ms against live M
 * **Purpose**: Persists pre-decision context and rationale before trade staging.
 
 ### `record_trade_observation(observation_json: str)`
-* **Purpose**: Records post-trade execution metrics and lessons learned.
+* **Purpose**: Records post-trade execution metrics and lessons learned into Graphiti memory.
 
 ### `record_pattern_observation(pattern_json: str)`
-* **Purpose**: Adds an observed market microstructure pattern into persistent memory.
+* **Purpose**: Adds an observed market microstructure pattern into persistent Graphiti memory.
+
+### `get_trade_forensics(ticket: int = 0)`
+* **Purpose**: Query granular post-trade forensics, entry tape context, and execution analytics for closed MT5 deals.
 
 ### `backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 60, offset: int = 0)`
-* **Purpose**: Replays empirical bar history to validate edge before committing capital.
+* **Purpose**: Replays empirical MT5 bar history to validate edge before committing capital.
