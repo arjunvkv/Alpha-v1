@@ -117,6 +117,8 @@ These 7 core safety laws protect capital and remain strictly immutable:
    - Call `graphiti_search_facts(patterns=[...])` using candidate setup tags to calibrate the exact entry price and verify the structural SL buffer against documented trap pitfalls.
    - Use `alpha_backtest_thesis(...)` when testing a new structural shelf to confirm positive mathematical expectancy (positive net realized R) and structural validity. Order execution without this pre-flight check is prohibited.
 8. **`CONST_NO_PREMATURE_CUT`**: Manual market exit (`FULL_EXIT` / `CLOSE` via `alpha_update_position`) on routine candle wicks, retest pullbacks, or temporary floating drawdown within the structural SL budget is an immutable constitutional violation. Once filled, the broker terminal bracket (structural SL $6.0\text{--}12.0\text{ pts}$ and asymmetric TP $\ge 1.5:1$) governs the trade. Early manual closure is strictly prohibited unless one of the 4 authorized criteria in Section 5 is rigorously verified.
+9. **`CONST_STALE_PENDING_PROHIBITION`**: All MT5 pending orders are GTC and DO NOT self-expire at session boundaries or midnight. Any resting pending order that is > 15.0 points away from current market price OR has been resting for > 60 minutes without fill MUST be actively evaluated and cancelled via `alpha_cancel_pending_order()`. Leaving stale pending orders into the next session or thin-liquidity hours (Asian vacuum) is an immutable constitutional violation.
+
 
 ---
 

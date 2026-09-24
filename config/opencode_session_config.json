@@ -1,13 +1,13 @@
 {
-  "session_id": "ses_f2c3bf641ffeu1Kezy6CMCFxu8",
-  "title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
-  "session_title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
-  "active_session_id": "ses_f2c3bf641ffeu1Kezy6CMCFxu8",
-  "active_session_title": "Escanor v69 (Mechanical Bracket Supremacy & Anti-Bleed Hold)",
+  "session_id": "ses_f2bb9f1bcffe6CrGw0pm6fgYZj",
+  "title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
+  "session_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
+  "active_session_id": "ses_f2bb9f1bcffe6CrGw0pm6fgYZj",
+  "active_session_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
   "dossier_interval_seconds": 240,
-  "active_trade_interval_seconds": 180,
+  "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-24 14:13:55 UTC",
-  "description": "Escanor v69 CIO with Mechanical Bracket Supremacy (CONST_NO_PREMATURE_CUT), 3m In-Flight Breathe Gap, and 7-Layer Local LLM Telemetry"
+  "deployed_at": "2026-09-24 16:35:58 UTC",
+  "description": "Escanor v66 CIO equipped with 7-Layer Local LLM Conviction Engine, Deep Order Flow Telemetry, 3-Tier Macro Causal Aperture, and Graphiti Facts Cadence"
 }

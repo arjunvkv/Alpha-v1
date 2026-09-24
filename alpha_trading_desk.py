@@ -690,6 +690,22 @@ class ConsolidatedTradingDaemon:
         except Exception as err:
             LOG.error(f"MT5 position check failed: {err}")
 
+        detailed_pending_orders = []
+        try:
+            if mt5_online:
+                pending = mt5.orders_get()
+                if pending:
+                    for o in pending:
+                        type_str = 'BUY_LIMIT' if o.type == 2 else 'SELL_LIMIT' if o.type == 3 else 'BUY_STOP' if o.type == 4 else 'SELL_STOP' if o.type == 5 else str(o.type)
+                        tick = mt5.symbol_info_tick(o.symbol)
+                        dist_pts = abs(tick.bid - o.price_open) if tick else 0.0
+                        elapsed_m = (time.time() - o.time_setup) / 60.0 if getattr(o, 'time_setup', 0) else 0.0
+                        detailed_pending_orders.append(
+                            f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | GTC: NO AUTO-EXPIRATION)'
+                        )
+        except Exception as err:
+            LOG.error(f'MT5 pending order audit failed: {err}')
+
         has_active_trades = len(open_tickets) > 0
 
         # 3. Write Persistent Deep Intelligence Dossiers (JSON & Markdown)
@@ -1064,7 +1080,10 @@ class ConsolidatedTradingDaemon:
                     f"ALPHA 5-QUESTION NEWS & MACRO BRAINSTORM TURN (Turn B) — {trigger}\n"
                     f"{_time_str}\n"
                     f"Active instruments: {', '.join(self.instruments)}\n"
-                    f"Open positions: {len(open_tickets)}\n\n"
+                    f"Open positions: {len(open_tickets)}\n"
+                    f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
+                    f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n"
+                    f"*STALE PENDING PROTOCOL (CONST_STALE_PENDING_PROHIBITION): MT5 orders are GTC and NEVER self-expire. If any order is > 15.0 pts away from market or resting > 60m without fill, CANCEL IT NOW via `alpha_cancel_pending_order(ticket)`.\n\n"
                     f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
                     f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=15)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, and (6) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
                     f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
@@ -1096,7 +1115,10 @@ class ConsolidatedTradingDaemon:
                     f"{_regime_badge}\n\n"
                     f"MANDATE & DISCIPLINE (AGENTS.md):\n"
                     f"• Principle 0: A wake is an observation cycle, NOT a trade mandate. Standing flat in quiet chop is your high-conviction decision.\n"
-                    f"• Execution Standard: When 7-layer edge is confirmed, enforce 0.50-1.00L sizing, structural SL (6.0-12.0 pts), and positive R:R >= 1.5:1 to 2.5:1+ into opposing structural liquidity. Direct MT5 execution/pre-staging only (no passive watch loops).\n\n"
+                    f"• Execution Standard: When 7-layer edge is confirmed, enforce 0.50-1.00L sizing, structural SL (6.0-12.0 pts), and positive R:R >= 1.5:1 to 2.5:1+ into opposing structural liquidity. Direct MT5 execution/pre-staging only (no passive watch loops).\n"
+                    f"• STALE PENDING ORDER LAW (CONST_STALE_PENDING_PROHIBITION): MT5 pending orders are GTC and DO NOT self-expire at session boundaries or midnight. Any resting order > 15.0 pts away or resting > 60m must be evaluated and actively cancelled via `alpha_cancel_pending_order()`.\n\n"
+                    f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
+                    f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n\n"
                     f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"
                     f"  1. 7-Layer Synthesis & Raw Telemetry: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`\n"
                     f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=['TAG1', 'TAG2'])` using 2-3 scale-invariant tags of your own formulation matching your live thesis (e.g. `['BSL_SWEEP', '4TF_BEARISH']`). Returns <80-token contrast card.\n"

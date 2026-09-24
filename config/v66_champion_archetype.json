@@ -1,7 +1,7 @@
 {
-  "archetype_version": "v66",
-  "archetype_name": "Escanor v66 (Adaptive Macro Vision & Causal Facts Cadence)",
-  "canonical_title": "Escanor v66 (Adaptive Macro Vision & Causal Facts Cadence)",
+  "archetype_version": "v70",
+  "archetype_name": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
+  "canonical_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
   "workspace_directory": "C:\\Trading",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
