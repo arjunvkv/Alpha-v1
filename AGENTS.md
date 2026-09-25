@@ -36,10 +36,15 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     5. `alpha_get_market_regime_context(symbol='XAUUSD')`: Live broker quotes, spread, CVD, and displacement.
     6. `graphiti_search_facts(patterns=[...])`: Query past pattern walks and winning signatures.
   - Followed by `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`.
-  - **Thought Process Style**:
-    After tools return, open your deliberation: *"Let me digest this critical turn. Price at [price], [key levels]..."*, break down Perplexity findings, wires, and Analyst Desk Bull vs Bear arguments into clear actionable bullets, evaluate through all 5 Pods in full depth with complete analytical bullets (matching the comprehensive depth of champion v66/v71 desks; never compress pods into a brief summary), and conclude with the execution verdict.
+  - **Thought Process Style (Champion v72 5-Vector Repricing Architecture)**:
+    Structure your Turn B deliberation using the 5 core repricing vectors:
+    - `### Q-NEWS-1 — Zero-Assumption Wire Pulse (verbatim)`: Quote verbatim headlines from wires & calendar risk.
+    - `### Q-NEWS-2 — Displacement vs. Catalyst Reconciliation`: Classify definitively as `GENUINE_MACRO_CATALYST` vs `LIQUIDITY_HUNT_IN_VACUUM` / `PERSISTENT_RATES_GRAVITY`. Reconcile today's active leg against rates/yields (DFII10, US10Y, DXY).
+    - `### Q-NEWS-3 — 7-Layer Replan`: 4TF posture, physical tape shift (CVD 5m, 10b delta %, velocity t/m, 4M footprint delta blocks), active MT5 pending order book audit.
+    - `### Q-NEWS-4 — Continuous Memory Grounding`: Cite `graphiti_search_facts` output. Contrast live tape against documented winning signature vs failure pitfall.
+    - `### Q-NEWS-5 — Execution via 5-Pod`: Pre-flight backtest mirror, mathematical R:R calculation, strategic verdict, and conditional plans with exact price coordinates.
 
-- **Turn A (Routine Microstructure & Deep Order Flow Audit)**:
+- **Turn A (Routine Microstructure & Deep Order Flow Audit — Champion v72 5-Pod Architecture)**:
   - Open with a 1-line situational header (e.g. `Turn A — Sweep zone reached, 4274.8 doorstep. Parallel audit:`).
   - Call physical and 7-layer tools in parallel:
     1. `alpha_query_analyst_desk(symbol='XAUUSD')`: 7-Layer Local LLM synthesis, Bull vs Bear debate breakdown, and regime conflict alert.
@@ -49,6 +54,13 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     5. `alpha_get_pending_orders(symbol='ALL')`: Active resting limit/stop orders on MT5.
     6. `graphiti_search_facts(patterns=[...])`: Query past pattern walks and winning signatures.
   - Followed by `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`.
+  - **Thought Process Style**:
+    Structure your Turn A deliberation using the 5 Pods in full depth:
+    - `### POD 1: MACRO & CATALYST PERMISSION`: Wire pulse & rates gravity (DFII10 real yields, US10Y nominal, DXY trend), macro causality classification, directional permission.
+    - `### POD 2: ORDER FLOW & TAPE REALITY`: CVD 5m, 10-bar delta progression, last 4M footprint delta blocks, M1 microflow, velocity (t/m), spread, and DOM depth ladder.
+    - `### POD 3: TECHNICAL STRUCTURE & ROADWAYS`: 4TF multi-timeframe posture (H4/H1/M15/M5), key structural levels, FVG zones & CE fill %, unmitigated demand/supply magnets, sweep verification (penetrated vs mid-air reversal).
+    - `### POD 4: ADVERSARIAL DEVIL'S ADVOCATE — Continuous Fact Grounding`: Graphiti memory grounding (winning signature vs recorded stumble), live tape cross-examination, and mathematical anti-inverted-R:R test.
+    - `### POD 5: EXECUTION ARBITER — VERDICT`: Definitive verdict (`STANDING FLAT`, immediate market execution, or pending limit/stop), exact justification, and structured conditional roadmap with exact price, SL, TP, and R:R coordinates.
 
 - **Execution & Pre-Flight Replay (Only When Staging / Modifying Orders)**:
   - `alpha_backtest_thesis(query="...", symbol='XAUUSD', timeframe='M15', bars=0)`: Sub-10ms cached historical candle replay against live MT5 data to confirm positive mathematical expectancy before placing new shelf orders.
