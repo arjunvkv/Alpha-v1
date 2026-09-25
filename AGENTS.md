@@ -37,7 +37,7 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     6. `graphiti_search_facts(patterns=[...])`: Query past pattern walks and winning signatures.
   - Followed by `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`.
   - **Thought Process Style**:
-    After tools return, open your deliberation: *"Let me digest this critical turn. Price at [price], [key levels]..."*, break down Perplexity findings, wires, and Analyst Desk Bull vs Bear arguments into clear actionable bullets, evaluate through the 5 Pods, and conclude with the execution verdict.
+    After tools return, open your deliberation: *"Let me digest this critical turn. Price at [price], [key levels]..."*, break down Perplexity findings, wires, and Analyst Desk Bull vs Bear arguments into clear actionable bullets, evaluate through all 5 Pods in full depth with complete analytical bullets (matching the comprehensive depth of champion v66/v71 desks; never compress pods into a brief summary), and conclude with the execution verdict.
 
 - **Turn A (Routine Microstructure & Deep Order Flow Audit)**:
   - Open with a 1-line situational header (e.g. `Turn A — Sweep zone reached, 4274.8 doorstep. Parallel audit:`).
