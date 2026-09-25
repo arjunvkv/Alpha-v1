@@ -1094,16 +1094,16 @@ class ConsolidatedTradingDaemon:
                     f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags describing your active thesis (e.g. ['BSL_SWEEP', '4TF_BEARISH'] or ['PREMATURE_FADE', 'BSL_DOORSTEP']) and call 1x `graphiti_search_facts(patterns=[...])`. Contrast live tape against both the winning condition and failure pitfall.\n"
                     f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Flight Backtest]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 to 2.5:1+, 12.0–25.0 pts)? Before staging new shelf orders, run `alpha_backtest_thesis(query=\"...\", timeframe=\"M15\", bars=0)` (<10ms cached, auto-scales M5->288, M15->192, H1->120) to confirm positive expectancy. If sample_quality.is_statistically_valid is false (N<5), do not veto based on single-trade noise. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
                     f"MANDATORY 5-POD ADVERSARIAL FORMAT:\n"
-                    f"### POD 1: MACRO & CATALYST PERMISSION\n"
+                    f"### POD 1: MACRO & CATALYST PERMISSION (GENUINE_MACRO_CATALYST -> trade with sovereign gravity or stay flat; never fade sovereign yields in mid-move)\n"
                     f"- Live Wire Headlines: Quote verbatim wires from `alpha_get_live_world_events` and Perplexity.\n"
                     f"- Macro Causality Classification: Classify definitively as `GENUINE_MACRO_CATALYST` (runway open) vs `LIQUIDITY_HUNT_IN_VACUUM` (stop hunt in thin book; do NOT chase breakout momentum).\n"
                     f"- Macro Directional Permission: DFII10 (10Y Real Yield TIPS), US10Y nominal, and DXY trend alignment.\n"
                     f"### POD 2: ORDER FLOW & TAPE REALITY\n"
-                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS\n"
+                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS (Sweep check: did price actually penetrate the target shelf/pool before bouncing? If reversed in mid-air, hunt is incomplete!)\n"
                     f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
                     f"- Automated Bull vs Bear Debate: Review `alpha_query_analyst_desk` debate breakdown (bull arguments vs bear arguments) and regime conflict warnings.\n"
                     f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
-                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Always run pre-flight backtest mirror on candidate coordinates before executing; negative expectancy = stand flat)\n"
                 )
             else:
                 # Turn A: Physical Microstructure Dossier with 4TF Header Streamed in Text
@@ -1129,12 +1129,12 @@ class ConsolidatedTradingDaemon:
                     f"  *(Note: Deep news searches and FRED observations are reserved for periodic Turn B every 3rd/4th dossier to prevent prompt bloat)*\n\n"
                     f"AUTONOMOUS CIO EVALUATION (THE 5-POD ADVERSARIAL PROTOCOL):\n"
                     f"Format your response cleanly:\n"
-                    f"### POD 1: MACRO & CATALYST PERMISSION\n"
+                    f"### POD 1: MACRO & CATALYST PERMISSION (GENUINE_MACRO_CATALYST -> trade with sovereign gravity or stay flat; never fade sovereign yields in mid-move)\n"
                     f"### POD 2: ORDER FLOW & TAPE REALITY\n"
-                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS\n"
+                    f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS (Sweep check: did price actually penetrate the target shelf/pool before bouncing? If reversed in mid-air, hunt is incomplete!)\n"
                     f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
                     f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
-                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Always run pre-flight backtest mirror on candidate coordinates before executing; negative expectancy = stand flat)\n"
                 )
             post_to_opencode_session("", prompt)
 
