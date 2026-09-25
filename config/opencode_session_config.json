@@ -1,13 +1,14 @@
 {
-  "session_id": "ses_f29941500ffeEGolPgtWShwL9o",
-  "title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
-  "session_title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
-  "active_session_id": "ses_f29941500ffeEGolPgtWShwL9o",
-  "active_session_title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
+  "session_id": "ses_f28dda95dffesrzSnG4xdWixvo",
+  "title": "Escanor v72 (Failure Cluster Reconciliation & Baseline Expectancy Floor)",
+  "session_title": "Escanor v72 (Failure Cluster Reconciliation & Baseline Expectancy Floor)",
+  "active_session_id": "ses_f28dda95dffesrzSnG4xdWixvo",
+  "active_session_title": "Escanor v72 (Failure Cluster Reconciliation & Baseline Expectancy Floor)",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-25 02:36:35 UTC",
-  "description": "Escanor v66 CIO equipped with 7-Layer Local LLM Conviction Engine, Deep Order Flow Telemetry, 3-Tier Macro Causal Aperture, and Graphiti Facts Cadence"
+  "deployed_at": "2026-09-25 05:55:49 UTC",
+  "description": "Escanor v66 CIO equipped with 7-Layer Local LLM Conviction Engine, Deep Order Flow Telemetry, 3-Tier Macro Causal Aperture, and Graphiti Facts Cadence",
+  "dossier_streaming_enabled": true
 }

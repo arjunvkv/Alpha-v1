@@ -1092,7 +1092,7 @@ class ConsolidatedTradingDaemon:
                     f"2. Q-NEWS-2 [Displacement vs. Catalyst Reconciliation]: Reconcile today's active leg displacement and session timing (from the header above) against live wires. Is current price expansion backed by a real sovereign catalyst, or is it an overnight/session liquidity hunt in an informational vacuum?\n"
                     f"3. Q-NEWS-3 [Dynamic Deep Inquiry & 7-Layer Replan]: Based on the active leg and wire clues from Q1/Q2, dynamically formulate your targeted search query (do NOT use static keywords). Target the specific transmission channel driving this session: Call 1x `proxima_ask_perplexity(message=\"...\")`, 1x `alpha_query_analyst_desk(symbol='XAUUSD')` for Bull vs Bear arguments, and audit/replan active resting limit/stop orders with `alpha_get_pending_orders(symbol='ALL')`.\n"
                     f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags describing your active thesis (e.g. ['BSL_SWEEP', '4TF_BEARISH'] or ['PREMATURE_FADE', 'BSL_DOORSTEP']) and call 1x `graphiti_search_facts(patterns=[...])`. Contrast live tape against both the winning condition and failure pitfall.\n"
-                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Flight Backtest]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 floor calculated dynamically from market structure)? Before executing or staging orders, run `alpha_backtest_thesis` (M5 bars=0 for momentum, M15 bars=0 for shelves) to verify positive expectancy. If recent continuation attempts failed, the trend is exhibiting exhaustion/absorption — do not chase peak momentum, wait for the trap/sweep to form. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
+                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Flight Backtest]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 floor calculated dynamically from market structure)? Before executing or staging orders, run `alpha_backtest_thesis` (M5 bars=0 for momentum, M15 bars=0 for shelves). Positive mathematical expectancy is a baseline filter, never an automatic trigger; veto if active tape matches `failure_clusters` or if the most recent historical trade failed from exhaustion. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
                     f"MANDATORY 5-POD ADVERSARIAL FORMAT:\n"
                     f"### POD 1: MACRO & CATALYST PERMISSION (GENUINE_MACRO_CATALYST -> trade with sovereign gravity or stay flat; never fade sovereign yields in mid-move)\n"
                     f"- Live Wire Headlines: Quote verbatim wires from `alpha_get_live_world_events` and Perplexity.\n"
@@ -1103,7 +1103,7 @@ class ConsolidatedTradingDaemon:
                     f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
                     f"- Automated Bull vs Bear Debate: Review `alpha_query_analyst_desk` debate breakdown (bull arguments vs bear arguments) and regime conflict warnings.\n"
                     f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
-                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Always run pre-flight backtest mirror on candidate coordinates before executing; negative expectancy = stand flat)\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Run pre-flight backtest: positive R is baseline floor only; veto if active tape matches failure_clusters or most recent test failed)\n"
                 )
             else:
                 # Turn A: Physical Microstructure Dossier with 4TF Header Streamed in Text
@@ -1134,7 +1134,7 @@ class ConsolidatedTradingDaemon:
                     f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS (Sweep check: did price actually penetrate the target shelf/pool before bouncing? If reversed in mid-air, hunt is incomplete!)\n"
                     f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (THE COUNTER-TRAP & COGNITIVE MEMORY GROUNDING)\n"
                     f"- Continuous Fact Comparison: Cite your `graphiti_search_facts` call output. Does live tape look like the Winning Signature or the Failure Pitfall? (Pillar 1: Stumble is NOT a veto unless its adverse condition is active today. Pillar 3: Use physics tags, no price digits. Pillar 4: Never hallucinate tickets from memory).\n"
-                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Always run pre-flight backtest mirror on candidate coordinates before executing; negative expectancy = stand flat)\n"
+                    f"### POD 5: EXECUTION ARBITER & ORDER ACTION (Run pre-flight backtest: positive R is baseline floor only; veto if active tape matches failure_clusters or most recent test failed)\n"
                 )
             post_to_opencode_session("", prompt)
 
