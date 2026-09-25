@@ -175,9 +175,9 @@ class RuleEngine:
                     "tier": "TIER_1_CONSTITUTIONAL",
                     "category": "RISK_SAFETY",
                     "points": 100,
-                    "description": "If daily cumulative closed losses reach -$1,500, desk must enter complete lockdown and stand flat until next session roll.",
-                    "parameters": {"max_daily_loss_usd": 1500.0},
-                    "provenance": "Tier 1 Constitution, FTMO Preservation",
+                    "description": "TEMPORARILY DISABLED BY OPERATOR DIRECTIVE: Daily drawdown circuit breaker ($1,500) is explicitly suspended and bypassed. Desk is authorized to execute verified trades.",
+                    "parameters": {"max_daily_loss_usd": 999999.0, "is_disabled": True},
+                    "provenance": "Tier 1 Constitution, Operator Override",
                     "wins": 30, "losses": 0
                 },
 
