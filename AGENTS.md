@@ -116,10 +116,10 @@ To ensure every decision matches the rigor of the champion desks that delivered 
 
 ### POD 5: EXECUTION ARBITER & ORDER ACTION
 - Strategic Verdict: Immediate Market Execution (`alpha_execute_market_order`), Breakout Stop (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP`), Structural Limit (`BUY_LIMIT`/`SELL_LIMIT`), or Standing Flat.
-- Pre-Flight Mirror Check: Before any order submission (market or pending), run `alpha_backtest_thesis` on the candidate coordinates. If the sub-10ms replay returns negative expectancy (-1.0R on N>=5), the tape is actively rejecting the setup — stand flat.
+- Pre-Flight Trend Health & Mirror Diagnosis: Before executing or staging an order, run `alpha_backtest_thesis` on candidate coordinates (M5 `bars=0` for momentum/reclaim, M15 `bars=0` for shelves). If recent setups show positive R, active momentum is genuinely open; if recent attempts failed (SL hits), the trend is exhibiting exhaustion/absorption friction — do not chase peak momentum, stand flat and wait for the structural trap/sweep to form.
 - Sizing: $0.50\text{ to }1.00\text{ lots}$ ($1.00\text{L}$ standard on 7-layer conviction $\ge 8.0/10$ with 4TF alignment; $0.50\text{L}$ on baseline conviction $7.0\text{--}7.9$).
 - Stop Loss: Structural Invalidation $+ 1.5\times\text{ATR}_{14}$ buffer ($6.0\text{ to }12.0\text{ pts}$) anchored strictly behind HTF swing low/high, FVG boundary, or Order Block.
-- Take Profit: Major Opposing Structural Liquidity Target (Opposing FVG CE, POC, Value Area boundary, or liquidity sweep) enforcing **Positive R:R $\ge 1.5:1$ to $2.5:1+$ floor** ($12.0\text{ to }25.0\text{ pts}$).
+- Take Profit: Dynamic Opposing Structural Liquidity Target (Opposing FVG CE, POC, Value Area boundary, or un-swept session extreme) calculated dynamically from live market structure, enforcing **Positive R:R $\ge 1.5:1$ to $2.5:1+$ floor** (no arbitrary fixed point limits).
 - Anti-Inverted-R:R Gate: Veto any order where planned target is less than $1.5\times$ the stop distance. Inverted negative R:R is strictly prohibited.
 - NO PASSIVE WATCH SENSOR LOOPS: Pre-stage orders directly on MT5 book. Never substitute `register_watch` for real broker execution.
 ```
