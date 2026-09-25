@@ -1,7 +1,7 @@
 {
-  "archetype_version": "v70",
-  "archetype_name": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
-  "canonical_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
+  "archetype_version": "v71",
+  "archetype_name": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
+  "canonical_title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
   "workspace_directory": "C:\\Trading",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,

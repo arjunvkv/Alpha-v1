@@ -30,6 +30,9 @@ class PureLLMBacktestPipeline:
         t_start = time.time()
         timings = {}
 
+        if bars == 0:
+            tf_defaults = {"M1": 720, "M5": 288, "M15": 192, "H1": 120, "H4": 60, "D1": 30}
+            bars = tf_defaults.get(timeframe.upper(), 288)
         # 1. Fetch Real Historical Candles from MT5 (<15ms)
         t1 = time.time()
         data_res = self.data_harness.fetch_candle_window(symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
@@ -57,9 +60,12 @@ class PureLLMBacktestPipeline:
         # 4. Optional Fast LLM Synthesis Enrichment (non-blocking, <1.5s)
         t_llm = time.time()
         try:
-            sim_data = self.local_runner.enrich_synthesis(sim_data, query=query, symbol=symbol, timeframe=timeframe)
+            import threading
+            # Fire and forget LLM enrichment so it doesn't block the main backtest return
+            threading.Thread(target=self.local_runner.enrich_synthesis, args=(sim_data, query, symbol, timeframe), daemon=True).start()
         except Exception as e:
             LOG.debug(f"Fast LLM enrichment skipped: {e}")
+        timings["llm_synthesis_ms"] = int((time.time() - t_llm) * 1000)
         timings["llm_synthesis_ms"] = int((time.time() - t_llm) * 1000)
 
         timings["total_pipeline_ms"] = int((time.time() - t_start) * 1000)
@@ -91,8 +97,11 @@ class PureLLMBacktestPipeline:
                 "losses": sim_data.get("losses", 0),
                 "win_rate_pct": sim_data.get("win_rate_pct", 0.0),
                 "net_realized_r": sim_data.get("net_realized_r", 0.0),
-                "profit_factor": sim_data.get("profit_factor", 0.0)
+                "profit_factor": sim_data.get("profit_factor", 0.0),
+                "mtm_exits": sim_data.get("mtm_exits", 0),
+                "mtm_avg_r": sim_data.get("mtm_avg_r", 0.0)
             },
+            "sample_quality": sim_data.get("sample_quality", {"n_resolved": 0, "is_statistically_valid": False, "min_sample_warning": "No trades resolved"}),
             "trades": sim_data.get("trades", []),
             "failure_clusters": sim_data.get("failure_clusters", []),
             "key_edge_takeaways": sim_data.get("key_edge_takeaways", [])

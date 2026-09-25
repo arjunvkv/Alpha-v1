@@ -18,7 +18,7 @@ PROXIMA_HTTP_URL = "http://127.0.0.1:3210"
 class LocalLLMBacktestRunner:
     """Provides optional LLM synthesis to enrich deterministic structural backtest results."""
 
-    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 0.3):
+    def __init__(self, http_url: str = PROXIMA_HTTP_URL, timeout: float = 3.0):
         self.http_url = http_url.rstrip("/")
         self.timeout = timeout
 
@@ -59,8 +59,11 @@ class LocalLLMBacktestRunner:
                         sim_data["failure_clusters"] = parsed["failure_clusters"]
                     if parsed.get("key_edge_takeaways") and isinstance(parsed["key_edge_takeaways"], list):
                         sim_data["key_edge_takeaways"] = parsed["key_edge_takeaways"]
-        except Exception:
+            sim_data["enrichment_status"] = "SUCCESS"
+        except Exception as e:
             # Cleanly pass! Sim_data already contains authentic mathematically derived takeaways
+            LOG.debug(f"LLM enrichment timeout/error: {e}")
+            sim_data["enrichment_status"] = "TIMEOUT_OR_ERROR"
             pass
 
         return sim_data

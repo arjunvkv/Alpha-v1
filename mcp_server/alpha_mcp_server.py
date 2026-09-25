@@ -1601,19 +1601,32 @@ def mcp_alpha_get_crowd_liquidity_vector(symbol: str = "XAUUSD") -> str:
     return json.dumps(engine.get_live_crowd_liquidity_payload(sym), indent=2)
 
 
-def _sync_backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 60, offset: int = 0) -> str:
+import threading
+_backtest_cache = {}
+_backtest_lock = threading.Lock()
+
+def _sync_backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "M5", bars: int = 0, offset: int = 0) -> str:
     from backtesting.pipeline import PureLLMBacktestPipeline
     sym = _normalize_symbol(symbol)
+    cache_key = f"{sym}_{timeframe}_{bars}_{offset}_{query}"
+    with _backtest_lock:
+        if cache_key in _backtest_cache:
+            return _backtest_cache[cache_key]
+
     read_logger.log_dossier_read("OpenCode CIO (MCP Backtest Thesis)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested natural backtest: '{query}' on {sym} ({timeframe}, {bars} bars)")
     pipeline = PureLLMBacktestPipeline()
-    return json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+    res = json.dumps(pipeline.run_backtest(query=query, symbol=sym, timeframe=timeframe, bars=bars, offset=offset), indent=2)
+    
+    with _backtest_lock:
+        _backtest_cache[cache_key] = res
+    return res
 
 @mcp.tool()
 async def mcp_alpha_backtest_thesis(
     query: str,
     symbol: str = "XAUUSD",
     timeframe: str = "M5",
-    bars: int = 60,
+    bars: int = 0,
     offset: int = 0
 ) -> str:
     """Ultra-fast multi-threaded natural backtester powered by Proxima + MT5 Data Harness + Local LLM.
@@ -1627,7 +1640,7 @@ async def backtest_thesis(
     query: str,
     symbol: str = "XAUUSD",
     timeframe: str = "M5",
-    bars: int = 60,
+    bars: int = 0,
     offset: int = 0
 ) -> str:
     """Multi-threaded natural backtester alias."""

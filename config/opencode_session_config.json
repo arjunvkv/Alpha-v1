@@ -1,13 +1,13 @@
 {
-  "session_id": "ses_f2bb9f1bcffe6CrGw0pm6fgYZj",
-  "title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
-  "session_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
-  "active_session_id": "ses_f2bb9f1bcffe6CrGw0pm6fgYZj",
-  "active_session_title": "Escanor v70 (Live Position Snapshot + Explicit Exit Gates)",
+  "session_id": "ses_f29941500ffeEGolPgtWShwL9o",
+  "title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
+  "session_title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
+  "active_session_id": "ses_f29941500ffeEGolPgtWShwL9o",
+  "active_session_title": "Escanor v71 (Stale Pending Order Protocol & Bracket Supremacy)",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-24 16:35:58 UTC",
+  "deployed_at": "2026-09-25 02:36:35 UTC",
   "description": "Escanor v66 CIO equipped with 7-Layer Local LLM Conviction Engine, Deep Order Flow Telemetry, 3-Tier Macro Causal Aperture, and Graphiti Facts Cadence"
 }

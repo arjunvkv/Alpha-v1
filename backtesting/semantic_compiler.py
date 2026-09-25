@@ -70,7 +70,7 @@ class SemanticThesisCompiler:
         # Look for explicit absolute entry price (e.g. at 4273.2, @ 4480, entry 4265.5, below 4270)
         entry_price = None
         entry_patterns = [
-            r'(?:at|@|entry|price|level|below|above|breakout|breakdown)\s*[:=]?\s*(\d{3,5}(?:\.\d+)?)',
+            r'(?:at|@|entry|price|level)\s*[:=]?\s*(\d{3,5}(?:\.\d+)?)',
             r'\b(?:buy|sell)\s+(?:limit|stop|order)\s+(?:at\s+|@\s*)?(\d{3,5}(?:\.\d+)?)',
             r'\b(?:limit|stop)\s+(?:at\s+|@\s*)?(\d{3,5}(?:\.\d+)?)'
         ]
@@ -195,6 +195,17 @@ class SemanticThesisCompiler:
         if sanitized_tp_points is not None and sanitized_tp_points > 150.0:
             sanitized_tp_points = None
 
+        max_fill_bars = 25
+        max_hold_bars = 35
+        
+        fill_m = re.search(r'fill window (\d+) bars', q_lower)
+        if fill_m:
+            max_fill_bars = max(5, min(120, int(fill_m.group(1))))
+            
+        hold_m = re.search(r'hold up to (\d+) bars', q_lower)
+        if hold_m:
+            max_hold_bars = max(5, min(120, int(hold_m.group(1))))
+
         return {
             "query": query,
             "direction": direction,
@@ -206,6 +217,6 @@ class SemanticThesisCompiler:
             "target_rr": max(1.5, target_rr),
             "sl_points": sanitized_sl_points,
             "tp_points": sanitized_tp_points,
-            "max_fill_bars": 25,
-            "max_hold_bars": 35
+            "max_fill_bars": max_fill_bars,
+            "max_hold_bars": max_hold_bars
         }

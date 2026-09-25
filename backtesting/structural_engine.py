@@ -63,8 +63,13 @@ class StructuralEngine:
         unfilled_count = 0
         max_fill_bars = thesis_cfg.get("max_fill_bars", 25)
         max_hold_bars = thesis_cfg.get("max_hold_bars", 35)
+        trade_exit_bar = -1
 
         for setup in candidate_setups:
+            form_idx = setup["formation_bar"]
+            if form_idx <= trade_exit_bar:
+                unfilled_count += 1
+                continue
             form_idx = setup["formation_bar"]
             entry_style = setup["entry_style"]
             entry_price = setup["entry_price"]
@@ -79,6 +84,12 @@ class StructuralEngine:
                 filled = True
                 fill_idx = form_idx
                 actual_fill_price = entry_price
+                spread_pts = float(candles[fill_idx].get("spread_pts", 0.0))
+                spread_cost_pts = round(spread_pts * 0.5, 2)
+                if is_long:
+                    actual_fill_price = round(actual_fill_price + spread_cost_pts, 2)
+                else:
+                    actual_fill_price = round(actual_fill_price - spread_cost_pts, 2)
                 act_risk = risk
             else:
                 filled = False
@@ -133,6 +144,13 @@ class StructuralEngine:
                 if not filled or fill_idx < 0:
                     unfilled_count += 1
                     continue
+                
+                spread_pts = float(candles[fill_idx].get("spread_pts", 0.0))
+                spread_cost_pts = round(spread_pts * 0.5, 2)
+                if is_long:
+                    actual_fill_price = round(actual_fill_price + spread_cost_pts, 2)
+                else:
+                    actual_fill_price = round(actual_fill_price - spread_cost_pts, 2)
 
                 # Recalibrate actual risk and TP if fill slipped slightly (pattern setups only)
                 act_risk = max(abs(actual_fill_price - sl_price), 1.0)
@@ -155,12 +173,25 @@ class StructuralEngine:
 
             if sl_hit_fill and tp_hit_fill:
                 # Intra-bar ambiguity: assess conservatively based on close
-                if (is_long and f_close > f_open) or (not is_long and f_close < f_open):
-                    outcome = "TP_HIT"
+                midpoint = (f_high + f_low) / 2.0
+                open_dist_sl = abs(f_open - sl_price)
+                open_dist_tp = abs(f_open - tp_price)
+                
+                if abs(f_open - midpoint) <= 1.0:
+                    if (is_long and f_close > f_open) or (not is_long and f_close < f_open):
+                        outcome = "TP_HIT"
+                    else:
+                        outcome = "SL_HIT"
+                else:
+                    if open_dist_tp < open_dist_sl:
+                        outcome = "TP_HIT"
+                    else:
+                        outcome = "SL_HIT"
+
+                if outcome == "TP_HIT":
                     realized_r = round(setup["target_rr"], 2)
                     exit_price = tp_price
                 else:
-                    outcome = "SL_HIT"
                     realized_r = -1.0
                     exit_price = sl_price
                 executed_trades.append({
@@ -179,10 +210,13 @@ class StructuralEngine:
                     "exit_price": exit_price,
                     "exit_reason": outcome,
                     "realized_r": realized_r,
+                    "intra_bar_ambiguity": True,
                     "holding_bars": 0,
-                    "analysis": f"{setup['name']} filled & resolved intra-bar at bar {fill_idx} ({exit_price})."
+                    "analysis": f"{setup['name']} filled & resolved intra-bar at bar {fill_idx} ({exit_price}).",
+                    "spread_cost_pts": spread_cost_pts
                 })
                 trade_resolved = True
+                trade_exit_bar = fill_idx
             elif tp_hit_fill and not sl_hit_fill:
                 realized_r = round(setup["target_rr"], 2)
                 executed_trades.append({
@@ -202,9 +236,11 @@ class StructuralEngine:
                     "exit_reason": "TP_HIT",
                     "realized_r": realized_r,
                     "holding_bars": 0,
-                    "analysis": f"{setup['name']} hit TP intra-bar on fill bar ({tp_price})."
+                    "analysis": f"{setup['name']} hit TP intra-bar on fill bar ({tp_price}).",
+                    "spread_cost_pts": spread_cost_pts
                 })
                 trade_resolved = True
+                trade_exit_bar = fill_idx
             elif sl_hit_fill and not tp_hit_fill:
                 executed_trades.append({
                     "trade_id": len(executed_trades) + 1,
@@ -223,9 +259,11 @@ class StructuralEngine:
                     "exit_reason": "SL_HIT",
                     "realized_r": -1.0,
                     "holding_bars": 0,
-                    "analysis": f"{setup['name']} stopped out intra-bar on fill bar ({sl_price})."
+                    "analysis": f"{setup['name']} stopped out intra-bar on fill bar ({sl_price}).",
+                    "spread_cost_pts": spread_cost_pts
                 })
                 trade_resolved = True
+                trade_exit_bar = fill_idx
 
             # If not resolved on fill bar, step forward through subsequent bars
             if not trade_resolved:
@@ -276,9 +314,11 @@ class StructuralEngine:
                             "exit_reason": outcome,
                             "realized_r": realized_r,
                             "holding_bars": step - fill_idx,
-                            "analysis": f"{setup['name']} filled at bar {fill_idx} ({actual_fill_price}). {outcome} resolved at bar {step} ({exit_price})."
+                            "analysis": f"{setup['name']} filled at bar {fill_idx} ({actual_fill_price}). {outcome} resolved at bar {step} ({exit_price}).",
+                    "spread_cost_pts": spread_cost_pts
                         })
                         trade_resolved = True
+                        trade_exit_bar = step
                         break
 
                     elif sl_hit:
@@ -299,9 +339,11 @@ class StructuralEngine:
                             "exit_reason": "SL_HIT",
                             "realized_r": -1.0,
                             "holding_bars": step - fill_idx,
-                            "analysis": f"{setup['name']} stopped out at {sl_price} on adverse pressure."
+                            "analysis": f"{setup['name']} stopped out at {sl_price} on adverse pressure.",
+                    "spread_cost_pts": spread_cost_pts
                         })
                         trade_resolved = True
+                        trade_exit_bar = step
                         break
 
                     elif tp_hit:
@@ -323,9 +365,11 @@ class StructuralEngine:
                             "exit_reason": "TP_HIT",
                             "realized_r": realized_r,
                             "holding_bars": step - fill_idx,
-                            "analysis": f"{setup['name']} hit asymmetric Take Profit target cleanly at {tp_price} (+{realized_r}R)."
+                            "analysis": f"{setup['name']} hit asymmetric Take Profit target cleanly at {tp_price} (+{realized_r}R).",
+                    "spread_cost_pts": spread_cost_pts
                         })
                         trade_resolved = True
+                        trade_exit_bar = step
                         break
 
                 # Step 2C: Mark-to-Market if trade did not hit SL or TP before window close
@@ -351,18 +395,25 @@ class StructuralEngine:
                         "exit_reason": "WINDOW_EXPIRY_MTM",
                         "realized_r": mtm_r,
                         "holding_bars": min(fill_idx + max_hold_bars, len(candles) - 1) - fill_idx,
-                        "analysis": f"{setup['name']} timed out after max hold window. Mark-to-market exit at {last_close} ({mtm_r}R)."
+                        "analysis": f"{setup['name']} timed out after max hold window. Mark-to-market exit at {last_close} ({mtm_r}R).",
+                    "spread_cost_pts": spread_cost_pts
                     })
+                    trade_exit_bar = min(fill_idx + max_hold_bars, len(candles) - 1)
 
         # Step 3: Quantitative Statistical Aggregation
-        wins = sum(1 for t in executed_trades if t["realized_r"] > 0)
-        losses = sum(1 for t in executed_trades if t["realized_r"] < 0)
-        total_resolved = len(executed_trades)
+        resolved_trades = [t for t in executed_trades if t.get("exit_reason") != "WINDOW_EXPIRY_MTM"]
+        mtm_trades = [t for t in executed_trades if t.get("exit_reason") == "WINDOW_EXPIRY_MTM"]
+        wins = sum(1 for t in resolved_trades if t["realized_r"] > 0)
+        losses = sum(1 for t in resolved_trades if t["realized_r"] < 0)
+        total_resolved = len(resolved_trades)
         win_rate = round((wins / total_resolved * 100.0), 1) if total_resolved > 0 else 0.0
-        net_r = round(sum(t["realized_r"] for t in executed_trades), 2)
+        net_r = round(sum(t["realized_r"] for t in resolved_trades), 2)
+        
+        mtm_exits = len(mtm_trades)
+        mtm_avg_r = round(sum(t["realized_r"] for t in mtm_trades) / mtm_exits, 2) if mtm_exits > 0 else 0.0
 
-        gross_win_r = sum(t["realized_r"] for t in executed_trades if t["realized_r"] > 0)
-        gross_loss_r = abs(sum(t["realized_r"] for t in executed_trades if t["realized_r"] < 0))
+        gross_win_r = sum(t["realized_r"] for t in resolved_trades if t["realized_r"] > 0)
+        gross_loss_r = abs(sum(t["realized_r"] for t in resolved_trades if t["realized_r"] < 0))
         pf = round(gross_win_r / gross_loss_r, 2) if gross_loss_r > 0 else (99.0 if gross_win_r > 0 else 0.0)
 
         # Dynamic Edge Insights & Failure Clusters from REAL trades
@@ -400,6 +451,13 @@ class StructuralEngine:
             "win_rate_pct": win_rate,
             "net_realized_r": net_r,
             "profit_factor": pf,
+            "mtm_exits": mtm_exits,
+            "mtm_avg_r": mtm_avg_r,
+            "sample_quality": {
+                "n_resolved": total_resolved,
+                "is_statistically_valid": total_resolved >= 5,
+                "min_sample_warning": None if total_resolved >= 5 else f"Only {total_resolved} resolved trades. Minimum 5 required for statistical validity."
+            },
             "trades": executed_trades,
             "failure_clusters": failure_clusters,
             "key_edge_takeaways": key_takeaways
