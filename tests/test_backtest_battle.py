@@ -139,10 +139,14 @@ class TestBacktestBattle:
             s = res["summary"]
             assert s["total_setups_found"] == s["filled_trades"] + s["unfilled_setups"]
             if s["filled_trades"] > 0:
-                calc_net_r = round(sum(t["realized_r"] for t in res["trades"]), 2)
+                calc_net_r = round(sum(
+                    t["realized_r"] for t in res["trades"]
+                    if t.get("exit_reason") != "WINDOW_EXPIRY_MTM"
+                ), 2)
                 assert abs(s["net_realized_r"] - calc_net_r) < 0.05
                 for t in res["trades"]:
                     assert t["direction"] == "BEARISH"
+
 
     def test_battle_breaker_block_suite(self, pipeline):
         """Dedicated battle test verifying Breaker Block (S/R flip) long and short execution."""

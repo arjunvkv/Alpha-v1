@@ -86,11 +86,8 @@ class StructuralEngine:
                 actual_fill_price = entry_price
                 spread_pts = float(candles[fill_idx].get("spread_pts", 0.0))
                 spread_cost_pts = round(spread_pts * 0.5, 2)
-                if is_long:
-                    actual_fill_price = round(actual_fill_price + spread_cost_pts, 2)
-                else:
-                    actual_fill_price = round(actual_fill_price - spread_cost_pts, 2)
                 act_risk = risk
+
             else:
                 filled = False
                 fill_idx = -1
@@ -145,12 +142,12 @@ class StructuralEngine:
                     unfilled_count += 1
                     continue
                 
+                # Spread cost is tracked as execution_cost_r on the trade record only.
+                # actual_fill_price is NOT mutated — SL/TP must stay geometrically anchored
+                # to the structural fill price so entry_price stays within bar OHLC range.
                 spread_pts = float(candles[fill_idx].get("spread_pts", 0.0))
                 spread_cost_pts = round(spread_pts * 0.5, 2)
-                if is_long:
-                    actual_fill_price = round(actual_fill_price + spread_cost_pts, 2)
-                else:
-                    actual_fill_price = round(actual_fill_price - spread_cost_pts, 2)
+
 
                 # Recalibrate actual risk and TP if fill slipped slightly (pattern setups only)
                 act_risk = max(abs(actual_fill_price - sl_price), 1.0)
