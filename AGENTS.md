@@ -51,7 +51,26 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
   - Followed by `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`.
 
 - **Execution & Pre-Flight Replay (Only When Staging / Modifying Orders)**:
-  - `alpha_backtest_thesis(query="...", symbol='XAUUSD', timeframe='M5', bars=60)`: Historical candle replay against live MT5 data to confirm positive mathematical expectancy before placing new shelf orders.
+  - `alpha_backtest_thesis(query="...", symbol='XAUUSD', timeframe='M15', bars=0)`: Sub-10ms cached historical candle replay against live MT5 data to confirm positive mathematical expectancy before placing new shelf orders.
+    - **Speed & Caching**: Dedicated background worker thread pool with per-symbol cache (<10ms). Zero execution lag.
+    - **Timeframe & Auto-Scale Lookback (`bars=0` default)**:
+      - `M15` (`bars=192` / 48 hours): Preferred default for structural shelves (Order Blocks, FVG CEs, Breaker S/R).
+      - `M5` (`bars=288` / 24 hours): Best for intraday momentum, Turtle Soup sweeps, EMA pullbacks, breakout stops.
+      - `H1` (`bars=120` / 5 days): Best for macro swing levels and multi-day value areas.
+      - *(Rule: Never pass arbitrary narrow windows like `bars < 60`; let `bars=0` auto-scale or pass `>= 100` bars).*
+    - **8 Supported Archetypes + Explicit Replay**:
+      - Explicit Order: `query="BUY_LIMIT at 4265.5 SL 4258.0 TP 4280.0"` or `"SELL_STOP at 4273.2 SL 4280.0 TP 4260.9"` (exact physical fill physics with gap slip & candle extremes).
+      - FVG CE Mitigation: `query="M15 bullish FVG CE mitigation 2.0:1 RR"`
+      - Order Block: `query="Bearish Order Block supply fade retest SL 8pt TP 20pt"`
+      - Turtle Soup Sweep & Reclaim: `query="Turtle soup sweep of recent lows and reclaim buy 2.5:1 RR"`
+      - Breakout Expansion Stop: `query="Bullish BOS breakout expansion stop order SL 8pt TP 20pt"`
+      - EMA Trend Pullback: `query="Bullish 20 EMA trend pullback long continuation 2.0:1 RR"`
+      - Breaker Block S/R Flip: `query="Bullish Breaker Block retest limit buy after resistance breach"`
+      - Rejection Wick Pinbar: `query="Bearish shooting star rejection wick short reversal 2.0:1 RR"`
+    - **Decision Rules on Sample Quality**:
+      - `sample_quality.is_statistically_valid == True` ($N \ge 5$ resolved trades): `net_realized_r > 0` and `win_rate_pct >= 50%` confirms structural positive expectancy.
+      - `sample_quality.is_statistically_valid == False` ($N < 5$ resolved trades): Do NOT use a single trade loss ($N=1$, $-1.0R$) as a hard execution veto! Small samples are statistical noise. Rely on 7-layer conviction + tape delta or widen lookback.
+      - `WINDOW_EXPIRY_MTM` trades are isolated in `mtm_exits` and do not contaminate win rate.
   - `alpha_place_pending_order(...)`: Place pending limit or stop orders directly on MT5 book.
   - `alpha_execute_market_order(...)`: Execute immediate market buy or sell orders.
   - `alpha_cancel_pending_order(...)`: Cancel stale or invalidated pending orders.
@@ -115,7 +134,7 @@ These 7 core safety laws protect capital and remain strictly immutable:
 6. **`CONST_MAX_DAILY_DD`**: Daily drawdown circuit breaker ($1,500) protects account capital from runaway adverse market regimes.
 7. **`CONST_PREFLIGHT_CONFIDENCE_GATE`**: Zero orders (`alpha_place_pending_order` or `alpha_execute_market_order`) may be submitted blindly without empirical grounding. Before placing any order, the CIO must complete the Pre-Flight Confidence Check:
    - Call `graphiti_search_facts(patterns=[...])` using candidate setup tags to calibrate the exact entry price and verify the structural SL buffer against documented trap pitfalls.
-   - Use `alpha_backtest_thesis(...)` when testing a new structural shelf to confirm positive mathematical expectancy (positive net realized R) and structural validity. Order execution without this pre-flight check is prohibited.
+   - Use `alpha_backtest_thesis(...)` (with `timeframe='M15', bars=0` for shelves or `timeframe='M5', bars=0` for scalps) when testing a new structural shelf to confirm positive mathematical expectancy (positive net realized R) and structural validity. If `sample_quality.is_statistically_valid == False` ($N < 5$), do NOT veto based on $N=1$ noise — verify 7-layer conviction and tape delta or widen lookback. Order execution without completing this pre-flight check is prohibited.
 8. **`CONST_NO_PREMATURE_CUT`**: Manual market exit (`FULL_EXIT` / `CLOSE` via `alpha_update_position`) on routine candle wicks, retest pullbacks, or temporary floating drawdown within the structural SL budget is an immutable constitutional violation. Once filled, the broker terminal bracket (structural SL $6.0\text{--}12.0\text{ pts}$ and asymmetric TP $\ge 1.5:1$) governs the trade. Early manual closure is strictly prohibited unless one of the 4 authorized criteria in Section 5 is rigorously verified.
 9. **`CONST_STALE_PENDING_PROHIBITION`**: All MT5 pending orders are GTC and DO NOT self-expire at session boundaries or midnight. Any resting pending order that is > 15.0 points away from current market price OR has been resting for > 60 minutes without fill MUST be actively evaluated and cancelled via `alpha_cancel_pending_order()`. Leaving stale pending orders into the next session or thin-liquidity hours (Asian vacuum) is an immutable constitutional violation.
 
