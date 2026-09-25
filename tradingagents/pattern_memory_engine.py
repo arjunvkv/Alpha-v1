@@ -59,7 +59,14 @@ def parse_and_normalize_tags(p_input: Any) -> List[str]:
         return []
     
     raw_tags = []
-    if isinstance(p_input, (list, tuple, set)):
+    if isinstance(p_input, dict):
+        # Extract from dict values or common keys like 'item', 'items', 'patterns', 'tags', 'values'
+        for k in ("item", "items", "patterns", "tags", "values"):
+            if k in p_input:
+                return parse_and_normalize_tags(p_input[k])
+        for v in p_input.values():
+            raw_tags.extend(parse_and_normalize_tags(v))
+    elif isinstance(p_input, (list, tuple, set)):
         for item in p_input:
             if isinstance(item, str) and ("," in item or "+" in item or "[" in item):
                 raw_tags.extend(parse_and_normalize_tags(item))
