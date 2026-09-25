@@ -1571,8 +1571,7 @@ def mcp_alpha_record_decision_snapshot(
         tick_velocity_tpm=tick_velocity_tpm,
         macro_event_tag=macro_event_tag,
         order_book_imbalance=order_book_imbalance,
-        direction_thesis=direction_thesis,
-        **kwargs
+        direction_thesis=direction_thesis
     ), indent=2)
 
 
