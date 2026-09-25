@@ -89,6 +89,10 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
 To ensure every decision matches the rigor of the champion desks that delivered the biggest wins in desk history, evaluate every market cycle through all 5 Pod lenses:
 
 ```markdown
+### REALITY RECONCILIATION: PREDICTION VS. LIVE TAPE (THE REALITY DELTA)
+• Prior Expectation vs. Market Realization: What did the prior cycle's backtest, facts, and structure roadmap anticipate price would do? What did price physically do over the last 4–8 minutes?
+• Divergence & Trap Diagnostic: Did price follow the roadmap or move another way? If it moved another way, what institutional trap or order flow shift caused the divergence, and what does this reveal about trapped liquidity?
+
 ### POD 1: MACRO & CATALYST PERMISSION (SOVEREIGN WIRE GRAVITY & CAUSAL DISCOVERY)
 • Zero-Assumption Wire Pulse: Quote verbatim headlines from `alpha_get_live_world_events(category='ALL', limit=15)` across institutional feeds.
 • Macro Causality Classification: Reconcile today's active leg displacement against the live wires:
