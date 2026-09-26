@@ -519,20 +519,7 @@ class ConsolidatedTradingDaemon:
             LOG.debug(f"Error monitor heartbeat error: {e_err}")
 
         top_symbol = "XAUUSD"
-        headline = ""
-
-        from mcp_server.alpha_mcp_server import mcp_alpha_get_symbol_conviction
-        for symbol in self.instruments:
-            try:
-                conv_json = mcp_alpha_get_symbol_conviction(symbol)
-                conv_data = json.loads(conv_json)
-                summary = conv_data.get("summary", f"{symbol} Raw telemetry active")
-            except Exception:
-                summary = f"{symbol} Telemetry active"
-
-            if symbol == "XAUUSD" or not headline:
-                top_symbol = symbol
-                headline = summary
+        headline = "Physical Telemetry & Topological Graph Active"
 
         # 1. RUN FULL 7-AGENT DESK THINKING PROCESS ACROSS ALL 6 INSTRUMENTS
         from tradingagents.world_market import IntradayInstitutionalEngine

@@ -1478,6 +1478,8 @@ def clear_completed_watches(symbol: str = None) -> str:
     """Clear all triggered and cancelled watches from disk memory."""
     return mcp_alpha_clear_completed_watches(symbol)
 
+_global_arbiter = None
+
 @mcp.tool()
 def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = False) -> str:
     """Retrieve pure real-time physical market telemetry and raw kinetic metrics (live broker quotes, spread, tape velocity, CVD ratios, 4m/M1 footprints, Level 2 order book depth, real yields, and calendar countdown) without artificial labels or calculated fluff. Set force_refresh=True to bypass cached macro yields and pull live endpoints."""
@@ -1637,7 +1639,7 @@ def list_desk_tools() -> str:
 
 
 @mcp.tool()
-def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+def get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
     """
     Topological Market Graph & Liquidity Cascade Radar (Graphify GPS).
     Extracts the localized 1-hop spatial ego-graph around current price:
@@ -1652,14 +1654,13 @@ def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
         eng = get_topological_engine()
         return eng.format_ego_graph_card(symbol=symbol)
     except Exception as e:
-        LOG.error(f"Error in alpha_get_topological_liquidity_map: {e}")
+        LOG.error(f"Error in get_topological_liquidity_map: {e}")
         return f"Topological map error: {e}"
 
 
-@mcp.tool()
-def get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
-    """Backward-compatible alias for alpha_get_topological_liquidity_map."""
-    return alpha_get_topological_liquidity_map(symbol=symbol)
+def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+    """Internal alias for get_topological_liquidity_map."""
+    return get_topological_liquidity_map(symbol=symbol)
 
 
 # Quarantined / Deprecated: direct native tool calls enforced per Standing Orders
@@ -1676,41 +1677,23 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
 
     fn_map = {
         "get_account_status": mcp_alpha_get_account_status,
-        "get_mt5_deals_history": lambda: mcp_alpha_get_mt5_deals_history(args.get("days",30),args.get("symbol","ALL"),args.get("limit",100),args.get("position_id",0)),
-        "get_full_institutional_profile": lambda: mcp_alpha_get_full_institutional_profile(args.get("symbol","XAUUSD")),
-        "get_symbol_conviction": lambda: mcp_alpha_get_symbol_conviction(args.get("symbol","XAUUSD")),
-        "get_live_microstructure": lambda: mcp_alpha_get_live_microstructure(args.get("symbol","XAUUSD")),
-        "get_measured_cvd": lambda: mcp_alpha_get_measured_cvd(args.get("symbol","XAUUSD")),
-        "get_crowd_liquidity_vector": lambda: mcp_alpha_get_crowd_liquidity_vector(args.get("symbol","XAUUSD")),
-        "get_fvg_matrix": lambda: mcp_alpha_get_fvg_matrix(args.get("symbol","XAUUSD")),
-        "get_fred_observations": lambda: mcp_alpha_get_fred_observations(**args),
-        "get_live_world_events": lambda: mcp_alpha_get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
-        "alpha_get_live_world_events": lambda: mcp_alpha_get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
+        "get_fred_observations": lambda: get_fred_observations(**args),
+        "get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
+        "alpha_get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
         "backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "alpha_backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
-        "record_decision_snapshot": lambda: mcp_alpha_record_decision_snapshot(**args),
-        "execute_trade": lambda: mcp_alpha_execute_trade(args.get("symbol",""),args.get("side",""),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0)),
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
         "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0))),
+        "modify_pending_order": lambda: mcp_alpha_modify_pending_order(args.get("order_ticket",args.get("ticket",0)),args.get("price",0.0),args.get("sl",0.0),args.get("tp",0.0)),
         "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol","ALL")),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket",0),args.get("action",""),args.get("params_json","")),
-        "register_watch": lambda: mcp_alpha_register_watch(**args),
-        "get_active_watches": lambda: mcp_alpha_get_active_watches(args.get("symbol"),args.get("include_closed",False)),
-        "update_watch": lambda: mcp_alpha_update_watch(**args),
-        "cancel_watch": lambda: mcp_alpha_cancel_watch(args.get("watch_id","")),
-        "clear_completed_watches": lambda: mcp_alpha_clear_completed_watches(args.get("symbol")),
-        "mark_watches_observed": lambda: mcp_alpha_mark_watches_observed(args.get("watch_ids",[])),
-        "mark_evidence_read": lambda: mcp_alpha_mark_evidence_read(args.get("evidence_ids",[])),
         "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"), args.get("force_refresh", False)),
-        "record_pattern_observation": lambda: record_pattern_observation(**args),
-        "record_trade_observation": lambda: record_trade_observation(**args),
         "get_trade_forensics": lambda: mcp_alpha_get_trade_forensics(args.get("ticket", 0)),
         "execute_market_order": lambda: mcp_alpha_execute_market_order(args.get("symbol","XAUUSD"),args.get("side","BUY"),args.get("volume",1.0),args.get("sl_price",0.0),args.get("tp_price",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Market Order")),
-        "get_market_time_context": lambda: mcp_alpha_get_market_time_context(args.get("target_time",""),args.get("target_timezone","America/New_York")),
         "get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
         "alpha_get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
-        "get_topological_liquidity_map": lambda: alpha_get_topological_liquidity_map(args.get("symbol","XAUUSD")),
-        "alpha_get_topological_liquidity_map": lambda: alpha_get_topological_liquidity_map(args.get("symbol","XAUUSD")),
+        "get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD")),
+        "alpha_get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD")),
         "query_analyst_desk": lambda: _sync_query_analyst_desk(args.get("query","Full 7-layer technical, fundamental COT, and macro market analysis"), args.get("symbol","XAUUSD"))
     }
 
