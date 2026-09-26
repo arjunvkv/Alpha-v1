@@ -42,10 +42,17 @@ class TechnicalAnalyst:
             bull_count = sum(1.0 if b == "BULLISH" else 0.5 if "BULL" in str(b).upper() else 0.0 for b in tf_list)
             bear_count = sum(1.0 if b == "BEARISH" else 0.5 if "BEAR" in str(b).upper() else 0.0 for b in tf_list)
 
+            is_3tf_bull = ("BULL" in str(h1_bias).upper()) and ("BULL" in str(m15_bias).upper()) and ("BULL" in str(m5_bias).upper())
+            is_3tf_bear = ("BEAR" in str(h1_bias).upper()) and ("BEAR" in str(m15_bias).upper()) and ("BEAR" in str(m5_bias).upper())
+
             if bull_count >= 3.0:
                 tf_confluence = "4TF_STRONG_BULLISH_CONFLUENCE"
             elif bear_count >= 3.0:
                 tf_confluence = "4TF_STRONG_BEARISH_CONFLUENCE"
+            elif is_3tf_bull:
+                tf_confluence = "3TF_DOMINANT_INTRADAY_BULLISH_EXPANSION"
+            elif is_3tf_bear:
+                tf_confluence = "3TF_DOMINANT_INTRADAY_BEARISH_EXPANSION"
             elif bull_count > bear_count and bull_count >= 2.0:
                 tf_confluence = "4TF_BULLISH_LEANING"
             elif bear_count > bull_count and bear_count >= 2.0:
@@ -133,7 +140,7 @@ class MacroNewsAnalyst:
             "headline_count": len(valid_headlines) if valid_headlines else len(headlines),
             "top_headline": top_headline,
             "macro_news_shield": macro_data.get("news_shield", "CLEAR"),
-            "thesis": f"DXY: {dxy:.2f} | US10Y: {us10y:.2f}% | VIX: {vix:.1f}. Top Headline: '{top_headline}'."
+            "thesis": f"DXY: {dxy:.2f} | VIX: {vix:.1f}. Top Headline: '{top_headline}'."
         }
 
 class SentimentAnalyst:

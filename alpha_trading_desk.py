@@ -477,7 +477,7 @@ class ConsolidatedTradingDaemon:
             f"• NO PASSIVE WATCH SENSOR LOOPS: Pre-stage orders directly on MT5 book. Never substitute `register_watch` for real broker execution.\n\n"
             f"=== RESTORED ON-DEMAND CHAMPION TOOLS ===\n"
             f"  • Post-Trade Forensics: `alpha_get_trade_forensics(ticket=...)`\n"
-            f"  • Empirical Replay / Backtesting: `alpha_backtest_thesis(query=..., symbol='XAUUSD', timeframe='M15', bars=0)` (Sub-10ms cached, auto-scales M5->288, M15->192, H1->120; 8 structural archetypes + explicit order replay)\n"
+            f"  • Pre-Order Coordinates: `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` (Pod 5 only: extract exact FVG 50% CE price, VWAP bands, and ATR14 stop buffer)\n"
             f"  • Decision Grounding: `alpha_record_decision_snapshot(...)`\n"
             f"  • Memory: `graphiti_record_observation()`, `graphiti_search_facts()`, `graphiti_add_episode()`\n"
         )
@@ -1091,8 +1091,8 @@ class ConsolidatedTradingDaemon:
                     f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=15)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
                     f"2. Q-NEWS-2 [Displacement vs. Catalyst Reconciliation]: Reconcile today's active leg displacement and session timing (from the header above) against live wires. Is current price expansion backed by a real sovereign catalyst, or is it an overnight/session liquidity hunt in an informational vacuum?\n"
                     f"3. Q-NEWS-3 [Dynamic Deep Inquiry & 7-Layer Replan]: Based on the active leg and wire clues from Q1/Q2, dynamically formulate your targeted search query (do NOT use static keywords). Target the specific transmission channel driving this session: Call 1x `proxima_ask_perplexity(message=\"...\")`, 1x `alpha_query_analyst_desk(symbol='XAUUSD')` for Bull vs Bear arguments, and audit/replan active resting limit/stop orders with `alpha_get_pending_orders(symbol='ALL')`.\n"
-                    f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags describing your active thesis (e.g. ['BSL_SWEEP', '4TF_BEARISH'] or ['PREMATURE_FADE', 'BSL_DOORSTEP']) and call 1x `graphiti_search_facts(patterns=[...])`. Contrast live tape against both the winning condition and failure pitfall.\n"
-                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Flight Backtest]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 floor calculated dynamically from market structure)? Before executing or staging orders, run `alpha_backtest_thesis` (M5 bars=0 for momentum, M15 bars=0 for shelves). Positive mathematical expectancy is a baseline filter, never an automatic trigger; veto if active tape matches `failure_clusters` or if the most recent historical trade failed from exhaustion. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
+                    f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags from the 3-Vector Grammar ([Macro] + [Location] + [Physics], e.g. ['4TF_STRONG_BEARISH', 'BSL_SWEEP', 'CVD_ABSORPTION']) and call 1x `graphiti_search_facts(patterns=[...])`. Contrast live tape against both the winning condition and failure pitfall.\n"
+                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Order Calibration]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty (Targeting Opposing FVG CE / Major Liquidity with R:R >= 1.5:1 floor calculated dynamically from market structure). When an order is planned, call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` to extract exact FVG 50% CE price, VWAP bands, and ATR14 stop buffer. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
                     f"MANDATORY FORMAT (MATCHING THE PROVEN ESCANOR V72 DEEP REASONING STYLE):\n"
                     f"Deliver your deliberation in full analytical depth matching v72:\n\n"
                     f"### Q-NEWS-1 — Zero-Assumption Wire Pulse (verbatim wires & calendar risk)\n"
@@ -1104,7 +1104,7 @@ class ConsolidatedTradingDaemon:
                     f"### Q-NEWS-4 — Continuous Memory Grounding\n"
                     f"• Cite `graphiti_search_facts` output. Contrast live tape against documented winning signature vs failure pitfall.\n\n"
                     f"### Q-NEWS-5 — Execution via 5-Pod\n"
-                    f"• Pre-flight backtest mirror, mathematical R:R calculation, strategic verdict (Standing Flat, Market Order, or Pending Limit/Stop), and conditional plans with exact price coordinates.\n"
+                    f"• Pre-order coordinate calibration (`alpha_get_deep_orderflow_telemetry`), mathematical R:R calculation, strategic verdict (Standing Flat, Market Order, or Pending Limit/Stop), and conditional plans with exact price coordinates.\n"
                 )
             else:
                 # Turn A: Physical Microstructure Dossier with 4TF Header Streamed in Text
@@ -1121,12 +1121,12 @@ class ConsolidatedTradingDaemon:
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n\n"
                     f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"
-                    f"  1. 7-Layer Synthesis & Raw Telemetry: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`\n"
-                    f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=['TAG1', 'TAG2'])` using 2-3 scale-invariant tags of your own formulation matching your live thesis (e.g. `['BSL_SWEEP', '4TF_BEARISH']`). Returns <80-token contrast card.\n"
-                    f"  • Pre-Flight Trend Health & Replay: Run `alpha_backtest_thesis(query=\"...\", timeframe='M15', bars=0)` (<10ms cached, auto-scales M5→288/M15→192/H1→120). If recent continuation shows positive R, runway is open; if failing, trend exhibits exhaustion friction — stand flat and wait for the structural trap/sweep to form.\n"
+                    f"  1. 7-Layer Synthesis & Physical Tape: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`\n"
+                    f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=[...])` using 2-3 scale-invariant tags from the 3-Vector Grammar (`Macro` + `Location` + `Physics`). Returns <80-token contrast card.\n"
+                    f"  • Pre-Order Execution Coordinates (Pod 5 Only): When planning an order, call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` to pull exact FVG 50% CE, VWAP ±1σ/2σ bands, and ATR14 stop buffer. (Strictly prohibited on routine scans to eliminate Level 2 DOM noise).\n"
                     f"  • Dynamic Execution Standard: Anchor TP dynamically to opposing structural liquidity (opposing FVG CE, POC, or session extreme) enforcing R:R >= 1.5:1 floor (no arbitrary point limits).\n"
                     f"  • Direct MT5 Execution: `alpha_place_pending_order()`, `alpha_execute_market_order()`, `alpha_cancel_pending_order()`, `alpha_update_position()`\n"
-                    f"  • Observational Learning: `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`\n"
+                    f"  • Observational Learning: `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')` (pure causal physics, zero diary timestamps).\n"
                     f"  *(Note: Deep news searches and FRED observations are reserved for periodic Turn B every 3rd/4th dossier to prevent prompt bloat)*\n\n"
                     f"MANDATORY FORMAT (MATCHING THE PROVEN ESCANOR V72 DEEP REASONING STYLE):\n"
                     f"Deliver your deliberation in full analytical depth matching v72:\n\n"
@@ -1276,6 +1276,7 @@ class ConsolidatedTradingDaemon:
         LOG.info("🚀 Starting 500ms Universal Real-Time Watcher Task (Pure Structural & Tape Execution)...")
         ev_store = EvidenceStateStore()
         cvd_engine = CumulativeVolumeDeltaEngine()
+        stage_qualification = {}  # {pos_ticket: {"highest_fav": float, "stage": int}}
 
         while self.is_running:
             try:
@@ -1284,6 +1285,10 @@ class ConsolidatedTradingDaemon:
                     current_positions = mt5.positions_get() or []
                     current_pending = mt5.orders_get() or []
                     active_watches = [w for w in ev_store.get_watches(include_closed=False) if (w.get("status") or "ACTIVE").upper() == "ACTIVE"]
+
+                    # Clean up closed positions from qualification tracking
+                    open_tickets = {p.ticket for p in current_positions}
+                    stage_qualification = {t: q for t, q in stage_qualification.items() if t in open_tickets}
 
                     # Gather high-speed live tape snapshot for XAUUSD
                     live_tape = {}
@@ -1316,6 +1321,160 @@ class ConsolidatedTradingDaemon:
                         LOG.info(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']} {fa['volume']} lots @ {fa['price']:.2f})")
                         log_local_llm_monitoring(f"⚡ [SPLIT-SECOND FILL ALERT] Ticket #{fa['ticket']} ({fa['symbol']} {fa['side']})")
                         post_to_opencode_session("OpenCode (CIO)", fa["prompt"])
+
+                    # 1.5 Real-Time 3-Stage Dynamic Position Ratchet (Capital Armor & Profit Banking)
+                    # Governed by FundedNext 30-Second Quick Strike Shield (<30% profit from trades under 30s)
+                    for pos in current_positions:
+                        if getattr(pos, "symbol", "") != "XAUUSD":
+                            continue
+                        pos_ticket = pos.ticket
+                        open_p = float(pos.price_open)
+                        current_sl = float(pos.sl)
+                        tp_p = float(pos.tp)
+                        pos_side = "BUY" if pos.type == 0 else "SELL"
+                        tick_info = mt5.symbol_info_tick(pos.symbol)
+                        if not tick_info:
+                            continue
+
+                        # Compute live favorable points
+                        if pos.type == 0:  # BUY
+                            curr_price = float(tick_info.bid)
+                            fav_pts = curr_price - open_p
+                        else:  # SELL
+                            curr_price = float(tick_info.ask)
+                            fav_pts = open_p - curr_price
+
+                        # Accurate duration in broker server time (FundedNext audit standard)
+                        tick_t_msc = getattr(tick_info, "time_msc", 0)
+                        pos_t_msc = getattr(pos, "time_msc", 0)
+                        if tick_t_msc > 0 and pos_t_msc > 0:
+                            pos_duration = max(0.0, float(tick_t_msc - pos_t_msc) / 1000.0)
+                        else:
+                            pos_duration = max(0.0, float(getattr(tick_info, "time", 0) - getattr(pos, "time", 0)))
+
+                        # Track peak favorable expansion and stage qualification
+                        qual = stage_qualification.setdefault(pos_ticket, {"highest_fav": 0.0, "stage": 0})
+                        if fav_pts > qual["highest_fav"]:
+                            qual["highest_fav"] = fav_pts
+
+                        if qual["highest_fav"] >= 14.0:
+                            qual["stage"] = max(qual["stage"], 3)
+                        elif qual["highest_fav"] >= 8.5:
+                            qual["stage"] = max(qual["stage"], 2)
+                        elif qual["highest_fav"] >= 5.2:
+                            qual["stage"] = max(qual["stage"], 1)
+
+                        q_stage = qual["stage"]
+
+                        # FUNDEDNEXT 30S SHIELD: Do NOT trail SL into profit under 32 seconds
+                        # Prevents profitable stops from triggering <30s and violating the 30% profit rule
+                        if pos_duration < 32.0:
+                            continue
+
+                        # PULLBACK CUT ENFORCEMENT:
+                        # User mandate: "This is not limited to breakeven... when the price pulled back a little it should not be errored it should be cut at what price it is"
+                        # If a position qualified for a stage earlier, but has now pulled back below that earned lock level,
+                        # cleanly cut at current market price using a fresh tick quote!
+                        needs_pullback_cut = False
+                        pb_reason = ""
+                        pb_comment = ""
+
+                        if q_stage == 3 and fav_pts < 8.0:
+                            needs_pullback_cut = True
+                            pb_reason = f"Position achieved Stage 3 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +8.0 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_comment = "Stage 3 Pullback Cut"
+                        elif q_stage == 2 and fav_pts < 3.5:
+                            needs_pullback_cut = True
+                            pb_reason = f"Position achieved Stage 2 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +3.5 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_comment = "Stage 2 Pullback Cut"
+                        elif q_stage == 1 and fav_pts < 0.50:
+                            needs_pullback_cut = True
+                            pb_reason = f"Position achieved Stage 1 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +0.50 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_comment = "BE Pullback Cut"
+
+                        if needs_pullback_cut:
+                            LOG.warning(f"🛡️ [{pb_comment.upper()}] Ticket #{pos_ticket} ({pos_side} @ {open_p:.2f}) -> {pb_reason} Cutting at market!")
+                            fresh_tick = mt5.symbol_info_tick(pos.symbol)
+                            deal_price = (float(fresh_tick.bid) if pos.type == 0 else float(fresh_tick.ask)) if fresh_tick else curr_price
+                            for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                                cut_req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "position": pos_ticket,
+                                    "symbol": pos.symbol,
+                                    "volume": pos.volume,
+                                    "type": mt5.ORDER_TYPE_SELL if pos.type == 0 else mt5.ORDER_TYPE_BUY,
+                                    "price": deal_price,
+                                    "deviation": 50,
+                                    "magic": pos.magic,
+                                    "comment": pb_comment,
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": fill_mode
+                                }
+                                res = mt5.order_send(cut_req)
+                                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                    LOG.info(f"✅ [{pb_comment.upper()} SUCCESS] Ticket #{pos_ticket} cleanly closed at {deal_price:.2f} (Hold: {pos_duration:.1f}s).")
+                                    post_to_opencode_session(
+                                        "OpenCode (CIO)",
+                                        f"🛡️ [PULLBACK CUT EXECUTED: {pb_comment.upper()}]\n"
+                                        f"Ticket #{pos_ticket} ({pos.symbol} {pos_side} {pos.volume}L @ {open_p:.2f})\n"
+                                        f"Exit Price: {deal_price:.2f} | Hold Duration: {pos_duration:.1f}s\n"
+                                        f"Reason: {pb_reason} Executed market cut cleanly rather than erroring or risking round-trip to full SL."
+                                    )
+                                    stage_qualification.pop(pos_ticket, None)
+                                    break
+                            continue
+
+                        target_sl = None
+                        stage_label = ""
+                        locked_pts = 0.0
+
+                        # Stage 3: Runner Freedom (>= +14.0 pts or Stage 3 qualified) -> lock +8.0 pts (+$400 locked)
+                        if fav_pts >= 14.0 or q_stage == 3:
+                            req_sl = round(open_p + 8.0, 2) if pos.type == 0 else round(open_p - 8.0, 2)
+                            if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
+                               (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
+                                target_sl = req_sl
+                                stage_label = "STAGE 3 (RUNNER FREEDOM: +8.0 PTS LOCKED)"
+                                locked_pts = 8.0
+                        # Stage 2: Profit Banking (>= +8.5 pts or Stage 2 qualified) -> lock +3.5 pts
+                        elif fav_pts >= 8.5 or q_stage == 2:
+                            req_sl = round(open_p + 3.5, 2) if pos.type == 0 else round(open_p - 3.5, 2)
+                            if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
+                               (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
+                                target_sl = req_sl
+                                stage_label = "STAGE 2 (PROFIT BANK: +3.5 PTS LOCKED)"
+                                locked_pts = 3.5
+                        # Stage 1: Capital Armor / Breakeven (>= +5.2 pts or Stage 1 qualified) -> lock +0.50 pts
+                        elif fav_pts >= 5.2 or q_stage == 1:
+                            req_sl = round(open_p + 0.50, 2) if pos.type == 0 else round(open_p - 0.50, 2)
+                            if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
+                               (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
+                                target_sl = req_sl
+                                stage_label = "STAGE 1 (CAPITAL ARMOR: BREAKEVEN +0.50 PTS)"
+                                locked_pts = 0.50
+
+                        if target_sl is not None and abs(target_sl - current_sl) > 0.05:
+                            req = {
+                                "action": mt5.TRADE_ACTION_SLTP,
+                                "position": pos_ticket,
+                                "symbol": pos.symbol,
+                                "sl": target_sl,
+                                "tp": tp_p
+                            }
+                            res = mt5.order_send(req)
+                            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                                LOG.info(f"🛡️ [REAL-TIME RATCHET ACTIVATED] Ticket #{pos_ticket} ({pos_side} {pos.volume}L @ {open_p:.2f}) -> {stage_label}! SL updated to {target_sl:.2f} (Fav peak: +{fav_pts:.2f} pts).")
+                                log_local_llm_monitoring(f"🛡️ [RATCHET] Ticket #{pos_ticket} {stage_label} -> SL {target_sl:.2f}")
+                                post_to_opencode_session(
+                                    "OpenCode (CIO)",
+                                    f"🛡️ [REAL-TIME RATCHET ACTIVATED: {stage_label}]\n"
+                                    f"Ticket #{pos_ticket} ({pos.symbol} {pos_side} {pos.volume}L @ {open_p:.2f})\n"
+                                    f"Current Price: {curr_price:.2f} (Floating Gain: +{fav_pts:.2f} pts / +${fav_pts * pos.volume * 100.0:.2f})\n"
+                                    f"New Stop Loss: {target_sl:.2f} (Locking +{locked_pts:.2f} pts)\n"
+                                    f"Status: Downside risk eliminated. Trade is running risk-free toward target {tp_p:.2f}."
+                                )
+                            elif res and res.retcode != mt5.TRADE_RETCODE_DONE:
+                                LOG.warning(f"⚠️ [RATCHET SLTP REJECTED] Ticket #{pos_ticket} SL update to {target_sl:.2f} failed: retcode={res.retcode} ({res.comment}). The next 500ms cycle will re-audit fresh price.")
 
                     # 2. Evaluate active watches against live tick & tape
                     watched_symbols = set(w.get("symbol", "XAUUSD").upper() for w in active_watches if (w.get("status") or "ACTIVE").upper() == "ACTIVE")

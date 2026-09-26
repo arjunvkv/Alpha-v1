@@ -48,21 +48,25 @@ def compute_canonical_r(pnl: float, sl: Optional[float] = None, open_price: Opti
                 r_val = round(pnl_val / initial_risk, 2)
                 return {"r_multiple": r_val, "initial_risk_usd": round(initial_risk, 2), "provenance": "INITIAL_SL_EXACT"}
     
-    # 2. Volume-Normalized Standard Risk: $300/lot on XAUUSD ($3.00 stop), $750/lot on XAGUSD ($0.15 stop), $500/lot on USOIL/Metals
+    # 2. Structural Fallback Standard Risk:
+    # Gold (XAUUSD): Constitutional structural stop is 6.0 to 12.0 pts (median 8.0 pts -> $800/lot)
+    # Silver (XAGUSD): $0.25 stop -> $1,250/lot (5000 oz)
+    # Oil (USOIL): $0.80 stop -> $800/lot (1000 bbl)
+    # Copper / Platinum: $800/lot
     if "XAG" in sym:
-        std_risk = vol * 750.0
+        std_risk = vol * 1250.0
     elif "OIL" in sym:
-        std_risk = vol * 500.0
+        std_risk = vol * 800.0
     elif "XCU" in sym:
-        std_risk = vol * 500.0
+        std_risk = vol * 800.0
     elif "XPT" in sym or "XPD" in sym:
-        std_risk = vol * 500.0
+        std_risk = vol * 800.0
     else:  # XAUUSD
-        std_risk = vol * 300.0
+        std_risk = vol * 800.0
     
     std_risk = max(round(std_risk, 2), 5.0)
     r_val = round(pnl_val / std_risk, 2)
-    return {"r_multiple": r_val, "initial_risk_usd": std_risk, "provenance": f"VOLUME_NORMALIZED_{sym}"}
+    return {"r_multiple": r_val, "initial_risk_usd": std_risk, "provenance": f"VOLUME_NORMALIZED_ESTIMATED_{sym}"}
 
 
 class LedgerDecompositionEngine:
@@ -99,8 +103,8 @@ class LedgerDecompositionEngine:
         self._ensure_mt5()
         journal_map = self._load_journal_context_map()
         
-        now_dt = datetime.datetime.now(datetime.timezone.utc)
-        from_dt = now_dt - datetime.timedelta(days=days_back)
+        now_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+        from_dt = now_dt - datetime.timedelta(days=days_back + 1)
         
         deals = mt5.history_deals_get(from_dt, now_dt)
         if not deals:
@@ -205,7 +209,45 @@ class LedgerDecompositionEngine:
             else:
                 rsi_bucket = "UNKNOWN / UNRECORDED"
 
-            r_data = compute_canonical_r(tot_pnl, open_price=open_price, volume=volume, symbol=trade_sym)
+            # Extract initial SL and TP from stored journal or MT5 history orders
+            initial_sl = j_trade.get("initial_sl")
+            initial_tp = j_trade.get("initial_tp")
+            setup_comment = j_trade.get("setup_comment")
+
+            if initial_sl is None or initial_tp is None:
+                try:
+                    pos_orders = mt5.history_orders_get(position=pos_id)
+                    if pos_orders:
+                        for ord_rec in pos_orders:
+                            if getattr(ord_rec, "sl", 0.0) > 0 and initial_sl is None:
+                                initial_sl = float(ord_rec.sl)
+                            if getattr(ord_rec, "tp", 0.0) > 0 and initial_tp is None:
+                                initial_tp = float(ord_rec.tp)
+                            if getattr(ord_rec, "comment", "") and not setup_comment:
+                                c_text = str(ord_rec.comment).strip()
+                                if not c_text.startswith("[") and c_text != "":
+                                    setup_comment = c_text
+                except Exception:
+                    pass
+
+            # Fallback to comment regex parsing
+            import re
+            if initial_sl is None and exit_deal.comment:
+                m_sl = re.search(r"\[sl\s+([0-9.]+)\]", exit_deal.comment, re.IGNORECASE)
+                if m_sl:
+                    try:
+                        initial_sl = float(m_sl.group(1))
+                    except ValueError:
+                        pass
+            if initial_tp is None and exit_deal.comment:
+                m_tp = re.search(r"\[tp\s+([0-9.]+)\]", exit_deal.comment, re.IGNORECASE)
+                if m_tp:
+                    try:
+                        initial_tp = float(m_tp.group(1))
+                    except ValueError:
+                        pass
+
+            r_data = compute_canonical_r(tot_pnl, sl=initial_sl, open_price=open_price, volume=volume, symbol=trade_sym)
 
             canonical_trades.append({
                 "ticket": pos_id,
@@ -216,6 +258,9 @@ class LedgerDecompositionEngine:
                 "volume": volume,
                 "open_price": open_price,
                 "close_price": close_price,
+                "initial_sl": initial_sl,
+                "initial_tp": initial_tp,
+                "setup_comment": setup_comment or entry_deal.comment or "",
                 "open_time": entry_dt.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "close_time": exit_dt.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "hour_utc": hour,

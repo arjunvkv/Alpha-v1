@@ -734,12 +734,16 @@ def get_pending_orders(symbol: str = "ALL") -> str:
     """Fetch all active pending orders on MT5."""
     return mcp_alpha_get_pending_orders(symbol)
 
+_pending_delayed_tickets = set()
+
 @mcp.tool()
 def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}") -> str:
     """Update active MT5 trade tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
+        import threading
+        import time
         pos = mt5.positions_get(ticket=ticket)
         if not pos:
             all_p = mt5.positions_get()
@@ -751,16 +755,101 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
         act = action.upper()
         symbol = p.symbol
         params = json.loads(params_json) if isinstance(params_json, str) and params_json.strip().startswith("{") else {}
+
+        # Fresh tick quotes & accurate duration in broker server time (FundedNext standard)
+        tick_info = mt5.symbol_info_tick(symbol)
+        curr_price = (tick_info.bid if p.type == 0 else tick_info.ask) if tick_info else 0.0
+
+        tick_t_msc = getattr(tick_info, "time_msc", 0)
+        pos_t_msc = getattr(p, "time_msc", 0)
+        if tick_t_msc > 0 and pos_t_msc > 0:
+            pos_duration = max(0.0, float(tick_t_msc - pos_t_msc) / 1000.0)
+        else:
+            pos_duration = max(0.0, float(getattr(tick_info, "time", 0) - getattr(p, "time", 0)))
         
         if act in ("BREAK_EVEN", "BREAKEVEN", "BE"):
-            tick_info = mt5.symbol_info_tick(symbol)
-            curr_price = tick_info.bid if p.type == 0 else tick_info.ask
-            # Validate that position is actually in profit before moving SL to break-even
-            if p.type == 0 and curr_price <= p.price_open:
-                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Cannot set Break-Even: BUY is currently underwater (bid {curr_price} <= entry {p.price_open}). SL must remain structural."})
-            if p.type == 1 and curr_price >= p.price_open:
-                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Cannot set Break-Even: SELL is currently underwater (ask {curr_price} >= entry {p.price_open}). SL must remain structural."})
-            
+            # Universal Pullback Check:
+            # If price has pulled back to or below entry, cleanly cut at market without erroring!
+            is_pulled_back = (curr_price <= p.price_open) if p.type == 0 else (curr_price >= p.price_open)
+            if is_pulled_back:
+                for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                    close_req = {
+                        "action": mt5.TRADE_ACTION_DEAL,
+                        "position": p.ticket,
+                        "symbol": symbol,
+                        "volume": p.volume,
+                        "type": mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY,
+                        "price": curr_price,
+                        "deviation": 50,
+                        "magic": p.magic,
+                        "comment": "BE Pullback Cut",
+                        "type_time": mt5.ORDER_TIME_GTC,
+                        "type_filling": fill_mode
+                    }
+                    res = mt5.order_send(close_req)
+                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                        return json.dumps({
+                            "status": "CUT_AT_MARKET",
+                            "ticket": ticket,
+                            "action": "BREAK_EVEN_PULLBACK_CUT",
+                            "close_price": curr_price,
+                            "profit": p.profit,
+                            "message": f"Position #{ticket} pulled back to {curr_price:.2f} (Entry {p.price_open:.2f}). Cleanly cut at current market price instead of erroring."
+                        })
+                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Failed to execute pullback cut: {res.comment if res else 'Unknown MT5 error'}"})
+
+            # FundedNext 30s rule: If duration < 32s, delay moving SL into profit
+            if pos_duration < 32.0:
+                remaining_sec = round(32.0 - pos_duration, 1)
+
+                def _delayed_be(pos_t, sym, vol, p_type, mag, req_sl, delay_s):
+                    time.sleep(delay_s)
+                    try:
+                        _init_mt5()
+                        cur_p = mt5.positions_get(ticket=pos_t)
+                        if not cur_p:
+                            return
+                        tk = mt5.symbol_info_tick(sym)
+                        cp = (tk.bid if p_type == 0 else tk.ask) if tk else 0.0
+                        is_pb = (cp <= req_sl) if p_type == 0 else (cp >= req_sl)
+                        if is_pb:
+                            for fm in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                                c_req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "position": pos_t,
+                                    "symbol": sym,
+                                    "volume": vol,
+                                    "type": mt5.ORDER_TYPE_SELL if p_type == 0 else mt5.ORDER_TYPE_BUY,
+                                    "price": cp,
+                                    "deviation": 50,
+                                    "magic": mag,
+                                    "comment": "BE Pullback Cut",
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": fm
+                                }
+                                rc = mt5.order_send(c_req)
+                                if rc and rc.retcode == mt5.TRADE_RETCODE_DONE:
+                                    LOG.info(f"🛡️ [FUNDEDNEXT 30S COMPLIANCE] Position #{pos_t} pulled back; cleanly cut at market at {cp:.2f}.")
+                                    break
+                        else:
+                            sl_req = {"action": mt5.TRADE_ACTION_SLTP, "position": pos_t, "symbol": sym, "sl": req_sl, "tp": cur_p[0].tp}
+                            mt5.order_send(sl_req)
+                    except Exception as _err:
+                        LOG.error(f"Delayed BE execution error: {_err}")
+
+                threading.Thread(
+                    target=_delayed_be,
+                    args=(p.ticket, symbol, p.volume, p.type, p.magic, p.price_open, remaining_sec),
+                    daemon=True
+                ).start()
+
+                return json.dumps({
+                    "status": "ACCEPTED_DELAYED_BREAK_EVEN",
+                    "ticket": ticket,
+                    "remaining_seconds": remaining_sec,
+                    "message": f"Break-even request ACCEPTED. Stop loss will be moved to break-even (or position cut at market if pulled back) in {remaining_sec} seconds to comply with FundedNext 30-second Quick Strike rule."
+                })
+
             new_sl = p.price_open
             if abs(new_sl - p.sl) < 0.001:
                 return json.dumps({"status": "NO_CHANGE", "ticket": ticket, "sl": p.sl, "reason": "SL is already at Break-Even"})
@@ -769,10 +858,113 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                 return json.dumps({"status": "UPDATED", "ticket": ticket, "action": "BREAK_EVEN", "sl": new_sl, "retcode": res.retcode})
             return json.dumps({"status": "FAILED", "ticket": ticket, "error": res.comment if res else "Unknown MT5 error"})
-            
+
         if act in ("FULL_EXIT", "EXIT", "CLOSE"):
-            tick_info = mt5.symbol_info_tick(symbol)
-            close_price = tick_info.bid if p.type == 0 else tick_info.ask
+            adverse_pts = (p.price_open - curr_price) if p.type == 0 else (curr_price - p.price_open)
+            is_underwater = adverse_pts > 0.05
+            is_force = bool(params.get("force") or params.get("override") or params.get("manual"))
+
+            # --- FUNDEDNEXT 30-SECOND QUICK STRIKE COMPLIANCE ---
+            # If trade is in profit and duration is under 32 seconds:
+            # User mandate: Accept request, tell session when it will close, and close automatically when time is over.
+            if not is_underwater and pos_duration < 32.0 and not is_force:
+                remaining_sec = round(32.0 - pos_duration, 1)
+
+                if p.ticket in _pending_delayed_tickets:
+                    return json.dumps({
+                        "status": "ALREADY_SCHEDULED",
+                        "ticket": ticket,
+                        "remaining_seconds": remaining_sec,
+                        "message": f"Exit already scheduled for position #{ticket}. Will execute in {remaining_sec}s."
+                    })
+
+                _pending_delayed_tickets.add(p.ticket)
+
+                def _delayed_fn_close(pos_t, sym, vol, p_type, mag, delay_s):
+                    time.sleep(delay_s)
+                    try:
+                        _init_mt5()
+                        tk = mt5.symbol_info_tick(sym)
+                        cp = (tk.bid if p_type == 0 else tk.ask) if tk else 0.0
+                        for fm in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                            req_c = {
+                                "action": mt5.TRADE_ACTION_DEAL,
+                                "position": pos_t,
+                                "symbol": sym,
+                                "volume": vol,
+                                "type": mt5.ORDER_TYPE_SELL if p_type == 0 else mt5.ORDER_TYPE_BUY,
+                                "price": cp,
+                                "deviation": 50,
+                                "magic": mag,
+                                "comment": "FN 30s Delayed Close",
+                                "type_time": mt5.ORDER_TIME_GTC,
+                                "type_filling": fm
+                            }
+                            rc = mt5.order_send(req_c)
+                            if rc and rc.retcode == mt5.TRADE_RETCODE_DONE:
+                                LOG.info(f"🛡️ [FUNDEDNEXT 30S COMPLIANCE] Position #{pos_t} closed at market after {delay_s}s delay at price {cp:.2f}.")
+                                break
+                    except Exception as _err:
+                        LOG.error(f"Delayed close execution failed: {_err}")
+                    finally:
+                        _pending_delayed_tickets.discard(pos_t)
+
+                threading.Thread(
+                    target=_delayed_fn_close,
+                    args=(p.ticket, symbol, p.volume, p.type, p.magic, remaining_sec),
+                    daemon=True
+                ).start()
+
+                return json.dumps({
+                    "status": "ACCEPTED_DELAYED_CLOSE",
+                    "ticket": ticket,
+                    "remaining_seconds": remaining_sec,
+                    "message": f"Exit order ACCEPTED. Position #{ticket} will be automatically closed at market in {remaining_sec} seconds (at 32.0s hold) to comply with FundedNext 30-second Quick Strike rule (<30% profit from trades under 30s)."
+                })
+
+            # --- CONST_NO_PREMATURE_CUT SERVER-SIDE HARD ENFORCEMENT ---
+            if is_underwater and p.sl > 0 and not is_force:
+                # Check Authorized Emergency Exit Gate 1 (Tier-1 news < 30m)
+                is_tier1_blackout = False
+                try:
+                    from tradingagents.economic_calendar import EconomicCalendarEngine
+                    summary = EconomicCalendarEngine().get_news_countdown_summary()
+                    st = str(summary.get("shield_status", "")).upper()
+                    if "BLACKOUT" in st or "LOCKOUT" in st:
+                        is_tier1_blackout = True
+                except Exception:
+                    pass
+                if params.get("emergency_gate") == "TIER1_BLACKOUT" or params.get("reason") == "TIER1_BLACKOUT":
+                    is_tier1_blackout = True
+
+                # Check Authorized Emergency Exit Gate 2 (M15 candle closed beyond structural SL)
+                m15_closed_beyond_sl = False
+                if p.sl > 0:
+                    try:
+                        m15_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 1, 1)
+                        if m15_rates is not None and len(m15_rates) > 0:
+                            last_m15_close = float(m15_rates[0]['close'])
+                            if p.type == 0 and last_m15_close <= p.sl:
+                                m15_closed_beyond_sl = True
+                            elif p.type == 1 and last_m15_close >= p.sl:
+                                m15_closed_beyond_sl = True
+                    except Exception:
+                        pass
+
+                if not is_tier1_blackout and not m15_closed_beyond_sl:
+                    sl_dist = abs(p.price_open - p.sl) if p.sl > 0 else 8.0
+                    return json.dumps({
+                        "status": "VETOED",
+                        "ticket": ticket,
+                        "error": (
+                            f"CONST_NO_PREMATURE_CUT VETO: Position #{ticket} is underwater by {adverse_pts:.2f} pts (Price {curr_price:.2f} vs Entry {p.price_open:.2f}). "
+                            f"Discretionary manual cuts before structural invalidation are strictly prohibited. "
+                            f"The broker bracket (SL {p.sl:.2f}, {sl_dist:.1f} pts) governs trade breathing. "
+                            f"Manual exit is permitted ONLY on a confirmed M15 candle close beyond SL or Tier-1 macro blackout (<30m to CPI/FOMC/NFP). "
+                            f"Pass params_json='{{\"force\": true}}' if emergency operator override is required."
+                        )
+                    })
+
             for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
                 close_req = {
                     "action": mt5.TRADE_ACTION_DEAL,
@@ -780,7 +972,7 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
                     "symbol": symbol,
                     "volume": p.volume,
                     "type": mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY,
-                    "price": close_price,
+                    "price": curr_price,
                     "deviation": 50,
                     "magic": p.magic,
                     "comment": "OpenCode CIO Exit",
@@ -789,12 +981,111 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
                 }
                 res = mt5.order_send(close_req)
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                    return json.dumps({"status": "CLOSED", "ticket": ticket, "close_price": close_price, "profit": p.profit})
+                    return json.dumps({"status": "CLOSED", "ticket": ticket, "close_price": curr_price, "profit": p.profit})
             return json.dumps({"status": "FAILED", "ticket": ticket, "error": res.comment if res else "Unknown MT5 error"})
             
-        if act in ("TRAIL_SL", "SL_UPDATE", "MODIFY"):
+        if act in ("TRAIL_SL", "SL_UPDATE", "MODIFY", "TRAIL"):
             new_sl = float(params.get("sl") or params.get("new_sl") or p.sl)
             new_tp = float(params.get("tp") or params.get("new_tp") or p.tp)
+
+            # Determine if this is a protective trailing stop (locking profit or tightening risk)
+            is_protective_trail = False
+            if p.type == 0:  # BUY
+                if new_sl > p.sl or new_sl >= p.price_open:
+                    is_protective_trail = True
+            else:  # SELL
+                if (new_sl < p.sl and p.sl > 0) or (p.sl == 0 and new_sl <= p.price_open) or (new_sl <= p.price_open):
+                    is_protective_trail = True
+
+            # Universal Pullback check:
+            is_pulled_back = False
+            if curr_price > 0 and new_sl > 0 and is_protective_trail:
+                if p.type == 0 and curr_price <= new_sl:
+                    is_pulled_back = True
+                elif p.type == 1 and curr_price >= new_sl:
+                    is_pulled_back = True
+
+            if is_pulled_back:
+                for fill_mode in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                    close_req = {
+                        "action": mt5.TRADE_ACTION_DEAL,
+                        "position": p.ticket,
+                        "symbol": symbol,
+                        "volume": p.volume,
+                        "type": mt5.ORDER_TYPE_SELL if p.type == 0 else mt5.ORDER_TYPE_BUY,
+                        "price": curr_price,
+                        "deviation": 50,
+                        "magic": p.magic,
+                        "comment": "Trail Pullback Cut",
+                        "type_time": mt5.ORDER_TIME_GTC,
+                        "type_filling": fill_mode
+                    }
+                    res = mt5.order_send(close_req)
+                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                        return json.dumps({
+                            "status": "CUT_AT_MARKET",
+                            "ticket": ticket,
+                            "action": "TRAIL_PULLBACK_CUT",
+                            "close_price": curr_price,
+                            "profit": p.profit,
+                            "message": f"Position #{ticket} pulled back to {curr_price:.2f} (Target protective SL was {new_sl:.2f}). Instead of erroring on trailing stop, position was cleanly cut at current market price."
+                        })
+                return json.dumps({"status": "FAILED", "ticket": ticket, "error": f"Failed to execute trail pullback cut: {res.comment if res else 'Unknown MT5 error'}"})
+
+            # FundedNext 30s rule: if trailing into profit and duration < 32s, delay setting SL
+            is_in_profit_sl = (new_sl > p.price_open) if p.type == 0 else (new_sl < p.price_open)
+            if is_in_profit_sl and pos_duration < 32.0:
+                remaining_sec = round(32.0 - pos_duration, 1)
+
+                def _delayed_trail(pos_t, sym, vol, p_type, mag, sl_val, tp_val, delay_s):
+                    time.sleep(delay_s)
+                    try:
+                        _init_mt5()
+                        cur_p = mt5.positions_get(ticket=pos_t)
+                        if not cur_p:
+                            return
+                        tk = mt5.symbol_info_tick(sym)
+                        cp = (tk.bid if p_type == 0 else tk.ask) if tk else 0.0
+                        is_pb = (cp <= sl_val) if p_type == 0 else (cp >= sl_val)
+                        if is_pb:
+                            for fm in [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, 0, mt5.ORDER_FILLING_RETURN]:
+                                c_req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "position": pos_t,
+                                    "symbol": sym,
+                                    "volume": vol,
+                                    "type": mt5.ORDER_TYPE_SELL if p_type == 0 else mt5.ORDER_TYPE_BUY,
+                                    "price": cp,
+                                    "deviation": 50,
+                                    "magic": mag,
+                                    "comment": "Trail Pullback Cut",
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": fm
+                                }
+                                rc = mt5.order_send(c_req)
+                                if rc and rc.retcode == mt5.TRADE_RETCODE_DONE:
+                                    LOG.info(f"🛡️ [TRAIL PULLBACK CUT] Position #{pos_t} cut at market at {cp:.2f}")
+                                    break
+                        else:
+                            sl_req = {"action": mt5.TRADE_ACTION_SLTP, "position": pos_t, "symbol": sym, "sl": sl_val, "tp": tp_val}
+                            mt5.order_send(sl_req)
+                    except Exception as _e:
+                        LOG.error(f"Delayed trail error: {_e}")
+
+                threading.Thread(
+                    target=_delayed_trail,
+                    args=(p.ticket, symbol, p.volume, p.type, p.magic, new_sl, new_tp, remaining_sec),
+                    daemon=True
+                ).start()
+
+                return json.dumps({
+                    "status": "ACCEPTED_DELAYED_TRAIL_SL",
+                    "ticket": ticket,
+                    "remaining_seconds": remaining_sec,
+                    "target_sl": new_sl,
+                    "message": f"Trail SL request ACCEPTED. Stop loss will be updated to {new_sl:.2f} (or position cut at market if pulled back) in {remaining_sec} seconds to comply with FundedNext 30-second Quick Strike rule."
+                })
+
             req = {"action": mt5.TRADE_ACTION_SLTP, "position": p.ticket, "symbol": symbol, "sl": new_sl, "tp": new_tp}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:

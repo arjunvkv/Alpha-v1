@@ -191,10 +191,20 @@ class UnifiedLearningMemory:
                             pat["experience_ids"].append(exp_id)
                         # Add linked outcome evidence if ticket is present
                         if ticket and not any(str(o.get("ticket")) == str(ticket) for o in pat.setdefault("outcomes", []) if isinstance(o, dict)):
+                            # Retrieve canonical R from experience outcome or compute dynamically
+                            r_val_outcome = None
+                            if isinstance(exp.get("outcome"), dict) and exp["outcome"].get("r_multiple") is not None:
+                                r_val_outcome = float(exp["outcome"]["r_multiple"])
+                            elif exp.get("r_multiple") is not None:
+                                r_val_outcome = float(exp["r_multiple"])
+                            else:
+                                from tradingagents.ledger_decomposition import compute_canonical_r
+                                r_val_outcome = compute_canonical_r(pnl, symbol=sym).get("r_multiple", 0.0)
+
                             pat["outcomes"].append({
                                 "outcome": f"{'WIN' if is_win else 'LOSS'} (PnL ${pnl:+.2f})",
                                 "ticket": str(ticket),
-                                "r_value": round(float(pnl) / 15.0, 2) if pnl != 0 else 0.0,
+                                "r_value": round(r_val_outcome, 2) if r_val_outcome is not None else 0.0,
                                 "source": "EXPERIENCE_RECONCILIATION",
                                 "ts": exp.get("timestamp") or _now()
                             })

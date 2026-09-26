@@ -112,10 +112,17 @@ class MultiTimeframeAnalyst:
                     res[f"{prefix}_dist_ema50_pts"] = round(curr_p - ema50, 3)
 
             # Determine 4TF Confluence
+            is_3tf_bull = ("BULL" in res.get("h1_trend", "")) and ("BULL" in res.get("m15_trend", "")) and ("BULL" in res.get("m5_trend", ""))
+            is_3tf_bear = ("BEAR" in res.get("h1_trend", "")) and ("BEAR" in res.get("m15_trend", "")) and ("BEAR" in res.get("m5_trend", ""))
+
             if bull_count >= 3.0:
                 res["alignment"] = "4TF_STRONG_BULLISH_CONFLUENCE"
             elif bear_count >= 3.0:
                 res["alignment"] = "4TF_STRONG_BEARISH_CONFLUENCE"
+            elif is_3tf_bull:
+                res["alignment"] = "3TF_DOMINANT_INTRADAY_BULLISH_EXPANSION"
+            elif is_3tf_bear:
+                res["alignment"] = "3TF_DOMINANT_INTRADAY_BEARISH_EXPANSION"
             elif bull_count > bear_count and bull_count >= 2.0:
                 res["alignment"] = "4TF_BULLISH_LEANING"
             elif bear_count > bull_count and bear_count >= 2.0:

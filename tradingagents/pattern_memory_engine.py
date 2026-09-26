@@ -37,12 +37,48 @@ DEFAULT_DB_PATH = Path(r"C:\Trading\Alpha\logs\graphiti_pattern_memory.db")
 LOG = logging.getLogger("alpha.pattern_memory")
 
 
+# Ephemeral noise patterns to reject completely
+EPHEMERAL_NOISE = {
+    "TURN_A", "TURN_B", "POST_WINDOW", "GATE_CLOSED", "SCHEDULED_REASSESSMENT",
+    "VENDOR_ARTEFACT", "TAG_CLASSIFIER", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY",
+    "UTC", "PILLAR4", "PROCESS_VIOLATION", "NO_OUTCOME_CLAIM", "SUBPOINT_DISPLACEMENT",
+    "POST_CLOSE_GRIND", "PROVISIONAL_BREAK_RECLAIMED", "L2_PROXY_SERIES_NOT_ACCUMULATION",
+    "FROZEN_TAPE_VENDOR_ARTEFACT", "CLOSE_APPROACH_LIQUIDITY_THINNING", "DEAD_WIRE_ZERO_CATALYST"
+}
+
+# Canonical synonym mapping to enforce 3-Vector Vocabulary
+CANONICAL_SYNONYMS = {
+    "4TF_BEARISH_LEANING": "4TF_BEARISH",
+    "4TF_BULLISH_LEANING": "4TF_BULLISH",
+    "4TF_STRONG_BEAR": "4TF_STRONG_BEARISH",
+    "4TF_STRONG_BULL": "4TF_STRONG_BULLISH",
+    "BSL_DOORSTEP": "BSL_SWEEP",
+    "SSL_DOORSTEP": "SSL_SWEEP",
+    "CVD_FLIP": "CVD_ABSORPTION",
+    "DELTA_FLIP": "CVD_ABSORPTION",
+    "BEAR_FVG": "BEARISH_FVG_SHELF",
+    "BULL_FVG": "BULLISH_FVG_SHELF",
+    "FVG_CE_MITIGATION": "FVG_CE_RETEST",
+    "TURTLE_SOUP_RECLAIM": "TURTLE_SOUP",
+    "PATTERN_A_RECLAIM": "PATTERN_A",
+    "DAY_HIGH": "DAY_HIGH_SWEEP",
+    "DAY_LOW": "DAY_LOW_SWEEP",
+    "ASIAN_HIGH": "ASIAN_HIGH_SWEEP",
+    "ASIAN_LOW": "ASIAN_LOW_SWEEP"
+}
+
+
 def _normalize_pattern_tag(tag: str) -> str:
     """Canonical normalization for pattern tags: uppercase, alphanumeric + underscores."""
     t = str(tag or "").strip().upper()
     t = re.sub(r"[^A-Z0-9_]+", "_", t)
     t = re.sub(r"_+", "_", t).strip("_")
-    return t
+    if t in EPHEMERAL_NOISE:
+        return ""
+    # Strip clock/timestamp patterns e.g. 20_56_UTC
+    if re.search(r"\d{1,2}_\d{2}", t) or "UTC" in t:
+        return ""
+    return CANONICAL_SYNONYMS.get(t, t)
 
 
 def parse_and_normalize_tags(p_input: Any) -> List[str]:
@@ -357,7 +393,14 @@ class PatternMemoryEngine:
         now_ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         canonical_key = _canonical_walk_key(cleaned_patterns)
         sym = str(symbol or "XAUUSD").strip().upper()
+        
+        # Clean lesson text from ephemeral diary artifacts
         clean_lesson = str(lesson or "").strip()
+        if clean_lesson:
+            clean_lesson = re.sub(r"Turn [AB][^,:]*[:,-]?", "", clean_lesson, flags=re.IGNORECASE)
+            clean_lesson = re.sub(r"\d{1,2}:\d{2}(?::\d{2})?\s*(?:UTC)?", "", clean_lesson, flags=re.IGNORECASE)
+            clean_lesson = re.sub(r"\b\d{5,6}\.?\d*\b", "", clean_lesson) # strip balance / ticket numbers
+            clean_lesson = re.sub(r"\s+", " ", clean_lesson).strip(" ,;-")
 
         with self._get_conn() as conn:
             cur = conn.cursor()
@@ -560,11 +603,14 @@ class PatternMemoryEngine:
         Returns an ultra-dense, syntax-free text card (<100 tokens) for OpenCode.
         Incorporates the Resilient Swimmer Principle (contextual pitfall clarity, no blanket fear).
         """
+        sym = str(symbol or "XAUUSD").strip().upper()
         query_tags = parse_and_normalize_tags(patterns)
         if not query_tags:
-            return "No valid pattern tags provided for Graphiti memory search."
-
-        sym = str(symbol or "XAUUSD").strip().upper()
+            return (
+                f"=== GRAPHITI PATTERN MEMORY ({sym}) ===\n"
+                f"Notice: No valid pattern tags provided. search_facts requires specific candidate setup tags (e.g. ['BSL_SWEEP', 'CVD_ABSORPTION'] or ['4TF_STRONG_BEARISH', 'FVG_SHELF']).\n"
+                f"Provide 2-4 tags matching the active candidate setup to recall winning signatures and documented traps."
+            )
 
         with self._get_conn() as conn:
             cur = conn.cursor()
@@ -619,11 +665,15 @@ class PatternMemoryEngine:
                 elif w["outcome"] == "STUDY":
                     matched_study.append(item)
 
-        # Sort by overlap count then synaptic weight
-        matched_live_wins.sort(key=lambda x: (x["overlap_count"], x["weight"]), reverse=True)
-        matched_live_traps.sort(key=lambda x: (x["overlap_count"], x["weight"]), reverse=True)
-        matched_canon.sort(key=lambda x: (x["overlap_count"], x["weight"]), reverse=True)
-        matched_study.sort(key=lambda x: (x["overlap_count"], x["weight"]), reverse=True)
+        # Sort by overlap count primary, synaptic weight + recency bonus secondary
+        def _walk_rank(x):
+            recency = min(1.0, (x.get("walk_id", 0) / 3000.0)) * 0.7
+            return (x["overlap_count"], x["weight"] + recency)
+
+        matched_live_wins.sort(key=_walk_rank, reverse=True)
+        matched_live_traps.sort(key=_walk_rank, reverse=True)
+        matched_canon.sort(key=_walk_rank, reverse=True)
+        matched_study.sort(key=_walk_rank, reverse=True)
 
         if not matched_live_wins and not matched_live_traps and not matched_canon and not matched_study:
             return (

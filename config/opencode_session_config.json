@@ -1,13 +1,14 @@
 {
-  "session_id": "ses_f28b6ef0cffeONowSBuMW5xPx5",
-  "title": "Escanor v73 (Prediction vs Reality Reconciliation & 5-Pod Reality Delta)",
-  "session_title": "Escanor v73 (Prediction vs Reality Reconciliation & 5-Pod Reality Delta)",
-  "active_session_id": "ses_f28b6ef0cffeONowSBuMW5xPx5",
-  "active_session_title": "Escanor v73 (Prediction vs Reality Reconciliation & 5-Pod Reality Delta)",
+  "session_id": "ses_f23ae6cc9ffeeOwsUNnvcLkGJS",
+  "title": "Escanor v84 (Pure Parallel Aperture & Flow Supremacy)",
+  "session_title": "Escanor v84 (Pure Parallel Aperture & Flow Supremacy)",
+  "active_session_id": "ses_f23ae6cc9ffeeOwsUNnvcLkGJS",
+  "active_session_title": "Escanor v84 (Pure Parallel Aperture & Flow Supremacy)",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-25 06:38:07 UTC",
-  "description": "Escanor v66 CIO equipped with 7-Layer Local LLM Conviction Engine, Deep Order Flow Telemetry, 3-Tier Macro Causal Aperture, and Graphiti Facts Cadence"
+  "deployed_at": "2026-09-26 06:05:41 UTC",
+  "description": "Escanor autonomous CIO operating with pure parallel aperture, flow supremacy, and zero DOM noise",
+  "dossier_streaming_enabled": true
 }

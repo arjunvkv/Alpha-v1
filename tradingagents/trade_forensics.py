@@ -56,6 +56,63 @@ class TradeForensicsEngine:
 
         existing_tickets = {t.get("ticket") for t in existing_journal.get("trades", []) if t.get("ticket")}
 
+        # Re-hydrate / fix any existing trades that lack exact initial SL or have non-exact provenance
+        import re
+        from tradingagents.ledger_decomposition import compute_canonical_r
+        rehydrated_count = 0
+        for t in existing_journal.get("trades", []):
+            t_tid = t.get("ticket")
+            if not t_tid:
+                continue
+            if t.get("r_provenance") != "INITIAL_SL_EXACT" or t.get("initial_sl") is None:
+                t_sl = None
+                t_tp = None
+                t_setup = t.get("setup_comment")
+                try:
+                    pos_orders = mt5.history_orders_get(position=t_tid)
+                    if pos_orders:
+                        for ord_rec in pos_orders:
+                            if getattr(ord_rec, "sl", 0.0) > 0 and t_sl is None:
+                                t_sl = float(ord_rec.sl)
+                            if getattr(ord_rec, "tp", 0.0) > 0 and t_tp is None:
+                                t_tp = float(ord_rec.tp)
+                            if getattr(ord_rec, "comment", "") and not t_setup:
+                                c_text = str(ord_rec.comment).strip()
+                                if not c_text.startswith("[") and c_text != "":
+                                    t_setup = c_text
+                except Exception:
+                    pass
+
+                comment_str = str(t.get("forensic_context", {}).get("comment", ""))
+                if t_sl is None and comment_str:
+                    m = re.search(r"\[sl\s+([0-9.]+)\]", comment_str, re.IGNORECASE)
+                    if m:
+                        try:
+                            t_sl = float(m.group(1))
+                        except ValueError:
+                            pass
+                if t_tp is None and comment_str:
+                    m = re.search(r"\[tp\s+([0-9.]+)\]", comment_str, re.IGNORECASE)
+                    if m:
+                        try:
+                            t_tp = float(m.group(1))
+                        except ValueError:
+                            pass
+
+                pnl_v = float(t.get("profit_usd", 0.0))
+                op_v = float(t.get("open_price", 0.0))
+                vol_v = float(t.get("volume", 0.50))
+                sym_v = str(t.get("symbol", "XAUUSD"))
+                r_fresh = compute_canonical_r(pnl_v, sl=t_sl, open_price=op_v, volume=vol_v, symbol=sym_v)
+                t["r_value"] = r_fresh["r_multiple"]
+                t["r_provenance"] = r_fresh["provenance"]
+                t["initial_risk_usd"] = r_fresh.get("initial_risk_usd")
+                t["initial_sl"] = t_sl
+                t["initial_tp"] = t_tp
+                if t_setup:
+                    t["setup_comment"] = t_setup
+                rehydrated_count += 1
+
         # Group deals by position ID
         positions = {}
         for d in deals:
@@ -95,9 +152,42 @@ class TradeForensicsEngine:
             exit_time = datetime.datetime.fromtimestamp(exit_deal.time, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             duration_sec = exit_deal.time - entry_deal.time
 
-            # Compute Canonical R-multiple ($15 target baseline or exact initial SL)
-            from tradingagents.ledger_decomposition import compute_canonical_r
-            r_data = compute_canonical_r(profit, open_price=open_price, volume=vol)
+            # Query exact initial SL/TP and setup comment from MT5 history orders
+            initial_sl = None
+            initial_tp = None
+            setup_comment = ""
+            try:
+                pos_orders = mt5.history_orders_get(position=pos_id)
+                if pos_orders:
+                    for ord_rec in pos_orders:
+                        if getattr(ord_rec, "sl", 0.0) > 0 and initial_sl is None:
+                            initial_sl = float(ord_rec.sl)
+                        if getattr(ord_rec, "tp", 0.0) > 0 and initial_tp is None:
+                            initial_tp = float(ord_rec.tp)
+                        if getattr(ord_rec, "comment", "") and not setup_comment:
+                            c_text = str(ord_rec.comment).strip()
+                            if not c_text.startswith("[") and c_text != "":
+                                setup_comment = c_text
+            except Exception:
+                pass
+
+            if initial_sl is None and exit_deal.comment:
+                m_sl = re.search(r"\[sl\s+([0-9.]+)\]", exit_deal.comment, re.IGNORECASE)
+                if m_sl:
+                    try:
+                        initial_sl = float(m_sl.group(1))
+                    except ValueError:
+                        pass
+            if initial_tp is None and exit_deal.comment:
+                m_tp = re.search(r"\[tp\s+([0-9.]+)\]", exit_deal.comment, re.IGNORECASE)
+                if m_tp:
+                    try:
+                        initial_tp = float(m_tp.group(1))
+                    except ValueError:
+                        pass
+
+            # Compute Canonical R-multiple (Exact initial SL or structural fallback)
+            r_data = compute_canonical_r(profit, sl=initial_sl, open_price=open_price, volume=vol, symbol=symbol)
             r_val = r_data["r_multiple"]
 
             # Only attach live FVG & MTF context if trade closed in real-time within last 5 minutes
@@ -148,6 +238,11 @@ class TradeForensicsEngine:
                 "volume": vol,
                 "open_price": open_price,
                 "close_price": close_price,
+                "initial_sl": initial_sl,
+                "initial_tp": initial_tp,
+                "initial_risk_usd": r_data.get("initial_risk_usd"),
+                "setup_comment": setup_comment or entry_deal.comment or "",
+                "exit_comment": exit_deal.comment or "",
                 "open_time": entry_time,
                 "close_time": exit_time,
                 "duration_seconds": duration_sec,
@@ -208,7 +303,7 @@ class TradeForensicsEngine:
                 except Exception as _pme_err:
                     LOG.error(f"Error syncing MT5 deal into Graphiti memory: {_pme_err}")
 
-        if new_records > 0:
+        if new_records > 0 or rehydrated_count > 0:
             # Recompute summary statistics
             all_trades = existing_journal.get("trades", [])
             wins = [t for t in all_trades if t.get("profit_usd", 0) > 0]
@@ -248,6 +343,7 @@ class TradeForensicsEngine:
         return {
             "status": "SUCCESS",
             "new_forensic_records": new_records,
+            "rehydrated_records": rehydrated_count,
             "total_journal_trades": len(existing_journal.get("trades", []))
         }
 
@@ -294,6 +390,8 @@ class TradeForensicsEngine:
             # Return canonical headline summary derived from closed completed cycles
             from tradingagents.ledger_decomposition import LedgerDecompositionEngine
             d_decomp = LedgerDecompositionEngine().decompose_ledger(sym)
+            p_rec = d_decomp.get("portfolio_accounting_reconciliation", {})
+            matrices = d_decomp.get("matrices", {})
             
             canonical_summary = {
                 "canonical_headline_source": "CLOSED_COMPLETED_CYCLES",
@@ -301,14 +399,14 @@ class TradeForensicsEngine:
                 "total_trades": d_decomp.get("total_trades", len([t for t in trades if t.get("symbol", "").upper() == sym])),
                 "wins": d_decomp.get("wins", len([t for t in trades if t.get("symbol", "").upper() == sym and t.get("profit_usd", 0) > 0])),
                 "losses": d_decomp.get("losses", len([t for t in trades if t.get("symbol", "").upper() == sym and t.get("profit_usd", 0) <= 0])),
-                "win_rate_pct": d_decomp.get("overall_win_rate", 27.3),
-                "total_pnl_usd": d_decomp.get("net_pnl_usd", -955.69),
-                "net_realized_r": d_decomp.get("net_realized_r", -63.56),
-                "portfolio_total_positions": 134,
-                "portfolio_net_pnl_usd": -1371.43,
-                "portfolio_net_r": -91.28,
-                "session_breakdown": d_decomp.get("session_breakdown", {}),
-                "direction_breakdown": d_decomp.get("direction_breakdown", {}),
+                "win_rate_pct": d_decomp.get("overall_win_rate", 0.0),
+                "total_pnl_usd": d_decomp.get("net_pnl_usd", 0.0),
+                "net_realized_r": d_decomp.get("net_realized_r", 0.0),
+                "portfolio_total_positions": p_rec.get("total_portfolio_positions", len(trades)),
+                "portfolio_net_pnl_usd": p_rec.get("total_portfolio_net_pnl", 0.0),
+                "portfolio_net_r": p_rec.get("total_portfolio_net_r", 0.0),
+                "session_breakdown": matrices.get("session_hour", {}),
+                "direction_breakdown": matrices.get("direction", {}),
                 "last_sync": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             }
 

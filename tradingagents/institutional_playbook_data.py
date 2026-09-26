@@ -225,7 +225,7 @@ INSTITUTIONAL_CONCEPTS = [
         "physical_trigger": "FRED DFII10 trending down or dropping >3-5 basis points intraday = strong bullish gold tailwind. Rising DFII10 = bearish headwind.",
         "invalidation": "Extreme geopolitical flight-to-safety shock or sovereign debt crisis can temporarily decouple gold from real yields.",
         "runway_behavior": "Real yields establish the macro runway: trade technical setups that align with the real yield drift.",
-        "risk_guidance": "Step 1 Mandate: Check DFII10 on every turn. Do not force longs into aggressive real yield spikes unless Pattern A sweeps Day Low.",
+        "risk_guidance": "Gold price action and physical order flow possess absolute supremacy over lagging macroeconomic models. Do not use lagging macro yields to fade live structural order flow or multi-timeframe trend expansions.",
         "tags": ["MACRO", "REAL_YIELDS", "DFII10", "TIPS", "INFLATION", "BULLION_GRAVITY"]
     },
     {

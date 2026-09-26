@@ -13,6 +13,7 @@ logs/
 data/live/
 data/cache/
 scratch/
+scratch_*
 brain/
 .sisyphus/
 

@@ -39,7 +39,8 @@ def search_facts(
     limit: int = 5,
     tags: Any = None,
     pattern: Any = None,
-    patterns_list: Any = None
+    patterns_list: Any = None,
+    **kwargs: Any
 ) -> str:
     """
     Search Graphiti temporal pattern memory for past walks matching the active combination of patterns.
@@ -49,8 +50,6 @@ def search_facts(
     try:
         p = patterns if patterns is not None else (tags if tags is not None else (pattern if pattern is not None else patterns_list))
         p_list = parse_and_normalize_tags(p)
-        if not p_list:
-            p_list = ["4TF_BEARISH"]
         sym = str(symbol or "XAUUSD")
         lim = int(limit or 5)
         return _engine.search_facts(patterns=p_list, symbol=sym, limit=lim)
@@ -72,7 +71,8 @@ def record_observation(
     lesson: str = "",
     content: str = "",
     obs: str = "",
-    message: str = ""
+    message: str = "",
+    **kwargs: Any
 ) -> str:
     """
     Record an active pattern combination and market observation into Graphiti Temporal Memory.
@@ -88,7 +88,7 @@ def record_observation(
         p = patterns if patterns is not None else (tags if tags is not None else (pattern if pattern is not None else patterns_list))
         p_list = parse_and_normalize_tags(p)
         if not p_list:
-            p_list = ["4TF_BEARISH"]
+            return json.dumps({"status": "ERROR", "message": "Cannot record observation without valid pattern tags. Provide 2-4 canonical tags from: [REGIME] + [LOCATION] + [PHYSICS]."}, indent=2)
         text_candidates = [observation, note, lesson, content, obs, message]
         chosen_text = next((str(c) for c in text_candidates if c), "")
         out = str(outcome or "STUDY")
@@ -111,7 +111,8 @@ def add_episode(
     patterns_list: Any = None,
     observation: str = "",
     note: str = "",
-    content: str = ""
+    content: str = "",
+    **kwargs: Any
 ) -> str:
     """
     Record a pattern walk episode into Graphiti memory.
@@ -138,7 +139,7 @@ def add_episode(
 
 
 @mcp.tool()
-def get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6) -> str:
+def get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6, **kwargs: Any) -> str:
     """
     Retrieve dominant proven winning walks and documented trap fingerprints for a symbol.
     Call this on brainstorm turns and periodically to calibrate mental models against global base rates.
@@ -156,39 +157,39 @@ def get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6) -> str:
 # BACKWARD COMPATIBILITY & LLM HALLUCINATION ALIASES
 # ======================================================================
 @mcp.tool()
-def graphiti_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, tags: Any = None, pattern: Any = None, patterns_list: Any = None) -> str:
+def graphiti_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, tags: Any = None, pattern: Any = None, patterns_list: Any = None, **kwargs: Any) -> str:
     """Backward-compatible alias for search_facts."""
-    return search_facts(patterns=patterns, symbol=symbol, limit=limit, tags=tags, pattern=pattern, patterns_list=patterns_list)
+    return search_facts(patterns=patterns, symbol=symbol, limit=limit, tags=tags, pattern=pattern, patterns_list=patterns_list, **kwargs)
 
 
 @mcp.tool()
-def graphiti_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, note: str = "", lesson: str = "", content: str = "", obs: str = "", message: str = "") -> str:
+def graphiti_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, note: str = "", lesson: str = "", content: str = "", obs: str = "", message: str = "", **kwargs: Any) -> str:
     """Backward-compatible alias for record_observation."""
-    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, note=note, lesson=lesson, content=content, obs=obs, message=message)
+    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, note=note, lesson=lesson, content=content, obs=obs, message=message, **kwargs)
 
 
 @mcp.tool()
-def graphiti_add_episode(patterns: Any = None, outcome: str = "STUDY", lesson: str = "", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, observation: str = "", note: str = "", content: str = "") -> str:
+def graphiti_add_episode(patterns: Any = None, outcome: str = "STUDY", lesson: str = "", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, observation: str = "", note: str = "", content: str = "", **kwargs: Any) -> str:
     """Backward-compatible alias for add_episode."""
-    return add_episode(patterns=patterns, outcome=outcome, lesson=lesson, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, observation=observation, note=note, content=content)
+    return add_episode(patterns=patterns, outcome=outcome, lesson=lesson, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, observation=observation, note=note, content=content, **kwargs)
 
 
 @mcp.tool()
-def graphiti_get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6) -> str:
+def graphiti_get_pattern_walks(symbol: str = "XAUUSD", limit: int = 6, **kwargs: Any) -> str:
     """Backward-compatible alias for get_pattern_walks."""
-    return get_pattern_walks(symbol=symbol, limit=limit)
+    return get_pattern_walks(symbol=symbol, limit=limit, **kwargs)
 
 
 @mcp.tool()
-def graphiti_memory_mcp_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, tags: Any = None, pattern: Any = None, patterns_list: Any = None) -> str:
+def graphiti_memory_mcp_search_facts(patterns: Any = None, symbol: str = "XAUUSD", limit: int = 5, tags: Any = None, pattern: Any = None, patterns_list: Any = None, **kwargs: Any) -> str:
     """Fallback alias for search_facts when model calls graphiti_memory_mcp_search_facts."""
-    return search_facts(patterns=patterns, symbol=symbol, limit=limit, tags=tags, pattern=pattern, patterns_list=patterns_list)
+    return search_facts(patterns=patterns, symbol=symbol, limit=limit, tags=tags, pattern=pattern, patterns_list=patterns_list, **kwargs)
 
 
 @mcp.tool()
-def graphiti_memory_mcp_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, note: str = "", lesson: str = "", content: str = "", obs: str = "", message: str = "") -> str:
+def graphiti_memory_mcp_record_observation(patterns: Any = None, observation: str = "", outcome: str = "STUDY", symbol: str = "XAUUSD", tags: Any = None, pattern: Any = None, patterns_list: Any = None, note: str = "", lesson: str = "", content: str = "", obs: str = "", message: str = "", **kwargs: Any) -> str:
     """Fallback alias for record_observation when model calls graphiti_memory_mcp_record_observation."""
-    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, note=note, lesson=lesson, content=content, obs=obs, message=message)
+    return record_observation(patterns=patterns, observation=observation, outcome=outcome, symbol=symbol, tags=tags, pattern=pattern, patterns_list=patterns_list, note=note, lesson=lesson, content=content, obs=obs, message=message, **kwargs)
 
 
 if __name__ == "__main__":
