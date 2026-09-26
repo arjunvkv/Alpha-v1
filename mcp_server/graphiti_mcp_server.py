@@ -16,7 +16,7 @@ import json
 import inspect
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Ensure project root is on sys.path
 ALPHA_ROOT = Path(__file__).resolve().parent.parent
@@ -44,12 +44,9 @@ def _clean_mcp_signature(fn):
 @mcp.tool()
 @_clean_mcp_signature
 def search_facts(
-    patterns: Any = None,
+    patterns: Optional[List[str]] = None,
     symbol: str = "XAUUSD",
     limit: int = 5,
-    tags: Any = None,
-    pattern: Any = None,
-    patterns_list: Any = None,
     **kwargs: Any
 ) -> str:
     """
@@ -58,7 +55,7 @@ def search_facts(
     recorded stumbles, and the Resilient Swimmer contextual pitfall.
     """
     try:
-        p = patterns if patterns is not None else (tags if tags is not None else (pattern if pattern is not None else patterns_list))
+        p = patterns if patterns is not None else kwargs.get("tags", kwargs.get("pattern", kwargs.get("patterns_list")))
         p_list = parse_and_normalize_tags(p)
         sym = str(symbol or "XAUUSD")
         lim = int(limit or 5)
@@ -71,18 +68,10 @@ def search_facts(
 @mcp.tool()
 @_clean_mcp_signature
 def record_observation(
-    patterns: Any = None,
+    patterns: Optional[List[str]] = None,
     observation: str = "",
     outcome: str = "STUDY",
     symbol: str = "XAUUSD",
-    tags: Any = None,
-    pattern: Any = None,
-    patterns_list: Any = None,
-    note: str = "",
-    lesson: str = "",
-    content: str = "",
-    obs: str = "",
-    message: str = "",
     **kwargs: Any
 ) -> str:
     """
@@ -96,11 +85,11 @@ def record_observation(
     Updates pattern occurrence counts, last_seen timestamps, and reinforces temporal walk weights.
     """
     try:
-        p = patterns if patterns is not None else (tags if tags is not None else (pattern if pattern is not None else patterns_list))
+        p = patterns if patterns is not None else kwargs.get("tags", kwargs.get("pattern", kwargs.get("patterns_list")))
         p_list = parse_and_normalize_tags(p)
         if not p_list:
             return json.dumps({"status": "ERROR", "message": "Cannot record observation without valid pattern tags. Provide 2-4 canonical tags from: [REGIME] + [LOCATION] + [PHYSICS]."}, indent=2)
-        text_candidates = [observation, note, lesson, content, obs, message]
+        text_candidates = [observation, kwargs.get("note"), kwargs.get("lesson"), kwargs.get("content"), kwargs.get("obs"), kwargs.get("message")]
         chosen_text = next((str(c) for c in text_candidates if c), "")
         out = str(outcome or "STUDY")
         sym = str(symbol or "XAUUSD")
@@ -114,16 +103,10 @@ def record_observation(
 @mcp.tool()
 @_clean_mcp_signature
 def add_episode(
-    patterns: Any = None,
+    patterns: Optional[List[str]] = None,
     outcome: str = "STUDY",
     lesson: str = "",
     symbol: str = "XAUUSD",
-    tags: Any = None,
-    pattern: Any = None,
-    patterns_list: Any = None,
-    observation: str = "",
-    note: str = "",
-    content: str = "",
     **kwargs: Any
 ) -> str:
     """
@@ -135,11 +118,11 @@ def add_episode(
     Strengthens the synaptic weight of the walk and updates pattern entity nodes.
     """
     try:
-        p = patterns if patterns is not None else (tags if tags is not None else (pattern if pattern is not None else patterns_list))
+        p = patterns if patterns is not None else kwargs.get("tags", kwargs.get("pattern", kwargs.get("patterns_list")))
         p_list = parse_and_normalize_tags(p)
         if not p_list:
             p_list = ["4TF_BEARISH"]
-        text_candidates = [lesson, observation, note, content]
+        text_candidates = [lesson, kwargs.get("observation"), kwargs.get("note"), kwargs.get("content")]
         chosen_text = next((str(c) for c in text_candidates if c), "")
         out = str(outcome or "STUDY")
         sym = str(symbol or "XAUUSD")
