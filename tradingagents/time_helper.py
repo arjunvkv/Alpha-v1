@@ -198,33 +198,57 @@ def get_market_time_context(target_time: str = "", target_timezone: str = "Ameri
         is_market_open = True
 
     today_date_utc = now_utc.date()
-    def make_today_utc(h, m=0):
-        return datetime(today_date_utc.year, today_date_utc.month, today_date_utc.day, h, m, tzinfo=TZ_UTC)
-
-    session_anchors = {
-        "shanghai_gold_open_0100_utc": make_today_utc(1, 0),
-        "asian_liquidity_expansion_0400_utc": make_today_utc(4, 0),
-        "london_open_0700_utc": make_today_utc(7, 0),
-        "us_macro_release_window_1230_utc": make_today_utc(12, 30),
-        "us_equity_open_1330_utc": make_today_utc(13, 30),
-        "london_close_1600_utc": make_today_utc(16, 0),
-        "ny_close_2100_utc": make_today_utc(21, 0),
-        "daily_roll_2200_utc": make_today_utc(22, 0)
-    }
-
-    transitions = {}
-    for name, dt_anchor in session_anchors.items():
-        diff = (dt_anchor - now_utc).total_seconds()
-        transitions[name] = {
-            "ist_time": dt_anchor.astimezone(TZ_IST).strftime("%I:%M %p IST"),
-            "utc_time": dt_anchor.strftime("%H:%M UTC"),
-            "ny_time": dt_anchor.astimezone(TZ_NY).strftime("%I:%M %p %Z"),
-            "seconds_remaining": round(diff, 1),
-            "minutes_remaining": round(diff / 60.0, 1),
-            "hours_remaining": round(diff / 3600.0, 2),
-            "is_past_today": diff < 0,
-            "status": "COMPLETED_TODAY" if diff < 0 else f"in {format_timedelta(timedelta(seconds=diff))}"
+    if is_weekend:
+        # Weekend: Calculate exact countdown to Sunday interbank re-open (Sunday 21:00 UTC)
+        # Note: Sunday 21:00 UTC corresponds to Monday 02:30 AM IST
+        days_to_sunday = (6 - weekday) % 7
+        sunday_date = today_date_utc + timedelta(days=days_to_sunday)
+        reopen_dt = datetime(sunday_date.year, sunday_date.month, sunday_date.day, 21, 0, tzinfo=TZ_UTC)
+        diff_reopen = (reopen_dt - now_utc).total_seconds()
+        
+        session_anchors = {
+            "sunday_interbank_reopen_2100_utc": reopen_dt
         }
+        transitions = {
+            "sunday_interbank_reopen_2100_utc": {
+                "ist_time": reopen_dt.astimezone(TZ_IST).strftime("%A %I:%M %p IST"),
+                "utc_time": reopen_dt.strftime("%a %H:%M UTC"),
+                "ny_time": reopen_dt.astimezone(TZ_NY).strftime("%a %I:%M %p %Z"),
+                "seconds_remaining": round(diff_reopen, 1),
+                "minutes_remaining": round(diff_reopen / 60.0, 1),
+                "hours_remaining": round(diff_reopen / 3600.0, 2),
+                "is_past_today": diff_reopen < 0,
+                "status": f"in {format_timedelta(timedelta(seconds=max(diff_reopen, 0)))}"
+            }
+        }
+    else:
+        def make_today_utc(h, m=0):
+            return datetime(today_date_utc.year, today_date_utc.month, today_date_utc.day, h, m, tzinfo=TZ_UTC)
+
+        session_anchors = {
+            "shanghai_gold_open_0100_utc": make_today_utc(1, 0),
+            "asian_liquidity_expansion_0400_utc": make_today_utc(4, 0),
+            "london_open_0700_utc": make_today_utc(7, 0),
+            "us_macro_release_window_1230_utc": make_today_utc(12, 30),
+            "us_equity_open_1330_utc": make_today_utc(13, 30),
+            "london_close_1600_utc": make_today_utc(16, 0),
+            "ny_close_2100_utc": make_today_utc(21, 0),
+            "daily_roll_2200_utc": make_today_utc(22, 0)
+        }
+
+        transitions = {}
+        for name, dt_anchor in session_anchors.items():
+            diff = (dt_anchor - now_utc).total_seconds()
+            transitions[name] = {
+                "ist_time": dt_anchor.astimezone(TZ_IST).strftime("%I:%M %p IST"),
+                "utc_time": dt_anchor.strftime("%H:%M UTC"),
+                "ny_time": dt_anchor.astimezone(TZ_NY).strftime("%I:%M %p %Z"),
+                "seconds_remaining": round(diff, 1),
+                "minutes_remaining": round(diff / 60.0, 1),
+                "hours_remaining": round(diff / 3600.0, 2),
+                "is_past_today": diff < 0,
+                "status": "COMPLETED_TODAY" if diff < 0 else f"in {format_timedelta(timedelta(seconds=diff))}"
+            }
 
     res = {
         "status": "SUCCESS",
@@ -266,6 +290,16 @@ def get_market_time_context(target_time: str = "", target_timezone: str = "Ameri
 
 def get_upcoming_transitions_summary(time_context_dict: Dict[str, Any], max_count: int = 3) -> str:
     """Helper to return a single-line string of upcoming session gates with deterministic countdowns."""
+    if not time_context_dict.get("is_market_open", True) or time_context_dict.get("active_session") == "WEEKEND_MARKET_CLOSED":
+        transitions = time_context_dict.get("session_transitions", {})
+        reopen = transitions.get("sunday_interbank_reopen_2100_utc", {})
+        if reopen:
+            ist_t = reopen.get("ist_time", "Monday 02:30 AM IST")
+            utc_t = reopen.get("utc_time", "Sun 21:00 UTC")
+            status_t = reopen.get("status", "")
+            return f"WEEKEND MARKET CLOSED (No Intraday Session Gates) — Next Gate: Sunday Interbank Re-Open ({ist_t} / {utc_t}): {status_t}"
+        return "WEEKEND MARKET CLOSED (No Active Intraday Session Gates until Sunday 21:00 UTC / Monday 02:30 AM IST)"
+
     transitions = time_context_dict.get("session_transitions", {})
     upcoming = []
     for k, v in transitions.items():
