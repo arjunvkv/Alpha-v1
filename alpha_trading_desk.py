@@ -466,14 +466,16 @@ class ConsolidatedTradingDaemon:
                 for m in reversed(msgs):
                     if m.get("info", {}).get("role") == "user":
                         txt = "".join(p.get("text", "") for p in m.get("parts", []) if p.get("type") == "text")
-                        if "Turn A" in txt:
+                        if "PHYSICAL DOSSIER & MICROSTRUCTURE AUDIT (Turn A)" in txt and "=== ALPHA CADENCE BRIEFING:" in txt:
                             self.dispatch_count = 1
                             self.next_turn_type = "BRAINSTORM"
+                            self.has_dispatched_initial_dossier = True
                             LOG.info("Synchronized cadence: Last session turn was Turn A -> Next dispatch will be Turn B.")
                             break
-                        elif "Turn B" in txt:
+                        elif "5-QUESTION NEWS & MACRO BRAINSTORM TURN (Turn B)" in txt or "=== ALPHA CADENCE BRIEFING: 5-QUESTION" in txt:
                             self.dispatch_count = 2
                             self.next_turn_type = "DOSSIER"
+                            self.has_dispatched_initial_dossier = True
                             LOG.info("Synchronized cadence: Last session turn was Turn B -> Next dispatch will be Turn A.")
                             break
                 return
@@ -970,7 +972,11 @@ class ConsolidatedTradingDaemon:
                 self.last_dispatched_turn_type = "WATCH_TRIGGER"
             else:
                 # Idle pattern: Turn A (Physical Dossier) <-> Turn B (5-Question Macro Repricing)
-                is_brainstorm_turn = (self.dispatch_count % 2 == 0) and not is_startup
+                if is_startup:
+                    is_brainstorm_turn = False
+                else:
+                    is_brainstorm_turn = (self.next_turn_type == "BRAINSTORM")
+
                 if is_brainstorm_turn:
                     self.last_dispatched_turn_type = "BRAINSTORM"
                     self.next_turn_type = "DOSSIER"
