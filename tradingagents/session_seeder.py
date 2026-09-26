@@ -132,7 +132,7 @@ The desk's greatest compounding growth models executed on these immutable princi
    • Pre-stage orders directly on MT5 book. Never substitute passive watch sensor loops for real broker execution.
 
 7. Post-Trade Forensics & Living Memory:
-   • Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) and calibrate the rule matrix (`rules_promote_rule` / `rules_demote_rule`).
+   • Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) to encode causal lessons and forensic post-mortems.
 
 Confirm understanding of these execution archetypes in a single concise text reply. DO NOT call trading tools during this handshake.
 """

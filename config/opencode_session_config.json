@@ -1,14 +1,14 @@
 {
-  "session_id": "ses_f23211c74ffek0H51OVCEqWCYc",
-  "title": "Escanor v86 (Pure Parallel Aperture & Flow Supremacy)",
-  "session_title": "Escanor v86 (Pure Parallel Aperture & Flow Supremacy)",
-  "active_session_id": "ses_f23211c74ffek0H51OVCEqWCYc",
-  "active_session_title": "Escanor v86 (Pure Parallel Aperture & Flow Supremacy)",
+  "session_id": "ses_f23032619ffeNr2HEHVVN8ZANi",
+  "title": "Escanor v87 (Pure Parallel Aperture & Flow Supremacy)",
+  "session_title": "Escanor v87 (Pure Parallel Aperture & Flow Supremacy)",
+  "active_session_id": "ses_f23032619ffeNr2HEHVVN8ZANi",
+  "active_session_title": "Escanor v87 (Pure Parallel Aperture & Flow Supremacy)",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-26 08:40:00 UTC",
+  "deployed_at": "2026-09-26 09:12:58 UTC",
   "description": "Escanor autonomous CIO operating with pure parallel aperture, flow supremacy, and zero DOM noise",
   "dossier_streaming_enabled": true
 }

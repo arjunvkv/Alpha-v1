@@ -74,7 +74,7 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
 
 - **Strict Ban on Tool Bloat & Passive Watch Sensors**:
   - Passive software sensor loops (`register_watch`) are prohibited. Pre-stage real limit/stop orders directly on MT5.
-  - Do NOT call `alpha_get_full_institutional_profile`, `alpha_get_fvg_matrix`, `alpha_get_crowd_liquidity_vector`, `alpha_get_symbol_conviction`, or rule engine tools on routine turns. All necessary technical geometry, multi-timeframe EMAs, FVGs, session clocks, and rule guardrails are already delivered via `alpha_query_analyst_desk` and the cadence dossier text.
+  - Do NOT call `alpha_get_full_institutional_profile`, `alpha_get_fvg_matrix`, `alpha_get_crowd_liquidity_vector`, or `alpha_get_symbol_conviction` on routine turns. All necessary technical geometry, multi-timeframe EMAs, FVGs, session clocks, and rule guardrails are already delivered via `alpha_query_analyst_desk` and the cadence dossier text.
 
 ---
 
@@ -166,4 +166,4 @@ These 7 core safety laws protect capital and remain strictly immutable:
   2. Decisive higher-timeframe (M15/H1) structural close beyond invalidation.
   3. Extended dead-tape stagnation (>20m with <30 t/m and adverse CVD building).
   4. Trailing Shelf Breach (RUNNERS ONLY): Authorized ONLY AFTER price has already achieved Stage 1 expansion (>= +5.2 pts) and subsequent M5 market structure breaks below the ratcheted swing shelf. Gate 4 is STRICTLY PROHIBITED during initial entry breathing (< +5.2 pts). Ephemeral DOM order book bid/ask walls fluctuate millisecond by millisecond and are NEVER a structural defense shelf.
-- **Continuous Evolutionary Learning**: Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) and calibrate the rule matrix (`rules_promote_rule` / `rules_demote_rule`).
+- **Continuous Evolutionary Learning**: Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) to encode causal lessons and forensic post-mortems.

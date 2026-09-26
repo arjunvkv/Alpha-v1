@@ -1079,7 +1079,7 @@ class ConsolidatedTradingDaemon:
                     f"• NO MECHANICAL TRAILING inside noise bands. SL ratchet ONLY behind confirmed M5/M15 swing shelf after > +1.0R advance.\n"
                     f"• BANNED: Moving SL to breakeven after +2–3 pts. Cutting on normal retest noise.\n"
                     f"• TARGET BANKING: Bank at Mode A TP (4.0–8.0 pts) OR let ride to Extended Mode B TP (12.0–20.0 pts) on major H1/H4 imbalance targets.\n"
-                    f"• POST-TRADE AUTOPSY: On close, call `alpha_get_trade_forensics(ticket=...)`, `graphiti_add_episode`, AND `rules_promote_rule` / `rules_demote_rule`.\n\n"
+                    f"• POST-TRADE AUTOPSY: On close, call `alpha_get_trade_forensics(ticket=...)` and `graphiti_add_episode` to encode causal lessons and forensic post-mortems.\n\n"
                     f"EVALUATE VIA 5-POD ADVERSARIAL PROTOCOL.\n"
                     f"POD 5 VERDICT: HOLD_BRACKET if none of the 4 gates are verified. EXIT if any gate is confirmed. State explicitly which gate (if any) is triggered."
                 )
