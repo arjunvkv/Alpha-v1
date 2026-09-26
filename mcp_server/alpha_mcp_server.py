@@ -197,7 +197,6 @@ def mcp_alpha_register_watch(
     _active_watches[watch["id"]] = watch
     return json.dumps({"status": "REGISTERED", "watch": watch}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_get_active_watches(symbol: str = None, include_closed: bool = False) -> str:
     """Fetch persistent active watches. Returns clean, compact watch definitions with zero redundant fields to prevent context bloat."""
     raw_watches = evidence_state.get_watches(_normalize_symbol(symbol) if symbol else None, include_closed)
@@ -226,7 +225,6 @@ def mcp_alpha_get_active_watches(symbol: str = None, include_closed: bool = Fals
         clean_watches.append(clean_w)
     return json.dumps(clean_watches, indent=2)
 
-@mcp.tool()
 def mcp_alpha_update_watch(watch_id: str, status: str = "", condition: str = "", instruction: str = "", target_price: float = None, reason: str = "") -> str:
     changes={"status": status or None, "condition": condition or None, "instruction": instruction or None,
              "target_price": target_price, "reason": reason or None}
@@ -235,7 +233,6 @@ def mcp_alpha_update_watch(watch_id: str, status: str = "", condition: str = "",
     _active_watches[watch_id]=watch
     return json.dumps({"status":"UPDATED","watch":watch}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_cancel_watch(watch_id: str) -> str:
     """Cancel / remove an active persistent watch by ID."""
     w = evidence_state.cancel_watch(watch_id)
@@ -244,32 +241,24 @@ def mcp_alpha_cancel_watch(watch_id: str) -> str:
     _active_watches[watch_id] = w
     return json.dumps({"status": "CANCELLED", "watch": w}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_clear_completed_watches(symbol: str = None) -> str:
     """Clear all triggered and cancelled watches from disk memory."""
     sym = _normalize_symbol(symbol) if symbol else None
     cleared = evidence_state.clear_completed_watches(sym)
     return json.dumps({"status": "SUCCESS", "cleared_count": cleared, "symbol": sym or "ALL"}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_mark_watches_observed(watch_ids: List[str]) -> str:
     """Mark one or many watches observed in one MCP call."""
     changed=evidence_state.mark_watches_observed(watch_ids)
     return json.dumps({"status":"UPDATED","count":len(changed),"watches":changed}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_mark_evidence_read(evidence_ids: List[str]) -> str:
     """Mark one or many persistent news/evidence records read in one MCP call."""
     changed=evidence_state.mark_read(evidence_ids)
     return json.dumps({"status":"UPDATED","count":len(changed),"items":changed}, indent=2)
 
-@mcp.tool()
 def mcp_alpha_get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
-    """General market time and session helper.
-    Returns live synchronized clocks for all global financial centers (UTC, New York ET, London BST, Tokyo JST),
-    current active trading session (Asian, London, London/NY Overlap, NY), session rollover countdowns,
-    and converts/calculates exact countdowns for any target time query (e.g. '8:30 AM ET', '12:30 UTC', '14:00').
-    """
+    """General market time and session helper."""
     try:
         from tradingagents.time_helper import get_market_time_context
         ctx = get_market_time_context(target_time=target_time, target_timezone=target_timezone)
@@ -291,7 +280,6 @@ def _validate_market_area_gates(sym: str, side: str, entry_price: float, tag: st
 # 1. DIRECT MARKET EXECUTION (VOLUME & STRUCTURAL SL/TP DIRECTLY SET)
 # ======================================================================
 
-@mcp.tool()
 def mcp_alpha_execute_market_order(
     symbol: str = "XAUUSD",
     side: str = "BUY",
@@ -434,16 +422,11 @@ def execute_market_order(symbol: str = "XAUUSD", side: str = "BUY", volume: floa
     """Execute direct market order on FTMO MT5 with custom volume, SL, and TP."""
     return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, sl, tp, comment)
 
-@mcp.tool()
-def execute_trade(symbol: str = "XAUUSD", side: str = "BUY", volume: float = 1.0, sl_price: float = 0.0, tp_price: float = 0.0, sl: float = 0.0, tp: float = 0.0, comment: str = "OpenCode Market Order") -> str:
-    """Execute direct market trade on FTMO MT5 with custom volume, SL, and TP."""
-    return mcp_alpha_execute_market_order(symbol, side, volume, sl_price, tp_price, sl, tp, comment)
 
 # ======================================================================
 # 2. PLANNED PENDING ORDER (VOLUME & STRUCTURAL SL/TP DIRECTLY SET)
 # ======================================================================
 
-@mcp.tool()
 def mcp_alpha_place_pending_order(
     symbol: str = "XAUUSD",
     order_type: str = "SELL_LIMIT",
@@ -613,7 +596,6 @@ def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", 
 # 4. ORDER & POSITION MANAGEMENT
 # ======================================================================
 
-@mcp.tool()
 def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -> str:
     """Cancel / remove active pending orders on MT5 (pass specific ticket or 0 for all)."""
     _init_mt5()
@@ -645,7 +627,6 @@ def cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -> str:
     """Cancel / remove active pending orders on MT5."""
     return mcp_alpha_cancel_pending_order(order_ticket, symbol)
 
-@mcp.tool()
 def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
     """Modify price, Stop Loss (sl), or Take Profit (tp) of an existing pending order on MT5."""
     _init_mt5()
@@ -690,7 +671,6 @@ def modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0,
     """Modify price, Stop Loss (sl), or Take Profit (tp) of an existing pending order on MT5."""
     return mcp_alpha_modify_pending_order(order_ticket, price, sl, tp)
 
-@mcp.tool()
 def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
     """Fetch all active pending orders on MT5."""
     _init_mt5()
@@ -736,7 +716,6 @@ def get_pending_orders(symbol: str = "ALL") -> str:
 
 _pending_delayed_tickets = set()
 
-@mcp.tool()
 def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}") -> str:
     """Update active MT5 trade tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
     _init_mt5()
@@ -1101,7 +1080,6 @@ def update_position(ticket: int, action: str, params_json: str = "{}") -> str:
     """Update active MT5 trade tickets (BREAK_EVEN, TRAIL_SL, FULL_EXIT)."""
     return mcp_alpha_update_position(ticket, action, params_json)
 
-@mcp.tool()
 def mcp_alpha_get_account_status() -> str:
     """OpenCode fetches live FTMO MT5 account status and active positions."""
     _init_mt5()
@@ -1112,114 +1090,6 @@ def mcp_alpha_get_account_status() -> str:
             positions_data.append({"ticket": p.ticket, "symbol": p.symbol, "type": "BUY" if p.type == 0 else "SELL", "volume": p.volume, "price_open": p.price_open, "price_current": p.price_current, "sl": p.sl, "tp": p.tp, "profit": p.profit})
         return json.dumps({"login": getattr(acc, "login", 0), "balance": getattr(acc, "balance", 0.0), "equity": getattr(acc, "equity", 0.0), "margin_free": getattr(acc, "margin_free", 0.0), "positions_count": len(positions_data), "positions": positions_data})
     except Exception as err: return json.dumps({"error": str(err)})
-
-@mcp.tool()
-def mcp_alpha_get_symbol_conviction(symbol: str = "XAUUSD") -> str:
-    """Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles."""
-    _init_mt5()
-    try:
-        import MetaTrader5 as mt5
-        sym = _normalize_symbol(symbol)
-        tick = mt5.symbol_info_tick(sym) or mt5.symbol_info_tick(sym.upper()) or mt5.symbol_info_tick(sym.lower())
-        live_price = getattr(tick, "ask", 0.0)
-        
-        from tradingagents.world_market import IntradayInstitutionalEngine
-        session_info = IntradayInstitutionalEngine().get_session_status()
-        is_weekend = (not session_info.get("market_open", True)) or session_info.get("market_status") == "WEEKEND_MARKET_CLOSED" or session_info.get("session") == "WEEKEND_MARKET_CLOSED"
-        
-        cot_full = _inst_engine.get_futuresbench_cot_data()
-        raw_cot = cot_full.get("markets", {}).get(sym, {})
-        cot_pct = raw_cot.get("cot_index_52w") if raw_cot.get("cot_index_52w") is not None else raw_cot.get("cot_index_26w", 50.0)
-        net_noncomm = raw_cot.get("net_noncommercial", 0)
-        net_comm = raw_cot.get("net_commercial", raw_cot.get("commercial_net", -279585 if sym.upper() == "XAUUSD" else -net_noncomm))
-        
-        cot_data = {
-            "managed_money_percentile": cot_pct,
-            "managed_money_percentile_52w": raw_cot.get("cot_index_52w", cot_pct),
-            "speculator_percentile_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
-            "net_noncommercial": net_noncomm,
-            "net_commercial": net_comm,
-            "commercial_net": net_comm,
-            "cot_index_52w": raw_cot.get("cot_index_52w", cot_pct),
-            "cot_index_26w": raw_cot.get("cot_index_26w", 100.0 if sym.upper() == "XAUUSD" else cot_pct),
-            "z_score": raw_cot.get("z_score", 0.0),
-            "bias": raw_cot.get("bias", "NEUTRAL"),
-            "change": raw_cot.get("change", 0),
-            "is_live": raw_cot.get("is_live", cot_full.get("is_live", False)),
-            "data_provenance": raw_cot.get("data_provenance", cot_full.get("source", "STALE_FALLBACK")),
-            "fallback_warning": cot_full.get("fallback_warning")
-        }
-        mtf_res = _mtf_analyst.analyze_mtf(sym)
-        rsi_val = mtf_res.get("m15_rsi", 50.0)
-        
-        tech_res = _tech_analyst.analyze(sym, {
-            "h4_bias": mtf_res.get("h4_trend"),
-            "h1_bias": mtf_res.get("h1_trend"),
-            "m15_bias": mtf_res.get("m15_trend"),
-            "m5_bias": mtf_res.get("m5_trend"),
-            "alignment": mtf_res.get("alignment"),
-            "indicators": {"rsi_14": rsi_val}
-        })
-        fund_res = _fund_analyst.analyze(sym, cot_data)
-        macro_res = _macro_analyst.analyze({"dxy": 99.68, "vix": 14.4}, [])
-        sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, [])
-        
-        debate_res = _desk.debater.debate(sym, tech_res, fund_res, macro_res, sent_res)
-        
-        from tradingagents.fair_value_gap import FairValueGapEngine
-        from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
-        fvg_mat = FairValueGapEngine().get_symbol_fvg_matrix(sym)
-        cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
-        nearest_fvg = fvg_mat.get("nearest_unmitigated_fvg") or fvg_mat.get("m5_fvg")
-
-        # FVG fill geometry
-        fvg_fill_val = nearest_fvg.get("fill_pct") if nearest_fvg else None
-        trap_msg = None
-
-        status_tag = "WEEKEND_MARKET_CLOSED_FROZEN" if is_weekend else "LIVE_SYMBOL_SPECIFIC"
-        data_asof_tag = "Frozen Friday Close (2026-08-28 23:49:59 UTC)" if is_weekend else "Live MT5 Tick"
-
-        return json.dumps({
-            "status": status_tag,
-            "symbol": sym,
-            "is_frozen": is_weekend,
-            "data_asof": data_asof_tag,
-            "last_tick_time": "2026-08-28 23:49:59 UTC" if is_weekend else None,
-            "live_bid": getattr(tick, "bid", 0.0),
-            "live_ask": getattr(tick, "ask", 0.0),
-            "is_regime_conflict": debate_res.get("is_regime_conflict", False),
-            "structural_risk_warning": debate_res.get("structural_risk_warning", False),
-            "bull_catalysts": debate_res.get("bull_points", []),
-            "bear_risks": debate_res.get("bear_points", []),
-            "exhausted_fvg_trap_warning": trap_msg,
-            "mtf_alignment": mtf_res.get("formatted_4tf"),
-            "technical_indicators": {
-                "h4_rsi": mtf_res.get("h4_rsi"),
-                "h1_rsi": mtf_res.get("h1_rsi"),
-                "m15_rsi": mtf_res.get("m15_rsi"),
-                "m5_rsi": mtf_res.get("m5_rsi"),
-                "h4_ema20": mtf_res.get("h4_ema20"),
-                "h4_ema50": mtf_res.get("h4_ema50"),
-                "h1_ema20": mtf_res.get("h1_ema20"),
-                "h1_ema50": mtf_res.get("h1_ema50"),
-                "m15_ema20": mtf_res.get("m15_ema20"),
-                "m15_ema50": mtf_res.get("m15_ema50"),
-                "m5_ema20": mtf_res.get("m5_ema20"),
-                "m5_ema50": mtf_res.get("m5_ema50")
-            },
-            "four_timeframe_matrix": mtf_res,
-            "nearest_fvg": nearest_fvg,
-            "fvg_fill_pct": nearest_fvg.get("fill_pct") if nearest_fvg else None,
-            "fvg_status": nearest_fvg.get("status") if nearest_fvg else "NO_NEARBY_FVG",
-            "fvg_is_stale": fvg_mat.get("is_stale", False) or is_weekend,
-            "measured_cvd": cvd_data,
-            "cot_positioning": cot_data,
-            "technical_analysis": tech_res,
-            "fundamental_analysis": fund_res,
-            "summary": f"{sym} Ask: {live_price} [{status_tag} ({data_asof_tag})]. 4TF: {mtf_res.get('formatted_4tf')}. CVD Delta: {cvd_data.get('cumulative_volume_delta')} ({cvd_data.get('delta_pressure_pct')}%). COT: {cot_pct:.1f}th pct. FVG: {fvg_mat.get('summary')}."
-        }, indent=2)
-    except Exception as err:
-        return json.dumps({"status": "ERROR", "symbol": symbol, "error": str(err)})
 
 def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk; outputs are multi-source evidence, not decisions."""
@@ -1417,7 +1287,6 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
     except Exception as err:
         return json.dumps({"status": "ERROR", "query": query, "error": str(err)})
 
-@mcp.tool()
 async def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """OpenCode CIO queries the 7-Layer Local LLM Analyst Desk in a non-blocking background thread."""
     return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
@@ -1426,174 +1295,6 @@ async def mcp_alpha_query_analyst_desk(query: str = "Full 7-layer technical, fun
 async def query_analyst_desk(query: str = "Full 7-layer technical, fundamental COT, and macro market analysis", symbol: str = "XAUUSD") -> str:
     """7-Layer Local LLM Analyst Desk alias."""
     return await run_in_thread(_sync_query_analyst_desk, query=query, symbol=symbol)
-@mcp.tool()
-def mcp_alpha_get_fvg_matrix(symbol: str = "XAUUSD") -> str:
-    """Query multi-timeframe (H4, H1, M15, M5) Fair Value Gaps (FVG) and 50% Consequent Encroachment levels."""
-    from tradingagents.fair_value_gap import FairValueGapEngine
-    read_logger.log_dossier_read("OpenCode CIO (MCP FVG Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried FVG matrix for {symbol.upper()}")
-    fvg_engine = FairValueGapEngine()
-    return json.dumps(fvg_engine.get_symbol_fvg_matrix(symbol), indent=2)
-
-@mcp.tool()
-def mcp_alpha_get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: int = 100, position_id: int = 0) -> str:
-    """Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal.
-    
-    Extracts native MT5 deal tickets, order settings (SL/TP, volume, prices, commissions, swaps, fees),
-    execution comments, magic numbers, entry/exit timestamps, and grouped round-trip trade performance.
-    
-    Args:
-        days: Number of past days to query from MT5 history (default: 30)
-        symbol: Symbol filter (e.g. 'XAUUSD', 'XAGUSD', 'XCUUSD', or 'ALL')
-        limit: Max closed position records to return in output (default: 100, 0 for all)
-        position_id: Optional specific MT5 position ID filter (0 for all)
-    """
-    _init_mt5()
-    read_logger.log_dossier_read("OpenCode CIO (MCP MT5 Deals History)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried native MT5 deals history (days={days}, symbol={symbol}, limit={limit}, pos={position_id})")
-    try:
-        import MetaTrader5 as mt5
-        acc = mt5.account_info()
-        login_num = getattr(acc, "login", 0) if acc else 0
-        
-        now_dt = datetime.now(timezone.utc) + timedelta(days=1)
-        from_dt = now_dt - timedelta(days=max(int(days), 1) + 1)
-        
-        deals = mt5.history_deals_get(from_dt, now_dt)
-        orders = mt5.history_orders_get(from_dt, now_dt)
-        
-        if deals is None:
-            return json.dumps({"status": "NO_DEALS_FOUND", "login": login_num, "total_deals": 0, "closed_positions": []}, indent=2)
-            
-        orders_by_pos = {}
-        if orders:
-            for o in orders:
-                orders_by_pos[getattr(o, "position_id", getattr(o, "ticket", 0))] = o
-                
-        pos_groups = {}
-        sym_filter = symbol.strip().upper() if symbol else "ALL"
-        
-        for d in deals:
-            if not d.symbol or d.type == 2:  # skip balance/credit operations
-                continue
-            if sym_filter not in ("ALL", "", "NONE") and d.symbol.upper() != sym_filter:
-                continue
-            if position_id > 0 and d.position_id != int(position_id):
-                continue
-                
-            pid = d.position_id or d.order or d.ticket
-            if pid not in pos_groups:
-                pos_groups[pid] = []
-            pos_groups[pid].append(d)
-            
-        closed_positions = []
-        for pid, d_list in pos_groups.items():
-            d_list.sort(key=lambda x: x.time)
-            entry_deal = d_list[0]
-            exit_deal = d_list[-1] if len(d_list) > 1 else None
-            
-            order_rec = orders_by_pos.get(pid)
-            sl_val = getattr(order_rec, "sl", 0.0) if order_rec else 0.0
-            tp_val = getattr(order_rec, "tp", 0.0) if order_rec else 0.0
-            order_comment = getattr(order_rec, "comment", "") if order_rec else ""
-            
-            pnl = sum(d.profit for d in d_list)
-            comm = sum(d.commission for d in d_list)
-            swap = sum(d.swap for d in d_list)
-            fee = sum(d.fee for d in d_list)
-            net_pnl = pnl + comm + swap + fee
-            
-            side = "BUY" if entry_deal.type == 0 else ("SELL" if entry_deal.type == 1 else str(entry_deal.type))
-            open_time = datetime.fromtimestamp(entry_deal.time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-            close_time = datetime.fromtimestamp(exit_deal.time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if exit_deal else "OPEN"
-            dur_s = (exit_deal.time - entry_deal.time) if exit_deal else 0
-            dur_human = f"{dur_s}s" if dur_s < 60 else f"{dur_s // 60}m {dur_s % 60}s" if dur_s < 3600 else f"{dur_s // 3600}h {(dur_s % 3600) // 60}m"
-            
-            closed_positions.append({
-                "position_id": pid,
-                "symbol": entry_deal.symbol,
-                "side": side,
-                "volume": entry_deal.volume,
-                "open_price": entry_deal.price,
-                "close_price": exit_deal.price if exit_deal else None,
-                "sl": sl_val,
-                "tp": tp_val,
-                "open_time": open_time,
-                "close_time": close_time,
-                "duration": dur_human,
-                "duration_seconds": dur_s,
-                "gross_profit_usd": round(pnl, 2),
-                "commission_usd": round(comm, 2),
-                "swap_usd": round(swap, 2),
-                "fee_usd": round(fee, 2),
-                "net_profit_usd": round(net_pnl, 2),
-                "outcome": "WIN" if net_pnl > 0 else ("LOSS" if net_pnl < 0 else "BREAKEVEN"),
-                "magic": entry_deal.magic,
-                "open_comment": entry_deal.comment,
-                "close_comment": exit_deal.comment if exit_deal else order_comment
-            })
-            
-        closed_positions.sort(key=lambda x: x.get("close_time", ""), reverse=True)
-        
-        wins = sum(1 for p in closed_positions if p["net_profit_usd"] > 0)
-        losses = sum(1 for p in closed_positions if p["net_profit_usd"] < 0)
-        breakevens = sum(1 for p in closed_positions if p["net_profit_usd"] == 0)
-        total_p = len(closed_positions)
-        win_rate = round((wins / max(total_p, 1)) * 100.0, 1)
-        
-        gross_profit = sum(p["gross_profit_usd"] for p in closed_positions if p["gross_profit_usd"] > 0)
-        gross_loss = sum(p["gross_profit_usd"] for p in closed_positions if p["gross_profit_usd"] < 0)
-        net_total = sum(p["net_profit_usd"] for p in closed_positions)
-        total_comm = sum(p["commission_usd"] for p in closed_positions)
-        total_swap = sum(p["swap_usd"] for p in closed_positions)
-        profit_factor = round(abs(gross_profit / gross_loss), 2) if gross_loss != 0 else 0.0
-        
-        symbols_map = {}
-        for p in closed_positions:
-            s = p["symbol"]
-            if s not in symbols_map:
-                symbols_map[s] = {"trades": 0, "wins": 0, "losses": 0, "net_pnl_usd": 0.0}
-            symbols_map[s]["trades"] += 1
-            if p["net_profit_usd"] > 0:
-                symbols_map[s]["wins"] += 1
-            elif p["net_profit_usd"] < 0:
-                symbols_map[s]["losses"] += 1
-            symbols_map[s]["net_pnl_usd"] = round(symbols_map[s]["net_pnl_usd"] + p["net_profit_usd"], 2)
-            
-        for s, s_data in symbols_map.items():
-            s_data["win_rate_pct"] = round((s_data["wins"] / max(s_data["trades"], 1)) * 100.0, 1)
-            
-        display_positions = closed_positions[:int(limit)] if limit > 0 else closed_positions
-        
-        return json.dumps({
-            "status": "SUCCESS",
-            "account_login": login_num,
-            "query_parameters": {
-                "days_back": days,
-                "symbol_filter": symbol,
-                "limit": limit,
-                "position_id_filter": position_id
-            },
-            "portfolio_summary": {
-                "total_mt5_deals_retrieved": len(deals),
-                "total_closed_positions": total_p,
-                "wins": wins,
-                "losses": losses,
-                "breakevens": breakevens,
-                "win_rate_pct": win_rate,
-                "gross_profit_usd": round(gross_profit, 2),
-                "gross_loss_usd": round(gross_loss, 2),
-                "net_profit_usd": round(net_total, 2),
-                "total_commission_usd": round(total_comm, 2),
-                "total_swap_usd": round(total_swap, 2),
-                "profit_factor": profit_factor,
-                "symbol_breakdown": symbols_map
-            },
-            "closed_positions_count_returned": len(display_positions),
-            "closed_positions": display_positions
-        }, indent=2)
-    except Exception as err:
-        return json.dumps({"status": "ERROR", "error": str(err)}, indent=2)
-
-@mcp.tool()
 def mcp_alpha_get_trade_forensics(ticket: int = 0) -> str:
     """Query granular post-trade forensics and entry market context for closed MT5 deals."""
     try:
@@ -1608,290 +1309,6 @@ def mcp_alpha_get_trade_forensics(ticket: int = 0) -> str:
 def get_trade_forensics(ticket: int = 0) -> str:
     """Query granular post-trade forensics and entry market context for closed MT5 deals (short alias)."""
     return mcp_alpha_get_trade_forensics(ticket=ticket)
-
-@mcp.tool()
-def mcp_alpha_configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
-    """Get or update active trading instruments (metals/commodities) in real-time with hot-reloading.
-    
-    Actions:
-      - 'get': Retrieve currently enabled and disabled instruments.
-      - 'set': Enable or disable instruments in batch.
-    
-    Parameters:
-      - enable: Comma-separated symbol(s) to enable, e.g. 'XAUUSD,USOIL.cash' or 'ALL'
-      - disable: Comma-separated symbol(s) to disable, e.g. 'XPTUSD,XPDUSD,XCUUSD' or 'ALL'
-      - toggles_json: JSON object of symbols and booleans, e.g. '{"XAUUSD": true, "XPTUSD": false}'
-    
-    Supported symbols: XAUUSD, XAGUSD, XPTUSD, XPDUSD, XCUUSD, USOIL.cash
-    """
-    config_path = ALPHA_ROOT / "config" / "instruments_config.json"
-    default_instruments = {
-        "XAUUSD": True,
-        "XAGUSD": True,
-        "XPTUSD": True,
-        "XPDUSD": True,
-        "XCUUSD": True,
-        "USOIL.cash": True
-    }
-    
-    config_data = {}
-    if config_path.exists():
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config_data = json.load(f)
-        except Exception:
-            config_data = {}
-            
-    instruments = config_data.get("instruments", default_instruments)
-    
-    if action == "get":
-        return json.dumps({
-            "status": "SUCCESS",
-            "active_instruments": [sym for sym, val in instruments.items() if val],
-            "disabled_instruments": [sym for sym, val in instruments.items() if not val],
-            "all_toggles": instruments
-        }, indent=2)
-        
-    # Process explicit toggles_json
-    if toggles_json and toggles_json != "{}":
-        try:
-            toggles = json.loads(toggles_json)
-            for sym, state in toggles.items():
-                sym_clean = sym.strip()
-                if sym_clean in instruments:
-                    instruments[sym_clean] = bool(state)
-                elif sym_clean.upper() in instruments:
-                    instruments[sym_clean.upper()] = bool(state)
-        except Exception as e:
-            return json.dumps({"status": "INVALID_JSON", "error": str(e)})
-            
-    # Process enable string (comma-separated or "ALL")
-    if enable:
-        if enable.strip().upper() == "ALL":
-            for k in instruments:
-                instruments[k] = True
-        else:
-            for s in enable.split(","):
-                sym = s.strip()
-                if sym in instruments:
-                    instruments[sym] = True
-                elif sym.upper() in instruments:
-                    instruments[sym.upper()] = True
-
-    # Process disable string (comma-separated or "ALL")
-    if disable:
-        if disable.strip().upper() == "ALL":
-            for k in instruments:
-                instruments[k] = False
-        else:
-            for s in disable.split(","):
-                sym = s.strip()
-                if sym in instruments:
-                    instruments[sym] = False
-                elif sym.upper() in instruments:
-                    instruments[sym.upper()] = False
-
-    from datetime import datetime, timezone
-    config_data["description"] = "Alpha Trading Desk - Active Instrument Toggles (Hot-Reloading)"
-    config_data["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    config_data["instruments"] = instruments
-
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=2)
-
-    read_logger.log_dossier_read("OpenCode CIO (MCP Config Instruments)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Updated instruments: Active={[s for s, v in instruments.items() if v]}")
-
-    return json.dumps({
-        "status": "SUCCESS",
-        "message": "Instruments configuration updated with zero-restart hot-reloading.",
-        "active_instruments": [sym for sym, val in instruments.items() if val],
-        "disabled_instruments": [sym for sym, val in instruments.items() if not val],
-        "all_toggles": instruments
-    }, indent=2)
-
-@mcp.tool()
-def configure_instruments(action: str = "get", enable: str = "", disable: str = "", toggles_json: str = "{}") -> str:
-    """Get or update active trading instruments in real-time with hot-reloading (short alias)."""
-    return mcp_alpha_configure_instruments(action=action, enable=enable, disable=disable, toggles_json=toggles_json)
-
-
-
-# Librarian removed per operational architecture
-# Ledger decomposition & multi-instrument ledger disabled per operational instruction
-
-
-@mcp.tool()
-def mcp_alpha_get_live_microstructure(symbol: str = "XAUUSD") -> str:
-    """Fetch live market microstructure: real-time spread (pts), M1 tick velocity (t/m), order-book depth imbalance, and CVD posture."""
-    from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
-    from tradingagents.news_shield import NewsShield
-    from tradingagents.world_market import IntradayInstitutionalEngine
-    
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Microstructure)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Requested live microstructure & spread for {sym}")
-    
-    cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
-    news_data = NewsShield().evaluate_news_freeze()
-    sess_data = IntradayInstitutionalEngine().get_session_status()
-
-    # Level 2 Order Book & Resting Liquidity Depth
-    try:
-        from tradingagents.market_depth_engine import MarketDepthEngine
-        depth_data = MarketDepthEngine().get_full_market_depth(sym)
-    except Exception as _d_err:
-        depth_data = {"status": "UNAVAILABLE", "error": str(_d_err)}
-
-    return json.dumps({
-        "symbol": sym,
-        "live_spread_pts": cvd_data.get("live_spread_pts", 0),
-        "tick_velocity_tpm": cvd_data.get("tick_velocity_tpm", 0.0),
-        "avg_5m_velocity_tpm": cvd_data.get("avg_5m_velocity_tpm", 0.0),
-        "velocity_posture": cvd_data.get("velocity_posture", "NORMAL"),
-        "adverse_velocity_warning": cvd_data.get("adverse_velocity_warning", False),
-        "order_book_imbalance": depth_data.get("book_posture", cvd_data.get("order_book_imbalance", "BALANCED")),
-        "broker_dom_imbalance": depth_data.get("dom_imbalance", 0.0),
-        "global_central_imbalance": depth_data.get("global_imbalance", 0.0),
-        "resting_liquidity_walls": {
-            "top_bid_wall": depth_data.get("broker_dom", {}).get("top_bid_wall"),
-            "top_ask_wall": depth_data.get("broker_dom", {}).get("top_ask_wall")
-        },
-        "order_book_l2_depth": depth_data,
-        "cumulative_volume_delta": cvd_data.get("cumulative_volume_delta", 0.0),
-        "delta_pressure_pct": cvd_data.get("delta_pressure_pct", 0.0),
-        "delta_exhaustion": cvd_data.get("delta_exhaustion", False),
-        "exhaustion_signal": cvd_data.get("exhaustion_signal", "NO_DIVERGENCE"),
-        "macro_news_shield": news_data.get("status_text", "CLEAR"),
-        "high_impact_freeze_active": news_data.get("freeze_active", False),
-        "session_context": sess_data.get("active_session", "MARKET_HOURS"),
-        "market_status": cvd_data.get("market_status", "ACTIVE")
-    }, indent=2)
-
-
-@mcp.tool()
-def mcp_alpha_record_decision_snapshot(
-    symbol: str = "XAUUSD",
-    side: str = "BUY",
-    conviction_score: float = None,
-    conviction: float = None,
-    score: float = None,
-    direction: str = "",
-    fill_pct: float = None,
-    in_direction_fvg_fill_pct: float = None,
-    fvg_fill_pct: float = None,
-    spread_pts: int = 0,
-    regime_flag: str = "NORMAL",
-    contradictions_count: int = 0,
-    notes: str = "",
-    volume: float = 0.0,
-    sl: float = 0.0,
-    tp: float = 0.0,
-    pattern_name: str = "",
-    category_tag: str = "PROBE_HYPOTHESIS_EXPECTED_EDGE",
-    four_tf_alignment: str = "",
-    m15_rsi: float = 50.0,
-    h4_rsi: float = 50.0,
-    session_name: str = "",
-    tick_velocity_tpm: float = 0.0,
-    macro_event_tag: str = "CLEAR",
-    order_book_imbalance: str = "BALANCED",
-    direction_thesis: str = ""
-) -> str:
-    """Record a comprehensive pre-trade experimental decision snapshot on disk before execution."""
-    from tradingagents.decision_snapshot_recorder import PreTradeDecisionRecorder
-    from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
-    from tradingagents.world_market import IntradayInstitutionalEngine
-    from tradingagents.news_shield import NewsShield
-
-    sym = _normalize_symbol(symbol)
-    score = conviction_score if conviction_score is not None else (conviction if conviction is not None else (score if score is not None else 5.0))
-    resolved_side = str(direction or side or "BUY").strip().upper()
-    fill = in_direction_fvg_fill_pct if in_direction_fvg_fill_pct is not None else (fvg_fill_pct if fvg_fill_pct is not None else fill_pct)
-    
-    read_logger.log_dossier_read("OpenCode CIO (MCP Decision Snapshot)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Recorded pre-trade decision snapshot for {sym} {resolved_side} [{category_tag}]")
-    
-    # Auto-enrich missing fields from live engines if omitted
-    if spread_pts == 0 or tick_velocity_tpm == 0.0 or order_book_imbalance == "BALANCED":
-        try:
-            cvd_data = CumulativeVolumeDeltaEngine().get_symbol_cvd(sym)
-            if spread_pts == 0:
-                spread_pts = int(cvd_data.get("live_spread_pts", 0))
-            if tick_velocity_tpm == 0.0:
-                tick_velocity_tpm = float(cvd_data.get("tick_velocity_tpm", 0.0))
-            if order_book_imbalance == "BALANCED":
-                order_book_imbalance = str(cvd_data.get("order_book_imbalance", "BALANCED"))
-        except Exception:
-            pass
-
-    if not session_name:
-        try:
-            sess_data = IntradayInstitutionalEngine().get_session_status()
-            session_name = sess_data.get("active_session", "MARKET_HOURS")
-        except Exception:
-            session_name = "LIVE_SESSION"
-
-    if macro_event_tag == "CLEAR":
-        try:
-            ns = NewsShield().evaluate_news_freeze()
-            if ns.get("freeze_active"):
-                macro_event_tag = f"FREEZE_ACTIVE ({ns.get('event_name')})"
-            else:
-                macro_event_tag = ns.get("status_text", "CLEAR")
-        except Exception:
-            pass
-
-    recorder = PreTradeDecisionRecorder()
-    return json.dumps(recorder.record_decision(
-        symbol=sym,
-        side=resolved_side,
-        conviction_score=score,
-        in_direction_fvg_fill_pct=fill,
-        spread_pts=spread_pts,
-        regime_flag=regime_flag,
-        contradictions_count=contradictions_count,
-        notes=notes,
-        volume=volume,
-        sl=sl,
-        tp=tp,
-        pattern_name=pattern_name,
-        category_tag=category_tag,
-        four_tf_alignment=four_tf_alignment,
-        m15_rsi=m15_rsi,
-        h4_rsi=h4_rsi,
-        session_name=session_name,
-        tick_velocity_tpm=tick_velocity_tpm,
-        macro_event_tag=macro_event_tag,
-        order_book_imbalance=order_book_imbalance,
-        direction_thesis=direction_thesis
-    ), indent=2)
-
-
-@mcp.tool()
-def mcp_alpha_get_measured_cvd(symbol: str = "XAUUSD") -> str:
-    """Fetch measured Cumulative Volume Delta (CVD), Delta Exhaustion / Absorption, and Crowd Entrapment Telemetry directly from MT5 ticks."""
-    from tradingagents.cvd_engine import CumulativeVolumeDeltaEngine
-    from tradingagents.crowd_liquidity_engine import CrowdLiquidityEngine
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP CVD Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried measured CVD for {sym}")
-    engine = CumulativeVolumeDeltaEngine()
-    cvd_dict = engine.get_symbol_cvd(sym)
-    try:
-        crowd_engine = CrowdLiquidityEngine()
-        cvd_dict["crowd_liquidity"] = crowd_engine.get_live_crowd_liquidity_payload(sym)
-    except Exception as _cr_err:
-        LOG.debug(f"Crowd liquidity merge failed: {_cr_err}")
-    return json.dumps(cvd_dict, indent=2)
-
-
-@mcp.tool()
-def mcp_alpha_get_crowd_liquidity_vector(symbol: str = "XAUUSD") -> str:
-    """Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics. Use to audit who is trapped, evaluate stop-run distance and sweep status, and locate liquidity cascades. AGENTS.md strictly governs all staging, sizing (0.5-1.0L), and structural stops (6-10 pts)."""
-    from tradingagents.crowd_liquidity_engine import CrowdLiquidityEngine
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (Crowd Liquidity Query)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried crowd liquidity vector for {sym}")
-    engine = CrowdLiquidityEngine()
-    return json.dumps(engine.get_live_crowd_liquidity_payload(sym), indent=2)
-
 
 import threading
 _backtest_cache = {}
@@ -1913,7 +1330,6 @@ def _sync_backtest_thesis(query: str, symbol: str = "XAUUSD", timeframe: str = "
         _backtest_cache[cache_key] = res
     return res
 
-@mcp.tool()
 async def mcp_alpha_backtest_thesis(
     query: str,
     symbol: str = "XAUUSD",
@@ -1935,84 +1351,10 @@ async def backtest_thesis(
     bars: int = 0,
     offset: int = 0
 ) -> str:
-    """Multi-threaded natural backtester alias."""
+    """STRICTLY POD 5 PRE-FLIGHT ONLY: Call only when actively staging an order in Pod 5 to verify historical sample win rate and R:R over recent bars. Prohibited on routine scans."""
     return await run_in_thread(_sync_backtest_thesis, query=query, symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
 
 
-@mcp.tool()
-def mcp_alpha_get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
-    """Fetch complete uncompressed institutional profile: Volume Profile (POC/VAH/VAL), VWAP (+/-1s, +/-2s), DIX/GEX, Macro Yields (US10Y/US2Y/DXY/VIX), Contract Specs, and 4TF EMAs/RSI."""
-    _init_mt5()
-    sym = _normalize_symbol(symbol)
-    read_logger.log_dossier_read("OpenCode CIO (MCP Institutional Profile)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried full institutional profile for {sym}")
-    try:
-        vp = _inst_engine.get_volume_profile_metrics(sym)
-        vwap = _inst_engine.get_institutional_vwap(sym)
-        macro = _inst_engine.get_macro_and_gamma_feeds()
-        specs = _inst_engine.get_contract_specifications(sym)
-        struct = _inst_engine.get_choch_and_structure_break(sym)
-        tf_mat = _inst_engine.get_multi_timeframe_matrix(sym)
-        cot_full = _inst_engine.get_futuresbench_cot_data()
-        raw_cot = cot_full.get("markets", {}).get(sym, {})
-        
-        return json.dumps({
-            "status": "SUCCESS",
-            "symbol": sym,
-            "volume_profile": {
-                "point_of_control_poc": vp.get("poc"),
-                "value_area_high_vah_70": vp.get("vah"),
-                "value_area_low_val_70": vp.get("val"),
-                "value_area_width_pts": vp.get("value_area_width"),
-                "price_location": vp.get("price_location")
-            },
-            "institutional_vwap": {
-                "vwap": vwap.get("vwap"),
-                "std_dev": vwap.get("std_dev"),
-                "upper_band_1sigma": vwap.get("upper_band_1"),
-                "upper_band_2sigma": vwap.get("upper_band_2"),
-                "lower_band_1sigma": vwap.get("lower_band_1"),
-                "lower_band_2sigma": vwap.get("lower_band_2"),
-                "distance_usd": vwap.get("distance_usd"),
-                "posture": vwap.get("posture")
-            },
-            "macro_treasury_and_volatility": {
-                "us_10y_yield": macro.get("us_10y"),
-                "us_2y_yield": macro.get("us_2y"),
-                "yield_curve_10y_2y_spread": macro.get("yield_curve_spread"),
-                "dollar_index_dxy": macro.get("dxy"),
-                "dxy_posture": macro.get("dxy_posture"),
-                "cboe_vix": macro.get("vix"),
-                "vix_regime": macro.get("vix_regime"),
-                "dark_pool_dix_pct": macro.get("dix"),
-                "gamma_exposure_gex_billions": macro.get("gex_billions"),
-                "gex_regime": macro.get("gex_regime")
-            },
-            "contract_specifications": specs,
-            "structural_market_state": {
-                "choch_status": struct.get("choch_status"),
-                "bos_status": struct.get("bos_status"),
-                "displacement": struct.get("displacement")
-            },
-            "four_timeframe_matrix": tf_mat,
-            "cot_institutional_positioning": raw_cot
-        }, indent=2)
-    except Exception as err:
-        return json.dumps({"status": "ERROR", "symbol": sym, "error": str(err)}, indent=2)
-
-
-@mcp.tool()
-def mcp_alpha_get_evidence_capabilities() -> str:
-    """Return startup/on-demand states for free evidence capabilities without fetching bulk data."""
-    return json.dumps({"status": "SUCCESS", "source": "Alpha capability registry",
-                       "retrieved_at": datetime.now(timezone.utc).isoformat(),
-                       "data": capability_snapshot()}, indent=2)
-
-@mcp.tool()
-def get_evidence_capabilities() -> str:
-    """Return startup/on-demand states for free evidence capabilities (short alias)."""
-    return mcp_alpha_get_evidence_capabilities()
-
-@mcp.tool()
 def mcp_alpha_get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
     """Retrieve factual FRED/ALFRED observations; unavailable credentials never produce fallback values."""
     return json.dumps(_fred_adapter.observations(series_id, limit, vintage_date or None), indent=2)
@@ -2022,7 +1364,6 @@ def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = 
     """Retrieve factual vintage-aware Federal Reserve economic observations (e.g. series 'DGS10', 'T10YIE', 'DFII10') for macroeconomic interest rate analysis."""
     return mcp_alpha_get_fred_observations(series_id, limit, vintage_date)
 
-@mcp.tool()
 def mcp_alpha_get_live_world_events(category: str = "ALL", limit: int = 15, force_refresh: bool = False) -> str:
     """Retrieve verified, real-time live financial news headlines, Treasury wires, central bank releases, and geopolitical events.
     
@@ -2137,21 +1478,6 @@ def clear_completed_watches(symbol: str = None) -> str:
     """Clear all triggered and cancelled watches from disk memory."""
     return mcp_alpha_clear_completed_watches(symbol)
 
-def mark_watches_observed(watch_ids: List[str]) -> str:
-    """Batch-mark one or more objective watch alerts as observed."""
-    return mcp_alpha_mark_watches_observed(watch_ids)
-
-@mcp.tool()
-def mark_evidence_read(evidence_ids: List[str]) -> str:
-    """Batch-mark one or more persistent news/evidence items as read."""
-    return mcp_alpha_mark_evidence_read(evidence_ids)
-
-# ======================================================================
-# DIRECT TOOL ALIASES (Allows OpenCode to call both canonical and short names)
-# ======================================================================
-
-_global_arbiter = None
-
 @mcp.tool()
 def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = False) -> str:
     """Retrieve pure real-time physical market telemetry and raw kinetic metrics (live broker quotes, spread, tape velocity, CVD ratios, 4m/M1 footprints, Level 2 order book depth, real yields, and calendar countdown) without artificial labels or calculated fluff. Set force_refresh=True to bypass cached macro yields and pull live endpoints."""
@@ -2169,11 +1495,6 @@ def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = Fals
             raw_res["raw_metrics"].pop("raw_footprints_30_m1", None)
             raw_res["raw_metrics"].pop("raw_ohlc_60b", None)
     return json.dumps(raw_res, separators=(',', ':'))
-
-@mcp.tool()
-def get_market_time_context(target_time: str = "", target_timezone: str = "America/New_York") -> str:
-    """Retrieve synchronized market clocks across UTC, New York (EDT/EST), London (BST/GMT), Tokyo (JST), Sydney (AEST), live trading sessions, or calculate exact countdowns to any target time."""
-    return mcp_alpha_get_market_time_context(target_time, target_timezone)
 
 def mcp_alpha_get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
     """Retrieve ultra-compact, non-label, pure numerical institutional order flow coordinates without context bloat:
@@ -2277,75 +1598,9 @@ def get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
     return mcp_alpha_get_deep_orderflow_telemetry(symbol)
 
 @mcp.tool()
-def get_full_institutional_profile(symbol: str = "XAUUSD") -> str:
-    """Fetch complete institutional profile (POC/VAH/VAL, VWAP, DIX/GEX, Treasuries, Contract Specs, 4TF EMAs/RSI)."""
-    return mcp_alpha_get_full_institutional_profile(symbol)
-
-@mcp.tool()
 def get_account_status() -> str:
     """Check live FTMO MT5 equity, balance, free margin, margin utilization % and active ticket states."""
     return mcp_alpha_get_account_status()
-
-@mcp.tool()
-def get_symbol_conviction(symbol: str = "XAUUSD") -> str:
-    """Query live 4TF institutional alignment, exact EMA20/50 & RSI values, FVG geometry, and COT percentiles. Pass symbol='XAUUSD'."""
-    return mcp_alpha_get_symbol_conviction(symbol or "XAUUSD")
-
-@mcp.tool()
-def get_measured_cvd(symbol: str = "XAUUSD") -> str:
-    """Fetch measured M5 tick CVD, 10-bar delta velocity, and passive absorption signals from MT5. Pass symbol='XAUUSD'."""
-    return mcp_alpha_get_measured_cvd(symbol or "XAUUSD")
-
-@mcp.tool()
-def get_crowd_liquidity_vector(symbol: str = "XAUUSD") -> str:
-    """Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics. Use to audit who is trapped, evaluate stop-run distance and sweep status, and locate liquidity cascades. AGENTS.md strictly governs all staging, sizing (0.5-1.0L), and structural stops (6-10 pts). Pass symbol='XAUUSD'."""
-    return mcp_alpha_get_crowd_liquidity_vector(symbol or "XAUUSD")
-
-
-@mcp.tool()
-def record_decision_snapshot(
-    symbol: str = "XAUUSD",
-    side: str = "BUY",
-    conviction: float = None,
-    conviction_score: float = None,
-    score: float = None,
-    direction: str = "",
-    notes: str = "",
-    volume: float = 0.0,
-    sl: float = 0.0,
-    tp: float = 0.0,
-) -> str:
-    """Record pre-trade decision context on disk (s4.137 Process vs Outcome)."""
-    return mcp_alpha_record_decision_snapshot(
-        symbol=symbol,
-        side=side,
-        conviction=conviction,
-        conviction_score=conviction_score,
-        score=score,
-        direction=direction,
-        notes=notes,
-        volume=volume,
-        sl=sl,
-        tp=tp,
-    )
-
-
-@mcp.tool()
-def get_live_microstructure(symbol: str = "XAUUSD") -> str:
-    """Fetch live market microstructure: real-time spread (pts), M1 tick velocity (t/m), order-book depth imbalance, and CVD posture. Pass symbol='XAUUSD'."""
-    return mcp_alpha_get_live_microstructure(symbol or "XAUUSD")
-
-@mcp.tool()
-def get_fvg_matrix(symbol: str = "XAUUSD") -> str:
-    """Fetch multi-timeframe Fair Value Gaps (H4, H1, M15, M5) and 50% Consequent Encroachment levels."""
-    return mcp_alpha_get_fvg_matrix(symbol)
-
-
-
-@mcp.tool()
-def get_mt5_deals_history(days: int = 30, symbol: str = "ALL", limit: int = 100, position_id: int = 0) -> str:
-    """Fetch closed trade history and deal execution settings directly from MetaTrader 5 terminal."""
-    return mcp_alpha_get_mt5_deals_history(days, symbol, limit, position_id)
 
 # Deprecated meta-tool: direct tool calls enforced
 def list_desk_tools() -> str:
@@ -2379,52 +1634,6 @@ def list_desk_tools() -> str:
         {"name":"query_analyst_desk","description":"The 7-Layer Local Multi-Agent Analyst Desk synthesis: true 4TF EMAs/RSI, COT positioning, FVG CE geometry, and automated Bull vs Bear debate."}
     ]
     return json.dumps({"status": "SUCCESS", "tools_count": len(tools_list), "tools": tools_list}, indent=2)
-
-
-@mcp.tool()
-def record_pattern_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", ticket: str = None, r_value=None, patterns: list = None) -> str:
-    """
-    Record pattern observation into Graphiti Temporal Memory.
-    MANDATORY ON EVERY CYCLE: Call this on each cadence turn (both when trading and standing flat)
-    to continuously train Graphiti memory on market dynamics and structural reality.
-    """
-    try:
-        from tradingagents.pattern_memory_engine import PatternMemoryEngine
-        if patterns:
-            p_list = list(patterns) if isinstance(patterns, (list, tuple)) else [str(patterns)]
-        elif pattern_name:
-            p_list = [pattern_name]
-        else:
-            p_list = ["MARKET_OBSERVATION"]
-        res = PatternMemoryEngine().add_episode(
-            patterns=p_list,
-            outcome=outcome,
-            lesson=observation,
-            symbol=symbol or "XAUUSD",
-            source="MCP_RECORD_PATTERN"
-        )
-        return json.dumps(res, indent=2)
-    except Exception as e:
-        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
-
-
-@mcp.tool()
-def record_trade_observation(symbol: str = "XAUUSD", pattern_name: str = "", observation: str = "", outcome: str = "STUDY", r_multiple: float = 0.0, ticket: str = None) -> str:
-    """Commit verified trade outcomes and autopsy lessons into Graphiti Temporal Memory."""
-    try:
-        from tradingagents.pattern_memory_engine import PatternMemoryEngine
-        p_list = [pattern_name] if pattern_name else ["TRADE_FORENSIC"]
-        note = f"{observation} (R: {r_multiple}, Ticket: {ticket})" if ticket else observation
-        res = PatternMemoryEngine().add_episode(
-            patterns=p_list,
-            outcome=outcome,
-            lesson=note,
-            symbol=symbol or "XAUUSD",
-            source="MCP_RECORD_TRADE"
-        )
-        return json.dumps(res, indent=2)
-    except Exception as e:
-        return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
 
 
 @mcp.tool()
