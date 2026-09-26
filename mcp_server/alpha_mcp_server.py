@@ -1639,28 +1639,26 @@ def list_desk_tools() -> str:
 
 
 @mcp.tool()
-def get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+def get_topological_liquidity_map(symbol: str = "XAUUSD", detailed: bool = False) -> str:
     """
     Topological Market Graph & Liquidity Cascade Radar (Graphify GPS).
-    Extracts the localized 1-hop spatial ego-graph around current price:
-    - Nearest Ceiling & Floor coordinates with distance in points.
-    - Downward and Upward Liquidity Cascade Chains (trapped retail stops).
-    - Macro Runway R:R ratio to primary target.
-    - Uncompleted Sweep Trap Hazard warning (<3.0 pts clearance).
+    Extracts the localized directed spatial graph around current price:
+    - Default (detailed=False): Compact sub-80-token radar card (nearest ceiling/floor, 3-step cascade chains, runway R:R, trap hazard).
+    - Execution Mode (detailed=True): Call in Pod 5 when staging or calibrating orders to inspect the complete multi-level structural hierarchy of all active ceilings, floors, order blocks, and FVGs with exact coordinates, bounds, and fill %.
     Zero Level 2 DOM noise. Pure structural auction geometry.
     """
     try:
         from tradingagents.topological_graph_engine import get_topological_engine
         eng = get_topological_engine()
-        return eng.format_ego_graph_card(symbol=symbol)
+        return eng.format_ego_graph_card(symbol=symbol, detailed=detailed)
     except Exception as e:
         LOG.error(f"Error in get_topological_liquidity_map: {e}")
         return f"Topological map error: {e}"
 
 
-def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD", detailed: bool = False) -> str:
     """Internal alias for get_topological_liquidity_map."""
-    return get_topological_liquidity_map(symbol=symbol)
+    return get_topological_liquidity_map(symbol=symbol, detailed=detailed)
 
 
 # Quarantined / Deprecated: direct native tool calls enforced per Standing Orders
@@ -1692,8 +1690,8 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "execute_market_order": lambda: mcp_alpha_execute_market_order(args.get("symbol","XAUUSD"),args.get("side","BUY"),args.get("volume",1.0),args.get("sl_price",0.0),args.get("tp_price",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Market Order")),
         "get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
         "alpha_get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
-        "get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD")),
-        "alpha_get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD")),
+        "get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD"), args.get("detailed",False)),
+        "alpha_get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD"), args.get("detailed",False)),
         "query_analyst_desk": lambda: _sync_query_analyst_desk(args.get("query","Full 7-layer technical, fundamental COT, and macro market analysis"), args.get("symbol","XAUUSD"))
     }
 

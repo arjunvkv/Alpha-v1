@@ -64,7 +64,8 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     - `### POD 5: EXECUTION ARBITER — VERDICT`: Definitive verdict (`STANDING FLAT`, immediate market execution, or pending limit/stop), exact justification, pre-order coordinate calibration (`alpha_get_deep_orderflow_telemetry`), and structured conditional roadmap with exact price, SL, TP, and R:R coordinates.
 
 - **Execution & Pre-Order Calibration (Only When Staging / Modifying Orders in Pod 5)**:
-  - `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')`: Pre-order coordinate calibration tool. Call **strictly in Pod 5** when an active order is planned, to extract exact FVG 50% Consequent Encroachment (CE), VWAP ±1σ/2σ bands, and ATR14 stop loss buffer. *(Strictly prohibited on routine observation scans to eliminate Level 2 DOM noise).*
+  - `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')`: Pre-order coordinate calibration tool. Call **strictly in Pod 5** when an active order is planned, to extract exact FVG 50% Consequent Encroachment (CE), VWAP ±1σ/2σ bands, and ATR14 stop buffer. *(Strictly prohibited on routine observation scans to eliminate Level 2 DOM noise).*
+  - `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)`: Multi-level structural inventory tool. Call **in Pod 5** when planning/staging an order to retrieve the full 8+ structural node network (all ceilings/floors, FVG bounds/CE/fill %, demand/supply shelves, cascade targets, and signed distances) for millimeter-precise TP/SL targeting. *(Routine observation scans use the compact default `detailed=False`).*
   - `graphiti_search_facts(patterns=['SETUP_TAGS'])`: Pre-flight candidate setup contrast. When staging an order, call with candidate tags to evaluate against documented stumbles.
   - `alpha_place_pending_order(...)`: Place pending limit or stop orders directly on MT5 book.
   - `alpha_execute_market_order(...)`: Execute immediate market buy or sell orders.
@@ -118,7 +119,7 @@ To ensure every decision matches the rigor of the champion desks that delivered 
 
 ### POD 5: EXECUTION ARBITER & ORDER ACTION
 - Strategic Verdict: Immediate Market Execution (`alpha_execute_market_order`), Breakout Stop (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP`), Structural Limit (`BUY_LIMIT`/`SELL_LIMIT`), or Standing Flat.
-- Pre-Order Coordinate Calibration (When Placed): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` strictly in Pod 5 to extract exact FVG 50% CE price, VWAP ±1σ/2σ bands, and ATR14 stop buffer.
+- Pre-Order Coordinate Calibration (When Placed): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` strictly in Pod 5 to extract exact FVG 50% CE price, VWAP ±1σ/2σ bands, and ATR14 stop buffer. Call `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)` to inspect the complete multi-level structural hierarchy (FVGs, OBs, liquidity pools, cascade chains) across all timeframes.
 - Pre-Flight Setup Grounding: Ground candidate setup tags against `graphiti_search_facts` using the 3-Vector Grammar (`Macro` + `Location` + `Physics`). If live tape actively expresses the specific failure mechanism described in the Pitfall, execution is vetoed.
 - Sizing: $0.50\text{ to }1.00\text{ lots}$ ($1.00\text{L}$ standard on 7-layer conviction $\ge 8.0/10$ with 4TF alignment; $0.50\text{L}$ on baseline conviction $7.0\text{--}7.9$).
 - Stop Loss: Structural Invalidation $+ 1.5\times\text{ATR}_{14}$ buffer ($6.0\text{ to }12.0\text{ pts}$) anchored strictly behind HTF swing low/high, FVG boundary, or Order Block.

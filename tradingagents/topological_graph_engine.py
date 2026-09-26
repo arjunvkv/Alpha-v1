@@ -347,10 +347,15 @@ class TopologicalGraphEngine:
             "order_flow": g.get("order_flow", {})
         }
 
-    def format_ego_graph_card(self, symbol: str = "XAUUSD") -> str:
+    def format_ego_graph_card(self, symbol: str = "XAUUSD", detailed: bool = False) -> str:
         """
-        Formats a clean, sub-80 token topological inspection card for OpenCode.
+        Formats topological inspection card for OpenCode.
+        - detailed=False (default): sub-80 token compact radar card.
+        - detailed=True: complete multi-level structural hierarchy of all active nodes.
         """
+        if detailed:
+            return self.format_detailed_graph_card(symbol=symbol)
+
         ego = self.get_localized_ego_graph(symbol=symbol)
         p = ego["live_price"]
         nc = ego["nearest_ceiling"]
@@ -378,6 +383,81 @@ class TopologicalGraphEngine:
             card += f"• ⚠️ TRAP HAZARD: Price is {haz['abs_distance_pts']:.1f} pts from un-swept {haz['to']}. Front-running prohibited.\n"
 
         return card.strip()
+
+    def format_detailed_graph_card(self, symbol: str = "XAUUSD") -> str:
+        """
+        Formats a comprehensive multi-level structural hierarchy of ALL active graph nodes:
+        - Sorted ceilings (above price) and floors (below price) with exact coordinates, signed distance in pts, and level type.
+        - Unmitigated FVG details (CE, boundary bounds, fill %).
+        - Institutional Demand & Supply shelves.
+        - Session extremes (Asian High/Low, PDH/PDL) with sweep status.
+        - Extended cascade chains and obstacle hazard audit.
+        """
+        ego = self.get_localized_ego_graph(symbol=symbol)
+        g = self._cached_graph
+        p = ego["live_price"]
+        edges = g.get("edges", [])
+        nodes = g.get("nodes", {})
+        leash = ego.get("macro_leash", {})
+        flow = ego.get("order_flow", {})
+
+        ceilings = [e for e in edges if e["relative_position"] == "ABOVE"]
+        floors = [e for e in edges if e["relative_position"] == "BELOW"]
+
+        lines = [
+            f"=== TOPOLOGICAL MARKET MAP — MULTI-LEVEL STRUCTURAL INVENTORY ({symbol.upper()} @ {p:.2f}) ===",
+            f"Live Cursor: {p:.2f} | Spread: {g.get('spread_pts', 0):.1f} pts | DFII10: {leash.get('dfii10', 0):.2f}% ({leash.get('regime', 'NEUTRAL')}) | CVD: {flow.get('cvd_10b_pressure', 0):+.1f}%",
+            "",
+            "--- OVERHEAD CEILINGS (ABOVE PRICE) ---"
+        ]
+        if not ceilings:
+            lines.append("  (No overhead structural levels detected)")
+        else:
+            for idx, e in enumerate(ceilings, 1):
+                nid = e["to"]
+                n = nodes.get(nid, {})
+                flag = " [OBSTACLE]" if e.get("is_obstacle") else ""
+                if e.get("is_uncompleted_sweep_hazard"):
+                    flag = " [TRAP HAZARD: UN-SWEPT EXTREME <3pts]"
+                fvg_extra = ""
+                if "FVG" in n.get("type", ""):
+                    fvg_extra = f" (Bounds: {n.get('bottom', 0):.2f}-{n.get('top', 0):.2f}, Fill: {n.get('fill_pct', 0):.0f}%)"
+                lines.append(f"  {idx}. +{e['abs_distance_pts']:.2f} pts | {n.get('label', nid)} @ {n.get('price', 0):.2f}{fvg_extra}{flag}")
+
+        lines.extend([
+            "",
+            "--- UNDERLYING FLOORS (BELOW PRICE) ---"
+        ])
+        if not floors:
+            lines.append("  (No underlying structural levels detected)")
+        else:
+            for idx, e in enumerate(floors, 1):
+                nid = e["to"]
+                n = nodes.get(nid, {})
+                flag = " [OBSTACLE]" if e.get("is_obstacle") else ""
+                if e.get("is_uncompleted_sweep_hazard"):
+                    flag = " [TRAP HAZARD: UN-SWEPT EXTREME <3pts]"
+                fvg_extra = ""
+                if "FVG" in n.get("type", ""):
+                    fvg_extra = f" (Bounds: {n.get('bottom', 0):.2f}-{n.get('top', 0):.2f}, Fill: {n.get('fill_pct', 0):.0f}%)"
+                lines.append(f"  {idx}. -{e['abs_distance_pts']:.2f} pts | {n.get('label', nid)} @ {n.get('price', 0):.2f}{fvg_extra}{flag}")
+
+        # All cascade levels
+        dw = [f"{nodes[e['to']]['price']:.1f}" for e in floors if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL")]
+        up = [f"{nodes[e['to']]['price']:.1f}" for e in ceilings if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL")]
+
+        dw_str = " -> ".join(dw) if dw else "None"
+        up_str = " -> ".join(up) if up else "None"
+
+        lines.extend([
+            "",
+            f"• Liquidity Cascade Sequences: Downward: [{dw_str}] (Runway R:R {ego.get('short_macro_runway_rr')}:1) | Upward: [{up_str}] (Runway R:R {ego.get('long_macro_runway_rr')}:1)"
+        ])
+        if ego.get("uncompleted_sweeps"):
+            haz = ego["uncompleted_sweeps"][0]
+            lines.append(f"• ⚠️ ACTIVE TRAP HAZARD: Price is {haz['abs_distance_pts']:.1f} pts from un-swept {haz['to']}. Front-running prohibited.")
+
+        return "\n".join(lines).strip()
 
     def format_dossier_compact_vector(self, symbol: str = "XAUUSD") -> str:
         """
