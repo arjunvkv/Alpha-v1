@@ -40,7 +40,8 @@ def search_facts(
     tags: Any = None,
     pattern: Any = None,
     patterns_list: Any = None,
-    **kwargs: Any
+    kwargs: Any = None,
+    **extra: Any
 ) -> str:
     """
     Search Graphiti temporal pattern memory for past walks matching the active combination of patterns.
@@ -72,7 +73,8 @@ def record_observation(
     content: str = "",
     obs: str = "",
     message: str = "",
-    **kwargs: Any
+    kwargs: Any = None,
+    **extra: Any
 ) -> str:
     """
     Record an active pattern combination and market observation into Graphiti Temporal Memory.
@@ -112,7 +114,8 @@ def add_episode(
     observation: str = "",
     note: str = "",
     content: str = "",
-    **kwargs: Any
+    kwargs: Any = None,
+    **extra: Any
 ) -> str:
     """
     Record a pattern walk episode into Graphiti memory.
