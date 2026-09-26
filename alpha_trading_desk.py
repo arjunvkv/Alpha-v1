@@ -1074,18 +1074,25 @@ class ConsolidatedTradingDaemon:
                     f"EVALUATE VIA 5-POD ADVERSARIAL PROTOCOL.\n"
                     f"POD 5 VERDICT: HOLD_BRACKET if none of the 4 gates are verified. EXIT if any gate is confirmed. State explicitly which gate (if any) is triggered."
                 )
-            elif is_brainstorm_turn:
+            try:
+                from tradingagents.topological_graph_engine import get_topological_engine
+                _topo_vector = get_topological_engine().format_dossier_compact_vector("XAUUSD") + "\n\n"
+            except Exception as _topo_err:
+                _topo_vector = ""
+
+            if is_brainstorm_turn:
                 # Turn B: Dynamic 5-Question News & Macro Repricing Evaluation (Champion Alpha v14 Format)
                 prompt = (
                     f"ALPHA 5-QUESTION NEWS & MACRO BRAINSTORM TURN (Turn B) — {trigger}\n"
                     f"{_time_str}\n"
+                    f"{_topo_vector}"
                     f"Active instruments: {', '.join(self.instruments)}\n"
                     f"Open positions: {len(open_tickets)}\n"
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n"
                     f"*STALE PENDING PROTOCOL (CONST_STALE_PENDING_PROHIBITION): MT5 orders are GTC and NEVER self-expire. If any order is > 15.0 pts away from market or resting > 60m without fill, CANCEL IT NOW via `alpha_cancel_pending_order(ticket)`.\n\n"
                     f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
-                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=15)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, and (6) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
+                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=15)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
                     f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
                     f"CORE REPRICING EVALUATION VECTORS (LEAN CAUSAL DISCOVERY):\n"
                     f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=15)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
@@ -1114,6 +1121,7 @@ class ConsolidatedTradingDaemon:
                     f"{full_4tf_reveal_block}"
                     f"=== PHYSICAL BROKER METRICS & REGIME ===\n"
                     f"{_regime_badge}\n\n"
+                    f"{_topo_vector}"
                     f"MANDATE & DISCIPLINE (AGENTS.md):\n"
                     f"• Principle 0: A wake is an observation cycle, NOT a trade mandate. Standing flat in quiet chop is your high-conviction decision.\n"
                     f"• Execution Standard: When 7-layer edge is confirmed, enforce 0.50-1.00L sizing, structural SL (6.0-12.0 pts), and positive R:R >= 1.5:1 to 2.5:1+ into opposing structural liquidity. Direct MT5 execution/pre-staging only (no passive watch loops).\n"
@@ -1122,7 +1130,8 @@ class ConsolidatedTradingDaemon:
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n\n"
                     f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"
                     f"  1. 7-Layer Synthesis & Physical Tape: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`\n"
-                    f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=[...])` using 2-3 scale-invariant tags from the 3-Vector Grammar (`Macro` + `Location` + `Physics`). Returns <80-token contrast card.\n"
+                    f"  2. Spatial Radar & Liquidity Cascades (On-Demand in Pod 3/5): `alpha_get_topological_liquidity_map(symbol='XAUUSD')` -> Sub-80 token ego-graph of nearest ceiling, floor, cascade targets, and runway R:R ratio.\n"
+                    f"  3. Continuous Fact Grounding: `graphiti_search_facts(patterns=[...])` using 2-3 scale-invariant tags from the 3-Vector Grammar (`Macro` + `Location` + `Physics`). Returns <80-token contrast card.\n"
                     f"  • Pre-Order Execution Coordinates (Pod 5 Only): When planning an order, call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` to pull exact FVG 50% CE, VWAP ±1σ/2σ bands, and ATR14 stop buffer. (Strictly prohibited on routine scans to eliminate Level 2 DOM noise).\n"
                     f"  • Dynamic Execution Standard: Anchor TP dynamically to opposing structural liquidity (opposing FVG CE, POC, or session extreme) enforcing R:R >= 1.5:1 floor (no arbitrary point limits).\n"
                     f"  • Direct MT5 Execution: `alpha_place_pending_order()`, `alpha_execute_market_order()`, `alpha_cancel_pending_order()`, `alpha_update_position()`\n"

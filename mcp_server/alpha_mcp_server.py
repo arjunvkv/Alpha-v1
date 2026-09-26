@@ -2427,6 +2427,31 @@ def record_trade_observation(symbol: str = "XAUUSD", pattern_name: str = "", obs
         return json.dumps({"status": "ERROR", "error": str(e)}, indent=2)
 
 
+@mcp.tool()
+def alpha_get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+    """
+    Topological Market Graph & Liquidity Cascade Radar (Graphify GPS).
+    Extracts the localized 1-hop spatial ego-graph around current price:
+    - Nearest Ceiling & Floor coordinates with distance in points.
+    - Downward and Upward Liquidity Cascade Chains (trapped retail stops).
+    - Macro Runway R:R ratio to primary target.
+    - Uncompleted Sweep Trap Hazard warning (<3.0 pts clearance).
+    Zero Level 2 DOM noise. Pure structural auction geometry.
+    """
+    try:
+        from tradingagents.topological_graph_engine import get_topological_engine
+        eng = get_topological_engine()
+        return eng.format_ego_graph_card(symbol=symbol)
+    except Exception as e:
+        LOG.error(f"Error in alpha_get_topological_liquidity_map: {e}")
+        return f"Topological map error: {e}"
+
+
+@mcp.tool()
+def get_topological_liquidity_map(symbol: str = "XAUUSD") -> str:
+    """Backward-compatible alias for alpha_get_topological_liquidity_map."""
+    return alpha_get_topological_liquidity_map(symbol=symbol)
+
 
 # Quarantined / Deprecated: direct native tool calls enforced per Standing Orders
 def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
@@ -2475,6 +2500,8 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_market_time_context": lambda: mcp_alpha_get_market_time_context(args.get("target_time",""),args.get("target_timezone","America/New_York")),
         "get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
         "alpha_get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
+        "get_topological_liquidity_map": lambda: alpha_get_topological_liquidity_map(args.get("symbol","XAUUSD")),
+        "alpha_get_topological_liquidity_map": lambda: alpha_get_topological_liquidity_map(args.get("symbol","XAUUSD")),
         "query_analyst_desk": lambda: _sync_query_analyst_desk(args.get("query","Full 7-layer technical, fundamental COT, and macro market analysis"), args.get("symbol","XAUUSD"))
     }
 
