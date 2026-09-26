@@ -80,7 +80,7 @@ Evaluate every market cycle through all 5 Pod lenses:
 
 ### POD 5: EXECUTION ARBITER & ORDER ACTION
 • Strategic Verdict: Immediate Market Execution (`alpha_execute_market_order`), Breakout Stop (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP`), Structural Limit (`BUY_LIMIT`/`SELL_LIMIT`), or Standing Flat.
-• Pre-Order Coordinate Calibration (Call ONLY when an order is actively planned): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` to extract exact FVG 50% CE, VWAP band, and ATR14 coordinates for precise entry, SL, and TP calibration. DO NOT call on routine observation turns.
+• Pre-Order Coordinate Calibration (Call ONLY when an order is actively planned): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` and `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)` to extract exact FVG 50% CE, VWAP band, ATR14 coordinates, and complete multi-level structural hierarchy for precise entry, SL, and TP calibration. DO NOT call on routine observation turns.
 • Sizing: High-Growth 0.50 to 1.00 lots (1.00L standard on 7-layer conviction >= 8.0/10 with 4TF alignment; 0.50L on baseline 7.0-7.9).
 • Stop Loss: Structural Invalidation + 1.5x ATR14 buffer (6.0 to 12.0 pts) anchored strictly behind HTF swing low/high, FVG boundary, or Order Block.
 • Take Profit: Major Opposing Structural Liquidity Target (Opposing FVG CE, POC, Value Area boundary, or liquidity sweep) enforcing Positive R:R >= 1.5:1 to 2.5:1+ floor (12.0 to 25.0 pts).
@@ -94,7 +94,7 @@ Evaluate every market cycle through all 5 Pod lenses:
 4. CONST_SPREAD_BLOWOUT: Spread > 55 pts bans market entries and stops.
 5. CONST_TIER1_BLACKOUT: Order lockout within 30m before and 5m after Tier-1 macro releases.
 6. CONST_MAX_DAILY_DD: TEMPORARILY SUSPENDED by Operator Directive. Full operational authority active.
-7. CONST_PREFLIGHT_CONFIDENCE_GATE: Zero blind orders. Query `graphiti_search_facts`, verify topological obstacle clearance >= 1.5R via `alpha_get_topological_liquidity_map`, and confirm structural invalidation + R:R >= 1.5:1.
+7. CONST_PREFLIGHT_CONFIDENCE_GATE: Zero blind orders. Query `graphiti_search_facts`, verify topological obstacle clearance >= 1.5R via `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)`, and confirm structural invalidation + R:R >= 1.5:1.
 8. CONST_NO_PREMATURE_CUT: Discretionary manual cuts inside the initial entry noise band (<= 3.5 pts) are strictly prohibited and hard-vetoed by the broker engine. Ephemeral DOM bid/ask walls are NOT structural shelves. A single 4-minute delta flip is normal consolidation, never a reversal. Once price achieves verified expansion (>= +5.2 pts), active capital preservation via the 3-Stage Dynamic Ratchet is mandated.
 9. CONST_STALE_PENDING_PROHIBITION: Pending orders > 15 pts away or resting > 60m must be evaluated and cancelled via `alpha_cancel_pending_order`.
 10. CONST_NO_MIDRANGE_BREAKDOWN_STOP: Pre-staging pending breakout stops (BUY_STOP / SELL_STOP) inside the central dealing range (mid-range chop) is strictly prohibited. Directional breakout stops are authorized ONLY when placed beyond established structural swing boundaries, session extremes, or FVG outer boundaries with >= 0.5x ATR14 clearance.
