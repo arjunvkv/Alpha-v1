@@ -456,6 +456,30 @@ class ConsolidatedTradingDaemon:
         self.watcher_task = None
 
     def dispatch_startup_ping(self, sid: str, title: str):
+        # If session already has conversation history (e.g. seeded via session_seeder), skip duplicate greeting
+        try:
+            from tradingagents.session_seeder import get_session_messages
+            msgs = get_session_messages(sid)
+            if len(msgs) >= 2:
+                LOG.info(f"Session '{title}' ({sid}) is already seeded ({len(msgs)} messages). Skipping redundant startup ping.")
+                # Infer last turn from message history to ensure seamless alternating cadence
+                for m in reversed(msgs):
+                    if m.get("info", {}).get("role") == "user":
+                        txt = "".join(p.get("text", "") for p in m.get("parts", []) if p.get("type") == "text")
+                        if "Turn A" in txt:
+                            self.dispatch_count = 1
+                            self.next_turn_type = "BRAINSTORM"
+                            LOG.info("Synchronized cadence: Last session turn was Turn A -> Next dispatch will be Turn B.")
+                            break
+                        elif "Turn B" in txt:
+                            self.dispatch_count = 2
+                            self.next_turn_type = "DOSSIER"
+                            LOG.info("Synchronized cadence: Last session turn was Turn B -> Next dispatch will be Turn A.")
+                            break
+                return
+        except Exception as _sync_err:
+            LOG.debug(f"Could not synchronize session turn history: {_sync_err}")
+
         dossier_mins = max(1, int(round(get_dossier_interval_seconds() / 60.0)))
         active_mins = max(1, int(round(get_active_trade_interval_seconds() / 60.0)))
         post_to_opencode_session(
