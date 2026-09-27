@@ -609,7 +609,7 @@ class PatternMemoryEngine:
             return (
                 f"=== GRAPHITI PATTERN MEMORY ({sym}) ===\n"
                 f"Notice: No valid pattern tags provided. search_facts requires specific candidate setup tags (e.g. ['BSL_SWEEP', 'CVD_ABSORPTION'] or ['4TF_STRONG_BEARISH', 'FVG_SHELF']).\n"
-                f"Provide 2-4 tags matching the active candidate setup to recall winning signatures and documented traps."
+                f"Provide 2-4 scale-invariant tags matching the active candidate setup to retrieve historical evidence."
             )
 
         with self._get_conn() as conn:
