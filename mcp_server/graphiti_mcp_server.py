@@ -50,9 +50,9 @@ def search_facts(
     **kwargs: Any
 ) -> str:
     """
-    Search Graphiti temporal pattern memory for past walks matching the active combination of patterns.
-    Returns a dense, non-bloated executive fact card (<100 tokens) detailing top winning signatures,
-    recorded stumbles, and the Resilient Swimmer contextual pitfall.
+    Retrieve historical Graphiti evidence for past walks matching the active structural tags.
+    Returns prior observations grouped by historical outcome. This tool provides evidence only;
+    it never issues a current setup verdict, veto, clearance, ranking, or execution recommendation.
     """
     try:
         p = patterns if patterns is not None else kwargs.get("tags", kwargs.get("pattern", kwargs.get("patterns_list")))
