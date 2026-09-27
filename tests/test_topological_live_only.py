@@ -71,6 +71,49 @@ class TestTopologicalLiveOnly(unittest.TestCase):
         self.assertFalse(edge["is_obstacle"])
         self.assertNotIn("rr", " ".join(edge.keys()).lower())
 
+    def test_freshness_is_first_class_in_graph_and_ego_response(self):
+        engine = TopologicalGraphEngine()
+        graph = engine.build_market_graph(
+            symbol="XAUUSD",
+            live_price=2500.0,
+            fvg_matrix={"active_fvgs": [{
+                "id": "FVG_FRESH",
+                "timeframe": "M5",
+                "type": "BEARISH",
+                "ce": 2505.0,
+                "top": 2506.0,
+                "bottom": 2504.0,
+                "fill_pct": 0.0,
+            }]},
+        )
+        self.assertIn("freshness", graph)
+        self.assertIn("quote", graph["freshness"])
+        self.assertIn("structure", graph["freshness"])
+        self.assertIn("freshness", graph["nodes"]["CURSOR"])
+        ego = engine.get_localized_ego_graph("XAUUSD")
+        self.assertIn("freshness", ego)
+        self.assertIn(ego["freshness"]["state"], {"FRESH", "AGING", "STALE", "UNKNOWN"})
+
+    def test_old_explicit_fvg_is_marked_stale_without_being_deleted(self):
+        import time
+        engine = TopologicalGraphEngine()
+        graph = engine.build_market_graph(
+            symbol="XAUUSD",
+            live_price=2500.0,
+            fvg_matrix={"active_fvgs": [{
+                "id": "FVG_OLD",
+                "timeframe": "M5",
+                "type": "BEARISH",
+                "ce": 2505.0,
+                "top": 2506.0,
+                "bottom": 2504.0,
+                "fill_pct": 0.0,
+                "observed_at_epoch": time.time() - 500.0,
+            }]},
+        )
+        self.assertIn("FVG_OLD", graph["nodes"])
+        self.assertEqual(graph["nodes"]["FVG_OLD"]["freshness"]["state"], "STALE")
+
     def test_fully_filled_fvg_retires(self):
         engine = TopologicalGraphEngine()
         graph = engine.build_market_graph(
