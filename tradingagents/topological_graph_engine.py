@@ -173,36 +173,6 @@ def _node_state(node: Dict[str, Any], cursor: float) -> str:
     return ACTIVE
 
 
-def _freshness_state(age_seconds: Optional[float], warn_after: float = 15.0, stale_after: float = 60.0) -> str:
-    if age_seconds is None:
-        return "UNKNOWN"
-    if age_seconds < 0:
-        return "INVALID"
-    if age_seconds <= warn_after:
-        return "FRESH"
-    if age_seconds <= stale_after:
-        return "AGING"
-    return "STALE"
-
-
-def _freshness(
-    *,
-    observed_at: float,
-    now: float,
-    source: str,
-    warn_after: float = 15.0,
-    stale_after: float = 60.0,
-) -> Dict[str, Any]:
-    age = max(0.0, now - observed_at)
-    return {
-        "observed_at_epoch": observed_at,
-        "age_seconds": round(age, 3),
-        "state": _freshness_state(age, warn_after, stale_after),
-        "source": source,
-        "warn_after_seconds": warn_after,
-        "stale_after_seconds": stale_after,
-    }
-
 
 class TopologicalGraphEngine:
     """Builds and queries a live structural market graph only."""
@@ -248,12 +218,6 @@ class TopologicalGraphEngine:
                 "order_flow": {},
                 "session": {k: v for k, v in _session_bounds(session_config).items() if k != "timezone_obj"},
                 "built_at": built_at,
-                "freshness": {
-                    "state": "STALE",
-                    "quote": _freshness(observed_at=built_at, now=built_at, source="UNAVAILABLE", warn_after=0.0, stale_after=0.0),
-                    "structure": _freshness(observed_at=built_at, now=built_at, source="UNAVAILABLE", warn_after=0.0, stale_after=0.0),
-                    "age_seconds": None,
-                },
             }
             self._cached_graph = graph
             self._last_build_time = graph["built_at"]
@@ -266,15 +230,6 @@ class TopologicalGraphEngine:
             if spread is None or spread < 0:
                 spread = None
 
-        quote_observed_at = built_at
-        quote_freshness = _freshness(
-            observed_at=quote_observed_at,
-            now=built_at,
-            source="MT5_TICK" if tick else "EXPLICIT_OBSERVATION",
-            warn_after=2.0,
-            stale_after=10.0,
-        )
-
         nodes: Dict[str, Dict[str, Any]] = {
             "CURSOR": {
                 "id": "CURSOR",
@@ -282,8 +237,6 @@ class TopologicalGraphEngine:
                 "price": price,
                 "tf": "TICK",
                 "lifecycle_state": ACTIVE,
-                "observed_at_epoch": quote_observed_at,
-                "freshness": quote_freshness,
                 "label": f"Price Cursor ({price:.2f})",
             }
         }
@@ -311,8 +264,6 @@ class TopologicalGraphEngine:
                     "id": nid, "type": ntype, "price": value, "tf": tf,
                     "swept": bool(swept), "lifecycle_state": MITIGATED if swept else ACTIVE,
                     "source": "live_mt5" if key not in liq or key not in (liquidity_data or {}) else "explicit_observation",
-                    "observed_at_epoch": built_at,
-                    "freshness": _freshness(observed_at=built_at, now=built_at, source="MT5_BARS" if tick and key not in (liquidity_data or {}) else "EXPLICIT_OBSERVATION", warn_after=60.0, stale_after=300.0),
                     "label": f"{nid} ({value:.2f})",
                 }
 
@@ -326,8 +277,6 @@ class TopologicalGraphEngine:
                 "id": "DAILY_PP", "type": "VALUE_AREA_EQUILIBRIUM",
                 "price": pp, "tf": "D1", "lifecycle_state": ACTIVE,
                 "source": "live_mt5" if not pivot_data else "explicit_observation",
-                "observed_at_epoch": built_at,
-                "freshness": _freshness(observed_at=built_at, now=built_at, source="MT5_D1" if tick and not pivot_data else "EXPLICIT_OBSERVATION", warn_after=300.0, stale_after=3600.0),
                 "label": f"Daily PP ({pp:.2f})",
             }
 
@@ -341,8 +290,6 @@ class TopologicalGraphEngine:
                     "id": nid, "type": ntype, "price": (lo + hi) / 2.0,
                     "bottom": lo, "top": hi, "tf": "H1",
                     "lifecycle_state": ACTIVE, "source": "explicit_observation",
-                    "observed_at_epoch": built_at,
-                    "freshness": _freshness(observed_at=built_at, now=built_at, source="EXPLICIT_OBSERVATION", warn_after=60.0, stale_after=300.0),
                     "label": f"{nid.replace('_', ' ').title()} ({lo:.2f}-{hi:.2f})",
                 }
 
@@ -369,14 +316,6 @@ class TopologicalGraphEngine:
                 "id": nid, "type": f"FVG_{side}", "price": ce, "tf": tf,
                 "top": top, "bottom": bottom, "fill_pct": max(0.0, min(100.0, fill)),
                 "lifecycle_state": ACTIVE, "source": "explicit_observation",
-                "observed_at_epoch": _number(fvg.get("observed_at_epoch"), built_at) or built_at,
-                "freshness": _freshness(
-                    observed_at=_number(fvg.get("observed_at_epoch"), built_at) or built_at,
-                    now=built_at,
-                    source="EXPLICIT_OBSERVATION",
-                    warn_after=15.0,
-                    stale_after=120.0,
-                ),
                 "label": f"{tf} {side} FVG (CE: {ce:.2f}, {fill:.0f}% fill)",
             }
 
@@ -420,13 +359,7 @@ class TopologicalGraphEngine:
             if value is not None and _number(value) is not None:
                 macro[key] = float(value)
 
-        session = _session_bounds(session_config)
-        freshness_values = [n["freshness"]["age_seconds"] for n in nodes.values() if n.get("freshness")]
-        max_structure_age = max(freshness_values) if freshness_values else None
-        freshness_state = _freshness_state(max_structure_age, warn_after=60.0, stale_after=300.0)
-        if quote_freshness["state"] == "STALE":
-            freshness_state = "STALE"
-        now_local = datetime.now(timezone.utc).astimezone(session["timezone_obj"])
+        session = _session_bounds(session_config)        now_local = datetime.now(timezone.utc).astimezone(session["timezone_obj"])
         session_active = _session_contains(
             (now_local.hour, now_local.minute), session["start"], session["end"]
         )
@@ -451,17 +384,6 @@ class TopologicalGraphEngine:
                 "state": "ACTIVE" if session_active else "OUTSIDE",
             },
             "retired_node_ids": retired_node_ids,
-            "freshness": {
-                "state": freshness_state,
-                "age_seconds": round(max_structure_age, 3) if max_structure_age is not None else None,
-                "quote": quote_freshness,
-                "structure": {
-                    "state": _freshness_state(max_structure_age, warn_after=60.0, stale_after=300.0),
-                    "max_age_seconds": round(max_structure_age, 3) if max_structure_age is not None else None,
-                    "source": "MIXED_STRUCTURE",
-                },
-                "evaluated_at_epoch": built_at,
-            },
             "built_at": built_at,
         }
 
@@ -529,7 +451,6 @@ class TopologicalGraphEngine:
             "macro_observations": graph.get("macro_observations", {}),
             "order_flow_observations": graph.get("order_flow_observations", {}),
             "session": graph.get("session", {}),
-            "freshness": graph.get("freshness", {}),
         }
 
     def format_ego_graph_card(self, symbol: str = "XAUUSD", detailed: bool = False) -> str:
@@ -549,7 +470,6 @@ class TopologicalGraphEngine:
             f"• Spatial Relations: Ceiling {nc_str} | Floor {nf_str}\n"
             f"• Structural Cascades: Down [{down}] | Up [{up}]\n"
             f"• Session: {ego['session'].get('name')} {ego['session'].get('start')}-{ego['session'].get('end')} {ego['session'].get('timezone')}\n"
-            f"• Freshness: {ego['freshness'].get('state')} | quote {ego['freshness'].get('quote', {}).get('age_seconds')}s | structure {ego['freshness'].get('structure', {}).get('max_age_seconds')}s\n"
         )
         if ego["uncompleted_sweeps"]:
             hazard = ego["uncompleted_sweeps"][0]
