@@ -590,9 +590,14 @@ class TopologicalGraphEngine:
         return "\n".join(lines)
 
     def format_dossier_compact_vector(self, symbol: str = "XAUUSD") -> str:
+        # Every dossier vector is a fresh structural observation. Never carry the
+        # previous cycle's topology forward as if it were the current auction.
+        self.build_market_graph(symbol=symbol)
         ego = self.get_localized_ego_graph(symbol)
         if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
             return f"[TOPOLOGICAL GPS {symbol.upper()}]: UNAVAILABLE"
+        down_path = ego.get("downward_path", {})
+        up_path = ego.get("upward_path", {})
         nc, nf = ego["nearest_ceiling"], ego["nearest_floor"]
         down_path = ego.get("downward_path", {})
         up_path = ego.get("upward_path", {})
