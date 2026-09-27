@@ -54,6 +54,7 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     4. `alpha_get_pending_orders(symbol='ALL')`: Active resting limit/stop orders on MT5.
     5. `alpha_get_topological_liquidity_map(symbol='XAUUSD')`: Localized spatial radar, cascade targets, and obstacle clearance check.
     6. `graphiti_search_facts(patterns=[...])`: Retrieve historical evidence using 2-4 tags from the 3-Vector Grammar (`Macro` + `Location` + `Physics`). Treat the result as contextual evidence, never as a verdict.
+       - Read the returned `Evidence Classification` as sample-size context only: `NO_EVIDENCE`, `STUDY_ONLY`, `INSUFFICIENT_LIVE_EVIDENCE`, `MINIMUM_LIVE_EVIDENCE_MET`, or `MIXED_LIVE_EVIDENCE`. Minimum live evidence is 3 historical WIN/TRAP outcome observations; this threshold never gates execution or predicts outcomes.
   - Followed by `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')` (storing causal market physics, zero diary timestamps).
   - **Thought Process Style**:
     Structure your Turn A deliberation using the 5 Pods in full depth:
