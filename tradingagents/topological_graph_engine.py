@@ -445,7 +445,8 @@ class TopologicalGraphEngine:
             if value is not None and _number(value) is not None:
                 macro[key] = float(value)
 
-        session = _session_bounds(session_config)        now_local = datetime.now(timezone.utc).astimezone(session["timezone_obj"])
+        session = _session_bounds(session_config)
+        now_local = datetime.now(timezone.utc).astimezone(session["timezone_obj"])
         session_active = _session_contains(
             (now_local.hour, now_local.minute), session["start"], session["end"]
         )
@@ -596,23 +597,20 @@ class TopologicalGraphEngine:
         ego = self.get_localized_ego_graph(symbol)
         if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
             return f"[TOPOLOGICAL GPS {symbol.upper()}]: UNAVAILABLE"
-        down_path = ego.get("downward_path", {})
-        up_path = ego.get("upward_path", {})
         nc, nf = ego["nearest_ceiling"], ego["nearest_floor"]
         down_path = ego.get("downward_path", {})
         up_path = ego.get("upward_path", {})
-        down_terminal = down_path.get("terminal_node") or "None"
-        up_terminal = up_path.get("terminal_node") or "None"
+        down_nodes = [step["to"] for step in down_path.get("steps", [])][:3]
+        up_nodes = [step["to"] for step in up_path.get("steps", [])][:3]
+        down_seq = ">".join(down_nodes) or "None"
+        up_seq = ">".join(up_nodes) or "None"
+        ceiling = f"{nc['abs_distance_pts']:.1f}pt({nc['to']})" if nc else "None"
+        floor = f"{nf['abs_distance_pts']:.1f}pt({nf['to']})" if nf else "None"
         return (
-            f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
-            f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
-            f"Floor: {nf['abs_distance_pts']:.1f}pt ({nf['to']}) | "
-            f"UP_PATH: {up_terminal} ({up_path.get('runway_pts', 0.0):.1f}pt) | "
-            f"DOWN_PATH: {down_terminal} ({down_path.get('runway_pts', 0.0):.1f}pt)"
-            if nc and nf else
-            f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
-            f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
-            f"Floor: {'None' if not nf else str(nf['abs_distance_pts']) + 'pt'}"
+            f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}] "
+            f"CEIL:{ceiling} FLOOR:{floor} "
+            f"UP:{up_seq}({up_path.get('runway_pts', 0.0):.1f}pt) "
+            f"DOWN:{down_seq}({down_path.get('runway_pts', 0.0):.1f}pt)"
         )
 
 
