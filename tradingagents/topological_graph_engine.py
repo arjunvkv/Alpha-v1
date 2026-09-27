@@ -214,7 +214,7 @@ class TopologicalGraphEngine:
                 "edges": [],
                 "macro_leash": {},
                 "order_flow": {},
-                "session": _session_bounds(session_config),
+                "session": {k: v for k, v in _session_bounds(session_config).items() if k != "timezone_obj"},
                 "built_at": time.time(),
             }
             self._cached_graph = graph
@@ -349,6 +349,7 @@ class TopologicalGraphEngine:
         graph = {
             "symbol": sym,
             "status": "LIVE" if tick else "OBSERVATION",
+            "input_mode": "MT5_LIVE_QUOTE" if tick else "EXPLICIT_OBSERVATION",
             "live_price": price,
             "spread_pts": spread,
             "nodes": nodes,
