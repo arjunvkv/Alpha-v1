@@ -599,9 +599,9 @@ class PatternMemoryEngine:
 
     def search_facts(self, patterns: Any, symbol: str = "XAUUSD", limit: int = 5) -> str:
         """
-        Query memory for historical walks matching the queried pattern combination.
-        Returns an ultra-dense, syntax-free text card (<100 tokens) for OpenCode.
-        Incorporates the Resilient Swimmer Principle (contextual pitfall clarity, no blanket fear).
+        Retrieve historical evidence matching the queried pattern combination.
+        Returns a dense evidence card for OpenCode. Graphiti describes prior observations;
+        it does not issue a current-market verdict, veto, clearance, ranking, or execution recommendation.
         """
         sym = str(symbol or "XAUUSD").strip().upper()
         query_tags = parse_and_normalize_tags(patterns)
@@ -680,7 +680,7 @@ class PatternMemoryEngine:
                 f"=== GRAPHITI PATTERN MEMORY ({sym}) ===\n"
                 f"No previous walk matches combo: [{', '.join(query_tags)}].\n"
                 f"- Novel Setup: Zero prior live fills on this exact combination (Pioneering Walk).\n"
-                f"- Guidance: Ground thesis strictly in 4TF alignment and physical tape absorption. If executing, use probe sizing (0.50L)."
+                f"- Evidence boundary: No matching historical evidence was found; assess the current live tape independently."
             )
 
         output_lines = [
@@ -708,7 +708,7 @@ class PatternMemoryEngine:
             top_w = matched_live_wins[0]
             w_lesson = f" - Valid Trigger: {self._dense_card_summary(top_w['lesson'], 240)}" if top_w['lesson'] else ""
             output_lines.append(
-                f"- Winning Signature ({top_w['count']}x): [{top_w['key']}]{w_lesson}"
+                f"- Historical WIN evidence ({top_w['count']}x): [{top_w['key']}]{w_lesson}"
             )
 
         # Contrast 2: Top Recorded Stumble / Pitfall (What broke it)
@@ -716,10 +716,10 @@ class PatternMemoryEngine:
             top_t = matched_live_traps[0]
             t_lesson = f" - Failure Pitfall: {self._dense_card_summary(top_t['lesson'], 240)}" if top_t['lesson'] else ""
             output_lines.append(
-                f"- Recorded Stumble ({top_t['count']}x): [{top_t['key']}]{t_lesson}"
+                f"- Historical TRAP evidence ({top_t['count']}x): [{top_t['key']}]{t_lesson}"
             )
             output_lines.append(
-                "- Condition Test: A past stumble is NOT a veto. If the stumble's adverse condition is absent on live tape, setup is CLEARED."
+                "- Evidence boundary: This historical trap record describes a prior occurrence only; it does not veto, clear, or predict the current setup."
             )
         elif not matched_live_wins and not matched_live_traps:
             # If no live trade fills, display recent study observations if present
@@ -728,15 +728,15 @@ class PatternMemoryEngine:
                 s_note = f" - Recent Observation ({top_s['count']}x): {self._dense_card_summary(top_s['lesson'], 220)}"
                 output_lines.append(f"- Live Desk Execution: Zero prior trade fills ({len(matched_study)} study cycles recorded).{s_note}")
             else:
-                output_lines.append("- Live Desk Execution: Zero prior live fills on exact combination.")
+                output_lines.append("- Historical record: Zero prior live fills on the exact combination; current conditions must be assessed from live evidence.")
         else:
-            output_lines.append("- Clean Record: Zero stumbles recorded for this combination under proper execution.")
+            output_lines.append("- Historical record: No matching trap observations were recorded in the retrieved history.")
 
         # Institutional Literature Anchor (Foundational market auction law)
         if matched_canon:
             top_c = matched_canon[0]
             output_lines.append(
-                f"- Institutional Literature Anchor: {self._format_canon_anchor(top_c, 340)}"
+                f"- Institutional historical reference: {self._format_canon_anchor(top_c, 340)}"
             )
 
         # --- INTERNAL AUDIT TRACKING (COMPLETELY INVISIBLE TO OPENCODE) ---
