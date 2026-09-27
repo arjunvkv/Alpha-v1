@@ -1,35 +1,185 @@
 """
-ALPHA TRADING DESK — TOPOLOGICAL MARKET GRAPH ENGINE (GRAPHIFY GPS)
-===================================================================
-Constructs a deterministic, in-memory directed topological graph of market structure,
-liquidity cascades, and cross-asset macro leash for XAUUSD on MT5.
+GRAPHIFY GPS — LIVE STRUCTURAL TOPOLOGY ENGINE
 
-Key Design Principles:
-1. Anti-Telemetry Guardrail: Zero Level 2 DOM order book depth. Zero micro-tick noise.
-   Operates strictly at the structural auction frequency (M5/M15/H1/H4).
-2. Asymmetric Clearance Law: Minor intermediate M1/M5 levels in trade direction are
-   classified as Take-Profit Highway Waypoints, NEVER as entry obstacles.
-3. Dynamic Node Evaporation: Mitigated levels are dissolved upon candle close (no ghost nodes).
-4. Localized 1-Hop Ego-Graph: Returns sub-80 token spatial radar for OpenCode.
+Graphify describes observable market structure. It does not predict price and does
+not make trading decisions. Runtime coordinates must come from a verified live
+quote or explicit replay/test observations; there are no fabricated price seeds.
 """
 
-import time
-import math
+from __future__ import annotations
+
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+import math
+import time
+from datetime import datetime, time as dt_time, timezone
+from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 LOG = logging.getLogger("alpha.topological_graph")
 
-class TopologicalGraphEngine:
-    """
-    Constructs and queries the live Spatial Market Graph.
-    Extracts 1-hop ego-graphs, liquidity cascade chains, and obstacle clearance metrics.
-    """
+ACTIVE = "ACTIVE"
+MITIGATED = "MITIGATED"
+RETIRED = "RETIRED"
 
-    def __init__(self):
+
+def _valid_price(value: Any) -> Optional[float]:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value) or value <= 0.0 or value > 50000.0:
+        return None
+    return value
+
+
+def _number(value: Any, default: Optional[float] = None) -> Optional[float]:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return default
+    return value if math.isfinite(value) else default
+
+
+def _session_contains(hour_minute: tuple[int, int], start: dt_time, end: dt_time) -> bool:
+    current = dt_time(*hour_minute)
+    if start <= end:
+        return start <= current < end
+    return current >= start or current < end
+
+
+def _session_bounds(config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    cfg = config or {}
+    tz_name = str(cfg.get("timezone") or "UTC")
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        LOG.warning("Invalid topology session timezone %s; using UTC", tz_name)
+        tz_name, tz = "UTC", timezone.utc
+
+    def parse_clock(value: Any, fallback: str) -> dt_time:
+        raw = str(value or fallback)
+        try:
+            hour, minute = [int(x) for x in raw.split(":")[:2]]
+            return dt_time(hour, minute)
+        except Exception:
+            hour, minute = [int(x) for x in fallback.split(":")]
+            return dt_time(hour, minute)
+
+    return {
+        "name": str(cfg.get("name") or "ASIAN"),
+        "timezone": tz_name,
+        "timezone_obj": tz,
+        "start": parse_clock(cfg.get("start"), "00:00"),
+        "end": parse_clock(cfg.get("end"), "07:00"),
+    }
+
+
+def _live_tick(symbol: str) -> Optional[Dict[str, float]]:
+    try:
+        import MetaTrader5 as mt5
+        tick = mt5.symbol_info_tick(symbol)
+        if not tick:
+            return None
+        bid = _valid_price(getattr(tick, "bid", None))
+        ask = _valid_price(getattr(tick, "ask", None))
+        if bid is None and ask is None:
+            return None
+        if bid is None:
+            bid = ask
+        if ask is None:
+            ask = bid
+        return {
+            "bid": bid,
+            "ask": ask,
+            "mid": (bid + ask) / 2.0,
+            "spread_price": max(0.0, ask - bid),
+        }
+    except Exception:
+        return None
+
+
+def _live_liquidity_data(symbol: str, session_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Derive previous-day and configured-session extremes from MT5 bars."""
+    out: Dict[str, Any] = {}
+    try:
+        import MetaTrader5 as mt5
+        import pandas as pd  # type: ignore
+        from datetime import timedelta
+
+        d1 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 1, 1)
+        if d1 is not None and len(d1):
+            row = d1[0]
+            out["yest_high"] = _valid_price(row["high"])
+            out["yest_low"] = _valid_price(row["low"])
+            out["yest_close"] = _valid_price(row["close"])
+
+        session = _session_bounds(session_config)
+        now_utc = datetime.now(timezone.utc)
+        local_now = now_utc.astimezone(session["timezone_obj"])
+        session_date = local_now.date()
+        if local_now.time() < session["start"]:
+            session_date = session_date
+            if session["start"] > session["end"]:
+                session_date = session_date - timedelta(days=1)
+
+        start_local = datetime.combine(session_date, session["start"], tzinfo=session["timezone_obj"])
+        end_local = datetime.combine(session_date, session["end"], tzinfo=session["timezone_obj"])
+        if session["start"] >= session["end"]:
+            if local_now.time() < session["end"]:
+                start_local -= timedelta(days=1)
+            end_local += timedelta(days=1)
+
+        rates = mt5.copy_rates_range(
+            symbol,
+            mt5.TIMEFRAME_H1,
+            start_local.astimezone(timezone.utc),
+            end_local.astimezone(timezone.utc),
+        )
+        if rates is not None and len(rates):
+            frame = pd.DataFrame(rates)
+            out["session_high"] = _valid_price(frame["high"].max())
+            out["session_low"] = _valid_price(frame["low"].min())
+            out["session_name"] = session["name"]
+            out["session_timezone"] = session["timezone"]
+            out["session_start"] = start_local.isoformat()
+            out["session_end"] = end_local.isoformat()
+    except Exception as exc:
+        LOG.debug("Live liquidity derivation unavailable: %s", exc)
+    return out
+
+
+def _live_pivot_data(symbol: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    try:
+        import MetaTrader5 as mt5
+        rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 1, 1)
+        if rates is not None and len(rates):
+            row = rates[0]
+            high = _valid_price(row["high"])
+            low = _valid_price(row["low"])
+            close = _valid_price(row["close"])
+            if high and low and close:
+                out["pp"] = (high + low + close) / 3.0
+    except Exception:
+        pass
+    return out
+
+
+def _node_state(node: Dict[str, Any], cursor: float) -> str:
+    if node.get("fill_pct") is not None and _number(node.get("fill_pct"), 0.0) >= 100.0:
+        return RETIRED
+    if node.get("swept") is True:
+        return MITIGATED
+    return ACTIVE
+
+
+class TopologicalGraphEngine:
+    """Builds and queries a live structural market graph only."""
+
+    def __init__(self) -> None:
         self._last_build_time = 0.0
         self._cached_graph: Dict[str, Any] = {}
-        self._mitigated_node_ids = set()
+        self._node_history: Dict[str, str] = {}
 
     def build_market_graph(
         self,
@@ -38,454 +188,311 @@ class TopologicalGraphEngine:
         spread_pts: float = 0.0,
         cvd_10b_pressure: float = 0.0,
         velocity_tpm: float = 0.0,
-        dfii10: float = 2.83,
-        us10y: float = 5.17,
-        dxy: float = 101.03,
-        cot_percentile: float = 80.4,
+        dfii10: Optional[float] = None,
+        us10y: Optional[float] = None,
+        dxy: Optional[float] = None,
+        cot_percentile: Optional[float] = None,
         fvg_matrix: Optional[Dict[str, Any]] = None,
         liquidity_data: Optional[Dict[str, Any]] = None,
         pivot_data: Optional[Dict[str, Any]] = None,
-        rates_m5: Optional[List[Dict[str, Any]]] = None
+        rates_m5: Optional[List[Dict[str, Any]]] = None,
+        session_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Builds the live directed spatial graph for the given symbol.
-        Operates in pure in-memory Python (<2ms compute time).
-        """
         sym = str(symbol or "XAUUSD").strip().upper()
-        
-        # 1. Input Sanitization (Adversarial Robustness)
-        try:
-            live_price = float(live_price)
-            if math.isnan(live_price) or math.isinf(live_price) or live_price <= 0.0 or live_price > 50000.0:
-                live_price = 0.0
-        except Exception:
-            live_price = 0.0
 
-        try:
-            spread_pts = float(spread_pts)
-            if math.isnan(spread_pts) or math.isinf(spread_pts) or spread_pts < 0.0:
-                spread_pts = 20.0
-        except Exception:
-            spread_pts = 20.0
+        explicit_price = _valid_price(live_price)
+        tick = _live_tick(sym) if explicit_price is None else None
+        price = explicit_price or (tick["mid"] if tick else None)
+        if price is None:
+            graph = {
+                "symbol": sym,
+                "status": "LIVE_TOPOLOGY_UNAVAILABLE",
+                "reason": "No verified live quote and no explicit observation supplied",
+                "live_price": None,
+                "spread_pts": None,
+                "nodes": {},
+                "edges": [],
+                "macro_leash": {},
+                "order_flow": {},
+                "session": _session_bounds(session_config),
+                "built_at": time.time(),
+            }
+            self._cached_graph = graph
+            self._last_build_time = graph["built_at"]
+            return graph
 
-        # Fallbacks and defaults if price is not provided
-        if live_price <= 0.0:
-            try:
-                import MetaTrader5 as mt5
-                tick = mt5.symbol_info_tick(sym)
-                if tick:
-                    live_price = float(tick.ask if tick.ask > 0 else tick.bid)
-                    spread_pts = round((tick.ask - tick.bid) * 100, 1)
-            except Exception:
-                live_price = 4285.23
-                spread_pts = 47.0
+        if tick:
+            spread = tick["spread_price"] * 100.0
+        else:
+            spread = _number(spread_pts)
+            if spread is None or spread < 0:
+                spread = None
 
-        # 2. Extract Structural Spatial Anchors
-        nodes = {}
-        edges = []
-
-        # Current Price Cursor Node
-        nodes["CURSOR"] = {
-            "id": "CURSOR",
-            "type": "PRICE_CURSOR",
-            "price": live_price,
-            "spread_pts": spread_pts,
-            "label": f"Price Cursor ({live_price:.2f})"
+        nodes: Dict[str, Dict[str, Any]] = {
+            "CURSOR": {
+                "id": "CURSOR",
+                "type": "PRICE_CURSOR",
+                "price": price,
+                "tf": "TICK",
+                "lifecycle_state": ACTIVE,
+                "label": f"Price Cursor ({price:.2f})",
+            }
         }
 
-        # Liquidity Radar Levels (Asian High/Low, PDH/PDL)
-        ah, al, yh, yl = 4300.00, 4254.39, 4315.64, 4244.12
-        if liquidity_data and isinstance(liquidity_data, dict):
-            try:
-                ah = float(liquidity_data.get("asian_high", 0) or 0)
-                al = float(liquidity_data.get("asian_low", 0) or 0)
-                yh = float(liquidity_data.get("yest_high", 0) or 0)
-                yl = float(liquidity_data.get("yest_low", 0) or 0)
-            except Exception:
-                pass
+        liq = dict(_live_liquidity_data(sym, session_config))
+        if liquidity_data:
+            liq.update({k: v for k, v in liquidity_data.items() if v is not None})
 
-        if ah > 0:
-            nodes["ASIAN_HIGH"] = {
-                "id": "ASIAN_HIGH", "type": "SESSION_EXTREME_BSL",
-                "price": ah, "tf": "M15", "swept": live_price > ah,
-                "label": f"Asian High BSL ({ah:.2f})"
-            }
-        if al > 0:
-            nodes["ASIAN_LOW"] = {
-                "id": "ASIAN_LOW", "type": "SESSION_EXTREME_SSL",
-                "price": al, "tf": "M15", "swept": live_price < al,
-                "label": f"Asian Low SSL ({al:.2f})"
-            }
-        if yh > 0:
-            nodes["PDH"] = {
-                "id": "PDH", "type": "PREV_DAY_HIGH_BSL",
-                "price": yh, "tf": "D1", "swept": live_price > yh,
-                "label": f"PDH ({yh:.2f})"
-            }
-        if yl > 0:
-            nodes["PDL"] = {
-                "id": "PDL", "type": "PREV_DAY_LOW_SSL",
-                "price": yl, "tf": "D1", "swept": live_price < yl,
-                "label": f"PDL ({yl:.2f})"
-            }
+        level_specs = [
+            ("SESSION_HIGH", "SESSION_EXTREME_BSL", "session_high", "M15", price > (_valid_price(liq.get("session_high")) or math.inf)),
+            ("SESSION_LOW", "SESSION_EXTREME_SSL", "session_low", "M15", price < (_valid_price(liq.get("session_low")) or -math.inf)),
+            ("PDH", "PREV_DAY_HIGH_BSL", "yest_high", "D1", price > (_valid_price(liq.get("yest_high")) or math.inf)),
+            ("PDL", "PREV_DAY_LOW_SSL", "yest_low", "D1", price < (_valid_price(liq.get("yest_low")) or -math.inf)),
+        ]
+        for nid, ntype, key, tf, swept in level_specs:
+            value = _valid_price(liq.get(key))
+            if value is not None:
+                nodes[nid] = {
+                    "id": nid, "type": ntype, "price": value, "tf": tf,
+                    "swept": bool(swept), "lifecycle_state": MITIGATED if swept else ACTIVE,
+                    "source": "live_mt5" if key not in liq or key not in (liquidity_data or {}) else "explicit_observation",
+                    "label": f"{nid} ({value:.2f})",
+                }
 
-        # Daily Pivot & S/R Shelves
-        pp, demand_low, demand_high, supply_low, supply_high = 4272.95, 4244.12, 4246.62, 4300.66, 4303.16
-        if pivot_data and isinstance(pivot_data, dict):
-            try:
-                pp = float(pivot_data.get("pp", 0) or 0)
-                demand_low = float(pivot_data.get("demand_low", 0) or 0)
-                demand_high = float(pivot_data.get("demand_high", 0) or 0)
-                supply_low = float(pivot_data.get("supply_low", 0) or 0)
-                supply_high = float(pivot_data.get("supply_high", 0) or 0)
-            except Exception:
-                pass
+        pivot = dict(_live_pivot_data(sym))
+        if pivot_data:
+            pivot.update({k: v for k, v in pivot_data.items() if v is not None})
 
-        if pp > 0:
+        pp = _valid_price(pivot.get("pp"))
+        if pp is not None:
             nodes["DAILY_PP"] = {
                 "id": "DAILY_PP", "type": "VALUE_AREA_EQUILIBRIUM",
-                "price": pp, "tf": "D1", "label": f"Daily PP ({pp:.2f})"
-            }
-        if demand_high > 0:
-            nodes["DEMAND_SHELF"] = {
-                "id": "DEMAND_SHELF", "type": "INSTITUTIONAL_DEMAND",
-                "price": (demand_low + demand_high) / 2.0, "tf": "H1",
-                "bottom": demand_low, "top": demand_high,
-                "label": f"Demand Shelf ({demand_low:.2f}-{demand_high:.2f})"
-            }
-        if supply_low > 0:
-            nodes["SUPPLY_SHELF"] = {
-                "id": "SUPPLY_SHELF", "type": "INSTITUTIONAL_SUPPLY",
-                "price": (supply_low + supply_high) / 2.0, "tf": "H1",
-                "bottom": supply_low, "top": supply_high,
-                "label": f"Supply Shelf ({supply_low:.2f}-{supply_high:.2f})"
+                "price": pp, "tf": "D1", "lifecycle_state": ACTIVE,
+                "source": "live_mt5" if not pivot_data else "explicit_observation",
+                "label": f"Daily PP ({pp:.2f})",
             }
 
-        # FVG Matrix Levels (M5, M15, H1)
-        has_custom_fvgs = False
+        for nid, ntype, lo_key, hi_key in (
+            ("DEMAND_SHELF", "INSTITUTIONAL_DEMAND", "demand_low", "demand_high"),
+            ("SUPPLY_SHELF", "INSTITUTIONAL_SUPPLY", "supply_low", "supply_high"),
+        ):
+            lo, hi = _valid_price(pivot.get(lo_key)), _valid_price(pivot.get(hi_key))
+            if lo is not None and hi is not None and lo <= hi:
+                nodes[nid] = {
+                    "id": nid, "type": ntype, "price": (lo + hi) / 2.0,
+                    "bottom": lo, "top": hi, "tf": "H1",
+                    "lifecycle_state": ACTIVE, "source": "explicit_observation",
+                    "label": f"{nid.replace('_', ' ').title()} ({lo:.2f}-{hi:.2f})",
+                }
+
+        active_fvgs = []
         if fvg_matrix and isinstance(fvg_matrix, dict):
-            for fvg in fvg_matrix.get("active_fvgs", []):
-                if not isinstance(fvg, dict):
-                    continue
-                try:
-                    tf = str(fvg.get("timeframe", "M5"))
-                    side = str(fvg.get("type", "BEARISH"))
-                    ce = float(fvg.get("ce", 0) or 0)
-                    top = float(fvg.get("top", 0) or 0)
-                    bot = float(fvg.get("bottom", 0) or 0)
-                    fill_pct = float(fvg.get("fill_pct", 0) or 0)
-                    if math.isnan(ce) or math.isinf(ce) or ce <= 0:
-                        continue
-                    node_id = f"FVG_{tf}_{side}_{int(ce)}"
-
-                    # Dynamic Node Evaporation: If 100% filled, dissolve the node
-                    if fill_pct >= 100.0 or node_id in self._mitigated_node_ids:
-                        continue
-
-                    nodes[node_id] = {
-                        "id": node_id, "type": f"FVG_{side}",
-                        "price": ce, "tf": tf, "top": top, "bottom": bot,
-                        "fill_pct": fill_pct,
-                        "label": f"{tf} {side} FVG (CE: {ce:.2f}, {fill_pct:.0f}% fill)"
-                    }
-                    has_custom_fvgs = True
-                except Exception:
-                    continue
-
-        if not has_custom_fvgs:
-            # Default M5 Bear FVG from Friday close
-            nodes["FVG_M5_BEAR_4286"] = {
-                "id": "FVG_M5_BEAR_4286", "type": "FVG_BEARISH",
-                "price": 4286.66, "tf": "M5", "top": 4286.72, "bottom": 4286.59,
-                "fill_pct": 0.0, "label": "M5 Bear FVG (CE: 4286.66, 0% fill)"
+            active_fvgs = fvg_matrix.get("active_fvgs", []) or []
+        for idx, fvg in enumerate(active_fvgs):
+            if not isinstance(fvg, dict):
+                continue
+            ce = _valid_price(fvg.get("ce"))
+            top, bottom = _valid_price(fvg.get("top")), _valid_price(fvg.get("bottom"))
+            fill = _number(fvg.get("fill_pct"), 0.0)
+            if ce is None or top is None or bottom is None or fill is None or fill >= 100.0:
+                continue
+            tf = str(fvg.get("timeframe") or "M5").upper()
+            side = str(fvg.get("type") or "UNKNOWN").upper()
+            nid = str(fvg.get("id") or f"FVG_{tf}_{side}_{idx}")
+            nodes[nid] = {
+                "id": nid, "type": f"FVG_{side}", "price": ce, "tf": tf,
+                "top": top, "bottom": bottom, "fill_pct": max(0.0, min(100.0, fill)),
+                "lifecycle_state": ACTIVE, "source": "explicit_observation",
+                "label": f"{tf} {side} FVG (CE: {ce:.2f}, {fill:.0f}% fill)",
             }
 
-        # 3. Macro Leash & Order Flow Friction Attributes
-        macro_leash = {
-            "dfii10": dfii10,
-            "us10y": us10y,
-            "dxy": dxy,
-            "cot_percentile": cot_percentile,
-            "regime": "BEARISH_RATES_HEADWIND" if (dfii10 > 2.5 or us10y > 5.0) else "BULLISH_ACCOMMODATIVE",
-            "crowded_long_specs": cot_percentile >= 75.0
+        edges: List[Dict[str, Any]] = []
+        relationship_by_type = {
+            "SESSION_EXTREME_BSL": "LIQUIDITY_TARGET",
+            "SESSION_EXTREME_SSL": "LIQUIDITY_TARGET",
+            "PREV_DAY_HIGH_BSL": "LIQUIDITY_TARGET",
+            "PREV_DAY_LOW_SSL": "LIQUIDITY_TARGET",
+            "VALUE_AREA_EQUILIBRIUM": "VALUE_REFERENCE",
+            "INSTITUTIONAL_DEMAND": "STRUCTURAL_ZONE",
+            "INSTITUTIONAL_SUPPLY": "STRUCTURAL_ZONE",
         }
-
-        order_flow = {
-            "cvd_10b_pressure": cvd_10b_pressure,
-            "velocity_tpm": velocity_tpm,
-            "delta_bias": "NEGATIVE_ABSORPTION" if cvd_10b_pressure < -15.0 else ("POSITIVE_EXPANSION" if cvd_10b_pressure > 15.0 else "NEUTRAL")
-        }
-
-        # 4. Construct Directed Spatial Edges from Cursor
-        for nid, n in nodes.items():
+        for nid, node in nodes.items():
             if nid == "CURSOR":
                 continue
-            dist = round(n["price"] - live_price, 2)
-            abs_dist = abs(dist)
-            
-            # Position relative to cursor
-            rel_pos = "ABOVE" if dist > 0 else "BELOW"
-            
-            # Obstacle vs Target Classification (Asymmetric Clearance Law)
-            # Intermediate levels in the direction of trade are highway waypoints, not obstacles
-            is_obstacle = False
-            is_uncompleted_sweep_hazard = False
-
-            if abs_dist < 3.0:
-                if "SESSION_EXTREME" in n["type"] and not n.get("swept", False):
-                    # Uncompleted sweep within 3 pts is an active trap hazard
-                    is_obstacle = True
-                    is_uncompleted_sweep_hazard = True
-                elif n["type"] in ("INSTITUTIONAL_DEMAND", "INSTITUTIONAL_SUPPLY") and abs_dist < 1.5:
-                    is_obstacle = True
-
+            distance = round(node["price"] - price, 6)
+            direction = "ABOVE" if distance > 0 else ("BELOW" if distance < 0 else "AT")
+            relationship = relationship_by_type.get(node["type"], "IMBALANCE_WAYPOINT" if node["type"].startswith("FVG_") else "STRUCTURAL_REFERENCE")
+            state = node.get("lifecycle_state", ACTIVE)
             edges.append({
                 "from": "CURSOR",
                 "to": nid,
-                "distance_pts": dist,
-                "abs_distance_pts": abs_dist,
-                "relative_position": rel_pos,
-                "level_type": n["type"],
-                "target_price": n["price"],
-                "is_obstacle": is_obstacle,
-                "is_uncompleted_sweep_hazard": is_uncompleted_sweep_hazard
+                "relationship": relationship,
+                "distance_pts": distance,
+                "abs_distance_pts": abs(distance),
+                "direction": direction,
+                "state": state,
+                "level_type": node["type"],
+                "target_price": node["price"],
+                "is_obstacle": False,
+                "is_uncompleted_sweep_hazard": (
+                    node["type"] in {"SESSION_EXTREME_BSL", "SESSION_EXTREME_SSL", "PREV_DAY_HIGH_BSL", "PREV_DAY_LOW_SSL"}
+                    and state == ACTIVE and abs(distance) < 3.0
+                ),
             })
-
-        # Sort edges by absolute distance (nearest first)
         edges.sort(key=lambda e: e["abs_distance_pts"])
+
+        macro = {}
+        for key, value in (("dfii10", dfii10), ("us10y", us10y), ("dxy", dxy), ("cot_percentile", cot_percentile)):
+            if value is not None and _number(value) is not None:
+                macro[key] = float(value)
 
         graph = {
             "symbol": sym,
-            "live_price": live_price,
-            "spread_pts": spread_pts,
+            "status": "LIVE" if tick else "OBSERVATION",
+            "live_price": price,
+            "spread_pts": spread,
             "nodes": nodes,
             "edges": edges,
-            "macro_leash": macro_leash,
-            "order_flow": order_flow,
-            "built_at": time.time()
+            "macro_observations": macro,
+            "order_flow_observations": {
+                "cvd_10b_pressure": _number(cvd_10b_pressure, 0.0),
+                "velocity_tpm": _number(velocity_tpm, 0.0),
+            },
+            "session": {
+                "name": _session_bounds(session_config)["name"],
+                "timezone": _session_bounds(session_config)["timezone"],
+                "start": _session_bounds(session_config)["start"].strftime("%H:%M"),
+                "end": _session_bounds(session_config)["end"].strftime("%H:%M"),
+            },
+            "built_at": time.time(),
         }
 
+        for nid, node in nodes.items():
+            previous = self._node_history.get(nid)
+            current = node.get("lifecycle_state", ACTIVE)
+            if current == ACTIVE and previous == MITIGATED:
+                node["lifecycle_state"] = ACTIVE
+            self._node_history[nid] = node.get("lifecycle_state", ACTIVE)
+
         self._cached_graph = graph
-        self._last_build_time = time.time()
+        self._last_build_time = graph["built_at"]
         return graph
 
     def get_localized_ego_graph(self, symbol: str = "XAUUSD", k_hops: int = 1) -> Dict[str, Any]:
-        """
-        Extracts the localized k-hop ego-graph around current price.
-        Identifies nearest ceiling, nearest floor, downward cascade chain, and upward cascade chain.
-        """
         if not self._cached_graph or self._cached_graph.get("symbol") != symbol.upper():
-            self.build_market_graph(symbol=symbol)
+            graph = self.build_market_graph(symbol=symbol)
+        else:
+            graph = self._cached_graph
 
-        g = self._cached_graph
-        live_p = g["live_price"]
-        edges = g["edges"]
-        nodes = g["nodes"]
+        if graph.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
+            return {
+                "symbol": symbol.upper(),
+                "status": graph["status"],
+                "live_price": None,
+                "nearest_ceiling": None,
+                "nearest_floor": None,
+                "downward_cascade_chain": [],
+                "upward_cascade_chain": [],
+                "hazard_edges": [],
+                "uncompleted_sweeps": [],
+                "macro_observations": {},
+                "order_flow_observations": {},
+            }
 
-        # Find nearest ceiling (above price) and nearest floor (below price)
-        ceilings = [e for e in edges if e["relative_position"] == "ABOVE"]
-        floors = [e for e in edges if e["relative_position"] == "BELOW"]
+        price = graph["live_price"]
+        edges = graph["edges"]
+        nodes = graph["nodes"]
+        ceilings = [e for e in edges if e["direction"] == "ABOVE"]
+        floors = [e for e in edges if e["direction"] == "BELOW"]
 
         nearest_ceiling = ceilings[0] if ceilings else None
         nearest_floor = floors[0] if floors else None
 
-        # Build Downward Liquidity Cascade Chain
-        # Major cascade targets below current price
-        downward_chain = []
-        for e in floors:
-            nid = e["to"]
-            n = nodes.get(nid, {})
-            if n.get("type") in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL"):
-                downward_chain.append({
-                    "label": n.get("label"),
-                    "price": n.get("price"),
-                    "distance_pts": e["abs_distance_pts"]
-                })
-        downward_chain = downward_chain[:3]
+        def chain(source: List[Dict[str, Any]], allowed: set[str]) -> List[Dict[str, Any]]:
+            return [
+                {"label": nodes[e["to"]]["label"], "price": nodes[e["to"]]["price"], "distance_pts": e["abs_distance_pts"], "relationship": e["relationship"], "state": e["state"]}
+                for e in source if nodes.get(e["to"], {}).get("type") in allowed
+            ][:3]
 
-        # Build Upward Liquidity Cascade Chain
-        upward_chain = []
-        for e in ceilings:
-            nid = e["to"]
-            n = nodes.get(nid, {})
-            if n.get("type") in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL"):
-                upward_chain.append({
-                    "label": n.get("label"),
-                    "price": n.get("price"),
-                    "distance_pts": e["abs_distance_pts"]
-                })
-        upward_chain = upward_chain[:3]
-
-        # Obstacle Check
-        hazard_edges = [e for e in edges if e.get("is_obstacle", False)]
-        uncompleted_sweeps = [e for e in edges if e.get("is_uncompleted_sweep_hazard", False)]
-
-        # Macro Highway Clearance Calculation
-        # Planned SL buffer is governed by CONST_SL_STRUCTURAL (6.0 to 12.0 pts, standard 8.0 pts)
-        ceiling_distance = nearest_ceiling["abs_distance_pts"] if nearest_ceiling else 8.0
-        short_sl_budget = min(max(ceiling_distance, 6.0), 10.0)
-        downward_runway = downward_chain[0]["distance_pts"] if downward_chain else 15.0
-        short_rr = round(downward_runway / short_sl_budget, 2)
-
-        floor_distance = nearest_floor["abs_distance_pts"] if nearest_floor else 8.0
-        long_sl_budget = min(max(floor_distance, 6.0), 10.0)
-        upward_runway = upward_chain[0]["distance_pts"] if upward_chain else 15.0
-        long_rr = round(upward_runway / long_sl_budget, 2)
+        downward = chain(floors, {"SESSION_EXTREME_SSL", "PREV_DAY_LOW_SSL", "INSTITUTIONAL_DEMAND", "VALUE_AREA_EQUILIBRIUM", "FVG_BEARISH"})
+        upward = chain(ceilings, {"SESSION_EXTREME_BSL", "PREV_DAY_HIGH_BSL", "INSTITUTIONAL_SUPPLY", "FVG_BULLISH"})
+        hazards = [e for e in edges if e["is_uncompleted_sweep_hazard"]]
 
         return {
             "symbol": symbol.upper(),
-            "live_price": live_p,
+            "status": graph.get("status"),
+            "live_price": price,
             "nearest_ceiling": nearest_ceiling,
             "nearest_floor": nearest_floor,
-            "downward_cascade_chain": downward_chain,
-            "upward_cascade_chain": upward_chain,
-            "hazard_edges": hazard_edges,
-            "uncompleted_sweeps": uncompleted_sweeps,
-            "short_macro_runway_rr": short_rr,
-            "long_macro_runway_rr": long_rr,
-            "macro_leash": g.get("macro_leash", {}),
-            "order_flow": g.get("order_flow", {})
+            "downward_cascade_chain": downward,
+            "upward_cascade_chain": upward,
+            "hazard_edges": hazards,
+            "uncompleted_sweeps": hazards,
+            "macro_observations": graph.get("macro_observations", {}),
+            "order_flow_observations": graph.get("order_flow_observations", {}),
+            "session": graph.get("session", {}),
         }
 
     def format_ego_graph_card(self, symbol: str = "XAUUSD", detailed: bool = False) -> str:
-        """
-        Formats topological inspection card for OpenCode.
-        - detailed=False (default): sub-80 token compact radar card.
-        - detailed=True: complete multi-level structural hierarchy of all active nodes.
-        """
         if detailed:
-            return self.format_detailed_graph_card(symbol=symbol)
-
-        ego = self.get_localized_ego_graph(symbol=symbol)
+            return self.format_detailed_graph_card(symbol)
+        ego = self.get_localized_ego_graph(symbol)
+        if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
+            return f"=== TOPOLOGICAL MARKET MAP ({symbol.upper()}) ===\n• Status: LIVE_TOPOLOGY_UNAVAILABLE"
         p = ego["live_price"]
-        nc = ego["nearest_ceiling"]
-        nf = ego["nearest_floor"]
-        dw = ego["downward_cascade_chain"]
-        up = ego["upward_cascade_chain"]
-        leash = ego["macro_leash"]
-        flow = ego["order_flow"]
-
-        nc_str = f"+{nc['abs_distance_pts']:.2f} pts [{nc['to']}] @ {nc['target_price']:.2f}" if nc else "None"
-        nf_str = f"-{nf['abs_distance_pts']:.2f} pts [{nf['to']}] @ {nf['target_price']:.2f}" if nf else "None"
-
-        dw_str = " -> ".join([f"{d['price']:.1f}" for d in dw]) if dw else "None"
-        up_str = " -> ".join([f"{u['price']:.1f}" for u in up]) if up else "None"
-
+        nc, nf = ego["nearest_ceiling"], ego["nearest_floor"]
+        nc_str = f"+{nc['abs_distance_pts']:.2f} pts [{nc['to']}]" if nc else "None"
+        nf_str = f"-{nf['abs_distance_pts']:.2f} pts [{nf['to']}]" if nf else "None"
+        down = " -> ".join(f"{x['price']:.1f}" for x in ego["downward_cascade_chain"]) or "None"
+        up = " -> ".join(f"{x['price']:.1f}" for x in ego["upward_cascade_chain"]) or "None"
         card = (
             f"=== TOPOLOGICAL MARKET MAP ({symbol.upper()} @ {p:.2f}) ===\n"
-            f"• Spatial Neighborhood: Ceiling: {nc_str} | Floor: {nf_str}\n"
-            f"• Liquidity Cascades: Downward: [{dw_str}] (Runway R:R {ego['short_macro_runway_rr']}:1) | Upward: [{up_str}] (Runway R:R {ego['long_macro_runway_rr']}:1)\n"
-            f"• Macro Leash & Tape: DFII10: {leash.get('dfii10', 0):.2f}% ({leash.get('regime')}) | 10b CVD: {flow.get('cvd_10b_pressure', 0):+.1f}%\n"
+            f"• Spatial Relations: Ceiling {nc_str} | Floor {nf_str}\n"
+            f"• Structural Cascades: Down [{down}] | Up [{up}]\n"
+            f"• Session: {ego['session'].get('name')} {ego['session'].get('start')}-{ego['session'].get('end')} {ego['session'].get('timezone')}\n"
         )
-
         if ego["uncompleted_sweeps"]:
-            haz = ego["uncompleted_sweeps"][0]
-            card += f"• ⚠️ TRAP HAZARD: Price is {haz['abs_distance_pts']:.1f} pts from un-swept {haz['to']}. Front-running prohibited.\n"
-
+            hazard = ego["uncompleted_sweeps"][0]
+            card += f"• Uncompleted Sweep Hazard: {hazard['to']} at {hazard['abs_distance_pts']:.2f} pts\n"
         return card.strip()
 
     def format_detailed_graph_card(self, symbol: str = "XAUUSD") -> str:
-        """
-        Formats a comprehensive multi-level structural hierarchy of ALL active graph nodes:
-        - Sorted ceilings (above price) and floors (below price) with exact coordinates, signed distance in pts, and level type.
-        - Unmitigated FVG details (CE, boundary bounds, fill %).
-        - Institutional Demand & Supply shelves.
-        - Session extremes (Asian High/Low, PDH/PDL) with sweep status.
-        - Extended cascade chains and obstacle hazard audit.
-        """
-        ego = self.get_localized_ego_graph(symbol=symbol)
-        g = self._cached_graph
-        p = ego["live_price"]
-        edges = g.get("edges", [])
-        nodes = g.get("nodes", {})
-        leash = ego.get("macro_leash", {})
-        flow = ego.get("order_flow", {})
-
-        ceilings = [e for e in edges if e["relative_position"] == "ABOVE"]
-        floors = [e for e in edges if e["relative_position"] == "BELOW"]
-
+        ego = self.get_localized_ego_graph(symbol)
+        if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
+            return f"=== TOPOLOGICAL MARKET MAP ({symbol.upper()}) ===\nStatus: LIVE_TOPOLOGY_UNAVAILABLE"
+        graph = self._cached_graph
         lines = [
-            f"=== TOPOLOGICAL MARKET MAP — MULTI-LEVEL STRUCTURAL INVENTORY ({symbol.upper()} @ {p:.2f}) ===",
-            f"Live Cursor: {p:.2f} | Spread: {g.get('spread_pts', 0):.1f} pts | DFII10: {leash.get('dfii10', 0):.2f}% ({leash.get('regime', 'NEUTRAL')}) | CVD: {flow.get('cvd_10b_pressure', 0):+.1f}%",
-            "",
-            "--- OVERHEAD CEILINGS (ABOVE PRICE) ---"
+            f"=== TOPOLOGICAL MARKET MAP — STRUCTURAL INVENTORY ({symbol.upper()} @ {ego['live_price']:.2f}) ===",
+            f"Session: {ego['session'].get('name')} {ego['session'].get('start')}-{ego['session'].get('end')} {ego['session'].get('timezone')}",
+            "--- ABOVE PRICE ---",
         ]
-        if not ceilings:
-            lines.append("  (No overhead structural levels detected)")
-        else:
-            for idx, e in enumerate(ceilings, 1):
-                nid = e["to"]
-                n = nodes.get(nid, {})
-                flag = " [OBSTACLE]" if e.get("is_obstacle") else ""
-                if e.get("is_uncompleted_sweep_hazard"):
-                    flag = " [TRAP HAZARD: UN-SWEPT EXTREME <3pts]"
-                fvg_extra = ""
-                if "FVG" in n.get("type", ""):
-                    fvg_extra = f" (Bounds: {n.get('bottom', 0):.2f}-{n.get('top', 0):.2f}, Fill: {n.get('fill_pct', 0):.0f}%)"
-                lines.append(f"  {idx}. +{e['abs_distance_pts']:.2f} pts | {n.get('label', nid)} @ {n.get('price', 0):.2f}{fvg_extra}{flag}")
-
-        lines.extend([
-            "",
-            "--- UNDERLYING FLOORS (BELOW PRICE) ---"
-        ])
-        if not floors:
-            lines.append("  (No underlying structural levels detected)")
-        else:
-            for idx, e in enumerate(floors, 1):
-                nid = e["to"]
-                n = nodes.get(nid, {})
-                flag = " [OBSTACLE]" if e.get("is_obstacle") else ""
-                if e.get("is_uncompleted_sweep_hazard"):
-                    flag = " [TRAP HAZARD: UN-SWEPT EXTREME <3pts]"
-                fvg_extra = ""
-                if "FVG" in n.get("type", ""):
-                    fvg_extra = f" (Bounds: {n.get('bottom', 0):.2f}-{n.get('top', 0):.2f}, Fill: {n.get('fill_pct', 0):.0f}%)"
-                lines.append(f"  {idx}. -{e['abs_distance_pts']:.2f} pts | {n.get('label', nid)} @ {n.get('price', 0):.2f}{fvg_extra}{flag}")
-
-        # All cascade levels
-        dw = [f"{nodes[e['to']]['price']:.1f}" for e in floors if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL")]
-        up = [f"{nodes[e['to']]['price']:.1f}" for e in ceilings if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL")]
-
-        dw_str = " -> ".join(dw) if dw else "None"
-        up_str = " -> ".join(up) if up else "None"
-
-        lines.extend([
-            "",
-            f"• Liquidity Cascade Sequences: Downward: [{dw_str}] (Runway R:R {ego.get('short_macro_runway_rr')}:1) | Upward: [{up_str}] (Runway R:R {ego.get('long_macro_runway_rr')}:1)"
-        ])
-        if ego.get("uncompleted_sweeps"):
-            haz = ego["uncompleted_sweeps"][0]
-            lines.append(f"• ⚠️ ACTIVE TRAP HAZARD: Price is {haz['abs_distance_pts']:.1f} pts from un-swept {haz['to']}. Front-running prohibited.")
-
-        return "\n".join(lines).strip()
+        for e in [x for x in graph["edges"] if x["direction"] == "ABOVE"]:
+            n = graph["nodes"][e["to"]]
+            lines.append(f"  +{e['abs_distance_pts']:.2f} | {n['label']} | {e['relationship']} | {e['state']}")
+        lines.append("--- BELOW PRICE ---")
+        for e in [x for x in graph["edges"] if x["direction"] == "BELOW"]:
+            n = graph["nodes"][e["to"]]
+            lines.append(f"  -{e['abs_distance_pts']:.2f} | {n['label']} | {e['relationship']} | {e['state']}")
+        return "\n".join(lines)
 
     def format_dossier_compact_vector(self, symbol: str = "XAUUSD") -> str:
-        """
-        Formats the ultra-compact 3-line topological vector for Turn A and Turn B dossier headers.
-        Net-negative tokens: Replaces 15 lines of messy text with 3 lines of spatial coordinates.
-        """
-        ego = self.get_localized_ego_graph(symbol=symbol)
-        p = ego["live_price"]
-        nc = ego["nearest_ceiling"]
-        nf = ego["nearest_floor"]
-        dw = ego["downward_cascade_chain"]
-        leash = ego["macro_leash"]
-        flow = ego["order_flow"]
-
-        nc_desc = f"+{nc['abs_distance_pts']:.1f}pt ({nc['target_price']:.1f})" if nc else "Clear"
-        nf_desc = f"-{nf['abs_distance_pts']:.1f}pt ({nf['target_price']:.1f})" if nf else "Clear"
-        target_desc = f"{dw[0]['price']:.1f} ({dw[0]['distance_pts']:.1f}pt)" if dw else "Open"
-
-        cascade_str = " -> ".join([str(round(d["price"], 1)) for d in dw]) if dw else "Open"
+        ego = self.get_localized_ego_graph(symbol)
+        if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
+            return f"[TOPOLOGICAL GPS {symbol.upper()}]: UNAVAILABLE"
+        nc, nf = ego["nearest_ceiling"], ego["nearest_floor"]
         return (
-            f"[TOPOLOGICAL GPS @ {p:.2f}]: Ceiling: {nc_desc} | Floor: {nf_desc} | Target Magnet: {target_desc} (R:R {ego['short_macro_runway_rr']}:1)\n"
-            f"CASCADE CHAIN: {cascade_str}\n"
-            f"MACRO LEASH: DFII10 {leash.get('dfii10', 0):.2f}% ({leash.get('regime', 'NEUTRAL')}) | CVD 10b: {flow.get('cvd_10b_pressure', 0):+.1f}%"
+            f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
+            f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
+            f"Floor: {nf['abs_distance_pts']:.1f}pt ({nf['to']})"
+            if nc and nf else
+            f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
+            f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
+            f"Floor: {'None' if not nf else str(nf['abs_distance_pts']) + 'pt'}"
         )
 
 
-# Global Singleton Instance
 _topological_engine: Optional[TopologicalGraphEngine] = None
+
 
 def get_topological_engine() -> TopologicalGraphEngine:
     global _topological_engine
