@@ -1034,7 +1034,7 @@ class ConsolidatedTradingDaemon:
                     f"STEP 0 (MANDATORY IN-FLIGHT PARALLEL AUDIT & CONTINUOUS FACT GROUNDING):\n"
                     f"  • `alpha_get_market_regime_context(symbol='XAUUSD')`: Live quotes, spread, CVD, 4M footprint deltas.\n"
                     f"  • `alpha_get_account_status()`: Current floating PnL, margin utilization.\n"
-                    f"  • `graphiti_search_facts(patterns=['<IN_FLIGHT_STATE_TAGS>'])`: Retrieve historical evidence about similar in-flight states; compare it with today's live tape without treating prior outcomes as a veto or clearance.\n"
+                    f"  • `graphiti_search_facts(patterns=['<IN_FLIGHT_STATE_TAGS>'])`: Retrieve historical evidence about similar in-flight states; compare it with today's live tape without treating prior outcomes as a veto or clearance.\n"                    f"  • Evidence classification is sample-size context only: 3 live WIN/TRAP observations are required to mark minimum evidence; study-only and mixed records remain explicitly classified, never promoted into a verdict.\n"
                     f"  • `proxima_ask_perplexity(message=\"Gold XAUUSD breaking news headlines in last 15 minutes\")`: Check surprise breaking wires.\n"
                     f"  • `graphiti_record_observation(patterns=[...], observation='...', outcome='STUDY'|'WIN'|'TRAP')`: Record in-flight trade dynamics.\n\n"
                     f"LIVE POSITION SNAPSHOT (direct from MT5 — no hallucination):\n"
