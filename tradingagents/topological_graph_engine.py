@@ -244,6 +244,10 @@ class TopologicalGraphEngine:
         liq = dict(_live_liquidity_data(sym, session_config)) if tick else {}
         if liquidity_data:
             liq.update({k: v for k, v in liquidity_data.items() if v is not None})
+            if "session_high" not in liq and liquidity_data.get("asian_high") is not None:
+                liq["session_high"] = liquidity_data["asian_high"]
+            if "session_low" not in liq and liquidity_data.get("asian_low") is not None:
+                liq["session_low"] = liquidity_data["asian_low"]
 
         level_specs = [
             ("SESSION_HIGH", "SESSION_EXTREME_BSL", "session_high", "M15", price > (_valid_price(liq.get("session_high")) or math.inf)),
