@@ -239,7 +239,9 @@ class TopologicalGraphEngine:
             }
         }
 
-        liq = dict(_live_liquidity_data(sym, session_config))
+        # Explicit observations are isolated from live MT5 structure so replay/test
+        # coordinates cannot be contaminated by the current market.
+        liq = dict(_live_liquidity_data(sym, session_config)) if tick else {}
         if liquidity_data:
             liq.update({k: v for k, v in liquidity_data.items() if v is not None})
 
@@ -259,7 +261,7 @@ class TopologicalGraphEngine:
                     "label": f"{nid} ({value:.2f})",
                 }
 
-        pivot = dict(_live_pivot_data(sym))
+        pivot = dict(_live_pivot_data(sym)) if tick else {}
         if pivot_data:
             pivot.update({k: v for k, v in pivot_data.items() if v is not None})
 
@@ -286,6 +288,7 @@ class TopologicalGraphEngine:
                 }
 
         active_fvgs = []
+        retired_node_ids: List[str] = []
         if fvg_matrix and isinstance(fvg_matrix, dict):
             active_fvgs = fvg_matrix.get("active_fvgs", []) or []
         for idx, fvg in enumerate(active_fvgs):
@@ -294,11 +297,15 @@ class TopologicalGraphEngine:
             ce = _valid_price(fvg.get("ce"))
             top, bottom = _valid_price(fvg.get("top")), _valid_price(fvg.get("bottom"))
             fill = _number(fvg.get("fill_pct"), 0.0)
-            if ce is None or top is None or bottom is None or fill is None or fill >= 100.0:
-                continue
             tf = str(fvg.get("timeframe") or "M5").upper()
             side = str(fvg.get("type") or "UNKNOWN").upper()
             nid = str(fvg.get("id") or f"FVG_{tf}_{side}_{idx}")
+            if ce is None or top is None or bottom is None or fill is None:
+                continue
+            if fill >= 100.0:
+                retired_node_ids.append(nid)
+                self._node_history[nid] = RETIRED
+                continue
             nodes[nid] = {
                 "id": nid, "type": f"FVG_{side}", "price": ce, "tf": tf,
                 "top": top, "bottom": bottom, "fill_pct": max(0.0, min(100.0, fill)),
@@ -346,6 +353,11 @@ class TopologicalGraphEngine:
             if value is not None and _number(value) is not None:
                 macro[key] = float(value)
 
+        session = _session_bounds(session_config)
+        now_local = datetime.now(timezone.utc).astimezone(session["timezone_obj"])
+        session_active = _session_contains(
+            (now_local.hour, now_local.minute), session["start"], session["end"]
+        )
         graph = {
             "symbol": sym,
             "status": "LIVE" if tick else "OBSERVATION",
@@ -360,11 +372,13 @@ class TopologicalGraphEngine:
                 "velocity_tpm": _number(velocity_tpm, 0.0),
             },
             "session": {
-                "name": _session_bounds(session_config)["name"],
-                "timezone": _session_bounds(session_config)["timezone"],
-                "start": _session_bounds(session_config)["start"].strftime("%H:%M"),
-                "end": _session_bounds(session_config)["end"].strftime("%H:%M"),
+                "name": session["name"],
+                "timezone": session["timezone"],
+                "start": session["start"].strftime("%H:%M"),
+                "end": session["end"].strftime("%H:%M"),
+                "state": "ACTIVE" if session_active else "OUTSIDE",
             },
+            "retired_node_ids": retired_node_ids,
             "built_at": time.time(),
         }
 
