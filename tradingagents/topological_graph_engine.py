@@ -352,6 +352,92 @@ class TopologicalGraphEngine:
                     and state == ACTIVE and abs(distance) < 3.0
                 ),
             })
+        # Keep the radial cursor relations for compatibility, but also materialize
+        # explicit directional paths. A path is an ordered sequence of structural
+        # targets that price would encounter moving in one direction from CURSOR.
+        # This turns the graph from a nearest-level inventory into a traversable
+        # market roadway without making a directional trading decision.
+        above_edges = sorted(
+            [e for e in edges if e["direction"] == "ABOVE"],
+            key=lambda e: e["target_price"],
+        )
+        below_edges = sorted(
+            [e for e in edges if e["direction"] == "BELOW"],
+            key=lambda e: e["target_price"],
+            reverse=True,
+        )
+
+        def _build_directional_path(
+            source_edges: List[Dict[str, Any]],
+            direction: str,
+        ) -> Dict[str, Any]:
+            steps: List[Dict[str, Any]] = []
+            previous_node = "CURSOR"
+            previous_price = price
+            cumulative = 0.0
+            path_state = "CLEAR"
+            for index, edge in enumerate(source_edges, start=1):
+                step_distance = round(abs(edge["target_price"] - previous_price), 6)
+                cumulative = round(cumulative + step_distance, 6)
+                node_id = edge["to"]
+                node = nodes[node_id]
+                hazard = bool(edge.get("is_uncompleted_sweep_hazard"))
+                if hazard and path_state == "CLEAR":
+                    path_state = "HAZARD"
+                steps.append({
+                    "index": index,
+                    "from": previous_node,
+                    "to": node_id,
+                    "direction": direction,
+                    "from_price": previous_price,
+                    "to_price": node["price"],
+                    "step_distance_pts": step_distance,
+                    "cumulative_distance_pts": cumulative,
+                    "relationship": edge["relationship"],
+                    "state": edge["state"],
+                    "target_type": node["type"],
+                    "target_label": node["label"],
+                    "is_uncompleted_sweep_hazard": hazard,
+                })
+                previous_node = node_id
+                previous_price = node["price"]
+
+            return {
+                "direction": direction,
+                "origin": "CURSOR",
+                "nodes": [step["to"] for step in steps],
+                "steps": steps,
+                "terminal_node": steps[-1]["to"] if steps else None,
+                "terminal_price": steps[-1]["to_price"] if steps else None,
+                "runway_pts": cumulative if steps else 0.0,
+                "path_state": path_state,
+            }
+
+        directional_paths = {
+            "UP": _build_directional_path(above_edges, "UP"),
+            "DOWN": _build_directional_path(below_edges, "DOWN"),
+        }
+
+        # Explicit path edges are graph-native relationships between successive
+        # targets. Radial CURSOR edges remain available as direct spatial facts.
+        path_edges: List[Dict[str, Any]] = []
+        for path in directional_paths.values():
+            for step in path["steps"]:
+                path_edges.append({
+                    "from": step["from"],
+                    "to": step["to"],
+                    "relationship": "DIRECTIONAL_PATH_STEP",
+                    "direction": step["direction"],
+                    "distance_pts": step["step_distance_pts"],
+                    "abs_distance_pts": step["step_distance_pts"],
+                    "cumulative_distance_pts": step["cumulative_distance_pts"],
+                    "state": step["state"],
+                    "level_type": step["target_type"],
+                    "target_price": step["to_price"],
+                    "is_path_edge": True,
+                    "is_uncompleted_sweep_hazard": step["is_uncompleted_sweep_hazard"],
+                })
+
         edges.sort(key=lambda e: e["abs_distance_pts"])
 
         macro = {}
@@ -371,6 +457,8 @@ class TopologicalGraphEngine:
             "spread_pts": spread,
             "nodes": nodes,
             "edges": edges,
+            "path_edges": path_edges,
+            "directional_paths": directional_paths,
             "macro_observations": macro,
             "order_flow_observations": {
                 "cvd_10b_pressure": _number(cvd_10b_pressure, 0.0),
@@ -446,6 +534,9 @@ class TopologicalGraphEngine:
             "nearest_floor": nearest_floor,
             "downward_cascade_chain": downward,
             "upward_cascade_chain": upward,
+            "downward_path": graph.get("directional_paths", {}).get("DOWN", {}),
+            "upward_path": graph.get("directional_paths", {}).get("UP", {}),
+            "path_edges": graph.get("path_edges", []),
             "hazard_edges": hazards,
             "uncompleted_sweeps": hazards,
             "macro_observations": graph.get("macro_observations", {}),
@@ -465,9 +556,12 @@ class TopologicalGraphEngine:
         nf_str = f"-{nf['abs_distance_pts']:.2f} pts [{nf['to']}]" if nf else "None"
         down = " -> ".join(f"{x['price']:.1f}" for x in ego["downward_cascade_chain"]) or "None"
         up = " -> ".join(f"{x['price']:.1f}" for x in ego["upward_cascade_chain"]) or "None"
+        down_path = " -> ".join(str(x["to"]) for x in ego.get("downward_path", {}).get("steps", [])) or "None"
+        up_path = " -> ".join(str(x["to"]) for x in ego.get("upward_path", {}).get("steps", [])) or "None"
         card = (
             f"=== TOPOLOGICAL MARKET MAP ({symbol.upper()} @ {p:.2f}) ===\n"
             f"• Spatial Relations: Ceiling {nc_str} | Floor {nf_str}\n"
+            f"• Directional Roadway: DOWN [{down_path}] | UP [{up_path}]\n"
             f"• Structural Cascades: Down [{down}] | Up [{up}]\n"
             f"• Session: {ego['session'].get('name')} {ego['session'].get('start')}-{ego['session'].get('end')} {ego['session'].get('timezone')}\n"
         )
@@ -500,10 +594,16 @@ class TopologicalGraphEngine:
         if ego.get("status") == "LIVE_TOPOLOGY_UNAVAILABLE":
             return f"[TOPOLOGICAL GPS {symbol.upper()}]: UNAVAILABLE"
         nc, nf = ego["nearest_ceiling"], ego["nearest_floor"]
+        down_path = ego.get("downward_path", {})
+        up_path = ego.get("upward_path", {})
+        down_terminal = down_path.get("terminal_node") or "None"
+        up_terminal = up_path.get("terminal_node") or "None"
         return (
             f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
             f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
-            f"Floor: {nf['abs_distance_pts']:.1f}pt ({nf['to']})"
+            f"Floor: {nf['abs_distance_pts']:.1f}pt ({nf['to']}) | "
+            f"UP_PATH: {up_terminal} ({up_path.get('runway_pts', 0.0):.1f}pt) | "
+            f"DOWN_PATH: {down_terminal} ({down_path.get('runway_pts', 0.0):.1f}pt)"
             if nc and nf else
             f"[TOPOLOGICAL GPS @ {ego['live_price']:.2f}]: "
             f"Ceiling: {nc['abs_distance_pts']:.1f}pt ({nc['to']}) | "
