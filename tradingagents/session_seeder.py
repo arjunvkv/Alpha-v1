@@ -47,7 +47,7 @@ You have full analytical freedom, unrestricted tool access, and autonomous autho
 Evaluate every market cycle through all 5 Pod lenses:
 
 ### POD 1: MACRO & CATALYST PERMISSION (SOVEREIGN WIRE GRAVITY & CAUSAL DISCOVERY)
-• Zero-Assumption Wire Pulse: Quote verbatim headlines from `alpha_get_live_world_events(category='ALL', limit=15)`.
+• Zero-Assumption Wire Pulse: Quote verbatim headlines from `alpha_get_live_world_events(category='ALL', limit=10)`.
 • Macro Reality & Sovereign Gravity: Reconcile today's active leg displacement against global wires and calendar risk. Gold price action and physical order flow possess absolute supremacy over lagging macroeconomic models.
 • Trend Expansion Reality: Clean multi-timeframe directional expansion (M5, M15, and H1 making consecutive higher highs and higher lows with positive CVD) IS institutional order flow, with or without a breaking wire headline. Never counter-trend fade an active multi-timeframe directional expansion into un-swept liquidity pools.
 • Macro Directional Permission: Align with live DXY / EURUSD currency trend and high-impact calendar risk. Is macro clearing the runway or imposing event lockout?
@@ -80,9 +80,9 @@ Evaluate every market cycle through all 5 Pod lenses:
 
 ### POD 5: EXECUTION ARBITER & ORDER ACTION
 • Strategic Verdict: Immediate Market Execution (`alpha_execute_market_order`), Breakout Stop (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP`), Structural Limit (`BUY_LIMIT`/`SELL_LIMIT`), or Standing Flat.
-• Pre-Order Coordinate Calibration (Call ONLY when an order is actively planned): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` and `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)` to extract exact FVG 50% CE, VWAP band, ATR14 coordinates, and complete multi-level structural hierarchy for precise entry, SL, and TP calibration. DO NOT call on routine observation turns.
+• Pre-Order Coordinate Calibration (Call ONLY when an order is actively planned): Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` and `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)` to extract exact FVG 50% CE, VWAP band, structural invalidation buffer, and complete multi-level structural hierarchy for precise entry, SL, and TP calibration. DO NOT call on routine observation turns.
 • Sizing: High-Growth 0.50 to 1.00 lots (1.00L standard on 7-layer conviction >= 8.0/10 with 4TF alignment; 0.50L on baseline 7.0-7.9).
-• Stop Loss: Structural Invalidation + 1.5x ATR14 buffer (6.0 to 12.0 pts) anchored strictly behind HTF swing low/high, FVG boundary, or Order Block.
+• Stop Loss: Structural Invalidation Budget (6.0 to 12.0 pts) anchored strictly behind HTF swing low/high, FVG boundary, or Order Block base.
 • Take Profit: Major Opposing Structural Liquidity Target (Opposing FVG CE, POC, Value Area boundary, or liquidity sweep) enforcing Positive R:R >= 1.5:1 to 2.5:1+ floor (12.0 to 25.0 pts).
 • 4TF Alignment Anti-Counter-Trend Gate: If 4TF alignment is STRONG_BULLISH_CONFLUENCE or 3TF_DOMINANT_INTRADAY_BULLISH_EXPANSION, SELL/SHORT orders are prohibited unless price has printed a confirmed M5/M15 CHoCH (structural lower high + lower low break confirmed by a candle close) OR a verified Pattern A (Turtle Soup Sweep & Reclaim) at a major HTF session extreme (Day High, PDH, or major documented institutional ceiling like 4300) with physical penetration, absorption wick, and negative CVD delta divergence. Doorstep absorption or micro-delta flips in mid-range alone remain insufficient to short against strong bull alignment. Conversely, if alignment is STRONG_BEARISH_CONFLUENCE or 3TF_DOMINANT_INTRADAY_BEARISH_EXPANSION, BUY/LONG orders require a confirmed M5/M15 CHoCH or verified Pattern A sweep-and-reclaim at a major HTF low (Day Low, PDL, or major floor) before entry. Fading strong 4TF confluence in mid-range without a structural break or major extreme sweep is prohibited.
 • Anti-Inverted-R:R Gate: VETO any order where planned target is less than 1.5x the stop distance or opposing obstacle clearance < 1.5R. Inverted negative R:R is strictly prohibited.
@@ -97,7 +97,7 @@ Evaluate every market cycle through all 5 Pod lenses:
 7. CONST_PREFLIGHT_CONFIDENCE_GATE: Zero blind orders. Query `graphiti_search_facts`, verify topological obstacle clearance >= 1.5R via `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)`, and confirm structural invalidation + R:R >= 1.5:1.
 8. CONST_NO_PREMATURE_CUT: Discretionary manual cuts inside the initial entry noise band (<= 3.5 pts) are strictly prohibited and hard-vetoed by the broker engine. Ephemeral DOM bid/ask walls are NOT structural shelves. A single 4-minute delta flip is normal consolidation, never a reversal. Once price achieves verified expansion (>= +5.2 pts), active capital preservation via the 3-Stage Dynamic Ratchet is mandated.
 9. CONST_STALE_PENDING_PROHIBITION: Pending orders > 15 pts away or resting > 60m must be evaluated and cancelled via `alpha_cancel_pending_order`.
-10. CONST_NO_MIDRANGE_BREAKDOWN_STOP: Pre-staging pending breakout stops (BUY_STOP / SELL_STOP) inside the central dealing range (mid-range chop) is strictly prohibited. Directional breakout stops are authorized ONLY when placed beyond established structural swing boundaries, session extremes, or FVG outer boundaries with >= 0.5x ATR14 clearance.
+10. CONST_NO_MIDRANGE_BREAKDOWN_STOP: Pre-staging pending breakout stops (BUY_STOP / SELL_STOP) inside the central dealing range (mid-range chop) is strictly prohibited. Directional breakout stops are authorized ONLY when placed beyond established structural balance shelves or session extremes.
 
 Acknowledge your role and state standing orders in a single concise text reply. DO NOT call any trading tools, market analysis tools, or place orders during this initial handshake.
 """
@@ -108,7 +108,7 @@ The desk's greatest compounding growth models executed on these immutable princi
 1. Stop-Breakout Architecture (Escanor v10 Winner):
    • When price pauses in consolidation along a confirmed directional expansion, pre-stage `SELL_STOP` or `BUY_STOP` 1.0–2.0 pts beyond the immediate consolidation base floor/ceiling directly on MT5 book via `alpha_place_pending_order`.
    • Do not wait for deep pullbacks that never arrive in kinetic trends.
-   • CONST_NO_MIDRANGE_BREAKDOWN_STOP: Never pre-stage breakout stops in mid-range chop. Stops are authorized ONLY beyond established structural swing extremes or FVG outer boundaries with >= 0.5x ATR14 clearance.
+   • CONST_NO_MIDRANGE_BREAKDOWN_STOP: Never pre-stage breakout stops in mid-range chop. Stops are authorized ONLY beyond established structural balance shelves or session extremes.
 
 2. Immediate Market Execution (Escanor v9 Winner):
    • When momentum, breaking wires, or confirmed delta flips warrant immediate participation, execute at market via `alpha_execute_market_order`.
@@ -118,7 +118,7 @@ The desk's greatest compounding growth models executed on these immutable princi
 
 4. Sizing Realism & Positive Asymmetric R:R (>= 1.5:1 to 2.5:1+ Floor):
    • Sizing: Strictly 0.50 to 1.00 lots (1.00L standard on high conviction >= 8.0/10 + 4TF alignment; 0.50L on baseline 7.0-7.9).
-   • Stop Loss: Strictly 6.0 to 12.0 points anchored firmly behind HTF structural invalidation + 1.5x ATR14 buffer.
+   • Stop Loss: Strictly 6.0 to 12.0 points anchored firmly behind HTF structural invalidation shelf.
    • Profit Target: Major Opposing Structural Liquidity Target (12.0 to 25.0 pts) delivering Positive R:R >= 1.5:1 to 2.5:1+.
    • Anti-Inverted-R:R Gate: VETO any order where planned target is less than 1.5x the stop distance or opposing obstacle clearance < 1.5R. Inverted negative R:R (<1.5:1) is strictly prohibited.
 
@@ -194,16 +194,19 @@ def ensure_session_seeded(session_id: str, title: str, api_url: str = DEFAULT_AP
     print(f"\n[AUTO-SEEDER] Detected unseeded session: '{title}' ({session_id})")
     print("[AUTO-SEEDER] Executing Clean 2-Seed Text-Only Handshake Protocol...")
 
-    # Step 1: Send Seed 1
-    seed_1 = SEED_1_TEMPLATE.format(session_title=title, session_id=session_id)
-    print(f"  -> Ingesting Seed 1 ({len(seed_1)} chars)...")
-    if not send_prompt_async(session_id, seed_1, api_url):
-        print("  [!] Failed to post Seed 1.")
-        return False
+    # Step 1: Send Seed 1 (if not already received)
+    if len(msgs) < 2:
+        seed_1 = SEED_1_TEMPLATE.format(session_title=title, session_id=session_id)
+        print(f"  -> Ingesting Seed 1 ({len(seed_1)} chars)...")
+        if not send_prompt_async(session_id, seed_1, api_url):
+            print("  [!] Failed to post Seed 1.")
+            return False
 
-    reply1 = wait_for_assistant_text_reply(session_id, "Seed 1", api_url, timeout_sec)
-    if not reply1:
-        print("  [!] Warning: Seed 1 acknowledgment timed out, proceeding with Seed 2.")
+        reply1 = wait_for_assistant_text_reply(session_id, "Seed 1", api_url, timeout_sec)
+        if not reply1:
+            print("  [!] Warning: Seed 1 acknowledgment timed out, proceeding with Seed 2.")
+    else:
+        print("  -> Seed 1 already ingested and acknowledged.")
 
     # Step 2: Send Seed 2
     seed_2 = SEED_2_TEMPLATE
