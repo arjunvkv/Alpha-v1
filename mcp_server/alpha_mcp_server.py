@@ -1566,8 +1566,9 @@ def mcp_alpha_get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
         # 4. Retail Liquidity Targets (BSL/SSL)
         stops = _inst_engine.get_retail_stop_clusters(sym)
         retail_block = {
-            "buy_stop_pool": [_f(stops.get("buy_stop_pool")), _f(stops.get("dist_to_buy_stops"))],
-            "sell_stop_pool": [_f(stops.get("sell_stop_pool")), _f(stops.get("dist_to_sell_stops"))]
+            "buy_stop_pool": [_f(stops.get("buy_stop_pool")), _f(stops.get("dist_to_buy_stops")), str(stops.get("buy_stops_state", "RESTING"))],
+            "sell_stop_pool": [_f(stops.get("sell_stop_pool")), _f(stops.get("dist_to_sell_stops")), str(stops.get("sell_stops_state", "RESTING"))],
+            "nearest_resting_pool": str(stops.get("liquidity_target", "NONE"))
         }
 
         # 5. Active Unmitigated FVGs with 50% Consequent Encroachment (CE)

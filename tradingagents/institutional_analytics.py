@@ -478,8 +478,8 @@ class InstitutionalAnalyticsEngine:
                 "liquidity_target": "NONE", "summary": "Retail Stop Clusters: Inactive"
             }
 
-        highs = [r['high'] for r in rates]
-        lows = [r['low'] for r in rates]
+        highs = [float(r['high']) for r in rates]
+        lows = [float(r['low']) for r in rates]
 
         swing_high = max(highs[-20:])
         swing_low = min(lows[-20:])
@@ -490,19 +490,51 @@ class InstitutionalAnalyticsEngine:
         dist_to_buy_stops = round(buy_stop_cluster - curr_price, 2)
         dist_to_sell_stops = round(curr_price - sell_stop_cluster, 2)
 
-        if dist_to_buy_stops < dist_to_sell_stops and dist_to_buy_stops > 0:
-            target = f"BUY_STOP_POOL_MAGNET (High probability institutional liquidity run toward {buy_stop_cluster:.2f} (+{dist_to_buy_stops} pts))"
-        elif dist_to_sell_stops > 0:
-            target = f"SELL_STOP_POOL_MAGNET (High probability institutional liquidity run toward {sell_stop_cluster:.2f} (-{dist_to_sell_stops} pts))"
-        else:
-            target = "EQUIDISTANT_LIQUIDITY_POOLS"
+        high_indices = [i for i, h in enumerate(highs[-20:]) if h == swing_high]
+        bars_ago_high = 20 - 1 - high_indices[-1] if high_indices else 0
 
-        summary = f"Buy Stop Pool: {buy_stop_cluster:.2f} (+{dist_to_buy_stops} pts) | Sell Stop Pool: {sell_stop_cluster:.2f} (-{dist_to_sell_stops} pts) | Institutional Magnet: {target}"
+        low_indices = [i for i, l in enumerate(lows[-20:]) if l == swing_low]
+        bars_ago_low = 20 - 1 - low_indices[-1] if low_indices else 0
+
+        # Physical sweep & reclaim detection
+        if curr_price > swing_high:
+            buy_stops_state = "SWEPT_PENETRATED"
+        elif bars_ago_high > 0 and curr_price < swing_high - 1.5:
+            buy_stops_state = "RESTING_ABOVE_HIGH"
+        else:
+            buy_stops_state = "AT_HIGH_DOORSTEP"
+
+        if curr_price < swing_low:
+            sell_stops_state = "SWEPT_PENETRATED"
+        elif bars_ago_low > 0 and curr_price >= swing_low + 1.5:
+            sell_stops_state = "SWEPT_AND_RECLAIMED (Depleted Pool)"
+        else:
+            sell_stops_state = "RESTING_BELOW_LOW"
+
+        # Objective structural liquidity target (no editorial hype)
+        if sell_stops_state.startswith("SWEPT_AND_RECLAIMED"):
+            target = f"NEAREST_RESTING_POOL: BUY_STOPS @ {buy_stop_cluster:.2f} (+{dist_to_buy_stops} pts, {buy_stops_state}) | Prior Low Swept ({swing_low:.2f})"
+        elif buy_stops_state.startswith("SWEPT"):
+            target = f"NEAREST_RESTING_POOL: SELL_STOPS @ {sell_stop_cluster:.2f} (-{dist_to_sell_stops} pts, {sell_stops_state}) | Prior High Swept ({swing_high:.2f})"
+        elif abs(dist_to_buy_stops) < abs(dist_to_sell_stops) and dist_to_buy_stops > 0:
+            target = f"NEAREST_RESTING_POOL: BUY_STOPS @ {buy_stop_cluster:.2f} (+{dist_to_buy_stops} pts, {buy_stops_state})"
+        elif dist_to_sell_stops > 0:
+            target = f"NEAREST_RESTING_POOL: SELL_STOPS @ {sell_stop_cluster:.2f} (-{dist_to_sell_stops} pts, {sell_stops_state})"
+        else:
+            target = "EQUIDISTANT_RESTING_POOLS"
+
+        summary = (
+            f"Buy Stops: {buy_stop_cluster:.2f} ({buy_stops_state}, +{dist_to_buy_stops} pts) | "
+            f"Sell Stops: {sell_stop_cluster:.2f} ({sell_stops_state}, -{dist_to_sell_stops} pts) | "
+            f"Liquidity State: {target}"
+        )
 
         return {
             "symbol": symbol,
             "buy_stop_pool": buy_stop_cluster,
             "sell_stop_pool": sell_stop_cluster,
+            "buy_stops_state": buy_stops_state,
+            "sell_stops_state": sell_stops_state,
             "dist_to_buy_stops": dist_to_buy_stops,
             "dist_to_sell_stops": dist_to_sell_stops,
             "liquidity_target": target,

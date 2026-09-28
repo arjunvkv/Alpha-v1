@@ -156,7 +156,7 @@ def _canonical_walk_key(patterns: Any) -> str:
 
 
 def _tag_matches(q: str, p: str) -> bool:
-    """Token-aware pattern tag matching that avoids false-positive substrings and negation traps."""
+    """Token-aware pattern tag matching that matches shared auction keywords while avoiding directional conflicts."""
     if q == p:
         return True
     if len(q) < 3 or len(p) < 3:
@@ -164,9 +164,27 @@ def _tag_matches(q: str, p: str) -> bool:
     # Avoid matching negated antonyms (e.g. NON_STOP should not match STOP)
     if f"NON_{q}" in p or f"NON_{p}" in q:
         return False
-    # Check token boundaries by underscore
+
     q_tokens = set(q.split("_"))
     p_tokens = set(p.split("_"))
+
+    # Block directional conflicts (e.g. BEARISH vs BULLISH, BUY vs SELL, BSL vs SSL)
+    opposites = [
+        ({"BEARISH", "BEAR"}, {"BULLISH", "BULL"}),
+        ({"BUY", "LONG"}, {"SELL", "SHORT"}),
+        ({"HIGH", "BSL"}, {"LOW", "SSL"})
+    ]
+    for s1, s2 in opposites:
+        if (q_tokens & s1 and p_tokens & s2) or (q_tokens & s2 and p_tokens & s1):
+            return False
+
+    # Check substantive shared keyword intersection
+    stopwords = {"THE", "A", "AN", "IN", "OF", "TO", "ON", "AT", "FOR", "WITH", "BY"}
+    common = (q_tokens & p_tokens) - stopwords
+    if common:
+        return True
+
+    # Token subset matches
     if q_tokens.issubset(p_tokens) or p_tokens.issubset(q_tokens):
         return True
     if p.startswith(q + "_") or p.endswith("_" + q) or ("_" + q + "_") in p:

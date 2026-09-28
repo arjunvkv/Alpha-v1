@@ -174,15 +174,16 @@ class MarketDepthEngine:
 
         dom_imb = float(dom_data.get("dom_imbalance", 0.0))
         glob_imb = float(global_data.get("book_imbalance", 0.0))
+        tot_glob_oz = float(global_data.get("total_bid_oz", 0.0)) + float(global_data.get("total_ask_oz", 0.0))
 
-        if dom_imb > 0.25 and glob_imb > 0.15:
-            book_posture = "AGGRESSIVE_BID_ABSORPTION (Institutional Buy Walls)"
-        elif dom_imb < -0.25 and glob_imb < -0.15:
-            book_posture = "AGGRESSIVE_ASK_RESISTANCE (Institutional Sell Walls)"
+        if dom_imb > 0.20 and glob_imb > 0.15:
+            book_posture = "NET_BID_DEPTH"
+        elif dom_imb < -0.20 and glob_imb < -0.15:
+            book_posture = "NET_ASK_DEPTH"
         elif dom_imb > 0.10:
-            book_posture = "MODERATE_BID_SUPPORT"
+            book_posture = "MODERATE_BID_LEAN"
         elif dom_imb < -0.10:
-            book_posture = "MODERATE_ASK_PRESSURE"
+            book_posture = "MODERATE_ASK_LEAN"
         else:
             book_posture = "BALANCED_EQUILIBRIUM"
 
@@ -194,7 +195,7 @@ class MarketDepthEngine:
         badge_line = (
             f"- Level 2 Order Book: DOM Imb: {dom_imb:+.2f} (Bids: {dom_data.get('total_bid_lots', 0.0):.1f}L | "
             f"Asks: {dom_data.get('total_ask_lots', 0.0):.1f}L) | Bid Wall: [{bid_wall_str}] | "
-            f"Ask Wall: [{ask_wall_str}] | Global L2 (PAXG): {glob_imb:+.2f} ({book_posture.split()[0]})"
+            f"Ask Wall: [{ask_wall_str}] | Global L2 (PAXG): Imb {glob_imb:+.2f} (Depth: {tot_glob_oz:.1f}oz | {book_posture})"
         )
 
         return {
@@ -203,6 +204,7 @@ class MarketDepthEngine:
             "book_posture": book_posture,
             "dom_imbalance": dom_imb,
             "global_imbalance": glob_imb,
+            "global_total_depth_oz": tot_glob_oz,
             "broker_dom": dom_data,
             "global_central_depth": global_data
         }
