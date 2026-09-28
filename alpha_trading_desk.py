@@ -1385,11 +1385,31 @@ class ConsolidatedTradingDaemon:
                         if fav_pts > qual["highest_fav"]:
                             qual["highest_fav"] = fav_pts
 
-                        if qual["highest_fav"] >= 14.0:
+                        # Trade Geometry & Asymmetric Dynamic Ratchet
+                        # Zone 2 (Impulse Armor): Fixed at +5.20 pts (preserves account equity curve against retest traps) -> lock +0.50 pts
+                        # Zone 3 (Profit Banking): >= 8.00 pts or 55% of delta_tp -> lock max(3.50 pts, 0.35 * delta_tp)
+                        # Zone 4 (Doorstep Harvest): >= min(14.0, delta_tp - 1.50) or 85% of delta_tp -> lock max(7.00 pts, 0.70 * delta_tp)
+                        delta_tp = abs(tp_p - open_p) if tp_p > 0.0 else 0.0
+                        s1_trig = 5.20
+                        s1_lock = 0.50
+
+                        if delta_tp >= 6.0:
+                            s2_trig = min(11.00, max(8.00, round(0.55 * delta_tp, 2)))
+                            s2_lock = min(4.00, max(3.50, round(0.25 * delta_tp, 2)))
+                            s3_trig = max(s2_trig + 0.75, min(14.00, round(delta_tp - 1.50, 2)))
+                            s3_lock = max(7.00, round(0.70 * delta_tp, 2))
+                        else:
+                            # Standard fixed fallback if TP is unset or abnormally narrow
+                            s2_trig = 8.50
+                            s2_lock = 3.50
+                            s3_trig = 14.00
+                            s3_lock = 8.00
+
+                        if qual["highest_fav"] >= s3_trig:
                             qual["stage"] = max(qual["stage"], 3)
-                        elif qual["highest_fav"] >= 8.5:
+                        elif qual["highest_fav"] >= s2_trig:
                             qual["stage"] = max(qual["stage"], 2)
-                        elif qual["highest_fav"] >= 5.2:
+                        elif qual["highest_fav"] >= s1_trig:
                             qual["stage"] = max(qual["stage"], 1)
 
                         q_stage = qual["stage"]
@@ -1407,17 +1427,17 @@ class ConsolidatedTradingDaemon:
                         pb_reason = ""
                         pb_comment = ""
 
-                        if q_stage == 3 and fav_pts < 8.0:
+                        if q_stage == 3 and fav_pts < s3_lock:
                             needs_pullback_cut = True
-                            pb_reason = f"Position achieved Stage 3 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +8.0 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_reason = f"Position achieved Stage 3 Doorstep Harvest (+{qual['highest_fav']:.2f} pts peak) but pulled back below +{s3_lock:.2f} pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
                             pb_comment = "Stage 3 Pullback Cut"
-                        elif q_stage == 2 and fav_pts < 3.5:
+                        elif q_stage == 2 and fav_pts < s2_lock:
                             needs_pullback_cut = True
-                            pb_reason = f"Position achieved Stage 2 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +3.5 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_reason = f"Position achieved Stage 2 Profit Bank (+{qual['highest_fav']:.2f} pts peak) but pulled back below +{s2_lock:.2f} pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
                             pb_comment = "Stage 2 Pullback Cut"
-                        elif q_stage == 1 and fav_pts < 0.50:
+                        elif q_stage == 1 and fav_pts < s1_lock:
                             needs_pullback_cut = True
-                            pb_reason = f"Position achieved Stage 1 (+{qual['highest_fav']:.2f} pts peak) but pulled back below +0.50 pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
+                            pb_reason = f"Position achieved Stage 1 Capital Armor (+{qual['highest_fav']:.2f} pts peak) but pulled back below +{s1_lock:.2f} pts to {curr_price:.2f} (floating +{fav_pts:.2f} pts)."
                             pb_comment = "BE Pullback Cut"
 
                         if needs_pullback_cut:
@@ -1456,30 +1476,30 @@ class ConsolidatedTradingDaemon:
                         stage_label = ""
                         locked_pts = 0.0
 
-                        # Stage 3: Runner Freedom (>= +14.0 pts or Stage 3 qualified) -> lock +8.0 pts (+$400 locked)
-                        if fav_pts >= 14.0 or q_stage == 3:
-                            req_sl = round(open_p + 8.0, 2) if pos.type == 0 else round(open_p - 8.0, 2)
+                        # Stage 3: Doorstep Harvest / Runner Freedom
+                        if fav_pts >= s3_trig or q_stage == 3:
+                            req_sl = round(open_p + s3_lock, 2) if pos.type == 0 else round(open_p - s3_lock, 2)
                             if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
                                (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
                                 target_sl = req_sl
-                                stage_label = "STAGE 3 (RUNNER FREEDOM: +8.0 PTS LOCKED)"
-                                locked_pts = 8.0
-                        # Stage 2: Profit Banking (>= +8.5 pts or Stage 2 qualified) -> lock +3.5 pts
-                        elif fav_pts >= 8.5 or q_stage == 2:
-                            req_sl = round(open_p + 3.5, 2) if pos.type == 0 else round(open_p - 3.5, 2)
+                                stage_label = f"STAGE 3 (DOORSTEP HARVEST: +{s3_lock:.2f} PTS LOCKED)"
+                                locked_pts = s3_lock
+                        # Stage 2: Profit Banking
+                        elif fav_pts >= s2_trig or q_stage == 2:
+                            req_sl = round(open_p + s2_lock, 2) if pos.type == 0 else round(open_p - s2_lock, 2)
                             if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
                                (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
                                 target_sl = req_sl
-                                stage_label = "STAGE 2 (PROFIT BANK: +3.5 PTS LOCKED)"
-                                locked_pts = 3.5
-                        # Stage 1: Capital Armor / Breakeven (>= +5.2 pts or Stage 1 qualified) -> lock +0.50 pts
-                        elif fav_pts >= 5.2 or q_stage == 1:
-                            req_sl = round(open_p + 0.50, 2) if pos.type == 0 else round(open_p - 0.50, 2)
+                                stage_label = f"STAGE 2 (PROFIT BANK: +{s2_lock:.2f} PTS LOCKED)"
+                                locked_pts = s2_lock
+                        # Stage 1: Capital Armor / Breakeven
+                        elif fav_pts >= s1_trig or q_stage == 1:
+                            req_sl = round(open_p + s1_lock, 2) if pos.type == 0 else round(open_p - s1_lock, 2)
                             if (pos.type == 0 and (current_sl < req_sl or current_sl == 0.0)) or \
                                (pos.type == 1 and (current_sl > req_sl or current_sl == 0.0)):
                                 target_sl = req_sl
-                                stage_label = "STAGE 1 (CAPITAL ARMOR: BREAKEVEN +0.50 PTS)"
-                                locked_pts = 0.50
+                                stage_label = f"STAGE 1 (CAPITAL ARMOR: BREAKEVEN +{s1_lock:.2f} PTS)"
+                                locked_pts = s1_lock
 
                         if target_sl is not None and abs(target_sl - current_sl) > 0.05:
                             req = {
