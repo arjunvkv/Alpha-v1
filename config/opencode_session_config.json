@@ -1,14 +1,14 @@
 {
-  "session_id": "ses_f1806bb50ffeh3GxQSi3dj7sKd",
-  "title": "Escanor v94 (Prong C Market Execution & Flow Supremacy)",
-  "session_title": "Escanor v94 (Prong C Market Execution & Flow Supremacy)",
-  "active_session_id": "ses_f1806bb50ffeh3GxQSi3dj7sKd",
-  "active_session_title": "Escanor v94 (Prong C Market Execution & Flow Supremacy)",
+  "session_id": "ses_f17e53432ffe6q2HIqFcgDDPrp",
+  "title": "Escanor v95 (Prong C Execution & Pending Sanctity Supremacy)",
+  "session_title": "Escanor v95 (Prong C Execution & Pending Sanctity Supremacy)",
+  "active_session_id": "ses_f17e53432ffe6q2HIqFcgDDPrp",
+  "active_session_title": "Escanor v95 (Prong C Execution & Pending Sanctity Supremacy)",
   "dossier_interval_seconds": 240,
   "active_trade_interval_seconds": 60,
   "model": "opencode/big-pickle",
   "api_url": "http://127.0.0.1:4096",
-  "deployed_at": "2026-09-28 12:24:40 UTC",
+  "deployed_at": "2026-09-28 13:01:19 UTC",
   "description": "Escanor autonomous CIO operating with pure parallel aperture, flow supremacy, and zero DOM noise",
   "dossier_streaming_enabled": true
 }
