@@ -154,11 +154,12 @@ class LiveWorldEventsEngine:
         if not force_refresh and self._mem_cache and (now_ts - self._mem_cache_ts < self.cache_ttl):
             return self._mem_cache
 
-        # 2. Disk cache (<5ms)
+        # 2. Disk cache (<5ms) — guarded against zero-byte / truncated files
         if not force_refresh and EVENTS_CACHE_FILE.exists():
             try:
-                with open(EVENTS_CACHE_FILE, "r", encoding="utf-8") as f:
-                    cache_data = json.load(f)
+                if EVENTS_CACHE_FILE.stat().st_size > 10:  # guard: skip empty/truncated files
+                    with open(EVENTS_CACHE_FILE, "r", encoding="utf-8") as f:
+                        cache_data = json.load(f)
                     last_fetch = cache_data.get("updated_at_ts", 0)
                     if now_ts - last_fetch < self.cache_ttl:
                         raw_evs = cache_data.get("events", [])
@@ -174,6 +175,8 @@ class LiveWorldEventsEngine:
                             self._mem_cache = valid_evs
                             self._mem_cache_ts = last_fetch
                             return self._mem_cache
+                else:
+                    LOG.debug("Events cache file is empty/truncated — skipping disk read, forcing network fetch.")
             except Exception as err:
                 LOG.warning(f"Failed to read events cache: {err}")
 
@@ -261,11 +264,18 @@ class LiveWorldEventsEngine:
             events.sort(key=lambda x: x.get("minutes_ago", 999.0))
             self._mem_cache = events
             self._mem_cache_ts = now_ts
+            # Atomic write: dump to .tmp then os.replace → prevents zero-byte corruption
+            tmp_path = EVENTS_CACHE_FILE.with_suffix(".tmp")
             try:
-                with open(EVENTS_CACHE_FILE, "w", encoding="utf-8") as f:
+                with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump({"updated_at": timestamp_str, "updated_at_ts": now_ts, "events_count": len(events), "events": events}, f, indent=2)
-            except Exception:
-                pass
+                os.replace(tmp_path, EVENTS_CACHE_FILE)
+            except Exception as write_err:
+                LOG.warning(f"Events cache write failed: {write_err}")
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
         elif self._mem_cache:
             return self._mem_cache
 
