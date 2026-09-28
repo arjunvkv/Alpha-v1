@@ -492,7 +492,8 @@ def mcp_alpha_place_pending_order(
                 "error": "Price must be a positive number greater than 0."
             }, indent=2)
 
-        # Pre-validate price distance against live market quotes to prevent MT5 Retcode 10015
+        # Pre-validate price distance against live market quotes and auto-align STOP vs LIMIT
+        auto_aligned_note = ""
         tick_info = mt5.symbol_info_tick(sym)
         if tick_info:
             curr_bid = getattr(tick_info, "bid", 0.0)
@@ -501,25 +502,34 @@ def mcp_alpha_place_pending_order(
             stops_level_pts = (getattr(sym_info, "trade_stops_level", 0) or 0) * point
             min_dist = max(stops_level_pts, point * 5)
 
-            if ot_clean == "BUY_STOP" and target_price < (curr_ask + min_dist):
+            # Auto-align LIMIT vs STOP based on physical price geometry relative to current quotes
+            if ot_clean == "SELL_LIMIT" and target_price < (curr_bid - min_dist):
+                ot_clean = "SELL_STOP"
+                auto_aligned_note = f" (Auto-aligned SELL_LIMIT -> SELL_STOP: target {target_price:.2f} is below bid {curr_bid:.2f})"
+                LOG.info(f"Auto-aligned pending order type for {sym}:{auto_aligned_note}")
+            elif ot_clean == "SELL_STOP" and target_price > (curr_bid + min_dist):
+                ot_clean = "SELL_LIMIT"
+                auto_aligned_note = f" (Auto-aligned SELL_STOP -> SELL_LIMIT: target {target_price:.2f} is above bid {curr_bid:.2f})"
+                LOG.info(f"Auto-aligned pending order type for {sym}:{auto_aligned_note}")
+            elif ot_clean == "BUY_LIMIT" and target_price > (curr_ask + min_dist):
+                ot_clean = "BUY_STOP"
+                auto_aligned_note = f" (Auto-aligned BUY_LIMIT -> BUY_STOP: target {target_price:.2f} is above ask {curr_ask:.2f})"
+                LOG.info(f"Auto-aligned pending order type for {sym}:{auto_aligned_note}")
+            elif ot_clean == "BUY_STOP" and target_price < (curr_ask - min_dist):
+                ot_clean = "BUY_LIMIT"
+                auto_aligned_note = f" (Auto-aligned BUY_STOP -> BUY_LIMIT: target {target_price:.2f} is below ask {curr_ask:.2f})"
+                LOG.info(f"Auto-aligned pending order type for {sym}:{auto_aligned_note}")
+
+            # Verify target price is not inside current market spread/noise buffer
+            if ot_clean in ("BUY_STOP", "BUY_LIMIT") and abs(target_price - curr_ask) < min_dist:
                 return json.dumps({
                     "status": "INVALID_PRICE_DISTANCE",
-                    "error": f"BUY_STOP price ({target_price}) must be strictly ABOVE current ask ({curr_ask:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be >= {curr_ask + min_dist:.2f}"
+                    "error": f"Target price ({target_price:.2f}) is inside current broker spread/stops buffer ({curr_ask:.2f} ± {min_dist:.2f} pts). Target must be at least {min_dist:.2f} pts away from market."
                 }, indent=2)
-            elif ot_clean == "SELL_STOP" and target_price > (curr_bid - min_dist):
+            elif ot_clean in ("SELL_STOP", "SELL_LIMIT") and abs(target_price - curr_bid) < min_dist:
                 return json.dumps({
                     "status": "INVALID_PRICE_DISTANCE",
-                    "error": f"SELL_STOP price ({target_price}) must be strictly BELOW current bid ({curr_bid:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be <= {curr_bid - min_dist:.2f}"
-                }, indent=2)
-            elif ot_clean == "BUY_LIMIT" and target_price > (curr_ask - min_dist):
-                return json.dumps({
-                    "status": "INVALID_PRICE_DISTANCE",
-                    "error": f"BUY_LIMIT price ({target_price}) must be strictly BELOW current ask ({curr_ask:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be <= {curr_ask - min_dist:.2f}"
-                }, indent=2)
-            elif ot_clean == "SELL_LIMIT" and target_price < (curr_bid + min_dist):
-                return json.dumps({
-                    "status": "INVALID_PRICE_DISTANCE",
-                    "error": f"SELL_LIMIT price ({target_price}) must be strictly ABOVE current bid ({curr_bid:.2f}) by at least stops_level ({min_dist:.2f} pts). Target price must be >= {curr_bid + min_dist:.2f}"
+                    "error": f"Target price ({target_price:.2f}) is inside current broker spread/stops buffer ({curr_bid:.2f} ± {min_dist:.2f} pts). Target must be at least {min_dist:.2f} pts away from market."
                 }, indent=2)
             
         step = sym_info.volume_step if sym_info.volume_step > 0 else 0.01
@@ -559,7 +569,7 @@ def mcp_alpha_place_pending_order(
                 res = mt5.order_send(req)
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {final_sl} | TP: {final_tp} (Order #{res.order}).")
+            log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {final_sl} | TP: {final_tp} (Order #{res.order}).{auto_aligned_note}")
             return json.dumps({
                 "status": "PLACED",
                 "order_ticket": res.order,
@@ -571,7 +581,7 @@ def mcp_alpha_place_pending_order(
                 "tp": final_tp,
                 "tag": clean_tag,
                 "retcode": res.retcode,
-                "message": f"Pending order staged on MT5! Order ticket #{res.order} active."
+                "message": f"Pending order staged on MT5! Order ticket #{res.order} active.{auto_aligned_note}"
             }, indent=2)
             
         err_msg = f"MT5 Retcode {res.retcode}: {res.comment}" if res else f"MT5 error: {mt5.last_error()}"
