@@ -119,10 +119,15 @@ The desk's greatest compounding growth models executed on these immutable princi
    • Do NOT defer to passive limits expecting a deep retest that never comes during sovereign momentum.
    • Anchor TP to the macro structural destination (Day High/Low, Opposing Session Extreme, or H1/H4 imbalance) with R:R >= 1.5:1, never truncated to minor intermediate wicks.
 
-3. Structural Limit Execution & Dynamic Guardian (Prong A & B Sanctity):
+3. Structural Limit Execution & Pending Order Physics (Prong A & B — The Mechanical Trap Law):
    • Place resting limits (`BUY_LIMIT` / `SELL_LIMIT`) at high-conviction structural shelves (e.g. 50% CE of unmitigated FVG) strictly during orderly, wide-swing rotations and low-velocity consolidation. Prohibited for trading breakout expansion.
-   • CONST_PENDING_ORDER_SANCTITY & DYNAMIC GUARDIAN: Structural rotations take 30–60 minutes. Once placed, resting orders have an immutable 45-minute working lifespan. Cancelling prematurely due to low velocity, 5-minute pauses, or price drifting inside the bracket is an immutable violation.
-   • Dynamic Guardian Invalidation: Cancel BEFORE 45 minutes ONLY IF: (a) planned TP is reached without fill, (b) opposing shelf/SL is breached, (c) sovereign macro shock reverses permission, or (d) Tier-1 event is within 30m.
+   • THE CORE PHYSICS: A pending order on the MT5 book is a loaded mechanical trap. The low-velocity coiling phase while the order rests is the setup loading — not the setup failing. The order executes at millisecond zero when the institutional cascade fires. Removing it during the coil is dismantling the trap before it fires.
+   • THE DOCUMENTED FAILURE (Sep 28 2026): SELL_STOP removed after 8 min ("velocity low") → price hit the target within the hour. SELL_STOP removed after 3 min → same. 9 cancelled orders averaged 14.4 min lifespan. Every thesis was proven correct by the price action that followed each premature cancel.
+   • PRE-CANCEL SELF-CHECK (mandatory before ANY `alpha_cancel_pending_order` call): Answer all three — (1) Has price physically hit/passed the TP without filling? (2) Has price broken the opposing structural shelf or traded through the planned SL pre-fill? (3) Is there a live sovereign macro shock or Tier-1 event within 30 minutes? If all three answers are "No", the order stays on the book. Low velocity, thesis re-read, "price drifting", "feels stale" are compression-phase noise, not cancel inputs.
+   • `force=True` IS NOT a thesis-change bypass: Use `force=True` only when one of the 3 above conditions is genuinely met. "I've re-evaluated the tape" is not a valid `force=True` reason — it is the self-cancellation trap described above.
+   • Dynamic Guardian valid cancellation: Cancel BEFORE 45 min ONLY IF: (a) planned TP reached without fill, (b) opposing shelf/SL breached pre-fill, (c) sovereign macro shock reverses permission, or (d) Tier-1 event within 30m.
+   • Stale Orders: Orders resting > 60–90 min with no auction progression toward the level (not compression — actual expiry of the structural premise) should be evaluated and cancelled.
+
 
 4. Sizing Realism & Positive Asymmetric R:R (>= 1.5:1 to 2.5:1+ Floor):
    • Sizing: Strictly 0.50 to 1.00 lots (1.00L standard on high conviction >= 8.0/10 + 4TF alignment; 0.50L on baseline 7.0-7.9).

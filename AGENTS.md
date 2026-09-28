@@ -151,16 +151,32 @@ These 7 core safety laws protect capital and remain strictly immutable:
    - Call `graphiti_search_facts(patterns=[...])` using candidate setup tags (Macro + Location + Physics) to retrieve historical evidence about analogous walks. Use the records as context alongside current live evidence; they do not veto, clear, rank, or predict the current setup.
    - Call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` strictly in Pod 5 to calibrate the exact structural invalidation price, FVG 50% CE coordinate, and structural invalidation buffer. Order execution without completing this pre-flight check is prohibited.
 8. **`CONST_NO_PREMATURE_CUT`**: Manual market exit (`FULL_EXIT` / `CLOSE` via `alpha_update_position`) on routine candle wicks, retest pullbacks, or temporary floating drawdown within the structural SL budget is an immutable constitutional violation. Once filled, the broker terminal bracket (structural SL $6.0\text{--}12.0\text{ pts}$ and asymmetric TP $\ge 1.5:1$) governs the trade. Early manual closure is strictly prohibited unless one of the 4 authorized criteria in Section 5 is rigorously verified.
-9. **`CONST_PENDING_ORDER_SANCTITY` & `CONST_STALE_PENDING_PROHIBITION` (ANTI-CHASING & DYNAMIC GUARDIAN LAW)**:
-   - **45-Minute Working Lifespan with Dynamic Guardian**: Resting orders (Prong A limits and Prong B breakout stops) placed at structural shelves or Order Blocks require time for auction rotation or compression resolution. Price oscillating in a compression shelf or temporary low tick velocity (<30 t/m) is the standard pre-breakout signature—it is NEVER an invalidation reason. A resting order has SANCTITY against routine noise for at least 45 minutes.
-   - **Strict Early Cancellation Criteria (Dynamic Guardian)**: An order CANNOT be cancelled before 45 minutes UNLESS one of the following 4 objective conditions is verified:
-     1. **Target Realization (Move Passed)**: The market has physically reached or passed the order's planned Take Profit (`tp`) without filling the order. (The move already occurred; entering late would be catching a falling knife).
-     2. **Structural Invalidation (Opposing Shelf / SL Breached Pre-Fill)**: For Prong B breakout stops, price has broken out of the OPPOSING side of the compression bracket or traded through the planned Stop Loss (`sl`) level before filling (breakout failed). For Prong A limits, price has traded beyond the planned SL level on the invalidation side.
-     3. **Sovereign Macro Reversal**: A breaking geopolitical wire, central bank shock, or sovereign yield surge directly reverses macro permission (e.g. yields crash, macro flips against trade direction).
-     4. **Tier-1 Event Lockout**: Approaching a scheduled Tier-1 macro release (CPI, PPI, FOMC, NFP) within 30 minutes.
-   - **Prohibited Cancellation Excuses**: Cancelling an order due to "low velocity" (<30 t/m), "5-minute consolidation pause", "price drifting 10-15 pts away inside the bracket", or "order resting for 10-20 minutes" is an IMMUTABLE CONSTITUTIONAL VIOLATION.
-   - **Stale Pending Orders**: All MT5 pending orders are GTC and DO NOT self-expire. Any resting pending order that has been resting for > 60 to 90 minutes with zero auction progress towards the level should be actively evaluated and cancelled via `alpha_cancel_pending_order()`.
-   - **Strict Anti-Chasing Prohibition**: Modifying, dragging, or re-staging an existing order down or up into an already-expanded impulse or into the bounce of a completed liquidity sweep is strictly prohibited. Once an expansion move has occurred without filling our order, accept that the move passed, CANCEL the order, stand flat, and wait for a fresh structural setup. Sunk-cost order re-staging is an immutable violation.
+9. **`CONST_PENDING_ORDER_SANCTITY` & `CONST_STALE_PENDING_PROHIBITION` (THE MECHANICAL TRAP PHYSICS LAW)**:
+
+   **The Core Causal Understanding — Read This Before Any Cancel Decision:**
+   A pending order resting on the MT5 book is not a passive observation. It is a loaded mechanical trap. The compression, low velocity, and apparent "nothing happening" period while the order rests is *exactly* the pre-breakout coiling phase that precedes institutional expansion. The order sitting live at the shelf is the entire edge — it executes at millisecond zero when the cascade fires, with zero LLM deliberation lag. Removing the order during the coil is physically identical to dismantling the trap right before the prey arrives.
+
+   **The Forensic Evidence (Sep 28 2026 — Documented in Memory):**
+   - SELL_STOP @ 4136 (`4140_floor_break`) — removed after 8 minutes, velocity "low". Price broke down to 4127 within the hour. The thesis was correct. The order was simply gone.
+   - SELL_STOP @ 4140 (`PodB_DayLow_Breakdown`) — removed after 3 minutes. Same pattern. Same outcome. Same mistake.
+   - Average lifespan of all 9 cancelled orders that day: 14.4 minutes. Not one reached 45 minutes. Every single one that was removed had its thesis proven correct by subsequent price action.
+
+   **The Self-Cancellation Trap (Why Re-Evaluation During Coil Feels Right But Is Wrong):**
+   During compression, velocity drops, price oscillates inside the bracket, and the LLM re-reads the tape and sees "nothing happening". This triggers a re-evaluation that concludes the thesis is weakening. This is the illusion — compression *is* the setup. The thesis is not weakening; the trap is loading. Every re-evaluation that ends in a cancel call during a live coiling phase is the LLM defeating its own edge.
+
+   **The Pre-Cancel Mandatory Self-Check (Before ANY `alpha_cancel_pending_order` call):**
+   Before calling cancel, answer all three questions explicitly in your reasoning:
+   1. Has price physically reached or passed the order's TP without filling? If yes → cancel is structurally justified (move passed us).
+   2. Has price broken the OPPOSING side of the compression bracket or traded through the planned SL pre-fill? If yes → structural invalidation is real, cancel justified.
+   3. Is there a live sovereign macro shock or a Tier-1 event within 30 minutes? If yes → cancel justified.
+   If the answer to all three is "No" → the order stays. Low velocity, thesis re-read, price drift inside the bracket, "feels stale", "re-evaluating direction" are NOT valid inputs to the cancel decision. They are compression-phase noise. The order remains alive.
+
+   **`force=True` is NOT a Bypass for Thesis Changes:**
+   The `force=True` parameter exists for genuine operator emergencies only — not for re-evaluating a thesis mid-coil. Passing `force=True` because "I've re-read the tape and the setup feels different now" is the same failure mode as the 14-minute average cancel above. If none of the 3 objective conditions above are met, the correct action is to report your re-evaluation in prose and leave the order on the book.
+
+   **Stale Orders (60–90 min with zero market progress):** Orders genuinely resting > 60–90 minutes with no auction progression toward the level should be evaluated and cancelled via `alpha_cancel_pending_order`. This is different from coiling-phase compression — true staleness means the structural premise has expired, not that the coil is still loading.
+
+   **Anti-Chasing Law:** Once a move expands without filling the order, accept it. Cancel, stand flat, wait for the next fresh structural setup. Do not drag the order into the already-expanded move.
 
 
 ---
