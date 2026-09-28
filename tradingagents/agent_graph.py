@@ -191,11 +191,20 @@ class BullBearDebater:
         if cot_perc > 88.0:
             bear_points.append("OVERCROWDING RISK: Managed money percentile > 88% represents extreme crowded positioning")
 
-        # Macro Bull vs Bear
+        # Macro Bull vs Bear (Harmonized Sovereign Yields & Dollar)
         dxy = float(macro.get("dxy", 100.0))
-        if dxy < 101.5:
+        us10y = float(macro.get("us10y", 4.25))
+
+        # Sovereign Yield Gravity
+        if us10y >= 4.80:
+            bear_points.append(f"Surging Treasury Yields headwind (US10Y: {us10y:.2f}%)")
+        elif us10y <= 3.80:
+            bull_points.append(f"Softening Treasury Yields tailwind (US10Y: {us10y:.2f}%)")
+
+        # Dollar Alignment (True tailwind only when yields are not suffocating gold)
+        if dxy < 101.0 and us10y < 4.80:
             bull_points.append(f"Weak Dollar tailwind (DXY: {dxy:.2f})")
-        elif dxy > 103.5:
+        elif dxy > 102.5:
             bear_points.append(f"Strong Dollar headwind (DXY: {dxy:.2f})")
 
         # Regime Conflict Check

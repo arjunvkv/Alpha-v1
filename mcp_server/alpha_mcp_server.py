@@ -1187,8 +1187,9 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
         
         from tradingagents.agent_graph import MacroNewsAnalyst
         macro = MacroNewsAnalyst()
-        macro_res = macro.analyze({"dxy": dxy_val, "us10y": us10y_val, "vix": vix_val}, [])
-        sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, [])
+        live_events = world_events_engine.fetch_live_events(force_refresh=False) or []
+        macro_res = macro.analyze({"dxy": dxy_val, "us10y": us10y_val, "vix": vix_val}, live_events[:10])
+        sent_res = _sent_analyst.analyze({"vader_compound": 0.0}, live_events[:10])
 
         # Run full Bull vs Bear Debate
         debate_res = _desk.debater.debate(sym, tech_res, fund_res, macro_res, sent_res)

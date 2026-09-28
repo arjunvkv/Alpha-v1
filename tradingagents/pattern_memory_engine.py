@@ -734,14 +734,19 @@ class PatternMemoryEngine:
             f"=== GRAPHITI PATTERN MEMORY: [{', '.join(query_tags)}] ({sym}) ==="
         ]
 
-        total_live_wins = sum(x["count"] for x in matched_live_wins)
-        total_live_traps = sum(x["count"] for x in matched_live_traps)
-        total_study = sum(x["count"] for x in matched_study)
+        # Deduplicate walks by walk_id to avoid inflated denominators across overlapping query tags
+        unique_wins = list({x["walk_id"]: x for x in matched_live_wins}.values())
+        unique_traps = list({x["walk_id"]: x for x in matched_live_traps}.values())
+        unique_study = list({x["walk_id"]: x for x in matched_study}.values())
+
+        total_live_wins = sum(x["count"] for x in unique_wins)
+        total_live_traps = sum(x["count"] for x in unique_traps)
+        total_study = sum(x["count"] for x in unique_study)
         evidence = self._classify_evidence(total_live_wins, total_live_traps, total_study)
         
         # Differentiate exact composite overlap vs loose component overlap
-        exact_wins = [x for x in matched_live_wins if x["overlap_count"] >= len(query_tags)]
-        exact_traps = [x for x in matched_live_traps if x["overlap_count"] >= len(query_tags)]
+        exact_wins = [x for x in unique_wins if x["overlap_count"] >= len(query_tags)]
+        exact_traps = [x for x in unique_traps if x["overlap_count"] >= len(query_tags)]
         
         if len(query_tags) > 1 and (exact_wins or exact_traps):
             ew_count = sum(x["count"] for x in exact_wins)
