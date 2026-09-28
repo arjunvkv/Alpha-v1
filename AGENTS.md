@@ -52,7 +52,7 @@ The desk operates strictly on the proven v66 champion tool calling cadence and t
     - `### Q-NEWS-5 — Execution via 5-Pod`: Pre-order coordinate calibration, mathematical R:R calculation, strategic verdict, and conditional plans with exact price coordinates.
 
 - **Turn A (Routine Microstructure & Deep Order Flow Audit — Champion v72 5-Pod Architecture)**:
-  - Open with a 1-line situational header (e.g. `Turn A — Sweep zone reached, 4274.8 doorstep. Parallel audit:`).
+  - Open with a 1-line situational header (e.g. `Turn A — Sweep zone reached, key structural doorstep. Parallel audit:`).
   - Call physical and 7-layer tools in parallel:
     1. `alpha_query_analyst_desk(symbol='XAUUSD')`: 7-Layer Local LLM synthesis, Bull vs Bear debate breakdown, and regime conflict alert.
     2. `alpha_get_market_regime_context(symbol='XAUUSD')`: Live broker quotes, spread, CVD, and tick velocity.

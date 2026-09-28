@@ -67,6 +67,7 @@ async def run_in_thread(func, *args, **kwargs):
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
+MIN_PENDING_ORDER_LIFESPAN_MINUTES = 45.0
 mcp = FastMCP("alpha")
 
 # Pre-instantiated singletons for sub-10ms response times
@@ -658,21 +659,21 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
             elif sl_breached:
                 can_cancel = True
                 cancel_approval_reason = f"STRUCTURAL_SL_BREACHED (Price traded through SL {o.sl:.2f} pre-fill; structure broken)"
-            elif age_m >= 45.0:
+            elif age_m >= MIN_PENDING_ORDER_LIFESPAN_MINUTES:
                 can_cancel = True
-                cancel_approval_reason = f"LIFESPAN_MATURE (Order rested for {age_m:.1f}m >= 45m minimum lifespan)"
+                cancel_approval_reason = f"LIFESPAN_MATURE (Order rested for {age_m:.1f}m >= {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m minimum lifespan)"
             else:
                 return json.dumps({
                     "status": "REJECTED_SANCTITY_VIOLATION",
                     "order_ticket": order_ticket,
                     "age_minutes": round(age_m, 1),
-                    "min_lifespan_minutes": 45,
+                    "min_lifespan_minutes": int(MIN_PENDING_ORDER_LIFESPAN_MINUTES),
                     "current_price": tick.bid if tick else 0.0,
                     "order_price": o.price_open,
                     "sl": o.sl,
                     "tp": o.tp,
                     "error": (
-                        f"Order #{order_ticket} has only rested for {age_m:.1f}m (< 45m minimum lifespan). "
+                        f"Order #{order_ticket} has only rested for {age_m:.1f}m (< {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m minimum lifespan). "
                         f"Current price has NOT reached TP ({o.tp:.2f}) and has NOT breached SL ({o.sl:.2f}). "
                         f"CONST_PENDING_ORDER_SANCTITY strictly prohibits premature cancellation during normal consolidation or rotation. "
                         f"Low velocity and minor pauses precede institutional sweeps. The order remains ACTIVE on the MT5 book to capture the rotation."
@@ -705,7 +706,7 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
                 tp_reached = (o.tp > 0 and tick and ((is_buy and tick.bid >= o.tp) or (is_sell and tick.ask <= o.tp)))
                 sl_breached = (o.sl > 0 and tick and ((is_buy and tick.bid <= o.sl) or (is_sell and tick.ask >= o.sl)))
 
-                if not force and age_m < 45.0 and not tp_reached and not sl_breached:
+                if not force and age_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES and not tp_reached and not sl_breached:
                     skipped_sanctity.append({"ticket": o.ticket, "age_minutes": round(age_m, 1)})
                     continue
 
@@ -822,7 +823,7 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
             dist_pts = round(abs(tick.bid - o.price_open), 2) if tick else 0.0
             ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
             age_m = round(max(0.0, (ref_time - o.time_setup) / 60.0), 1) if getattr(o, 'time_setup', 0) else 0.0
-            sanctity_status = "ACTIVE_SANCTITY" if age_m < 45.0 else "MATURE"
+            sanctity_status = "ACTIVE_SANCTITY" if age_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES else "MATURE"
             orders_data.append({
                 "ticket": o.ticket,
                 "symbol": o.symbol,
@@ -834,7 +835,7 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
                 "distance_pts": dist_pts,
                 "age_minutes": age_m,
                 "sanctity_status": sanctity_status,
-                "min_lifespan_minutes": 45,
+                "min_lifespan_minutes": int(MIN_PENDING_ORDER_LIFESPAN_MINUTES),
                 "comment": o.comment,
                 "magic": o.magic
             })
@@ -1578,7 +1579,7 @@ def register_watch(
     
     Supports:
     - Single Technical Watch: only velocity (min_velocity or max_velocity), only CVD (min_cvd, max_cvd, cvd_flip), only spread, only price, or only position PnL.
-    - Multiple Matching at Once (Composite Confluence): combine price + velocity + CVD (e.g. target_price=4345.0, min_velocity=100.0, min_cvd=50.0). All specified criteria must match simultaneously (AND confluence).
+    - Multiple Matching at Once (Composite Confluence): combine price + velocity + CVD (e.g. target_price=P_target, min_velocity=100.0, min_cvd=50.0). All specified criteria must match simultaneously (AND confluence).
     - Descriptive Reason Title: OpenCode must supply title='...' so the alert explains exactly why it woke.
     - Auto-Clearing: Watch automatically clears immediately upon trigger.
     """

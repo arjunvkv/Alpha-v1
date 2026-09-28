@@ -53,6 +53,7 @@ DAEMON_PINGS_LOG_PATH = PROJECT_ROOT / "logs" / "daemon_pings.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 CONFIG_PATH = PROJECT_ROOT / "config" / "instruments_config.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
+MIN_PENDING_ORDER_LIFESPAN_MINUTES = 45.0
 
 def _init_mt5(timeout: int = 5000) -> bool:
     try:
@@ -697,9 +698,17 @@ class ConsolidatedTradingDaemon:
                         # Natural Risk Manager Dialogue per position
                         log_story("Risk Manager Agent", f"Trade Track #{p.ticket} ({p.symbol} {side}): Entry {p.price_open:.2f} vs Live {p.price_current:.2f} (PnL {p.profit:+.2f} USD). Broker SL active at {p.sl:.2f}.")
 
-                        # Reversal / Anomaly Detection Guard
-                        if p.profit < -38.0:
-                            reversal_alerts.append((p.symbol, f"HIGH PRIORITY DRAWDOWN ALERT on {p.symbol} Ticket #{p.ticket} (PnL {p.profit:+.2f} USD). Technical reversal evaluation required."))
+                        # Reversal / Anomaly Detection Guard (Dynamic Structural SL Budget Check)
+                        # Avoid firing false alarms on minor 0.5-2.5 pt intraday breathing wicks.
+                        # Alert only if floating drawdown consumes > 75% of the planned structural SL budget.
+                        if getattr(p, 'sl', 0.0) > 0:
+                            sl_dist_pts = abs(p.price_open - p.sl)
+                            sl_budget_usd = sl_dist_pts * p.volume * 100.0
+                            drawdown_threshold_usd = -0.75 * sl_budget_usd
+                        else:
+                            drawdown_threshold_usd = -350.0  # Fallback for unbracketed positions
+                        if p.profit <= drawdown_threshold_usd:
+                            reversal_alerts.append((p.symbol, f"HIGH PRIORITY STRUCTURAL RISK ALERT on {p.symbol} Ticket #{p.ticket} (PnL {p.profit:+.2f} USD, >75% SL budget consumed). Reversal evaluation required."))
         except Exception as err:
             LOG.error(f"MT5 position check failed: {err}")
 
@@ -714,7 +723,7 @@ class ConsolidatedTradingDaemon:
                         dist_pts = abs(tick.bid - o.price_open) if tick else 0.0
                         ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
                         elapsed_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
-                        sanctity_str = f"ACTIVE_SANCTITY (Age {elapsed_m:.0f}m / min 45m)" if elapsed_m < 45.0 else f"MATURE (Age {elapsed_m:.0f}m)"
+                        sanctity_str = f"ACTIVE_SANCTITY (Age {elapsed_m:.0f}m / min {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m)" if elapsed_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES else f"MATURE (Age {elapsed_m:.0f}m)"
                         detailed_pending_orders.append(
                             f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | Status: {sanctity_str} | GTC)'
                         )
