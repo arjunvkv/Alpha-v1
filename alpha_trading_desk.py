@@ -712,9 +712,11 @@ class ConsolidatedTradingDaemon:
                         type_str = 'BUY_LIMIT' if o.type == 2 else 'SELL_LIMIT' if o.type == 3 else 'BUY_STOP' if o.type == 4 else 'SELL_STOP' if o.type == 5 else str(o.type)
                         tick = mt5.symbol_info_tick(o.symbol)
                         dist_pts = abs(tick.bid - o.price_open) if tick else 0.0
-                        elapsed_m = (time.time() - o.time_setup) / 60.0 if getattr(o, 'time_setup', 0) else 0.0
+                        ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
+                        elapsed_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
+                        sanctity_str = f"ACTIVE_SANCTITY (Age {elapsed_m:.0f}m / min 45m)" if elapsed_m < 45.0 else f"MATURE (Age {elapsed_m:.0f}m)"
                         detailed_pending_orders.append(
-                            f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | GTC: NO AUTO-EXPIRATION)'
+                            f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | Status: {sanctity_str} | GTC)'
                         )
         except Exception as err:
             LOG.error(f'MT5 pending order audit failed: {err}')
@@ -1110,7 +1112,11 @@ class ConsolidatedTradingDaemon:
                     f"Open positions: {len(open_tickets)}\n"
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n"
-                    f"*STALE PENDING PROTOCOL (CONST_STALE_PENDING_PROHIBITION): MT5 orders are GTC and NEVER self-expire. If any order is > 15.0 pts away from market, resting > 60m, OR if the anticipated impulse move already occurred without fill (touched TP / moved >= 6.0 pts), CANCEL IT IMMEDIATELY via `alpha_cancel_pending_order(ticket)`. Dragging or re-staging orders into the aftermath of a completed impulse/sweep is STRICTLY BANNED.\n\n"
+                    f"*PENDING ORDER SANCTITY & ANTI-CHASING LAW (CONST_PENDING_ORDER_SANCTITY & CONST_STALE_PENDING_PROHIBITION):\n"
+                    f"  1. Order Sanctity (45m Minimum Lifespan): Resting structural limits (Prong A) require time for auction rotation. Low tick velocity (<30 t/m) and compression pauses are normal pre-sweep conditions, NEVER cancellation triggers. Orders have IMMUTABLE SANCTITY for at least 45 minutes.\n"
+                    f"  2. Strict Early Cancellation Criteria: Orders CANNOT be cancelled before 45 minutes UNLESS: (a) Target Realization: price physically hits/crosses planned TP without us (the move already occurred), or (b) Structural SL Breach: price trades beyond planned SL pre-fill. Cancelling because of low velocity, 5-minute pauses, or drifting 10-15 pts is an IMMUTABLE VIOLATION.\n"
+                    f"  3. Stale Orders: Orders resting > 60-90 minutes with zero auction progression should be evaluated and cancelled via `alpha_cancel_pending_order()`.\n"
+                    f"  4. Anti-Chasing Law: Dragging, modifying, or re-staging order price into an already-expanded impulse or sweep bounce is strictly banned. Sunk-cost order re-staging is prohibited.\n\n"
                     f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
                     f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=10)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
                     f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
@@ -1149,7 +1155,11 @@ class ConsolidatedTradingDaemon:
                     f"    - Prong B (Breakout Stops — `BUY_STOP`/`SELL_STOP`): MANDATORY when coiling within a multi-candle compression shelf before breakout, pre-staged 1–2 ticks beyond shelf.\n"
                     f"    - Prong A (Resting Limits — `BUY_LIMIT`/`SELL_LIMIT`): Strictly for deep pullbacks into unmitigated HTF Order Blocks during wide-swing, low-velocity consolidation. Prohibited for trading breakout expansion.\n"
                     f"• Open-Roadway Macro Target Rule: For market entries (Prong C) and breakout stops (Prong B), anchor TP to the macro structural destination (Day High/Low, Session Extreme, or H1/H4 imbalance) with R:R >= 1.5:1 floor. Never truncate TP to 2-minute intermediate micro-wicks along the expansion roadway.\n"
-                    f"• STALE PENDING ORDER LAW & ANTI-CHASING (CONST_STALE_PENDING_PROHIBITION): MT5 pending orders are GTC and DO NOT self-expire. If any order is > 15.0 pts away, resting > 60m, OR if the anticipated impulse already occurred without fill (touched TP / expanded >= 6.0 pts), CANCEL IT IMMEDIATELY via `alpha_cancel_pending_order()`. Modifying/dragging orders into the aftermath of a completed move or into a sweep bounce is strictly banned.\n\n"
+                    f"• PENDING ORDER SANCTITY & ANTI-CHASING LAW (CONST_PENDING_ORDER_SANCTITY & CONST_STALE_PENDING_PROHIBITION):\n"
+                    f"    - Order Sanctity (45m Minimum Lifespan): Resting structural limits (Prong A) require auction rotation time. Low tick velocity (<30 t/m) and compression pauses are normal pre-sweep conditions, NEVER cancellation triggers. Orders have IMMUTABLE SANCTITY for at least 45 minutes.\n"
+                    f"    - Strict Early Cancellation Criteria: Orders CANNOT be cancelled before 45 minutes UNLESS: (a) Target Realization: price physically hits/crosses planned TP without us, or (b) Structural SL Breach: price trades beyond planned SL pre-fill. Cancelling due to low velocity, temporary pauses, or 10-15 pt drift is an IMMUTABLE VIOLATION.\n"
+                    f"    - Stale Orders: Orders resting > 60-90m with zero market progress should be evaluated and cancelled via `alpha_cancel_pending_order()`.\n"
+                    f"    - Anti-Chasing Law: Modifying/dragging order price into an already-expanded impulse or sweep bounce is strictly banned. Sunk-cost order re-staging is prohibited.\n\n"
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n\n"
                     f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"

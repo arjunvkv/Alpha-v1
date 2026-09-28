@@ -606,36 +606,126 @@ def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", 
 # 4. ORDER & POSITION MANAGEMENT
 # ======================================================================
 
-def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -> str:
-    """Cancel / remove active pending orders on MT5 (pass specific ticket or 0 for all)."""
+def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", force: bool = False, reason: str = "") -> str:
+    """Cancel / remove active pending orders on MT5 (pass specific ticket or 0 for all).
+    Protected by CONST_PENDING_ORDER_SANCTITY (45-minute minimum working lifespan).
+    """
     _init_mt5()
     try:
         import MetaTrader5 as mt5
+        import time
         cancelled = []
         if order_ticket > 0:
+            orders = mt5.orders_get(ticket=int(order_ticket))
+            if not orders:
+                return json.dumps({"status": "FAILED", "order_ticket": order_ticket, "error": f"Pending order #{order_ticket} not found on MT5 book."}, indent=2)
+            o = orders[0]
+            tick = mt5.symbol_info_tick(o.symbol)
+            ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
+            age_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
+
+            # CONST_PENDING_ORDER_SANCTITY Check:
+            # An order cannot be cancelled before 45 minutes unless:
+            # 1. Force override (force=True)
+            # 2. Target Realization: market touched or passed TP without us
+            # 3. Structural SL Breach: market traded through SL pre-fill
+            # 4. Age >= 45m
+            is_buy = o.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
+            is_sell = o.type in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
+
+            tp_reached = False
+            if o.tp > 0 and tick:
+                if is_buy and tick.bid >= o.tp:
+                    tp_reached = True
+                elif is_sell and tick.ask <= o.tp:
+                    tp_reached = True
+
+            sl_breached = False
+            if o.sl > 0 and tick:
+                if is_buy and tick.bid <= o.sl:
+                    sl_breached = True
+                elif is_sell and tick.ask >= o.sl:
+                    sl_breached = True
+
+            can_cancel = False
+            cancel_approval_reason = ""
+            if force:
+                can_cancel = True
+                cancel_approval_reason = f"FORCE_OVERRIDE: {reason}" if reason else "FORCE_OVERRIDE"
+            elif tp_reached:
+                can_cancel = True
+                cancel_approval_reason = f"TARGET_REALIZED (Price touched/passed TP {o.tp:.2f} without fill; thesis fulfilled)"
+            elif sl_breached:
+                can_cancel = True
+                cancel_approval_reason = f"STRUCTURAL_SL_BREACHED (Price traded through SL {o.sl:.2f} pre-fill; structure broken)"
+            elif age_m >= 45.0:
+                can_cancel = True
+                cancel_approval_reason = f"LIFESPAN_MATURE (Order rested for {age_m:.1f}m >= 45m minimum lifespan)"
+            else:
+                return json.dumps({
+                    "status": "REJECTED_SANCTITY_VIOLATION",
+                    "order_ticket": order_ticket,
+                    "age_minutes": round(age_m, 1),
+                    "min_lifespan_minutes": 45,
+                    "current_price": tick.bid if tick else 0.0,
+                    "order_price": o.price_open,
+                    "sl": o.sl,
+                    "tp": o.tp,
+                    "error": (
+                        f"Order #{order_ticket} has only rested for {age_m:.1f}m (< 45m minimum lifespan). "
+                        f"Current price has NOT reached TP ({o.tp:.2f}) and has NOT breached SL ({o.sl:.2f}). "
+                        f"CONST_PENDING_ORDER_SANCTITY strictly prohibits premature cancellation during normal consolidation or rotation. "
+                        f"Low velocity and minor pauses precede institutional sweeps. The order remains ACTIVE on the MT5 book to capture the rotation."
+                    )
+                }, indent=2)
+
             req = {"action": mt5.TRADE_ACTION_REMOVE, "order": int(order_ticket)}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                return json.dumps({"status": "CANCELLED", "order_ticket": order_ticket}, indent=2)
+                return json.dumps({
+                    "status": "CANCELLED",
+                    "order_ticket": order_ticket,
+                    "approval_reason": cancel_approval_reason,
+                    "age_minutes": round(age_m, 1)
+                }, indent=2)
             return json.dumps({"status": "FAILED", "order_ticket": order_ticket, "error": res.comment if res else "Unknown error"}, indent=2)
         else:
             orders = mt5.orders_get() or []
             sym_clean = symbol.upper().strip() if symbol else "ALL"
+            skipped_sanctity = []
             for o in orders:
                 if sym_clean != "ALL" and o.symbol.upper() != sym_clean:
                     continue
+                tick = mt5.symbol_info_tick(o.symbol)
+                ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
+                age_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
+
+                is_buy = o.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
+                is_sell = o.type in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
+                tp_reached = (o.tp > 0 and tick and ((is_buy and tick.bid >= o.tp) or (is_sell and tick.ask <= o.tp)))
+                sl_breached = (o.sl > 0 and tick and ((is_buy and tick.bid <= o.sl) or (is_sell and tick.ask >= o.sl)))
+
+                if not force and age_m < 45.0 and not tp_reached and not sl_breached:
+                    skipped_sanctity.append({"ticket": o.ticket, "age_minutes": round(age_m, 1)})
+                    continue
+
                 req = {"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket}
                 res = mt5.order_send(req)
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
                     cancelled.append(o.ticket)
-            return json.dumps({"status": "ALL_CANCELLED", "cancelled_tickets": cancelled, "count": len(cancelled)}, indent=2)
+            return json.dumps({
+                "status": "ALL_CANCELLED" if cancelled else "NO_ORDERS_CANCELLED",
+                "cancelled_tickets": cancelled,
+                "count": len(cancelled),
+                "skipped_due_to_sanctity": skipped_sanctity
+            }, indent=2)
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL") -> str:
-    """Cancel / remove active pending orders on MT5."""
-    return mcp_alpha_cancel_pending_order(order_ticket, symbol)
+def cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", force: bool = False, reason: str = "") -> str:
+    """Cancel / remove active pending orders on MT5. Under CONST_PENDING_ORDER_SANCTITY, orders under 45m require TP realization or SL breach to cancel, unless force=True."""
+    return mcp_alpha_cancel_pending_order(order_ticket, symbol, force, reason)
 
 def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
     """Modify price, Stop Loss (sl), or Take Profit (tp) of an existing pending order on MT5."""
@@ -644,13 +734,20 @@ def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: fl
         import MetaTrader5 as mt5
         orders = mt5.orders_get(ticket=int(order_ticket))
         if not orders:
+            # Check if this order was already filled into a position
+            pos = mt5.positions_get(ticket=int(order_ticket))
+            if pos:
+                return json.dumps({
+                    "status": "ALREADY_FILLED",
+                    "order_ticket": order_ticket,
+                    "position_ticket": pos[0].ticket,
+                    "error": f"Ticket #{order_ticket} is already an active position, not a pending order. Use alpha_update_position instead."
+                }, indent=2)
             return json.dumps({"status": "FAILED", "error": f"Pending order #{order_ticket} not found"}, indent=2)
         o = orders[0]
         final_price = float(price) if price and float(price) > 0 else o.price_open
         final_sl = float(sl) if sl and float(sl) > 0 else o.sl
         final_tp = float(tp) if tp and float(tp) > 0 else o.tp
-
-
 
         req = {
             "action": mt5.TRADE_ACTION_MODIFY,
@@ -663,6 +760,26 @@ def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: fl
         }
         res = mt5.order_send(req)
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            # Check if modification immediately triggered an execution fill
+            pos_match = mt5.positions_get(ticket=int(order_ticket))
+            if not pos_match:
+                all_p = mt5.positions_get(symbol=o.symbol) or []
+                pos_match = [p for p in all_p if p.ticket == int(order_ticket) or (p.comment and str(order_ticket) in p.comment)]
+            if pos_match:
+                p = pos_match[0]
+                return json.dumps({
+                    "status": "FILLED_AT_MARKET",
+                    "order_ticket": order_ticket,
+                    "position_ticket": p.ticket,
+                    "symbol": p.symbol,
+                    "volume": p.volume,
+                    "fill_price": p.price_open,
+                    "sl": p.sl,
+                    "tp": p.tp,
+                    "warning": "Price modification crossed current market quote! Pending order was immediately FILLED by MT5 and is now an ACTIVE LIVE POSITION.",
+                    "message": f"Order #{order_ticket} converted to LIVE POSITION #{p.ticket} @ {p.price_open:.2f}."
+                }, indent=2)
+
             return json.dumps({
                 "status": "MODIFIED",
                 "order_ticket": order_ticket,
@@ -682,10 +799,11 @@ def modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0,
     return mcp_alpha_modify_pending_order(order_ticket, price, sl, tp)
 
 def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
-    """Fetch all active pending orders on MT5."""
+    """Fetch all active pending orders on MT5 with accurate distance, age, and sanctity status."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
+        import time
         orders = mt5.orders_get()
         orders_data = []
         sym_clean = symbol.upper().strip() if symbol else "ALL"
@@ -700,6 +818,11 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
         for o in orders or []:
             if sym_clean != "ALL" and o.symbol.upper() != sym_clean:
                 continue
+            tick = mt5.symbol_info_tick(o.symbol)
+            dist_pts = round(abs(tick.bid - o.price_open), 2) if tick else 0.0
+            ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
+            age_m = round(max(0.0, (ref_time - o.time_setup) / 60.0), 1) if getattr(o, 'time_setup', 0) else 0.0
+            sanctity_status = "ACTIVE_SANCTITY" if age_m < 45.0 else "MATURE"
             orders_data.append({
                 "ticket": o.ticket,
                 "symbol": o.symbol,
@@ -708,6 +831,10 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
                 "price_open": o.price_open,
                 "sl": o.sl,
                 "tp": o.tp,
+                "distance_pts": dist_pts,
+                "age_minutes": age_m,
+                "sanctity_status": sanctity_status,
+                "min_lifespan_minutes": 45,
                 "comment": o.comment,
                 "magic": o.magic
             })
@@ -1701,13 +1828,19 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "alpha_backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
-        "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0))),
+        "alpha_place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
+        "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0)), args.get("symbol","ALL"), args.get("force",False), args.get("reason","")),
+        "alpha_cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0)), args.get("symbol","ALL"), args.get("force",False), args.get("reason","")),
         "modify_pending_order": lambda: mcp_alpha_modify_pending_order(args.get("order_ticket",args.get("ticket",0)),args.get("price",0.0),args.get("sl",0.0),args.get("tp",0.0)),
+        "alpha_modify_pending_order": lambda: mcp_alpha_modify_pending_order(args.get("order_ticket",args.get("ticket",0)),args.get("price",0.0),args.get("sl",0.0),args.get("tp",0.0)),
         "get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol","ALL")),
+        "alpha_get_pending_orders": lambda: mcp_alpha_get_pending_orders(args.get("symbol","ALL")),
         "update_position": lambda: mcp_alpha_update_position(args.get("ticket",0),args.get("action",""),args.get("params_json","")),
+        "alpha_update_position": lambda: mcp_alpha_update_position(args.get("ticket",0),args.get("action",""),args.get("params_json","")),
         "get_market_regime_context": lambda: get_market_regime_context(args.get("symbol","XAUUSD"), args.get("force_refresh", False)),
         "get_trade_forensics": lambda: mcp_alpha_get_trade_forensics(args.get("ticket", 0)),
         "execute_market_order": lambda: mcp_alpha_execute_market_order(args.get("symbol","XAUUSD"),args.get("side","BUY"),args.get("volume",1.0),args.get("sl_price",0.0),args.get("tp_price",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Market Order")),
+        "alpha_execute_market_order": lambda: mcp_alpha_execute_market_order(args.get("symbol","XAUUSD"),args.get("side","BUY"),args.get("volume",1.0),args.get("sl_price",0.0),args.get("tp_price",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Market Order")),
         "get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
         "alpha_get_deep_orderflow_telemetry": lambda: mcp_alpha_get_deep_orderflow_telemetry(args.get("symbol","XAUUSD")),
         "get_topological_liquidity_map": lambda: get_topological_liquidity_map(args.get("symbol","XAUUSD"), args.get("detailed",False)),
