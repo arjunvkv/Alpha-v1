@@ -139,10 +139,12 @@ class IntradayInstitutionalEngine:
             return {"london_open": "N/A", "ny_open": "N/A"}
 
     def get_tick_velocity(self, symbol: str) -> dict:
-        """Measures MT5 tick execution speed per minute (ticks/min)."""
+        """Measures MT5 tick execution speed per minute (ticks/min) from the last completed 60-second bar."""
         try:
             self._ensure_mt5()
-            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 0, 1)
+            # Fetch last completed M1 bar (start_pos=1) so velocity represents a true, stable full 60-second measurement,
+            # eliminating the timing artifact of the forming bar (which showed 8-20 t/m at second :05).
+            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 1, 1)
             if rates is not None and len(rates) > 0:
                 tick_vol = int(rates[0]['tick_volume'])
                 if tick_vol > 150:
