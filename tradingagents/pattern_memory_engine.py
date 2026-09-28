@@ -34,6 +34,9 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 DEFAULT_DB_PATH = Path(r"C:\Trading\Alpha\logs\graphiti_pattern_memory.db")
+
+# Minimum-evidence classification is descriptive only; it never gates execution or ranks setups.
+MINIMUM_EVIDENCE_OBSERVATIONS = 3
 LOG = logging.getLogger("alpha.pattern_memory")
 
 
@@ -597,6 +600,32 @@ class PatternMemoryEngine:
             
         return self._dense_card_summary(lesson_raw, max_chars=max_chars)
 
+    @staticmethod
+    def _classify_evidence(win_count: int, trap_count: int, study_count: int) -> Dict[str, Any]:
+        """Classify retrieved memory by minimum historical evidence volume.
+
+        This is an evidence-sufficiency label only. It does not imply that a
+        pattern is valid, predictive, safe, preferred, or actionable.
+        """
+        live_count = int(win_count or 0) + int(trap_count or 0)
+        study_count = int(study_count or 0)
+        if live_count == 0:
+            classification = "STUDY_ONLY" if study_count > 0 else "NO_EVIDENCE"
+        elif live_count < MINIMUM_EVIDENCE_OBSERVATIONS:
+            classification = "INSUFFICIENT_LIVE_EVIDENCE"
+        elif win_count > 0 and trap_count > 0:
+            classification = "MIXED_LIVE_EVIDENCE"
+        else:
+            classification = "MINIMUM_LIVE_EVIDENCE_MET"
+
+        return {
+            "classification": classification,
+            "live_observations": live_count,
+            "study_observations": study_count,
+            "minimum_required": MINIMUM_EVIDENCE_OBSERVATIONS,
+            "minimum_met": live_count >= MINIMUM_EVIDENCE_OBSERVATIONS,
+        }
+
     def search_facts(self, patterns: Any, symbol: str = "XAUUSD", limit: int = 5) -> str:
         """
         Query memory for historical walks matching the queried pattern combination.
@@ -689,6 +718,8 @@ class PatternMemoryEngine:
 
         total_live_wins = sum(x["count"] for x in matched_live_wins)
         total_live_traps = sum(x["count"] for x in matched_live_traps)
+        total_study = sum(x["count"] for x in matched_study)
+        evidence = self._classify_evidence(total_live_wins, total_live_traps, total_study)
         
         # Differentiate exact composite overlap vs loose component overlap
         exact_wins = [x for x in matched_live_wins if x["overlap_count"] >= len(query_tags)]
@@ -731,6 +762,17 @@ class PatternMemoryEngine:
                 output_lines.append("- Live Desk Execution: Zero prior live fills on exact combination.")
         else:
             output_lines.append("- Clean Record: Zero stumbles recorded for this combination under proper execution.")
+
+        # Minimum-evidence classification: explicit sample-size context, never a verdict.
+        if evidence["classification"] == "NO_EVIDENCE":
+            evidence_note = "no historical outcome observations; minimum evidence not met"
+        elif evidence["classification"] == "STUDY_ONLY":
+            evidence_note = f"{evidence['study_observations']} study observations only; no live WIN/TRAP outcome evidence"
+        elif evidence["minimum_met"]:
+            evidence_note = f"{evidence['live_observations']} live outcome observations; minimum {evidence['minimum_required']} met"
+        else:
+            evidence_note = f"{evidence['live_observations']} live outcome observations; minimum {evidence['minimum_required']} not met"
+        output_lines.append(f"- Evidence Classification: {evidence['classification']} -- {evidence_note}")
 
         # Institutional Literature Anchor (Foundational market auction law)
         if matched_canon:
