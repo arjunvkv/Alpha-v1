@@ -1220,19 +1220,19 @@ def _sync_query_analyst_desk(query: str = "Full 7-layer technical, fundamental C
             tactical_verdict = (
                 f"Long Thesis Evaluation: Confluence at {fvg_str}. "
                 f"Optimal long entry requires resting limit at structural discount CE ({fvg_ce:.2f}) or momentum BUY_STOP on confirmed expansion. "
-                f"SL floor >= 6.0-12.0 pts anchored below demand shelf ({ob_data.get('demand_zone', 'N/A')}) + 1.5x ATR14 buffer. Target opposing structural magnet with positive R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Sizing 0.50-1.00L."
+                f"SL floor >= 6.0-12.0 pts anchored strictly behind demand shelf ({ob_data.get('demand_zone', 'N/A')}). Target opposing structural magnet with positive R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Sizing 0.50-1.00L."
             )
         elif "SELL" in q_upper or "SHORT" in q_upper:
             tactical_verdict = (
                 f"Short Thesis Evaluation: Confluence against {ob_data.get('supply_zone', 'N/A')}. "
                 f"Optimal short entry requires resting limit at structural premium CE ({fvg_ce:.2f}) or momentum SELL_STOP below immediate consolidation shelf. "
-                f"SL floor >= 6.0-12.0 pts anchored above supply shelf + 1.5x ATR14 buffer. Target opposing structural magnet with positive R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Sizing 0.50-1.00L."
+                f"SL floor >= 6.0-12.0 pts anchored strictly behind supply shelf. Target opposing structural magnet with positive R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Sizing 0.50-1.00L."
             )
         else:
             tactical_verdict = (
                 f"Multi-Agent Consensus: 4TF is {mtf_res.get('formatted_4tf')}, COT bias is {cot_data.get('bias', 'NEUTRAL')}. "
                 f"Key structure: {fvg_str}. Velocity: {cvd_data.get('tick_velocity_tpm', 0.0):.1f} t/m. "
-                f"Execution Blueprint: 0.50-1.00L sizing, structural SL >= 6.0-12.0 pts (+ 1.5x ATR14), asymmetric TP with R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Mechanical bracket discipline; progressive structural trailing (BE -> +1R -> +2R) with 3-5 pt buffer once > +1R."
+                f"Execution Blueprint: 0.50-1.00L sizing, structural SL >= 6.0-12.0 pts anchored behind HTF structure, asymmetric TP with R:R >= 1.5:1 to 2.5:1+ (+12.0 to +25.0 pts). Mechanical bracket discipline; progressive structural trailing (BE -> +1R -> +2R) with 3-5 pt buffer once > +1R."
             )
 
         return json.dumps({
