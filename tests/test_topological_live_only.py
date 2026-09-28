@@ -88,6 +88,55 @@ class TestTopologicalLiveOnly(unittest.TestCase):
         )
         self.assertNotIn("FVG_RETIRED", graph["nodes"])
 
+    def test_scale_invariant_magnets_derivation(self):
+        from tradingagents.topological_graph_engine import _derive_scale_invariant_magnets
+        lo_gold, hi_gold = _derive_scale_invariant_magnets(4195.0)
+        self.assertEqual(lo_gold, 4190.0)
+        self.assertEqual(hi_gold, 4200.0)
+
+        lo_fx, hi_fx = _derive_scale_invariant_magnets(1.085)
+        self.assertEqual(lo_fx, 1.08)
+        self.assertEqual(hi_fx, 1.09)
+
+    def test_psychological_milestone_projected_when_floors_depleted(self):
+        engine = TopologicalGraphEngine()
+        graph = engine.build_market_graph(
+            symbol="XAUUSD",
+            live_price=4195.0,
+        )
+        self.assertIn("PSYCHOLOGICAL_FLOOR", graph["nodes"])
+        self.assertEqual(graph["nodes"]["PSYCHOLOGICAL_FLOOR"]["price"], 4190.0)
+        self.assertEqual(graph["nodes"]["PSYCHOLOGICAL_FLOOR"]["provenance"], "MATHEMATICAL_SCALE_INVARIANT")
+
+        ego = engine.get_localized_ego_graph(symbol="XAUUSD")
+        cascade_labels = [c["label"] for c in ego["downward_cascade_chain"]]
+        self.assertTrue(any("Psychological Milestone" in l for l in cascade_labels))
+
+    def test_psychological_milestone_suppressed_when_physical_floor_nearby(self):
+        engine = TopologicalGraphEngine()
+        graph = engine.build_market_graph(
+            symbol="XAUUSD",
+            live_price=4195.0,
+            liquidity_data={"session_low": 4191.0},  # 4.0 pts away (< 15.0 pts)
+        )
+        self.assertNotIn("PSYCHOLOGICAL_FLOOR", graph["nodes"])
+
+    def test_prior_week_extremes_and_swings_in_cascades(self):
+        engine = TopologicalGraphEngine()
+        graph = engine.build_market_graph(
+            symbol="XAUUSD",
+            live_price=4200.0,
+            liquidity_data={"pw_high": 4230.0, "pw_low": 4165.0},
+        )
+        self.assertIn("PWL", graph["nodes"])
+        self.assertIn("PWH", graph["nodes"])
+        self.assertEqual(graph["nodes"]["PWL"]["price"], 4165.0)
+
+        ego = engine.get_localized_ego_graph(symbol="XAUUSD")
+        cascade_prices = [c["price"] for c in ego["downward_cascade_chain"]]
+        self.assertIn(4165.0, cascade_prices)
+
 
 if __name__ == "__main__":
     unittest.main()
+

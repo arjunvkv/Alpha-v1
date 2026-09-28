@@ -1364,14 +1364,14 @@ def get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = 
     """Retrieve factual vintage-aware Federal Reserve economic observations (e.g. series 'DGS10', 'T10YIE', 'DFII10') for macroeconomic interest rate analysis."""
     return mcp_alpha_get_fred_observations(series_id, limit, vintage_date)
 
-def mcp_alpha_get_live_world_events(category: str = "ALL", limit: int = 15, force_refresh: bool = False) -> str:
+def mcp_alpha_get_live_world_events(category: str = "ALL", limit: int = 10, force_refresh: bool = False) -> str:
     """Retrieve verified, real-time live financial news headlines, Treasury wires, central bank releases, and geopolitical events.
     
     Aggregated live across 10 institutional wire feeds (US Treasury & Buyback Wires, Federal Reserve Press Releases, Yahoo Commodities & Metals, FXStreet Live Wire, CNBC World, CNBC Economy, CNBC Energy & Commodities, MarketWatch).
     
     Args:
         category: Filter by category ('ALL', 'MACRO', 'MICRO', 'GEOPOLITICAL', 'CENTRAL_BANKS_FED', 'COMMODITIES_ENERGY').
-        limit: Number of headlines to return (default: 15, max: 30).
+        limit: Number of headlines to return (default: 10, max: 30).
         force_refresh: Set True to force immediate network refresh instead of cache.
     """
     read_logger.log_dossier_read("OpenCode CIO (MCP World Events)", "MANDATORY_PRE_EXECUTION_AUDIT", f"Queried live world events (cat: {category}, limit: {limit})")
@@ -1379,12 +1379,18 @@ def mcp_alpha_get_live_world_events(category: str = "ALL", limit: int = 15, forc
         evs = world_events_engine.fetch_live_events(force_refresh=force_refresh)
         cat_filter = str(category or "ALL").upper().strip()
         filtered = []
+        seen_titles: set[str] = set()
         for ev in evs:
             ev_cat = str(ev.get("category", "")).upper()
             if cat_filter != "ALL" and cat_filter not in ev_cat:
                 continue
+            title = (ev.get("title") or "").strip()
+            title_norm = "".join(c.lower() for c in title if c.isalnum())
+            if title_norm in seen_titles:
+                continue
+            seen_titles.add(title_norm)
             filtered.append({
-                "title": ev.get("title"),
+                "title": title,
                 "category": ev.get("category"),
                 "source": ev.get("source"),
                 "pub_date": ev.get("pub_date"),
@@ -1402,7 +1408,7 @@ def mcp_alpha_get_live_world_events(category: str = "ALL", limit: int = 15, forc
         return json.dumps({"status": "ERROR", "error": str(err)}, indent=2)
 
 @mcp.tool()
-def get_live_world_events(category: str = "ALL", limit: int = 15, force_refresh: bool = False) -> str:
+def get_live_world_events(category: str = "ALL", limit: int = 10, force_refresh: bool = False) -> str:
     """Retrieve verified, real-time live financial news headlines, Treasury wires, central bank releases, and geopolitical events."""
     return mcp_alpha_get_live_world_events(category=category, limit=limit, force_refresh=force_refresh)
 
@@ -1496,6 +1502,8 @@ def get_market_regime_context(symbol: str = "XAUUSD", force_refresh: bool = Fals
         if "raw_metrics" in raw_res and isinstance(raw_res["raw_metrics"], dict):
             raw_res["raw_metrics"].pop("raw_footprints_30_m1", None)
             raw_res["raw_metrics"].pop("raw_ohlc_60b", None)
+            if "raw_footprints_4m_horizon" in raw_res["raw_metrics"] and isinstance(raw_res["raw_metrics"]["raw_footprints_4m_horizon"], list):
+                raw_res["raw_metrics"]["raw_footprints_4m_horizon"] = raw_res["raw_metrics"]["raw_footprints_4m_horizon"][-15:]
     return json.dumps(raw_res, separators=(',', ':'))
 
 def mcp_alpha_get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
@@ -1676,8 +1684,8 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
     fn_map = {
         "get_account_status": mcp_alpha_get_account_status,
         "get_fred_observations": lambda: get_fred_observations(**args),
-        "get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
-        "alpha_get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",15),args.get("force_refresh",False)),
+        "get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",10),args.get("force_refresh",False)),
+        "alpha_get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",10),args.get("force_refresh",False)),
         "backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "alpha_backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),

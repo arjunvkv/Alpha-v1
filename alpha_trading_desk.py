@@ -938,6 +938,11 @@ class ConsolidatedTradingDaemon:
 
         if triggered_watch is not None:
             ready_for_dispatch = True
+        elif is_startup:
+            if is_idle:
+                ready_for_dispatch = True
+            else:
+                LOG.info(f"OpenCode session '{title}' ({sid}) is currently BUSY deliberating. Holding dispatch until idle...")
         elif elapsed_since_dispatch >= required_interval:
             if is_idle:
                 ready_for_dispatch = True
@@ -1107,10 +1112,10 @@ class ConsolidatedTradingDaemon:
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n"
                     f"*STALE PENDING PROTOCOL (CONST_STALE_PENDING_PROHIBITION): MT5 orders are GTC and NEVER self-expire. If any order is > 15.0 pts away from market or resting > 60m without fill, CANCEL IT NOW via `alpha_cancel_pending_order(ticket)`.\n\n"
                     f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
-                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=15)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
+                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=10)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
                     f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
                     f"CORE REPRICING EVALUATION VECTORS (LEAN CAUSAL DISCOVERY):\n"
-                    f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=15)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
+                    f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=10)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
                     f"2. Q-NEWS-2 [Displacement vs. Catalyst Reconciliation]: Reconcile today's active leg displacement and session timing (from the header above) against live wires. Is current price expansion backed by a real sovereign catalyst, or is it an overnight/session liquidity hunt in an informational vacuum?\n"
                     f"3. Q-NEWS-3 [Dynamic Deep Inquiry & 7-Layer Replan]: Based on the active leg and wire clues from Q1/Q2, dynamically formulate your targeted search query (do NOT use static keywords). Target the specific transmission channel driving this session: Call 1x `proxima_ask_perplexity(message=\"...\")`, 1x `alpha_query_analyst_desk(symbol='XAUUSD')` for Bull vs Bear arguments, and audit/replan active resting limit/stop orders with `alpha_get_pending_orders(symbol='ALL')`.\n"
                     f"4. Q-NEWS-4 [Continuous Memory Grounding — Mandatory in Parallel]: Formulate 2–3 scale-invariant tags from the 3-Vector Grammar ([Macro] + [Location] + [Physics], e.g. ['4TF_STRONG_BEARISH', 'BSL_SWEEP', 'CVD_ABSORPTION']) and call 1x `graphiti_search_facts(patterns=[...])`. Compare live tape with relevant historical evidence, including prior wins and traps, without treating either as an automatic verdict.\n"

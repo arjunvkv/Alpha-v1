@@ -20,8 +20,8 @@ from __future__ import annotations
 import logging
 import math
 import time
-from datetime import datetime, time as dt_time, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime, time as dt_time, timezone, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 LOG = logging.getLogger("alpha.topological_graph")
@@ -83,6 +83,37 @@ def _session_bounds(config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _derive_scale_invariant_magnets(price: float) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Computes scale-invariant psychological round milestones above and below price.
+    Uses log magnitude: M_base = 10^(floor(log10(price)) - 2).
+    For Gold ~4200: M_base = 10.0 (milestones at 4180, 4190, 4200, 4210...).
+    For EURUSD ~1.085: M_base = 0.01.
+    Zero hardcoded numbers.
+    """
+    if not price or price <= 0:
+        return None, None
+    try:
+        log_p = math.log10(price)
+        exponent = max(-4, math.floor(log_p) - 2)
+        step = 10.0 ** exponent
+        precision = max(0, -exponent)
+
+        lower_mult = math.floor(price / step) * step
+        if (price - lower_mult) < (step * 0.08):
+            lower_mult -= step
+
+        upper_mult = math.ceil(price / step) * step
+        if (upper_mult - price) < (step * 0.08):
+            upper_mult += step
+
+        lower_milestone = round(lower_mult, precision)
+        upper_milestone = round(upper_mult, precision)
+        return lower_milestone, upper_milestone
+    except Exception:
+        return None, None
+
+
 def _live_tick(symbol: str) -> Optional[Dict[str, float]]:
     try:
         import MetaTrader5 as mt5
@@ -115,12 +146,49 @@ def _live_liquidity_data(symbol: str, session_config: Optional[Dict[str, Any]]) 
         import pandas as pd  # type: ignore
         from datetime import timedelta
 
-        d1 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 1, 1)
+        d1 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 1, 10)
         if d1 is not None and len(d1):
-            row = d1[0]
+            row = d1[-1]
             out["yest_high"] = _valid_price(row["high"])
             out["yest_low"] = _valid_price(row["low"])
             out["yest_close"] = _valid_price(row["close"])
+            if len(d1) >= 2:
+                out["p2d_low"] = _valid_price(d1[-2]["low"])
+                out["p2d_high"] = _valid_price(d1[-2]["high"])
+
+            # Prior completed calendar week (Monday-Friday) bounds
+            now_utc_calc = datetime.now(timezone.utc)
+            curr_monday_date = now_utc_calc.date() - timedelta(days=now_utc_calc.weekday())
+            prior_monday_date = curr_monday_date - timedelta(days=7)
+
+            pw_bars = []
+            for r in d1:
+                b_dt = datetime.fromtimestamp(r["time"], tz=timezone.utc).date()
+                if prior_monday_date <= b_dt < curr_monday_date:
+                    pw_bars.append(r)
+
+            if pw_bars:
+                out["pw_high"] = _valid_price(max(float(r["high"]) for r in pw_bars))
+                out["pw_low"] = _valid_price(min(float(r["low"]) for r in pw_bars))
+            elif len(d1) >= 5:
+                trailing_5 = d1[-5:]
+                out["pw_high"] = _valid_price(max(float(r["high"]) for r in trailing_5))
+                out["pw_low"] = _valid_price(min(float(r["low"]) for r in trailing_5))
+
+            # 3-bar swing pivots from D1 series
+            swing_lows = []
+            swing_highs = []
+            for i in range(1, len(d1) - 1):
+                prev_b, curr_b, next_b = d1[i-1], d1[i], d1[i+1]
+                if curr_b["low"] < prev_b["low"] and curr_b["low"] < next_b["low"]:
+                    dt_str = datetime.fromtimestamp(curr_b["time"], tz=timezone.utc).strftime("%m/%d")
+                    swing_lows.append({"price": float(curr_b["low"]), "label": f"D1 Swing Low ({dt_str})"})
+                if curr_b["high"] > prev_b["high"] and curr_b["high"] > next_b["high"]:
+                    dt_str = datetime.fromtimestamp(curr_b["time"], tz=timezone.utc).strftime("%m/%d")
+                    swing_highs.append({"price": float(curr_b["high"]), "label": f"D1 Swing High ({dt_str})"})
+
+            out["swing_lows_d1"] = swing_lows
+            out["swing_highs_d1"] = swing_highs
 
         session = _session_bounds(session_config)
         now_utc = datetime.now(timezone.utc)
@@ -331,6 +399,64 @@ class TopologicalGraphEngine:
                 "label": f"PDL ({yl:.2f})",
             }
 
+        # Prior Week High & Low (PWH / PWL)
+        pwh = _valid_price(liq.get("pw_high"))
+        pwl = _valid_price(liq.get("pw_low"))
+        if pwh is not None and (yh is None or abs(pwh - yh) > 1.0):
+            swept = price > pwh
+            nodes["PWH"] = {
+                "id": "PWH",
+                "type": "PREV_WEEK_HIGH_BSL",
+                "price": pwh,
+                "tf": "W1",
+                "swept": swept,
+                "lifecycle_state": MITIGATED if swept else ACTIVE,
+                "label": f"Prior Week High ({pwh:.2f})",
+            }
+        if pwl is not None and (yl is None or abs(pwl - yl) > 1.0):
+            swept = price < pwl
+            nodes["PWL"] = {
+                "id": "PWL",
+                "type": "PREV_WEEK_LOW_SSL",
+                "price": pwl,
+                "tf": "W1",
+                "swept": swept,
+                "lifecycle_state": MITIGATED if swept else ACTIVE,
+                "label": f"Prior Week Low ({pwl:.2f})",
+            }
+
+        # Multi-Day Swing Lows and Highs (Nearest unmitigated fractal pivots)
+        for s_idx, sw_low in enumerate(liq.get("swing_lows_d1", [])[:2]):
+            sw_p = _valid_price(sw_low.get("price"))
+            sw_label = sw_low.get("label", f"D1 Swing Low #{s_idx+1}")
+            if sw_p is not None and (yl is None or abs(sw_p - yl) > 1.0) and (pwl is None or abs(sw_p - pwl) > 1.0):
+                swept = price < sw_p
+                nid = f"D1_SWING_LOW_{s_idx+1}"
+                nodes[nid] = {
+                    "id": nid,
+                    "type": "PREV_DAY_LOW_SSL",
+                    "price": sw_p,
+                    "tf": "D1",
+                    "swept": swept,
+                    "lifecycle_state": MITIGATED if swept else ACTIVE,
+                    "label": f"{sw_label} ({sw_p:.2f})",
+                }
+        for s_idx, sw_high in enumerate(liq.get("swing_highs_d1", [])[:2]):
+            sw_p = _valid_price(sw_high.get("price"))
+            sw_label = sw_high.get("label", f"D1 Swing High #{s_idx+1}")
+            if sw_p is not None and (yh is None or abs(sw_p - yh) > 1.0) and (pwh is None or abs(sw_p - pwh) > 1.0):
+                swept = price > sw_p
+                nid = f"D1_SWING_HIGH_{s_idx+1}"
+                nodes[nid] = {
+                    "id": nid,
+                    "type": "PREV_DAY_HIGH_BSL",
+                    "price": sw_p,
+                    "tf": "D1",
+                    "swept": swept,
+                    "lifecycle_state": MITIGATED if swept else ACTIVE,
+                    "label": f"{sw_label} ({sw_p:.2f})",
+                }
+
         # Daily Pivot & S/R Shelves
         pivot = dict(_live_pivot_data(sym)) if tick else {}
         if pivot_data:
@@ -420,16 +546,61 @@ class TopologicalGraphEngine:
             "delta_bias": "NEGATIVE_ABSORPTION" if cvd_val < -15.0 else ("POSITIVE_EXPANSION" if cvd_val > 15.0 else "NEUTRAL"),
         }
 
-        # 4. Construct Directed Spatial Edges from Cursor
+        # 4. Psychological Round Milestones (Conditional Projection when physical levels are depleted / open roadway)
+        lo_ms, hi_ms = _derive_scale_invariant_magnets(price)
+        if lo_ms is not None:
+            has_nearby_floor = any(
+                n.get("price") is not None
+                and n["price"] < price
+                and (n.get("lifecycle_state") == ACTIVE or not n.get("swept", False))
+                and (price - n["price"]) < 15.0
+                for nid, n in nodes.items()
+                if nid != "CURSOR"
+            )
+            if not has_nearby_floor:
+                nodes["PSYCHOLOGICAL_FLOOR"] = {
+                    "id": "PSYCHOLOGICAL_FLOOR",
+                    "type": "PSYCHOLOGICAL_ROUND_MILESTONE",
+                    "price": lo_ms,
+                    "tf": "MACRO",
+                    "lifecycle_state": ACTIVE,
+                    "provenance": "MATHEMATICAL_SCALE_INVARIANT",
+                    "label": f"Psychological Milestone ({lo_ms:.2f})",
+                }
+
+        if hi_ms is not None:
+            has_nearby_ceiling = any(
+                n.get("price") is not None
+                and n["price"] > price
+                and (n.get("lifecycle_state") == ACTIVE or not n.get("swept", False))
+                and (n["price"] - price) < 15.0
+                for nid, n in nodes.items()
+                if nid != "CURSOR"
+            )
+            if not has_nearby_ceiling:
+                nodes["PSYCHOLOGICAL_CEILING"] = {
+                    "id": "PSYCHOLOGICAL_CEILING",
+                    "type": "PSYCHOLOGICAL_ROUND_MILESTONE",
+                    "price": hi_ms,
+                    "tf": "MACRO",
+                    "lifecycle_state": ACTIVE,
+                    "provenance": "MATHEMATICAL_SCALE_INVARIANT",
+                    "label": f"Psychological Milestone ({hi_ms:.2f})",
+                }
+
+        # 5. Construct Directed Spatial Edges from Cursor
         edges: List[Dict[str, Any]] = []
         relationship_by_type = {
             "SESSION_EXTREME_BSL": "LIQUIDITY_TARGET",
             "SESSION_EXTREME_SSL": "LIQUIDITY_TARGET",
             "PREV_DAY_HIGH_BSL": "LIQUIDITY_TARGET",
             "PREV_DAY_LOW_SSL": "LIQUIDITY_TARGET",
+            "PREV_WEEK_HIGH_BSL": "LIQUIDITY_TARGET",
+            "PREV_WEEK_LOW_SSL": "LIQUIDITY_TARGET",
             "VALUE_AREA_EQUILIBRIUM": "VALUE_REFERENCE",
             "INSTITUTIONAL_DEMAND": "STRUCTURAL_ZONE",
             "INSTITUTIONAL_SUPPLY": "STRUCTURAL_ZONE",
+            "PSYCHOLOGICAL_ROUND_MILESTONE": "PSYCHOLOGICAL_MAGNET",
         }
 
         # Avoid duplicate edges for alias nodes (e.g. ASIAN_HIGH vs SESSION_HIGH)
@@ -588,7 +759,11 @@ class TopologicalGraphEngine:
         Extracts the localized k-hop ego-graph around current price.
         Identifies nearest ceiling, nearest floor, downward cascade chain, and upward cascade chain.
         """
-        if not self._cached_graph or self._cached_graph.get("symbol") != symbol.upper():
+        if (
+            not self._cached_graph
+            or self._cached_graph.get("symbol") != symbol.upper()
+            or (time.time() - self._last_build_time > 2.0)
+        ):
             graph = self.build_market_graph(symbol=symbol)
         else:
             graph = self._cached_graph
@@ -632,7 +807,14 @@ class TopologicalGraphEngine:
         for e in floors:
             nid = e["to"]
             n = nodes.get(nid, {})
-            if n.get("type") in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL"):
+            if n.get("type") in (
+                "SESSION_EXTREME_SSL",
+                "VALUE_AREA_EQUILIBRIUM",
+                "INSTITUTIONAL_DEMAND",
+                "PREV_DAY_LOW_SSL",
+                "PREV_WEEK_LOW_SSL",
+                "PSYCHOLOGICAL_ROUND_MILESTONE",
+            ):
                 downward_chain.append({
                     "label": n.get("label"),
                     "price": n.get("price"),
@@ -647,7 +829,13 @@ class TopologicalGraphEngine:
         for e in ceilings:
             nid = e["to"]
             n = nodes.get(nid, {})
-            if n.get("type") in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL"):
+            if n.get("type") in (
+                "SESSION_EXTREME_BSL",
+                "INSTITUTIONAL_SUPPLY",
+                "PREV_DAY_HIGH_BSL",
+                "PREV_WEEK_HIGH_BSL",
+                "PSYCHOLOGICAL_ROUND_MILESTONE",
+            ):
                 upward_chain.append({
                     "label": n.get("label"),
                     "price": n.get("price"),
@@ -807,8 +995,8 @@ class TopologicalGraphEngine:
         ])
 
         # All cascade levels
-        dw = [f"{nodes[e['to']]['price']:.1f}" for e in floors if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL")]
-        up = [f"{nodes[e['to']]['price']:.1f}" for e in ceilings if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL")]
+        dw = [f"{nodes[e['to']]['price']:.1f}" for e in floors if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_SSL", "VALUE_AREA_EQUILIBRIUM", "INSTITUTIONAL_DEMAND", "PREV_DAY_LOW_SSL", "PREV_WEEK_LOW_SSL", "PSYCHOLOGICAL_ROUND_MILESTONE")]
+        up = [f"{nodes[e['to']]['price']:.1f}" for e in ceilings if nodes.get(e['to'], {}).get('type') in ("SESSION_EXTREME_BSL", "INSTITUTIONAL_SUPPLY", "PREV_DAY_HIGH_BSL", "PREV_WEEK_HIGH_BSL", "PSYCHOLOGICAL_ROUND_MILESTONE")]
 
         dw_str = " -> ".join(dw) if dw else "None"
         up_str = " -> ".join(up) if up else "None"
