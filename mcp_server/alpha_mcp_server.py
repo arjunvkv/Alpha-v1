@@ -37,9 +37,7 @@ try:
     from tradingagents.telegram_notifier import (
         notify_order_placed, notify_order_cancelled, notify_sanctity_gate_blocked,
         notify_order_filled, notify_sl_moved, notify_position_closed, notify_tp_hit,
-        send_startup_ping,
     )
-    send_startup_ping()
 except Exception as _tg_import_err:
     import logging as _lg
     _lg.getLogger("alpha_mcp").warning(f"Telegram notifier unavailable: {_tg_import_err}")
