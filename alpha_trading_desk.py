@@ -1752,6 +1752,13 @@ class ConsolidatedTradingDaemon:
         self.dispatch_startup_ping(sid, title)
         # Start ultra-fast 500ms Universal Watcher Task
         self.watcher_task = asyncio.create_task(self._realtime_watcher_task())
+        # Start Telegram Session Bot Command Listener (@EscanorDeskbot)
+        try:
+            from tradingagents.telegram_session_bot import start_telegram_bot_thread
+            start_telegram_bot_thread()
+            LOG.info("📱 Telegram Session Bot Command Listener active (@EscanorDeskbot).")
+        except Exception as _tg_bot_err:
+            LOG.warning(f"Could not start Telegram Bot listener: {_tg_bot_err}")
         await asyncio.sleep(2.0)
         while self.is_running:
             try:
