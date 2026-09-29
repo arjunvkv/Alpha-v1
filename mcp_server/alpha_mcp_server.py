@@ -84,7 +84,7 @@ async def run_in_thread(func, *args, **kwargs):
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
-MIN_PENDING_ORDER_LIFESPAN_MINUTES = 45.0
+MIN_PENDING_ORDER_LIFESPAN_MINUTES = 0.0  # Gate removed — causal physics prompt layer is the real fix
 mcp = FastMCP("alpha")
 
 def _order_type_name(mt5_type: int) -> str:
@@ -640,9 +640,7 @@ def place_pending_order(symbol: str = "XAUUSD", order_type: str = "SELL_LIMIT", 
 # ======================================================================
 
 def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", force: bool = False, reason: str = "") -> str:
-    """Cancel / remove active pending orders on MT5 (pass specific ticket or 0 for all).
-    Protected by CONST_PENDING_ORDER_SANCTITY (45-minute minimum working lifespan).
-    """
+    """Cancel / remove active pending orders on MT5 (pass specific ticket or 0 for all)."""
     _init_mt5()
     try:
         import MetaTrader5 as mt5
@@ -657,67 +655,6 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
             ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
             age_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
 
-            # CONST_PENDING_ORDER_SANCTITY Check:
-            # An order cannot be cancelled before 45 minutes unless:
-            # 1. Force override (force=True)
-            # 2. Target Realization: market touched or passed TP without us
-            # 3. Structural SL Breach: market traded through SL pre-fill
-            # 4. Age >= 45m
-            is_buy = o.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
-            is_sell = o.type in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
-
-            tp_reached = False
-            if o.tp > 0 and tick:
-                if is_buy and tick.bid >= o.tp:
-                    tp_reached = True
-                elif is_sell and tick.ask <= o.tp:
-                    tp_reached = True
-
-            sl_breached = False
-            if o.sl > 0 and tick:
-                if is_buy and tick.bid <= o.sl:
-                    sl_breached = True
-                elif is_sell and tick.ask >= o.sl:
-                    sl_breached = True
-
-            can_cancel = False
-            cancel_approval_reason = ""
-            if force:
-                can_cancel = True
-                cancel_approval_reason = f"FORCE_OVERRIDE: {reason}" if reason else "FORCE_OVERRIDE"
-            elif tp_reached:
-                can_cancel = True
-                cancel_approval_reason = f"TARGET_REALIZED (Price touched/passed TP {o.tp:.2f} without fill; thesis fulfilled)"
-            elif sl_breached:
-                can_cancel = True
-                cancel_approval_reason = f"STRUCTURAL_SL_BREACHED (Price traded through SL {o.sl:.2f} pre-fill; structure broken)"
-            elif age_m >= MIN_PENDING_ORDER_LIFESPAN_MINUTES:
-                can_cancel = True
-                cancel_approval_reason = f"LIFESPAN_MATURE (Order rested for {age_m:.1f}m >= {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m minimum lifespan)"
-            else:
-                notify_sanctity_gate_blocked(
-                    ticket=order_ticket, symbol=o.symbol,
-                    order_type=_order_type_name(o.type),
-                    price=o.price_open, age_minutes=round(age_m, 1),
-                    block_reason=f"Age {age_m:.1f}m < {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m. TP not reached. SL not breached.",
-                )
-                return json.dumps({
-                    "status": "REJECTED_SANCTITY_VIOLATION",
-                    "order_ticket": order_ticket,
-                    "age_minutes": round(age_m, 1),
-                    "min_lifespan_minutes": int(MIN_PENDING_ORDER_LIFESPAN_MINUTES),
-                    "current_price": tick.bid if tick else 0.0,
-                    "order_price": o.price_open,
-                    "sl": o.sl,
-                    "tp": o.tp,
-                    "error": (
-                        f"Order #{order_ticket} has only rested for {age_m:.1f}m (< {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m minimum lifespan). "
-                        f"Current price has NOT reached TP ({o.tp:.2f}) and has NOT breached SL ({o.sl:.2f}). "
-                        f"CONST_PENDING_ORDER_SANCTITY strictly prohibits premature cancellation during normal consolidation or rotation. "
-                        f"Low velocity and minor pauses precede institutional sweeps. The order remains ACTIVE on the MT5 book to capture the rotation."
-                    )
-                }, indent=2)
-
             req = {"action": mt5.TRADE_ACTION_REMOVE, "order": int(order_ticket)}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
@@ -725,35 +662,21 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
                     ticket=order_ticket, symbol=o.symbol,
                     order_type=_order_type_name(o.type),
                     price=o.price_open, age_minutes=round(age_m, 1),
-                    reason=cancel_approval_reason, forced=force,
+                    reason=reason or "CIO_CANCEL", forced=force,
                 )
                 return json.dumps({
                     "status": "CANCELLED",
                     "order_ticket": order_ticket,
-                    "approval_reason": cancel_approval_reason,
-                    "age_minutes": round(age_m, 1)
+                    "age_minutes": round(age_m, 1),
+                    "reason": reason or "CIO_CANCEL",
                 }, indent=2)
             return json.dumps({"status": "FAILED", "order_ticket": order_ticket, "error": res.comment if res else "Unknown error"}, indent=2)
         else:
             orders = mt5.orders_get() or []
             sym_clean = symbol.upper().strip() if symbol else "ALL"
-            skipped_sanctity = []
             for o in orders:
                 if sym_clean != "ALL" and o.symbol.upper() != sym_clean:
                     continue
-                tick = mt5.symbol_info_tick(o.symbol)
-                ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
-                age_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
-
-                is_buy = o.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP)
-                is_sell = o.type in (mt5.ORDER_TYPE_SELL_LIMIT, mt5.ORDER_TYPE_SELL_STOP)
-                tp_reached = (o.tp > 0 and tick and ((is_buy and tick.bid >= o.tp) or (is_sell and tick.ask <= o.tp)))
-                sl_breached = (o.sl > 0 and tick and ((is_buy and tick.bid <= o.sl) or (is_sell and tick.ask >= o.sl)))
-
-                if not force and age_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES and not tp_reached and not sl_breached:
-                    skipped_sanctity.append({"ticket": o.ticket, "age_minutes": round(age_m, 1)})
-                    continue
-
                 req = {"action": mt5.TRADE_ACTION_REMOVE, "order": o.ticket}
                 res = mt5.order_send(req)
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
@@ -762,14 +685,13 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
                 "status": "ALL_CANCELLED" if cancelled else "NO_ORDERS_CANCELLED",
                 "cancelled_tickets": cancelled,
                 "count": len(cancelled),
-                "skipped_due_to_sanctity": skipped_sanctity
             }, indent=2)
     except Exception as err:
         return json.dumps({"status": "FAILED", "error": str(err)}, indent=2)
 
 @mcp.tool()
 def cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", force: bool = False, reason: str = "") -> str:
-    """Cancel / remove active pending orders on MT5. Under CONST_PENDING_ORDER_SANCTITY, orders under 45m require TP realization or SL breach to cancel, unless force=True."""
+    """Cancel / remove active pending orders on MT5. Pass a specific ticket or 0 for all."""
     return mcp_alpha_cancel_pending_order(order_ticket, symbol, force, reason)
 
 def mcp_alpha_modify_pending_order(order_ticket: int, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> str:
@@ -867,7 +789,6 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
             dist_pts = round(abs(tick.bid - o.price_open), 2) if tick else 0.0
             ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
             age_m = round(max(0.0, (ref_time - o.time_setup) / 60.0), 1) if getattr(o, 'time_setup', 0) else 0.0
-            sanctity_status = "ACTIVE_SANCTITY" if age_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES else "MATURE"
             orders_data.append({
                 "ticket": o.ticket,
                 "symbol": o.symbol,
@@ -878,8 +799,6 @@ def mcp_alpha_get_pending_orders(symbol: str = "ALL") -> str:
                 "tp": o.tp,
                 "distance_pts": dist_pts,
                 "age_minutes": age_m,
-                "sanctity_status": sanctity_status,
-                "min_lifespan_minutes": int(MIN_PENDING_ORDER_LIFESPAN_MINUTES),
                 "comment": o.comment,
                 "magic": o.magic
             })
