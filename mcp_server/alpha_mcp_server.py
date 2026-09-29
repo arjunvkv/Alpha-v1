@@ -33,6 +33,23 @@ evidence_state = EvidenceStateStore()
 from tradingagents.world_events import LiveWorldEventsEngine
 from sensors.evidence_sources import FREDAdapter, GDELTAdapter, RSSRegistry, CommonCrawlAdapter, capability_snapshot
 world_events_engine = LiveWorldEventsEngine()
+try:
+    from tradingagents.telegram_notifier import (
+        notify_order_placed, notify_order_cancelled, notify_sanctity_gate_blocked,
+        notify_order_filled, notify_sl_moved, notify_position_closed, notify_tp_hit,
+        send_startup_ping,
+    )
+    send_startup_ping()
+except Exception as _tg_import_err:
+    import logging as _lg
+    _lg.getLogger("alpha_mcp").warning(f"Telegram notifier unavailable: {_tg_import_err}")
+    def notify_order_placed(*a, **kw): pass
+    def notify_order_cancelled(*a, **kw): pass
+    def notify_sanctity_gate_blocked(*a, **kw): pass
+    def notify_order_filled(*a, **kw): pass
+    def notify_sl_moved(*a, **kw): pass
+    def notify_position_closed(*a, **kw): pass
+    def notify_tp_hit(*a, **kw): pass
 
 from config import (
     get_opencode_session,
@@ -69,6 +86,11 @@ LOG = logging.getLogger("alpha.mcp.server")
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 MIN_PENDING_ORDER_LIFESPAN_MINUTES = 45.0
 mcp = FastMCP("alpha")
+
+def _order_type_name(mt5_type: int) -> str:
+    """Convert MT5 integer order type to readable string for Telegram alerts."""
+    _map = {0: "BUY", 1: "SELL", 2: "BUY_LIMIT", 3: "SELL_LIMIT", 4: "BUY_STOP", 5: "SELL_STOP"}
+    return _map.get(int(mt5_type), f"TYPE_{mt5_type}")
 
 # Pre-instantiated singletons for sub-10ms response times
 _tech_analyst = TechnicalAnalyst()
@@ -388,6 +410,11 @@ def mcp_alpha_execute_market_order(
             
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log_local_llm_replied(f"Market Order executed on MT5! {s_side.upper()} {vol} lots on {sym} @ {price} | SL: {final_sl} | TP: {final_tp} (Ticket #{res.order}).")
+            notify_order_filled(
+                ticket=res.order, symbol=sym, side=s_side.upper(),
+                fill_price=price, sl=final_sl, tp=final_tp,
+                volume=vol, comment=comment or "",
+            )
             return json.dumps({
                 "status": "EXECUTED",
                 "symbol": sym,
@@ -571,6 +598,11 @@ def mcp_alpha_place_pending_order(
                     
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log_local_llm_replied(f"Pending order placed on MT5! {ot_clean} {vol} lots on {sym} @ {target_price} | SL: {final_sl} | TP: {final_tp} (Order #{res.order}).{auto_aligned_note}")
+            notify_order_placed(
+                ticket=res.order, symbol=sym, order_type=ot_clean,
+                price=target_price, sl=final_sl, tp=final_tp,
+                volume=vol, comment=tag or "",
+            )
             return json.dumps({
                 "status": "PLACED",
                 "order_ticket": res.order,
@@ -663,6 +695,12 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
                 can_cancel = True
                 cancel_approval_reason = f"LIFESPAN_MATURE (Order rested for {age_m:.1f}m >= {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m minimum lifespan)"
             else:
+                notify_sanctity_gate_blocked(
+                    ticket=order_ticket, symbol=o.symbol,
+                    order_type=_order_type_name(o.type),
+                    price=o.price_open, age_minutes=round(age_m, 1),
+                    block_reason=f"Age {age_m:.1f}m < {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m. TP not reached. SL not breached.",
+                )
                 return json.dumps({
                     "status": "REJECTED_SANCTITY_VIOLATION",
                     "order_ticket": order_ticket,
@@ -683,6 +721,12 @@ def mcp_alpha_cancel_pending_order(order_ticket: int = 0, symbol: str = "ALL", f
             req = {"action": mt5.TRADE_ACTION_REMOVE, "order": int(order_ticket)}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                notify_order_cancelled(
+                    ticket=order_ticket, symbol=o.symbol,
+                    order_type=_order_type_name(o.type),
+                    price=o.price_open, age_minutes=round(age_m, 1),
+                    reason=cancel_approval_reason, forced=force,
+                )
                 return json.dumps({
                     "status": "CANCELLED",
                     "order_ticket": order_ticket,
@@ -973,6 +1017,12 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
             req = {"action": mt5.TRADE_ACTION_SLTP, "position": p.ticket, "symbol": symbol, "sl": new_sl, "tp": p.tp}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                notify_sl_moved(
+                    ticket=ticket, symbol=symbol,
+                    side="BUY" if p.type == 0 else "SELL",
+                    old_sl=p.sl, new_sl=new_sl,
+                    stage="Break-Even", entry=p.price_open,
+                )
                 return json.dumps({"status": "UPDATED", "ticket": ticket, "action": "BREAK_EVEN", "sl": new_sl, "retcode": res.retcode})
             return json.dumps({"status": "FAILED", "ticket": ticket, "error": res.comment if res else "Unknown MT5 error"})
 
@@ -1098,6 +1148,14 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
                 }
                 res = mt5.order_send(close_req)
                 if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                    duration_m = round(pos_duration / 60.0, 1) if pos_duration else 0.0
+                    notify_position_closed(
+                        ticket=ticket, symbol=symbol,
+                        side="BUY" if p.type == 0 else "SELL",
+                        entry=p.price_open, close_price=curr_price,
+                        volume=p.volume, profit=p.profit,
+                        close_reason="CIO EXIT", duration_minutes=duration_m,
+                    )
                     return json.dumps({"status": "CLOSED", "ticket": ticket, "close_price": curr_price, "profit": p.profit})
             return json.dumps({"status": "FAILED", "ticket": ticket, "error": res.comment if res else "Unknown MT5 error"})
             
@@ -1206,6 +1264,12 @@ def mcp_alpha_update_position(ticket: int, action: str, params_json: str = "{}")
             req = {"action": mt5.TRADE_ACTION_SLTP, "position": p.ticket, "symbol": symbol, "sl": new_sl, "tp": new_tp}
             res = mt5.order_send(req)
             if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                notify_sl_moved(
+                    ticket=ticket, symbol=symbol,
+                    side="BUY" if p.type == 0 else "SELL",
+                    old_sl=p.sl, new_sl=new_sl,
+                    stage="Trail SL", entry=p.price_open,
+                )
                 return json.dumps({"status": "UPDATED", "ticket": ticket, "sl": new_sl, "tp": new_tp})
             return json.dumps({"status": "FAILED", "ticket": ticket, "error": res.comment if res else "Unknown MT5 error"})
             
