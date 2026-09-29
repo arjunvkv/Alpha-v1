@@ -46,6 +46,19 @@ from config import (
     get_active_trade_interval_seconds
 )
 
+try:
+    from tradingagents.telegram_notifier import (
+        notify_order_placed, notify_order_cancelled, notify_order_filled,
+        notify_sl_moved, notify_position_closed, notify_order_modified,
+    )
+except Exception as _tg_import_err:
+    def notify_order_placed(*a, **kw): pass
+    def notify_order_cancelled(*a, **kw): pass
+    def notify_order_filled(*a, **kw): pass
+    def notify_sl_moved(*a, **kw): pass
+    def notify_position_closed(*a, **kw): pass
+    def notify_order_modified(*a, **kw): pass
+
 # Constants
 FTMO_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
 STORY_LOG_PATH = PROJECT_ROOT / "logs" / "live_story.log"
@@ -1334,6 +1347,9 @@ class ConsolidatedTradingDaemon:
         ev_store = EvidenceStateStore()
         cvd_engine = CumulativeVolumeDeltaEngine()
         stage_qualification = {}  # {pos_ticket: {"highest_fav": float, "stage": int}}
+        tg_pending = {}
+        tg_positions = {}
+        tg_booted = False
 
         while self.is_running:
             try:
@@ -1346,6 +1362,132 @@ class ConsolidatedTradingDaemon:
                     # Clean up closed positions from qualification tracking
                     open_tickets = {p.ticket for p in current_positions}
                     stage_qualification = {t: q for t, q in stage_qualification.items() if t in open_tickets}
+
+                    # ── Dual-Channel Telegram Sync (Broker Ground Truth) ──
+                    try:
+                        order_type_map = {0: "BUY", 1: "SELL", 2: "BUY_LIMIT", 3: "SELL_LIMIT", 4: "BUY_STOP", 5: "SELL_STOP"}
+                        curr_pend_map = {o.ticket: o for o in current_pending}
+                        curr_pos_map = {p.ticket: p for p in current_positions}
+
+                        if not tg_booted:
+                            for o in current_pending:
+                                tg_pending[o.ticket] = {
+                                    "symbol": o.symbol,
+                                    "type": order_type_map.get(o.type, f"TYPE_{o.type}"),
+                                    "price": float(o.price_open),
+                                    "sl": float(o.sl),
+                                    "tp": float(o.tp),
+                                    "vol": float(o.volume_current),
+                                    "comment": getattr(o, "comment", "") or "",
+                                    "setup_time": getattr(o, "time_setup", time.time())
+                                }
+                            for p in current_positions:
+                                tg_positions[p.ticket] = {
+                                    "symbol": p.symbol,
+                                    "side": "BUY" if p.type == 0 else "SELL",
+                                    "open_p": float(p.price_open),
+                                    "sl": float(p.sl),
+                                    "tp": float(p.tp),
+                                    "vol": float(p.volume),
+                                    "comment": getattr(p, "comment", "") or ""
+                                }
+                            tg_booted = True
+                        else:
+                            # 1. New or modified pending orders
+                            for o in current_pending:
+                                ot_name = order_type_map.get(o.type, f"TYPE_{o.type}")
+                                if o.ticket not in tg_pending:
+                                    notify_order_placed(
+                                        ticket=o.ticket, symbol=o.symbol, order_type=ot_name,
+                                        price=float(o.price_open), sl=float(o.sl), tp=float(o.tp),
+                                        volume=float(o.volume_current), comment=getattr(o, "comment", "") or ""
+                                    )
+                                    tg_pending[o.ticket] = {
+                                        "symbol": o.symbol, "type": ot_name, "price": float(o.price_open),
+                                        "sl": float(o.sl), "tp": float(o.tp), "vol": float(o.volume_current),
+                                        "comment": getattr(o, "comment", "") or "",
+                                        "setup_time": getattr(o, "time_setup", time.time())
+                                    }
+                                else:
+                                    old_p = tg_pending[o.ticket]
+                                    if abs(float(o.price_open) - old_p["price"]) > 0.05 or abs(float(o.sl) - old_p["sl"]) > 0.05 or abs(float(o.tp) - old_p["tp"]) > 0.05:
+                                        notify_order_modified(
+                                            ticket=o.ticket, symbol=o.symbol, order_type=ot_name,
+                                            new_price=float(o.price_open), new_sl=float(o.sl), new_tp=float(o.tp)
+                                        )
+                                        old_p["price"] = float(o.price_open)
+                                        old_p["sl"] = float(o.sl)
+                                        old_p["tp"] = float(o.tp)
+
+                            # 2. Pending orders removed (Filled or Cancelled)
+                            for t in list(tg_pending.keys()):
+                                if t not in curr_pend_map:
+                                    old_info = tg_pending.pop(t)
+                                    if t in curr_pos_map:
+                                        pos_p = curr_pos_map[t]
+                                        notify_order_filled(
+                                            ticket=t, symbol=pos_p.symbol,
+                                            side="BUY" if pos_p.type == 0 else "SELL",
+                                            fill_price=float(pos_p.price_open),
+                                            sl=float(pos_p.sl), tp=float(pos_p.tp),
+                                            volume=float(pos_p.volume),
+                                            comment=getattr(pos_p, "comment", "") or ""
+                                        )
+                                    else:
+                                        age_m = max(0.0, (time.time() - old_info.get("setup_time", time.time())) / 60.0)
+                                        notify_order_cancelled(
+                                            ticket=t, symbol=old_info["symbol"], order_type=old_info["type"],
+                                            price=old_info["price"], age_minutes=round(age_m, 1),
+                                            reason="MT5 Order Removed / Cancelled"
+                                        )
+
+                            # 3. New positions or SL adjustments
+                            for p in current_positions:
+                                p_side = "BUY" if p.type == 0 else "SELL"
+                                if p.ticket not in tg_positions:
+                                    notify_order_filled(
+                                        ticket=p.ticket, symbol=p.symbol, side=p_side,
+                                        fill_price=float(p.price_open), sl=float(p.sl), tp=float(p.tp),
+                                        volume=float(p.volume), comment=getattr(p, "comment", "") or ""
+                                    )
+                                    tg_positions[p.ticket] = {
+                                        "symbol": p.symbol, "side": p_side, "open_p": float(p.price_open),
+                                        "sl": float(p.sl), "tp": float(p.tp), "vol": float(p.volume),
+                                        "comment": getattr(p, "comment", "") or ""
+                                    }
+                                else:
+                                    old_pos = tg_positions[p.ticket]
+                                    if abs(float(p.sl) - old_pos["sl"]) > 0.05:
+                                        notify_sl_moved(
+                                            ticket=p.ticket, symbol=p.symbol, side=p_side,
+                                            old_sl=old_pos["sl"], new_sl=float(p.sl),
+                                            stage="MT5 Terminal Update", entry=old_pos["open_p"]
+                                        )
+                                        old_pos["sl"] = float(p.sl)
+
+                            # 4. Closed positions
+                            for t in list(tg_positions.keys()):
+                                if t not in curr_pos_map:
+                                    old_pos = tg_positions.pop(t)
+                                    close_price = old_pos["open_p"]
+                                    profit_val = 0.0
+                                    close_comment = "Closed"
+                                    try:
+                                        deals = mt5.history_deals_get(position=t)
+                                        if deals:
+                                            profit_val = float(sum(d.profit for d in deals))
+                                            close_price = float(deals[-1].price)
+                                            close_comment = str(deals[-1].comment) or "SL/TP Close"
+                                    except Exception:
+                                        pass
+                                    notify_position_closed(
+                                        ticket=t, symbol=old_pos["symbol"], side=old_pos["side"],
+                                        entry=old_pos["open_p"], close_price=close_price,
+                                        volume=old_pos["vol"], profit=profit_val,
+                                        close_reason=close_comment
+                                    )
+                    except Exception as _tg_loop_err:
+                        LOG.debug(f"Telegram sync error: {_tg_loop_err}")
 
                     # Gather high-speed live tape snapshot for XAUUSD
                     live_tape = {}
