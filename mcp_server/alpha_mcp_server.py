@@ -1463,7 +1463,7 @@ async def mcp_alpha_backtest_thesis(
     """
     return await run_in_thread(_sync_backtest_thesis, query=query, symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
 
-@mcp.tool()
+# DECOMMISSIONED / UNREGISTERED: backtest_thesis removed from MCP tools per user directive
 async def backtest_thesis(
     query: str,
     symbol: str = "XAUUSD",
@@ -1471,8 +1471,8 @@ async def backtest_thesis(
     bars: int = 0,
     offset: int = 0
 ) -> str:
-    """STRICTLY POD 5 PRE-FLIGHT ONLY: Call only when actively staging an order in Pod 5 to verify historical sample win rate and R:R over recent bars. Prohibited on routine scans."""
-    return await run_in_thread(_sync_backtest_thesis, query=query, symbol=symbol, timeframe=timeframe, bars=bars, offset=offset)
+    """DEPRECATED: backtest_thesis is decommissioned."""
+    return json.dumps({"status": "DEPRECATED", "message": "backtest_thesis is decommissioned and unavailable."})
 
 
 def mcp_alpha_get_fred_observations(series_id: str, limit: int = 100, vintage_date: str = "") -> str:
@@ -1745,7 +1745,6 @@ def list_desk_tools() -> str:
         {"name":"get_crowd_liquidity_vector","description":"Evidence telemetry revealing crowd entrapment, stop density, and absorption dynamics."},
         {"name":"get_fvg_matrix","description":"Multi-timeframe FVG geometry."},
         {"name":"get_fred_observations","description":"Vintage-aware FRED/ALFRED macro observations."},
-        {"name":"backtest_thesis","description":"Historical empirical replay evidence; never an automatic signal."},
         {"name":"record_decision_snapshot","description":"Persist factual pre-decision context."},
         {"name":"execute_trade","description":"Execute only with explicit validated volume, SL and TP."},
         {"name":"place_pending_order","description":"Place only an explicitly specified pending order."},
@@ -1807,8 +1806,8 @@ def call_desk_tool(tool_name: str, arguments_json: str = "{}") -> str:
         "get_fred_observations": lambda: get_fred_observations(**args),
         "get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",10),args.get("force_refresh",False)),
         "alpha_get_live_world_events": lambda: get_live_world_events(args.get("category","ALL"),args.get("limit",10),args.get("force_refresh",False)),
-        "backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
-        "alpha_backtest_thesis": lambda: _sync_backtest_thesis(args.get("query",""),args.get("symbol","XAUUSD"),args.get("timeframe","M5"),args.get("bars",60),args.get("offset",0)),
+        "backtest_thesis": lambda: json.dumps({"status": "DEPRECATED", "message": "backtest_thesis is decommissioned."}),
+        "alpha_backtest_thesis": lambda: json.dumps({"status": "DEPRECATED", "message": "alpha_backtest_thesis is decommissioned."}),
         "place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
         "alpha_place_pending_order": lambda: mcp_alpha_place_pending_order(args.get("symbol",""),args.get("order_type",""),args.get("price",0.0),args.get("volume",0.0),args.get("sl",0.0),args.get("tp",0.0),args.get("comment","OpenCode Planned Order"),args.get("tag","")),
         "cancel_pending_order": lambda: mcp_alpha_cancel_pending_order(args.get("order_ticket",args.get("ticket",0)), args.get("symbol","ALL"), args.get("force",False), args.get("reason","")),
