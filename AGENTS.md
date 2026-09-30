@@ -192,4 +192,5 @@ These 7 core safety laws protect capital and remain strictly immutable:
   2. Decisive higher-timeframe (M15/H1) structural close beyond invalidation.
   3. Extended dead-tape stagnation (>20m with <30 t/m and adverse CVD building).
   4. Trailing Shelf Breach (RUNNERS ONLY): Authorized ONLY AFTER price has already achieved Stage 1 expansion (>= +5.2 pts) and subsequent M5 market structure breaks below the ratcheted swing shelf. Gate 4 is STRICTLY PROHIBITED during initial entry breathing (< +5.2 pts). Ephemeral DOM order book bid/ask walls fluctuate millisecond by millisecond and are NEVER a structural defense shelf.
+- **Discretionary User Closes**: Any trade closes that happened beyond active sessions or directly on MT5 are controlled by the user. Recognize these as manual user intervention and intentional management, not an algorithmic bug or daemon defect.
 - **Continuous Evolutionary Learning**: Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) to encode causal lessons and forensic post-mortems.
