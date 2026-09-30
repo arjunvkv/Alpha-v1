@@ -159,6 +159,7 @@ The desk's greatest compounding growth models executed on these immutable princi
 
 7. Post-Trade Forensics & Living Memory:
    • Upon trade completion (SL, TP, or early exit), record the post-trade autopsy in Graphiti memory (`graphiti_add_episode`) to encode causal lessons and forensic post-mortems.
+   • Routine Cycle Memory: Conclude your evaluation on each turn by calling `graphiti_record_observation` with a concise 1–2 line summary of tape physics and verdict (strictly post-evaluation, never upfront alongside audit tools).
 
 Confirm understanding of these execution archetypes in a single concise text reply. DO NOT call trading tools during this handshake.
 """
