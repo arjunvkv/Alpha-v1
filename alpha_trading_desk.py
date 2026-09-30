@@ -66,7 +66,7 @@ DAEMON_PINGS_LOG_PATH = PROJECT_ROOT / "logs" / "daemon_pings.log"
 STATE_FILE_PATH = PROJECT_ROOT / "data" / "live" / "discovery_state.json"
 CONFIG_PATH = PROJECT_ROOT / "config" / "instruments_config.json"
 INSTRUMENTS = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "XCUUSD", "USOIL.cash"]
-MIN_PENDING_ORDER_LIFESPAN_MINUTES = 45.0
+DEFAULT_MAX_AUCTION_DISTANCE_PTS = 18.0
 
 def _init_mt5(timeout: int = 5000) -> bool:
     try:
@@ -689,7 +689,8 @@ class ConsolidatedTradingDaemon:
                     log_story("Local LLM COT/Fund Analyst", f"[{symbol}] {fund_report.get('thesis', '')}")
                     log_story("Local LLM Macro/News Analyst", f"[{symbol}] {macro_report.get('thesis', '')} | News Shield: {news_shield.get('status_text', 'CLEAR')}")
                     log_story("Local LLM Bull/Bear Debater", f"[{symbol}] Bull Points: {debate.get('bull_points', [])} | Bear Points: {debate.get('bear_points', [])} | Structural Risk: {'WARNING' if debate.get('structural_risk_warning') else 'CLEAR'}")
-                    log_story("Local LLM Risk Officer", f"[{symbol}] Approved: {risk.get('approved')} | Guidance: {risk.get('reason')}")
+                    _risk_appr = "CIO_AUTONOMOUS_AUTHORITY" if risk.get('approved') is None else f"{risk.get('approved')}"
+                    log_story("Local LLM Risk Officer", f"[{symbol}] Authority: {_risk_appr} | Sizing Guidance: {risk.get('reason')}")
             except Exception as err:
                 LOG.error(f"Local LLM Desk analysis error for {symbol}: {err}")
                 instrument_matrix.append(f"• {symbol}: DATA_UNAVAILABLE — analysis error (see alpha.log); excluded from this cycle's matrix.")
@@ -736,9 +737,8 @@ class ConsolidatedTradingDaemon:
                         dist_pts = abs(tick.bid - o.price_open) if tick else 0.0
                         ref_time = tick.time if (tick and getattr(tick, 'time', 0) > 0) else time.time()
                         elapsed_m = max(0.0, (ref_time - o.time_setup) / 60.0) if getattr(o, 'time_setup', 0) else 0.0
-                        sanctity_str = f"ACTIVE_SANCTITY (Age {elapsed_m:.0f}m / min {int(MIN_PENDING_ORDER_LIFESPAN_MINUTES)}m)" if elapsed_m < MIN_PENDING_ORDER_LIFESPAN_MINUTES else f"MATURE (Age {elapsed_m:.0f}m)"
                         detailed_pending_orders.append(
-                            f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | Status: {sanctity_str} | GTC)'
+                            f'Ticket #{o.ticket} ({o.symbol} {type_str} {o.volume_current:.2f}L @ {o.price_open:.2f} | SL: {o.sl:.2f} | TP: {o.tp:.2f} | Dist: {dist_pts:.1f} pts | Age: {elapsed_m:.0f}m | GTC)'
                         )
         except Exception as err:
             LOG.error(f'MT5 pending order audit failed: {err}')
@@ -1134,20 +1134,22 @@ class ConsolidatedTradingDaemon:
                     f"Open positions: {len(open_tickets)}\n"
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n"
-                    f"*PENDING ORDER SANCTITY & DYNAMIC GUARDIAN LAW:\n"
-                    f"  Resting orders require time for auction rotation or compression resolution (45-min working lifespan). Price oscillating in a compression shelf or temporary low tick velocity (<30 t/m) is normal pre-breakout signature — never an invalidation reason.\n"
-                    f"  Strict Early Cancellation Criteria: Cancel before 45 min ONLY IF: (1) Planned TP reached without filling, (2) Opposing structural shelf / planned SL breached pre-fill, (3) Sovereign macro shock directly reverses permission, or (4) Scheduled Tier-1 release within 30 minutes.\n"
-                    f"  Stale Orders: Orders genuinely resting > 60–90 min with zero auction progression should be evaluated and cancelled via alpha_cancel_pending_order().\n"
-                    f"  Anti-Chasing: Once a move expands without filling, accept it — cancel, stand flat, wait for the next fresh structural setup.\n\n"
+                    f"*PENDING ORDER AUCTION-STATE PROTOCOL (NO ARBITRARY TIMERS):\n"
+                    f"  Resting orders are governed by 3 Physical Auction Gates (state-driven, not clock-driven):\n"
+                    f"  1. Gate 1 [TARGET_PASSED]: If price reached or passed planned TP pre-fill, the move completed — cancel immediately to avoid falling knife.\n"
+                    f"  2. Gate 2 [STRUCTURAL_INVALIDATED]: If price breached planned SL or opposing balance shelf pre-fill, the thesis broke — cancel immediately.\n"
+                    f"  3. Gate 3 [STRANDED_FAR]: If price drifted beyond the dynamic distance leash (>18-25 pts) into a new dealing range — cancel obsolete order.\n"
+                    f"  4. [ACTIVE_BRACKET]: If Gates 1–3 are clear, price is in healthy auction rotation (2–8 pts). Pullbacks to Order Blocks / FVGs naturally take 15–30m (3–6 M5 bars). Cancelling out of micro-impatience on a 2–4m pause is a documented error (cost +$1,270 on Sep 29). Maintain order until filled or structurally invalidated.\n"
+                    f"  Anti-Chasing: Once an expansion move has occurred without filling, accept it — cancel, stand flat, wait for the next fresh structural setup.\n\n"
                     f"=== THE CHAMPION NEWS & CAUSAL MACRO MANDATE ===\n"
-                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=10)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) `graphiti_search_facts(patterns=[...])` for empirical pattern contrast.\n"
+                    f"Conduct a lean, targeted news & macro repricing audit via the Aperture: (1) `alpha_get_live_world_events(category='ALL', limit=10)` for 0ms verified global wire headlines, (2) 1x dynamic `proxima_ask_perplexity` query targeting the active catalyst, (3) `alpha_query_analyst_desk(symbol='XAUUSD')` for 7-Layer Local LLM Multi-Agent synthesis and Bull vs Bear clash, (4) `alpha_get_pending_orders(symbol='ALL')` to audit/replan active resting orders on MT5, (5) `alpha_get_market_regime_context(symbol='XAUUSD')` for live quotes, spread, CVD and real yields, (6) `alpha_get_topological_liquidity_map(symbol='XAUUSD')` for spatial radar and cascade targets, and (7) 2x parallel `graphiti_search_facts(patterns=[...])` calls: Call 1 for Candidate Thesis tags, and Call 2 for Specific Counter-Trap tags.\n"
                     f"For planning the next trade: you have 0.50 - 1.00 lot area to place the lots based on 7-layer conviction and the power of the news. Always pull latest and closest news possible. Always replan any pending orders each time you pull the news. Live session clocks and gates are already injected in the header above.\n\n"
                     f"CORE REPRICING EVALUATION VECTORS (LEAN CAUSAL DISCOVERY):\n"
                     f"1. Q-NEWS-1 [Zero-Assumption Wire Pulse]: Call 1x `alpha_get_live_world_events(category='ALL', limit=10)` to pull unfiltered real-time global wires (CNBC, US Treasury, Fed Press, FXStreet, Commodities). What breaking geopolitical events, sovereign bond shocks, or central bank releases are actively hitting the wire?\n"
                     f"2. Q-NEWS-2 [Displacement vs. Catalyst Reconciliation]: Reconcile today's active leg displacement and session timing (from the header above) against live wires. Is current price expansion backed by a real sovereign catalyst, or is it an overnight/session liquidity hunt in an informational vacuum?\n"
                     f"3. Q-NEWS-3 [Dynamic Deep Inquiry & 7-Layer Replan]: Based on the active leg and wire clues from Q1/Q2, dynamically formulate your targeted search query (do NOT use static keywords). Target the specific transmission channel driving this session: Call 1x `proxima_ask_perplexity(message=\"...\")`, 1x `alpha_query_analyst_desk(symbol='XAUUSD')` for Bull vs Bear arguments, and audit/replan active resting limit/stop orders with `alpha_get_pending_orders(symbol='ALL')`.\n"
-                    f"4. Q-NEWS-4 [Continuous Memory Grounding — Adversarial Dual-Tag Search]: Formulate dual semantic pairs: (1) Candidate Thesis tags, AND (2) Specific Counter-Trap / Context tags (e.g. ['SELL_STOP', 'COIL'], ['BREAKDOWN', 'TRAP'], ['COMPRESSION', 'TRAP']). Call 1x `graphiti_search_facts(patterns=[...])`. Inspect the historical trap-to-win ratio (e.g. Sep 29 Walk #2566 autopsy: SELL_STOP staged 3 ticks below 5h coil floor became trapped exit liquidity for an institutional Spring / Turtle Soup, -$452 loss).\n"
-                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Order Calibration]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty. When breaking wires or kinetic delta surges confirm directional expansion, execute immediately at market (`alpha_execute_market_order` — Prong C) targeting the macro destination with R:R >= 1.5:1 floor, or stage breakout stops (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP` — Prong B) beyond established HTF structural extremes. (Pre-staging stops 1–3 ticks outside quiet micro-shelves in chop is an institutional trap). Standing flat remains your high-conviction decision whenever pristine edge is absent. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
+                    f"4. Q-NEWS-4 [Continuous Memory Grounding — Adversarial Dual-Tag Search]: Call 2x `graphiti_search_facts` in parallel on every turn: (1) Call 1 with Candidate Thesis tags (e.g. ['SHORT_FADE', 'CEILING_REJECTION', '4TF_BEARISH']), and (2) Call 2 with Specific Counter-Trap / Failure tags (e.g. ['AUTOMATIC_RALLY', 'SHORT_COVERING_BAIT', 'TRAP'] or ['SELL_STOP', 'COIL', 'TRAP']). Compare the historical trap-to-win ratio across both cards (e.g. Sep 29 Walk #2566 autopsy: SELL_STOP staged 3 ticks below 5h coil floor became trapped exit liquidity for an institutional Spring / Turtle Soup, -$452 loss).\n"
+                    f"5. Q-NEWS-5 [Execution Action via 5-Pod Protocol & Pre-Order Calibration]: Given combined news velocity, rate shifts, and empirical facts, execute or stand flat with mathematical certainty. When breaking wires or kinetic delta surges confirm directional expansion, execute immediately at market (`alpha_execute_market_order` — Prong C) targeting the macro destination with R:R >= 1.5:1 floor (with intermediate 5.0–7.0 pt milestones serving as the automated Stage 1 +5.2 pt Breakeven Armor trigger, NOT arithmetic barriers), or stage breakout stops (`alpha_place_pending_order` `BUY_STOP`/`SELL_STOP` — Prong B) beyond established HTF structural extremes. (Doorstep proximity < 3.0 pts applies strictly to reversal fades, not directional breaks). Standing flat remains your high-conviction decision whenever pristine edge is absent. -> `alpha_execute_market_order`, `alpha_place_pending_order`\n\n"
                     f"MANDATORY FORMAT (MATCHING THE PROVEN ESCANOR V72 DEEP REASONING STYLE):\n"
                     f"Deliver your deliberation in full analytical depth matching v72:\n\n"
                     f"### Q-NEWS-1 — Zero-Assumption Wire Pulse (verbatim wires & calendar risk)\n"
@@ -1157,7 +1159,7 @@ class ConsolidatedTradingDaemon:
                     f"### Q-NEWS-3 — 7-Layer Replan\n"
                     f"• 4TF posture, physical tape shift (CVD 5m, 10b delta %, velocity t/m, 4M footprint delta blocks), and active MT5 pending order book audit.\n\n"
                     f"### Q-NEWS-4 — Continuous Memory Grounding (Adversarial Dual-Tag Grounding)\n"
-                    f"• Cite `graphiti_search_facts` output for both Candidate Thesis tags and Counter-Trap / Context tags (e.g. ['SELL_STOP', 'COIL']). Contrast live tape against documented winning signatures vs historical traps (e.g. Sep 29 Walk #2566 autopsy).\n\n"
+                    f"• Cite both `graphiti_search_facts` query outputs (Candidate Thesis card vs Counter-Trap card). Contrast live tape against documented winning signatures vs historical traps (e.g. Sep 29 Walk #2566 autopsy).\n\n"
                     f"### Q-NEWS-5 — Execution via 5-Pod\n"
                     f"• Pre-order coordinate calibration (`alpha_get_deep_orderflow_telemetry`), mathematical R:R calculation, strategic verdict (Immediate Market Order, Breakout Stop, Resting Limit, or Standing Flat), and conditional plans with exact price coordinates.\n"
                 )
@@ -1176,17 +1178,21 @@ class ConsolidatedTradingDaemon:
                     f"    - Prong C (Immediate Market Execution — `alpha_execute_market_order`): Authorized when live tape confirms kinetic expansion (breaking wires, high-velocity delta surge >= 100 t/m, or confirmed M1/M5 structural break with matching CVD). Enter at market with SL behind breakout origin and TP on macro roadway. Do NOT defer to passive limits when expansion is in flight.\n"
                     f"    - Prong B (Breakout Stops — `BUY_STOP`/`SELL_STOP`): Authorized beyond established HTF structural extremes (Day High/Low, major session extremes) strictly when macro roadway clearance or kinetic expansion is confirmed (GENUINE_MACRO_CATALYST wire, rates shock, or confirmed yield displacement). Pre-staging breakout stops 1–3 ticks outside quiet micro-compression shelves (<6 pts width) without macro catalyst is an institutional Spring / Turtle Soup trap — wait for the sweep to complete or stand flat.\n"
                     f"    - Prong A (Resting Limits — `BUY_LIMIT`/`SELL_LIMIT`): Strictly for deep pullbacks into unmitigated HTF Order Blocks during wide-swing, low-velocity consolidation. Prohibited for trading breakout expansion.\n"
-                    f"• Open-Roadway Macro Target Rule: For market entries (Prong C) and breakout stops (Prong B), anchor TP to the macro structural destination (Day High/Low, Session Extreme, or H1/H4 imbalance) with R:R >= 1.5:1 floor. Never truncate TP to 2-minute intermediate micro-wicks along the expansion roadway.\n"
-                    f"• PENDING ORDER SANCTITY & DYNAMIC GUARDIAN LAW:\n"
-                    f"    - 45-Minute Working Lifespan: Resting orders require time for auction rotation or compression resolution. Oscillating inside compression or low velocity (<30 t/m) is normal pre-breakout signature — never an invalidation reason.\n"
-                    f"    - Early Cancellation Criteria: Cancel before 45 min ONLY IF: (1) Planned TP reached without filling, (2) Opposing structural shelf / planned SL breached pre-fill, (3) Sovereign macro shock directly reverses permission, or (4) Scheduled Tier-1 release within 30 minutes.\n"
-                    f"    - Stale Orders (> 60-90 min with zero auction progress): Evaluate and cancel.\n"
+                    f"• Open-Roadway Macro Target Rule & Dynamic Ratchet Reconciliation:\n"
+                    f"    - For market entries (Prong C) and breakout stops (Prong B), anchor TP to the macro structural destination (Day High/Low, Session Extreme, or H1/H4 imbalance) with R:R >= 1.5:1 floor. Intermediate milestones along the path (5.0–7.0 pts) serve as the automated Stage 1 Breakeven Armor trigger (+5.2 pts), NOT arithmetic barriers that disqualify the trade.\n"
+                    f"    - Doorstep proximity (< 3.0 pts) applies strictly to reversal fades (Pattern A Turtle Soup: never front-run an uncompleted sweep). It does NOT prohibit authorized directional momentum (Prong C / Prong B) pushing to penetrate the barrier when macro runway is open.\n"
+                    f"• PENDING ORDER AUCTION-STATE PROTOCOL (NO ARBITRARY TIMERS):\n"
+                    f"    - Resting orders are governed by 3 Physical Auction Gates (state-driven, not clock-driven):\n"
+                    f"    - Gate 1 [TARGET_PASSED]: Planned TP reached pre-fill -> Move completed, cancel immediately to avoid knife-catch.\n"
+                    f"    - Gate 2 [STRUCTURAL_INVALIDATED]: Planned SL or opposing shelf breached pre-fill -> Thesis broken, cancel immediately.\n"
+                    f"    - Gate 3 [STRANDED_FAR]: Price drifted beyond dynamic leash (>18-25 pts) into a new dealing range -> Cancel obsolete order.\n"
+                    f"    - [ACTIVE_BRACKET]: Gates 1-3 clear -> Healthy rotation. Allow 15-30m M5 rotation to unfold. Do NOT cancel on micro-impatience (Sep 29 missed +$1,270 on 2-4m cuts).\n"
                     f"    - Anti-Chasing: Once an expansion move has occurred without filling our order, accept it — cancel, stand flat, wait for the next fresh setup.\n\n"
                     f"ACTIVE PENDING ORDERS ON MT5 ({len(detailed_pending_orders)}):\n"
                     f"{'  ' + chr(10).join(f'  {p}' for p in detailed_pending_orders) if detailed_pending_orders else '  None (Book clean).'}\n\n"
                     f"CORE PARALLEL AUDIT & CONTINUOUS FACT GROUNDING (MANDATORY ON EVERY CYCLE):\n"
                     f"  1. Parallel Microstructure & Spatial Audit: `alpha_query_analyst_desk(symbol='XAUUSD')`, `alpha_get_market_regime_context(symbol='XAUUSD')`, `alpha_get_account_status()`, `alpha_get_pending_orders(symbol='ALL')`, `alpha_get_topological_liquidity_map(symbol='XAUUSD')`\n"
-                    f"  2. Continuous Fact Grounding: `graphiti_search_facts(patterns=[...])` using 2-3 scale-invariant tags from the 3-Vector Grammar (`Macro` + `Location` + `Physics`). Returns a compact historical-evidence card.\n"
+                    f"  2. Continuous Fact Grounding (2x Parallel Dual-Queries): Call 2x `graphiti_search_facts` in parallel on every turn: (1) Call 1 with Candidate Thesis tags (e.g. ['BSL_SWEEP', 'H4_BEARISH', 'SHORT']), and (2) Call 2 with Specific Counter-Trap tags (e.g. ['FAILED_BREAK', 'TURTLE_SOUP', 'TRAP'] or ['BREAKOUT_STOP', 'COMPRESSION', 'TRAP']).\n"
                     f"  • Pre-Order Execution Coordinates (Pod 5 Only): When planning an order, call `alpha_get_deep_orderflow_telemetry(symbol='XAUUSD')` for exact FVG 50% CE and structural invalidation buffer, and optionally call `alpha_get_topological_liquidity_map(symbol='XAUUSD', detailed=True)` to inspect all active structural ceilings, floors, and extended cascades. (Routine scans strictly use default detailed=False to eliminate prompt bloat).\n"
                     f"  • Dynamic Execution Standard: Anchor TP dynamically to opposing structural liquidity (opposing FVG CE, POC, or session extreme) enforcing R:R >= 1.5:1 floor (no arbitrary point limits).\n"
                     f"  • Direct MT5 Execution: `alpha_place_pending_order()`, `alpha_execute_market_order()`, `alpha_cancel_pending_order()`, `alpha_update_position()`\n"
@@ -1201,7 +1207,7 @@ class ConsolidatedTradingDaemon:
                     f"### POD 3: TECHNICAL STRUCTURE & ROADWAYS (INSTITUTIONAL GEOMETRY & TOPOLOGICAL MAP)\n"
                     f"• 4TF posture (H4/H1/M15/M5), key structural levels, FVG zones & CE fill %, unmitigated demand/supply magnets, sweep verification (penetrated vs mid-air reversal), and topological obstacle clearance (>= 1.5R, cascade targets).\n\n"
                     f"### POD 4: ADVERSARIAL DEVIL'S ADVOCATE (COUNTER-TRAP & DUAL-TAG MEMORY GROUNDING)\n"
-                    f"• Adversarial Dual-Tag Memory Grounding: Query `graphiti_search_facts` with dual semantic pairs: Candidate Thesis tags AND Counter-Trap / Context tags (e.g. ['SELL_STOP', 'COIL'], ['BREAKDOWN', 'TRAP'], ['COMPRESSION', 'TRAP']).\n"
+                    f"• Adversarial Dual-Tag Memory Grounding: Compare the outputs of both parallel `graphiti_search_facts` queries (Candidate Thesis card vs Counter-Trap card).\n"
                     f"• Contrast against historical trap-to-win ratio and documented autopsies (e.g. Sep 29 Ticket #552561270: SELL_STOP staged below quiet 5h coil floor triggered an 8-tick false break before reversing -$452.45 into chop). What breaks this thesis today?\n\n"
                     f"### POD 5: EXECUTION ARBITER — VERDICT\n"
                     f"• Definitive verdict (`STANDING FLAT`, immediate market execution, or pending limit/stop), exact justification, and structured conditional roadmap with exact price, SL, TP, and R:R coordinates.\n"

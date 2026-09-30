@@ -30,9 +30,9 @@ WARP_CLI_PATHS = [
 HTTP_BRIDGE_PORT = 40001
 WARP_SOCKS_PORT = 40000
 POLL_INTERVAL_SEC = 2.5
-COOLDOWN_SEC = 30.0
+COOLDOWN_SEC = 60.0
 
-# Strict rate limit signatures and connection drop signatures
+# Strict rate limit signatures (only genuine API rate limits & Cloudflare blocks)
 RATE_LIMIT_KEYWORDS = [
     "429",
     "rate limit",
@@ -45,18 +45,10 @@ RATE_LIMIT_KEYWORDS = [
     "error 1020",
     "cf-mitigated",
     "blocked by cloudflare",
-    "cannot connect to api",
-    "unable to connect",
-    "fetch failed",
-    "socket connection was closed",
-    "socket connection closed",
-    "bad gateway",
-    "502",
-    "econnreset",
-    "etimedout",
     "free usage exceeded",
     "free_tier_limit",
     "free limit reached",
+    "resource_exhausted",
     "subscribe to go"
 ]
 
@@ -548,6 +540,10 @@ class CloudflareAutoConnector:
                         error_tokens.append(str(ep.get("error") or ep.get("text") or ""))
 
                     combined_error_text = (" ".join(error_tokens)).lower()
+
+                    # Ignore tool execution aborts or normal tool errors
+                    if "tool execution aborted" in combined_error_text:
+                        continue
 
                     for kw in RATE_LIMIT_KEYWORDS:
                         if kw in combined_error_text:
