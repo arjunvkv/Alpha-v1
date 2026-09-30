@@ -1687,8 +1687,7 @@ def mcp_alpha_get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
         stops = _inst_engine.get_retail_stop_clusters(sym)
         retail_block = {
             "buy_stop_pool": [_f(stops.get("buy_stop_pool")), _f(stops.get("dist_to_buy_stops")), str(stops.get("buy_stops_state", "RESTING"))],
-            "sell_stop_pool": [_f(stops.get("sell_stop_pool")), _f(stops.get("dist_to_sell_stops")), str(stops.get("sell_stops_state", "RESTING"))],
-            "nearest_resting_pool": str(stops.get("liquidity_target", "NONE"))
+            "sell_stop_pool": [_f(stops.get("sell_stop_pool")), _f(stops.get("dist_to_sell_stops")), str(stops.get("sell_stops_state", "RESTING"))]
         }
 
         # 5. Active Unmitigated FVGs with 50% Consequent Encroachment (CE)
@@ -1703,21 +1702,13 @@ def mcp_alpha_get_deep_orderflow_telemetry(symbol: str = "XAUUSD") -> str:
             "fill_pct": _f(near_fvg.get("fill_pct"), 1)
         } if near_fvg else None
 
-        # 6. Volatility Physics
-        vol = _inst_engine.get_volatility_regime(sym)
-        vol_block = {
-            "m15_atr": _f(vol.get("m15_atr")),
-            "vol_ratio": _f(vol.get("vol_ratio"))
-        }
-
         payload = {
             "symbol": sym,
             "vwap_bands": vwap_block,
             "level2_dom": dom_block,
             "asian_session": asian_block,
             "retail_liquidity": retail_block,
-            "nearest_unmitigated_fvg": fvg_block,
-            "volatility_physics": vol_block
+            "nearest_unmitigated_fvg": fvg_block
         }
         return json.dumps(payload, separators=(',', ':'))
     except Exception as err:
