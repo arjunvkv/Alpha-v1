@@ -78,6 +78,9 @@ def _normalize_pattern_tag(tag: str) -> str:
     t = re.sub(r"_+", "_", t).strip("_")
     if t in EPHEMERAL_NOISE:
         return ""
+    # Strip throwaway narrative sentences or card references
+    if len(t) > 35 or any(k in t for k in ["CARD_A", "CARD_B", "MY_ORDER", "INVALIDATION_", "EXPANSION_ONE", "DIRECTIVE"]):
+        return ""
     # Strip clock/timestamp patterns e.g. 20_56_UTC
     if re.search(r"\d{1,2}_\d{2}", t) or "UTC" in t:
         return ""
@@ -744,18 +747,32 @@ class PatternMemoryEngine:
         total_study = sum(x["count"] for x in unique_study)
         evidence = self._classify_evidence(total_live_wins, total_live_traps, total_study)
         
-        # Differentiate exact composite overlap vs loose component overlap
+        # Differentiate exact composite matches (matching ALL queried tags) vs broader component baselines
         exact_wins = [x for x in unique_wins if x["overlap_count"] >= len(query_tags)]
         exact_traps = [x for x in unique_traps if x["overlap_count"] >= len(query_tags)]
         
         if len(query_tags) > 1 and (exact_wins or exact_traps):
             ew_count = sum(x["count"] for x in exact_wins)
             et_count = sum(x["count"] for x in exact_traps)
+            exact_losses = sum(x["count"] for x in exact_traps if any(k in (x.get('lesson') or '').lower() for k in ['#5', 'ticket', '-$', 'loss', 'stopped out', 'sl hit']))
+            exact_obs_traps = et_count - exact_losses
+            
+            detail_parts = []
+            if exact_losses > 0:
+                detail_parts.append(f"{exact_losses} Trade Loss Autopsies")
+            if exact_obs_traps > 0:
+                detail_parts.append(f"{exact_obs_traps} Observed Market Traps")
+            detail_str = f" ({', '.join(detail_parts)})" if detail_parts else ""
+            
             output_lines.append(
-                f"Desk Experience: {ew_count} Live Wins | {et_count} Traps on exact setup ({total_live_wins}W | {total_live_traps}T across related components)"
+                f"Desk Evidence: {ew_count} Live Wins | {et_count} Traps on exact composite setup{detail_str}"
             )
         else:
-            output_lines.append(f"Desk Experience: {total_live_wins} Live Wins | {total_live_traps} Stumbles / Traps")
+            tot_losses = sum(x["count"] for x in unique_traps if any(k in (x.get('lesson') or '').lower() for k in ['#5', 'ticket', '-$', 'loss', 'stopped out', 'sl hit']))
+            tot_obs_traps = total_live_traps - tot_losses
+            output_lines.append(
+                f"Desk Evidence: {total_live_wins} Live Wins | {tot_losses} Trade Loss Autopsies | {tot_obs_traps} Observed Traps across broad components"
+            )
 
         # Contrast 1: Top Live Winning Walk (What made it win)
         if matched_live_wins:
@@ -768,9 +785,11 @@ class PatternMemoryEngine:
         # Contrast 2: Top Recorded Stumble / Pitfall (What broke it)
         if matched_live_traps:
             top_t = matched_live_traps[0]
+            is_trade_loss = any(k in (top_t.get('lesson') or '').lower() for k in ['#5', 'ticket', '-$', 'closed loss', 'sl hit', 'stopped out'])
+            t_type = "Recorded Trade Loss Autopsy" if is_trade_loss else "Observed Market Trap"
             t_lesson = f" - Failure Pitfall: {self._dense_card_summary(top_t['lesson'], 240)}" if top_t['lesson'] else ""
             output_lines.append(
-                f"- Recorded Stumble ({top_t['count']}x): [{top_t['key']}]{t_lesson}"
+                f"- {t_type} ({top_t['count']}x): [{top_t['key']}]{t_lesson}"
             )
             output_lines.append(
                 "- Condition Test: A past stumble is NOT a veto. If the stumble's adverse condition is absent on live tape, setup is CLEARED."
