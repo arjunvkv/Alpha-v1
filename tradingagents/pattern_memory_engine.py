@@ -74,15 +74,25 @@ CANONICAL_SYNONYMS = {
 def _normalize_pattern_tag(tag: str) -> str:
     """Canonical normalization for pattern tags: uppercase, alphanumeric + underscores."""
     t = str(tag or "").strip().upper()
+    # Strip list prefixes and artifacts
+    t = re.sub(r"^(?:ITEM_|STEP_\d+_|STAGE_\d+_)+", "", t)
+    t = re.sub(r"(?:_ITEM)+$", "", t)
     t = re.sub(r"[^A-Z0-9_]+", "_", t)
     t = re.sub(r"_+", "_", t).strip("_")
-    if t in EPHEMERAL_NOISE:
+    if not t or t in EPHEMERAL_NOISE:
         return ""
-    # Strip throwaway narrative sentences or card references
-    if len(t) > 35 or any(k in t for k in ["CARD_A", "CARD_B", "MY_ORDER", "INVALIDATION_", "EXPANSION_ONE", "DIRECTIVE"]):
+    # Strip throwaway narrative sentences, prompt artifacts, or card references
+    if len(t) > 32 or any(k in t for k in [
+        "CARD_A", "CARD_B", "MY_ORDER", "INVALIDATION_", "EXPANSION_ONE", 
+        "DIRECTIVE", "DOSSIER", "AUDIT", "PILLAR", "CADENCE", "BRAINSTORM",
+        "TEMPLATE", "CYCLE", "WALK_", "ITEM"
+    ]):
         return ""
     # Strip clock/timestamp patterns e.g. 20_56_UTC
     if re.search(r"\d{1,2}_\d{2}", t) or "UTC" in t:
+        return ""
+    # Strip full sentences masquerading as tags (tags with 4 or more underscores unless in canonical synonyms)
+    if t.count("_") >= 4 and t not in CANONICAL_SYNONYMS:
         return ""
     return CANONICAL_SYNONYMS.get(t, t)
 
@@ -407,6 +417,8 @@ class PatternMemoryEngine:
         cleaned_patterns = parse_and_normalize_tags(patterns)
         if not cleaned_patterns:
             return {"status": "ERROR", "message": "No valid pattern tags found"}
+        # Cap to top 6 tags to prevent narrative sentences from creating bloated walk keys
+        cleaned_patterns = cleaned_patterns[:6]
 
         norm_outcome = str(outcome or "STUDY").strip().upper()
         if norm_outcome not in ("WIN", "TRAP", "STUDY"):
@@ -414,17 +426,34 @@ class PatternMemoryEngine:
                 "TRAP" if "TRAP" in norm_outcome or "LOSS" in norm_outcome else "STUDY"
             )
 
+        # Prevent standing flat or avoided retail traps from being misclassified as desk TRAP
+        if norm_outcome == "TRAP":
+            lesson_lower = str(lesson or "").lower()
+            is_real_loss = any(k in lesson_lower for k in ["#5", "ticket", "-$", "sl hit", "stopped out", "closed loss"])
+            is_flat_defense = any(k in lesson_lower for k in [
+                "standing flat", "stood flat", "flat stance", "avoided trap", 
+                "correct defense", "capital protected", "no trade taken", "remained flat"
+            ])
+            if is_flat_defense and not is_real_loss:
+                norm_outcome = "STUDY"
+
         now_ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         canonical_key = _canonical_walk_key(cleaned_patterns)
         sym = str(symbol or "XAUUSD").strip().upper()
         
-        # Clean lesson text from ephemeral diary artifacts
+        # Clean lesson text from ephemeral diary artifacts and cap length
         clean_lesson = str(lesson or "").strip()
         if clean_lesson:
             clean_lesson = re.sub(r"Turn [AB][^,:]*[:,-]?", "", clean_lesson, flags=re.IGNORECASE)
             clean_lesson = re.sub(r"\d{1,2}:\d{2}(?::\d{2})?\s*(?:UTC)?", "", clean_lesson, flags=re.IGNORECASE)
             clean_lesson = re.sub(r"\b\d{5,6}\.?\d*\b", "", clean_lesson) # strip balance / ticket numbers
             clean_lesson = re.sub(r"\s+", " ", clean_lesson).strip(" ,;-")
+            if len(clean_lesson) > 1200:
+                sb = [m.end() for m in re.finditer(r'(?<!\d)\.\s+', clean_lesson[:1200])]
+                if sb and sb[-1] > 300:
+                    clean_lesson = clean_lesson[:sb[-1]].rstrip()
+                else:
+                    clean_lesson = clean_lesson[:1200].rstrip() + "..."
 
         with self._get_conn() as conn:
             cur = conn.cursor()

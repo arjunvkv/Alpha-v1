@@ -76,12 +76,12 @@ def record_observation(
 ) -> str:
     """
     Record an active pattern combination and market observation into Graphiti Temporal Memory.
-    MANDATORY ON EVERY CYCLE: Call this on routine cadence turns and brainstorm turns to record the
-    active pattern walk, order flow state, and observational thesis.
+    Call this on routine cadence turns and brainstorm turns to record the active pattern walk,
+    order flow state, and observational thesis.
     Outcomes:
-    - 'STUDY': Routine per-cycle market observation, equilibrium, or standing-flat audit.
-    - 'WIN': Clean directional expansion or executed winning trade.
-    - 'TRAP': Avoided retail trap, fake breakout, or stop hunt collapse.
+    - 'STUDY': Routine per-cycle market observation, equilibrium, avoided retail trap, or standing-flat audit (DEFAULT).
+    - 'WIN': Executed winning trade or confirmed expansion target reached.
+    - 'TRAP': Genuine trade loss autopsy (stopped out with ticket #) or confirmed structural failure.
     Updates pattern occurrence counts, last_seen timestamps, and reinforces temporal walk weights.
     """
     try:
@@ -112,9 +112,8 @@ def add_episode(
     """
     Record a pattern walk episode into Graphiti memory.
     Call this:
-    1. When any MT5 trade closes (outcome='WIN' or 'TRAP').
-    2. When standing flat and an avoided trap collapses (outcome='TRAP').
-    3. When standing flat and an explosive clean move launches (outcome='WIN').
+    1. When an executed MT5 trade closes: outcome='WIN' (profit) or outcome='TRAP' (loss autopsy).
+    2. When standing flat and documenting an educational market cycle: outcome='STUDY'.
     Strengthens the synaptic weight of the walk and updates pattern entity nodes.
     """
     try:
